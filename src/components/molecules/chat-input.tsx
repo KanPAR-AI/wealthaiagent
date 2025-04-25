@@ -1,46 +1,54 @@
-"use client"
-
+import { useRef, useState } from "react";
 import {
   PromptInput,
   PromptInputAction,
   PromptInputActions,
   PromptInputTextarea,
-} from "@/components/ui/prompt-input"
-import { Button } from "@/components/ui/button"
-import { ArrowUp, Paperclip, Square, X } from "lucide-react"
-import { useRef, useState } from "react"
+} from "@/components/ui/prompt-input";
+import { Button } from "@/components/ui/button";
+import { ArrowUp, Paperclip, Square, X } from "lucide-react";
 
-export function PromptInputWithActions() {
-  const [input, setInput] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [files, setFiles] = useState<File[]>([])
-  const uploadInputRef = useRef<HTMLInputElement>(null)
+interface PromptInputWithActionsProps {
+  onSubmit: (text: string) => void;
+}
 
-  const handleSubmit = () => {
+export function PromptInputWithActions({ onSubmit }: PromptInputWithActionsProps) {
+  const [input, setInput] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  
+  const handleSubmit = (): void => {
     if (input.trim() || files.length > 0) {
-      setIsLoading(true)
+      setIsLoading(true);
+      
+      // Call the parent's onSubmit callback with the input text
+      if (onSubmit && input.trim()) {
+        onSubmit(input.trim());
+      }
+      
       setTimeout(() => {
-        setIsLoading(false)
-        setInput("")
-        setFiles([])
-      }, 2000)
+        setIsLoading(false);
+        setInput("");
+        setFiles([]);
+      }, 2000);
     }
-  }
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  };
+  
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     if (event.target.files) {
-      const newFiles = Array.from(event.target.files)
-      setFiles((prev) => [...prev, ...newFiles])
+      const newFiles = Array.from(event.target.files);
+      setFiles((prev) => [...prev, ...newFiles]);
     }
-  }
-
-  const handleRemoveFile = (index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index))
+  };
+  
+  const handleRemoveFile = (index: number): void => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
     if (uploadInputRef?.current) {
-      uploadInputRef.current.value = ""
+      uploadInputRef.current.value = "";
     }
-  }
-
+  };
+  
   return (
     <PromptInput
       value={input}
@@ -68,9 +76,7 @@ export function PromptInputWithActions() {
           ))}
         </div>
       )}
-
       <PromptInputTextarea placeholder="Ask me anything..." />
-
       <PromptInputActions className="flex items-center justify-between gap-2 pt-2">
         <PromptInputAction tooltip="Attach files">
           <label
@@ -83,11 +89,11 @@ export function PromptInputWithActions() {
               onChange={handleFileChange}
               className="hidden"
               id="file-upload"
+              ref={uploadInputRef}
             />
             <Paperclip className="text-primary size-5" />
           </label>
         </PromptInputAction>
-
         <PromptInputAction
           tooltip={isLoading ? "Stop generation" : "Send message"}
         >
@@ -98,7 +104,7 @@ export function PromptInputWithActions() {
             onClick={handleSubmit}
           >
             {isLoading ? (
-              <Square className="size-5 fill-current " />
+              <Square className="size-5 fill-current" />
             ) : (
               <ArrowUp className="size-5" />
             )}
@@ -106,5 +112,5 @@ export function PromptInputWithActions() {
         </PromptInputAction>
       </PromptInputActions>
     </PromptInput>
-  )
+  );
 }
