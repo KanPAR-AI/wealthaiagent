@@ -1,0 +1,42 @@
+import { Link } from 'react-router-dom';
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
+import Logo from '@/components/ui/logo'; // Adjust path if needed
+
+function Index() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4 w-full">
+       <header className="absolute top-4 right-4">
+         <SignedOut>
+           <SignInButton mode="modal">
+             <button className="px-4 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 shadow">Sign In</button>
+           </SignInButton>
+         </SignedOut>
+         <SignedIn>
+           <UserButton/>
+         </SignedIn>
+       </header>
+
+       <div className="text-center">
+           <Logo /> {/* Larger logo */}
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+                Welcome to AI Chat
+            </h1>
+            <p className="text-lg text-gray-600 mb-8">
+                Your intelligent conversation partner.
+            </p>
+            <Link
+                to="/new" // Link directly to start a new chat
+                className="px-8 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-300"
+            >
+                Start New Chat
+            </Link>
+       </div>
+
+        <footer className="absolute bottom-4 text-gray-500 text-sm">
+            © {new Date().getFullYear()} Your Company Name. All rights reserved.
+        </footer>
+    </div>
+  );
+}
+
+export default Index;

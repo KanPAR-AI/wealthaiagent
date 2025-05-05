@@ -1,0 +1,25 @@
+// src/pages/New.tsx
+import ChatSidebar from '@/components/molecules/chat-sidebar';
+import ChatWindow from '@/components/molecules/chat-window'; // Adjust path
+// Removed useEffect, useNavigate, nanoid
+
+function New() {
+
+  // This component now simply renders the ChatWindow in its "new chat" state
+  // It doesn't have a chatId initially, letting ChatWindow handle the first message.
+  // You might want a wrapper div for layout if needed, matching the <Chat /> page structure
+  return (
+    <div className="flex h-screen w-full overflow-hidden bg-gray-100 dark:bg-zinc-900">
+    {/* Sidebar Component */}
+    <ChatSidebar/>
+
+    {/* Main content area: Takes remaining width, contains ChatWindow */}
+    <main className="flex-1 flex flex-col overflow-x-hidden"> {/* Ensure main area handles overflow */}
+       {/* Pass the chatId down as a prop. ChatWindow will manage its own internal layout */}
+       <ChatWindow />
+    </main>
+  </div>
+  );
+}
+
+export default New;
