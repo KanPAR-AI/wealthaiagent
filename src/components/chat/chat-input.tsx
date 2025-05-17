@@ -95,6 +95,7 @@ export function PromptInputWithActions({ onSubmit, isLoading = false }: PromptIn
          placeholder="Ask me anything..."
          onKeyDown={handleKeyDown}
          disabled={isLoading}
+         className="dark:text-white text-zinc-950"
        />
       <PromptInputActions className="flex items-center justify-between gap-2 pt-2">
         <PromptInputAction tooltip="Attach files">

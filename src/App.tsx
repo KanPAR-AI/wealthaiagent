@@ -7,6 +7,7 @@ import New from "./pages/New";
 import Chat from "./pages/Chat";
 import { ClerkProvider } from '@clerk/clerk-react';
 import { SidebarProvider } from "./components/ui/sidebar";
+import { ThemeProvider } from "@/components/theme/theme-provider";
 
 // Ensure environment variable is loaded (Vite specific)
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -17,6 +18,7 @@ if (!PUBLISHABLE_KEY) {
 
 const App = () => (
   <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
     <TooltipProvider>
       <SidebarProvider>
       <Sonner /> {/* For toast notifications */}
@@ -35,6 +37,7 @@ const App = () => (
       </BrowserRouter>
       </SidebarProvider>
     </TooltipProvider>
+    </ThemeProvider>
   </ClerkProvider>
 );
 

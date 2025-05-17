@@ -1,8 +1,8 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { MessageLoading } from "@/components/ui/message-loading";
+import { cn } from "@/lib/utils";
+import * as React from "react";
 
 interface ChatBubbleProps {
   variant?: "sent" | "received"
@@ -13,7 +13,6 @@ interface ChatBubbleProps {
 
 export function ChatBubble({
   variant = "received",
-  layout = "default",
   className,
   children,
 }: ChatBubbleProps) {
@@ -63,7 +62,7 @@ export function ChatBubbleMessage({
 }
 
 interface ChatBubbleAvatarProps {
-  src?: string
+  src?: string | null
   fallback?: string
   className?: string
 }

@@ -1,7 +1,7 @@
 // src/pages/Chat.tsx
 import { useParams, Navigate } from 'react-router-dom';
-import ChatWindow from '@/components/molecules/chat-window'; // Adjust path
-import Sidebar from '@/components/molecules/chat-sidebar';     // Adjust path
+import ChatWindow from '@/components/chat/chat-window'; // Adjust path
+import Sidebar from '@/components/chat/chat-sidebar';     // Adjust path
 import { useAuth } from '@clerk/clerk-react';
 
 function Chat() {

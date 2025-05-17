@@ -1,6 +1,6 @@
 // src/pages/New.tsx
-import ChatSidebar from '@/components/molecules/chat-sidebar';
-import ChatWindow from '@/components/molecules/chat-window'; // Adjust path
+import ChatSidebar from '@/components/chat/chat-sidebar';
+import ChatWindow from '@/components/chat/chat-window'; // Adjust path
 // Removed useEffect, useNavigate, nanoid
 
 function New() {
