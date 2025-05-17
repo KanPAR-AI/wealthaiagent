@@ -57,3 +57,6 @@ substitutions:
 
 # Optional: Timeout for the build
 # timeout: '1200s'
+# Add options for logging
+options:
+  logging: CLOUD_LOGGING_ONLY 
