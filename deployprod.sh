@@ -134,8 +134,8 @@ echo "Submitting build to Google Cloud Build..."
 # Replace placeholders in substitutions or directly in cloudbuild.yaml
 SERVICE_NAME="wealthaiagent-frontend" # Example for substitution
 
-gcloud builds submit ./frontend \
-    --config=./frontend/cloudbuild.yaml \
+gcloud builds submit . \
+    --config=cloudbuild.yaml \
     --project=${PROJECT_ID} \
     --substitutions=_REGION=${REGION},_ARTIFACT_REPO=${ARTIFACT_REPO_NAME},_SERVICE_NAME=${SERVICE_NAME} \
     --quiet
