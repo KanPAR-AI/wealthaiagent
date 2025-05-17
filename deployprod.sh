@@ -8,7 +8,7 @@ PROJECT_ID="aiagentapi"
 echo "Configuring project: ${PROJECT_ID}"
 
 # Ensure gcloud is configured for the correct project
-gcloud config set project ${PROJECT_ID}
+gcloud config set project ${PROJECT_ID} --quiet
 
 echo "Enabling necessary APIs..."
 gcloud services enable run.googleapis.com \
@@ -33,7 +33,6 @@ else
   echo "Artifact Registry repository ${ARTIFACT_REPO_NAME} already exists."
 fi
 
-
 PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format='value(projectNumber)')
 
 if [ -z "${PROJECT_NUMBER}" ]; then
@@ -50,11 +49,10 @@ echo "Cloud Build Service Account member: ${CLOUD_BUILD_SA_MEMBER}"
 RUNTIME_SA_EMAIL="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 
 # Grant necessary IAM roles to the Cloud Build Service Account
-# These are generally idempotent; --quiet suppresses verbose output.
 echo "Ensuring Cloud Build SA has project-level roles..."
 declare -a project_roles_to_ensure=(
-  "roles/run.admin"               # To deploy and manage Cloud Run services
-  "roles/artifactregistry.writer" # To push images to Artifact Registry
+  "roles/run.admin"
+  "roles/artifactregistry.writer"
 )
 for role_to_add in "${project_roles_to_ensure[@]}"; do
   echo "Attempting to grant ${role_to_add} to ${CLOUD_BUILD_SA_MEMBER} on project ${PROJECT_ID}..."
@@ -62,33 +60,35 @@ for role_to_add in "${project_roles_to_ensure[@]}"; do
       --member="${CLOUD_BUILD_SA_MEMBER}" \
       --role="${role_to_add}" \
       --condition=None \
-      --quiet || echo "Warning: Failed to add ${role_to_add} or it might already exist with conditions. Check console if issues persist."
+      --quiet || echo "Warning: Failed to add ${role_to_add} for ${CLOUD_BUILD_SA_MEMBER} on project ${PROJECT_ID}. It might already exist (possibly with conditions) or another issue occurred. Check IAM console if problems persist."
 done
 
-echo "Ensuring Cloud Build SA (${CLOUD_BUILD_SA_MEMBER}) can impersonate Cloud Run runtime SA (${RUNTIME_SA_EMAIL})..."
+echo "Ensuring Cloud Build SA (${CLOUD_BUILD_SA_MEMBER}) can act as the Cloud Run runtime SA (${RUNTIME_SA_EMAIL})..."
 gcloud iam service-accounts add-iam-policy-binding ${RUNTIME_SA_EMAIL} \
     --project=${PROJECT_ID} \
     --role="roles/iam.serviceAccountTokenCreator" \
     --member="${CLOUD_BUILD_SA_MEMBER}" \
-    --quiet || echo "Warning: Failed to grant Service Account Token Creator. Check console if issues persist."
+    --quiet || echo "Warning: Failed to grant Service Account Token Creator to ${CLOUD_BUILD_SA_MEMBER} for ${RUNTIME_SA_EMAIL}. Check IAM console if problems persist."
 
 echo "IAM permission setup attempted."
-echo "If you still face IAM issues or prompts for these roles, consider setting them manually once via the Google Cloud Console."
 
 # --- Trigger Cloud Build ---
 echo "Submitting build to Google Cloud Build..."
 # For manual builds, generate a unique tag
-MANUAL_TAG_VALUE="manual-$(date +%Y%m%d-%H%M%S)-$(git rev-parse --short HEAD)"
+# Using git rev-parse --short HEAD requires this script to be run from within a git repository.
+# Adding a fallback if not in a git repo or no commits yet.
+GIT_SHORT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "nogit")
+MANUAL_TAG_VALUE="manual-$(date +%Y%m%d-%H%M%S)-${GIT_SHORT_SHA}"
 
 # Assuming this script is inside the 'frontend' directory, and 'cloudbuild.yaml' is also there.
 # The '.' indicates that the current directory (frontend/) is the source for the build.
 gcloud builds submit . \
     --config=cloudbuild.yaml \
     --project=${PROJECT_ID} \
-    --substitutions=_REGION=${REGION},_ARTIFACT_REPO=${ARTIFACT_REPO_NAME},_SERVICE_NAME=${SERVICE_NAME},_MANUAL_TAG=${MANUAL_TAG_VALUE} \
+    --substitutions=_REGION=${REGION},_ARTIFACT_REPO=${ARTIFACT_REPO_NAME},_SERVICE_NAME=${SERVICE_NAME},_TAG=${MANUAL_TAG_VALUE} \
     --quiet
 
-BUILD_STATUS=$? # Capture exit status of the build submit
+BUILD_STATUS=$?
 
 if [ ${BUILD_STATUS} -eq 0 ]; then
     echo "Build submitted successfully."

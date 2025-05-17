@@ -1,62 +1,79 @@
 # frontend/cloudbuild.yaml
+# This file is intended to be used when the Cloud Build trigger is configured to use
+# 'frontend/cloudbuild.yaml' as its build configuration file.
+# All paths within Dockerfile COPY commands and the docker build context ('.')
+# are relative to this file's location (the 'frontend/' directory).
+
 steps:
   # 1. Build the Docker image
+  # The build context '.' refers to the 'frontend/' directory because this
+  # cloudbuild.yaml is inside 'frontend/'. The Dockerfile is also expected
+  # to be in 'frontend/'.
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'Build Docker Image'
     args:
       - 'build'
       - '-t'
-      - '${_REGION}-docker.pkg.dev/aiagentapi/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${_MANUAL_TAG:-${COMMIT_SHA:-latest}}'
-      - '.'
-    # If this cloudbuild.yaml is at the root of your repo, and Dockerfile is in frontend/:
-    # dir: 'frontend'
-    # If this cloudbuild.yaml is inside frontend/ (and Dockerfile is also in frontend/),
-    # then 'dir' is not needed here as '.' will be the frontend/ directory.
+      # _TAG will be $COMMIT_SHA from the trigger, or a manual tag from a script
+      - '${_REGION}-docker.pkg.dev/aiagentapi/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${_TAG}'
+      - '.' # Build context is the current directory (frontend/)
 
   # 2. Push the Docker image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
+    id: 'Push Docker Image'
     args:
       - 'push'
-      - '${_REGION}-docker.pkg.dev/aiagentapi/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${_MANUAL_TAG:-${COMMIT_SHA:-latest}}'
-    # dir: 'frontend' # Same comment as above
+      - '${_REGION}-docker.pkg.dev/aiagentapi/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${_TAG}'
+    # This step depends on the successful completion of the 'Build Docker Image' step.
+    # Not strictly necessary to specify waitFor if steps are sequential and you don't use '-' as ID,
+    # but can be explicit.
+    # waitFor: ['Build Docker Image']
 
   # 3. Deploy the image to Google Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Deploy to Cloud Run'
     entrypoint: gcloud
     args:
       - 'run'
       - 'deploy'
-      - '${_SERVICE_NAME}'
+      - '${_SERVICE_NAME}' # Cloud Run service name
       - '--image'
-      - '${_REGION}-docker.pkg.dev/aiagentapi/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${_MANUAL_TAG:-${COMMIT_SHA:-latest}}'
+      - '${_REGION}-docker.pkg.dev/aiagentapi/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${_TAG}' # Full image path with the specific tag
       - '--region'
-      - '${_REGION}'
+      - '${_REGION}' # Region for Cloud Run service
       - '--project'
-      - 'aiagentapi'
+      - 'aiagentapi' # Your GCP Project ID
       - '--platform'
       - 'managed'
-      - '--allow-unauthenticated'
-      # Add other flags like memory, cpu, min/max instances as needed
+      - '--allow-unauthenticated' # Makes the service publicly accessible
+      # Optional: Add other flags like memory, cpu, min/max instances, environment variables as needed
       # Example: '--memory=512Mi', '--cpu=1', '--min-instances=0', '--max-instances=2'
+      # Example: '--set-env-vars=KEY1=VALUE1,KEY2=VALUE2'
+    # This step depends on the successful completion of the 'Push Docker Image' step.
+    # waitFor: ['Push Docker Image']
 
+# The 'images' field is primarily for build provenance (e.g., for Binary Authorization,
+# vulnerability scanning integration if enabled).
+# It expects fully resolved image names based on the substitutions that will be provided.
 images:
-  - '${_REGION}-docker.pkg.dev/aiagentapi/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${_MANUAL_TAG:-${COMMIT_SHA:-latest}}'
+  - '${_REGION}-docker.pkg.dev/aiagentapi/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${_TAG}'
 
+# These are the user-defined substitutions Cloud Build expects for this configuration.
+# Their actual values will be provided by the trigger's UI settings (for CI/CD)
+# or by the `gcloud builds submit --substitutions=...` command (for manual builds).
+# The default values here act as placeholders or fallbacks if a substitution isn't provided,
+# though the trigger/script should always provide them.
 substitutions:
-  _REGION: 'us-central1'                 # Replace with your default region
-  _ARTIFACT_REPO: 'frontend-docker-repo' # Replace with your Artifact Registry repo name
-  _SERVICE_NAME: 'wealthaiagent-frontend'  # Replace with your Cloud Run service name
-  _MANUAL_TAG: '' # For manual script to pass a tag. Defaults to empty.
-  # COMMIT_SHA is a built-in variable from Cloud Build for triggered builds.
-  # The expression ${_MANUAL_TAG:-${COMMIT_SHA:-latest}} means:
-  # 1. If _MANUAL_TAG is provided (e.g., by deployprod.sh) and not empty, use its value.
-  # 2. Else, if built-in COMMIT_SHA is available (from a trigger) and not empty, use its value.
-  # 3. Else (e.g., manual local submit where _MANUAL_TAG is not given or is empty, and no trigger context), use 'latest'.
+  _REGION: 'us-central1'                 # Example default, overridden by trigger/script
+  _ARTIFACT_REPO: 'frontend-docker-repo' # Example default, overridden by trigger/script
+  _SERVICE_NAME: 'wealthaiagent-frontend'  # Example default, overridden by trigger/script
+  _TAG: 'latest'                           # Example default, overridden by trigger (with $COMMIT_SHA) or script (with manual tag)
 
-# Optional: Specify a service account for the build if needed, otherwise uses default Cloud Build SA
-# serviceAccount: 'projects/YOUR_PROJECT_ID/serviceAccounts/your-custom-cloud-build-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com'
-
-# Optional: Timeout for the build
-# timeout: '1200s'
-# Add options for logging
+# Build options
 options:
-  logging: CLOUD_LOGGING_ONLY 
+  logging: CLOUD_LOGGING_ONLY # Specifies that logs should only go to Cloud Logging
+  # machineType: 'E2_HIGHCPU_8' # Optional: Request a more powerful machine type for the build if needed
+  # diskSizeGb: 100 # Optional: Request a larger disk for the build if needed
+
+# Optional: Specify a timeout for the build
+# timeout: '1200s' # 20 minutes
