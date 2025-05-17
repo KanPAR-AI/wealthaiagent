@@ -28,7 +28,9 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/new" element={<New />} />
+          {/* /chat route directs to New component to generate ID and redirect */}
           <Route path="/chat" element={<New />} />
+          {/* Route for displaying a specific chat */}
           <Route path="/chat/:chatid" element={<Chat />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

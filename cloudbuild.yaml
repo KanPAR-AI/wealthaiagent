@@ -5,16 +5,19 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'YOUR_REGION-docker.pkg.dev/aiagentapi/YOUR_ARTIFACT_REGISTRY_REPO/YOUR_SERVICE_NAME:$COMMIT_SHA'
+      - '${_REGION}-docker.pkg.dev/aiagentapi/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${_MANUAL_TAG:-${COMMIT_SHA:-latest}}'
       - '.'
-    dir: 'frontend' # Assuming this cloudbuild.yaml is in the root of your repo, and Dockerfile is in frontend/
+    # If this cloudbuild.yaml is at the root of your repo, and Dockerfile is in frontend/:
+    # dir: 'frontend'
+    # If this cloudbuild.yaml is inside frontend/ (and Dockerfile is also in frontend/),
+    # then 'dir' is not needed here as '.' will be the frontend/ directory.
 
   # 2. Push the Docker image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'push'
-      - 'YOUR_REGION-docker.pkg.dev/aiagentapi/YOUR_ARTIFACT_REGISTRY_REPO/YOUR_SERVICE_NAME:$COMMIT_SHA'
-    dir: 'frontend'
+      - '${_REGION}-docker.pkg.dev/aiagentapi/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${_MANUAL_TAG:-${COMMIT_SHA:-latest}}'
+    # dir: 'frontend' # Same comment as above
 
   # 3. Deploy the image to Google Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -22,42 +25,35 @@ steps:
     args:
       - 'run'
       - 'deploy'
-      - 'YOUR_SERVICE_NAME' # e.g., wealthaiagent-frontend
+      - '${_SERVICE_NAME}'
       - '--image'
-      - 'YOUR_REGION-docker.pkg.dev/aiagentapi/YOUR_ARTIFACT_REGISTRY_REPO/YOUR_SERVICE_NAME:$COMMIT_SHA'
+      - '${_REGION}-docker.pkg.dev/aiagentapi/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${_MANUAL_TAG:-${COMMIT_SHA:-latest}}'
       - '--region'
-      - 'YOUR_REGION' # e.g., us-central1
+      - '${_REGION}'
       - '--project'
       - 'aiagentapi'
       - '--platform'
       - 'managed'
-      - '--allow-unauthenticated' # Allow public access
-      # Add any other necessary flags, like environment variables, memory, CPU, etc.
-      # Example for setting a runtime environment variable if needed:
-      # - '--set-env-vars=EXAMPLE_VARIABLE=example_value'
+      - '--allow-unauthenticated'
+      # Add other flags like memory, cpu, min/max instances as needed
+      # Example: '--memory=512Mi', '--cpu=1', '--min-instances=0', '--max-instances=2'
 
 images:
-  - 'YOUR_REGION-docker.pkg.dev/aiagentapi/YOUR_ARTIFACT_REGISTRY_REPO/YOUR_SERVICE_NAME:$COMMIT_SHA'
+  - '${_REGION}-docker.pkg.dev/aiagentapi/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${_MANUAL_TAG:-${COMMIT_SHA:-latest}}'
 
-# Recommended: Use substitutions for clarity and easy changes
 substitutions:
-  _REGION: 'us-central1' # <-- CHANGE THIS TO YOUR PREFERRED REGION
-  _ARTIFACT_REPO: 'frontend-docker-repo' # <-- CHANGE THIS TO YOUR ARTIFACT REGISTRY REPO NAME
-  _SERVICE_NAME: 'wealthaiagent-frontend' # <-- CHANGE THIS TO YOUR CLOUD RUN SERVICE NAME
-  # _GCP_PROJECT_ID: 'aiagentapi' # Already known
+  _REGION: 'us-central1'                 # Replace with your default region
+  _ARTIFACT_REPO: 'frontend-docker-repo' # Replace with your Artifact Registry repo name
+  _SERVICE_NAME: 'wealthaiagent-frontend'  # Replace with your Cloud Run service name
+  _MANUAL_TAG: '' # For manual script to pass a tag. Defaults to empty.
+  # COMMIT_SHA is a built-in variable from Cloud Build for triggered builds.
+  # The expression ${_MANUAL_TAG:-${COMMIT_SHA:-latest}} means:
+  # 1. If _MANUAL_TAG is provided (e.g., by deployprod.sh) and not empty, use its value.
+  # 2. Else, if built-in COMMIT_SHA is available (from a trigger) and not empty, use its value.
+  # 3. Else (e.g., manual local submit where _MANUAL_TAG is not given or is empty, and no trigger context), use 'latest'.
 
-# If you use substitutions, your args would look like:
-# - 'build'
-# - '-t'
-# - '${_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_ARTIFACT_REPO}/${_SERVICE_NAME}:$COMMIT_SHA'
-# etc.
-# And for deploy:
-# - 'run'
-# - 'deploy'
-# - '${_SERVICE_NAME}'
-# - '--image'
-# - '${_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_ARTIFACT_REPO}/${_SERVICE_NAME}:$COMMIT_SHA'
-# - '--region'
-# - '${_REGION}'
-# - '--project'
-# - '${_GCP_PROJECT_ID}'
+# Optional: Specify a service account for the build if needed, otherwise uses default Cloud Build SA
+# serviceAccount: 'projects/YOUR_PROJECT_ID/serviceAccounts/your-custom-cloud-build-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com'
+
+# Optional: Timeout for the build
+# timeout: '1200s'

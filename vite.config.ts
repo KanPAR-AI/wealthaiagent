@@ -7,11 +7,9 @@ import tailwindcss from "@tailwindcss/vite"
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: '/chataiagent/', // <--- Add this line
+  base: '/chataiagent/', // Ensures assets are pathed correctly for the subfolder
   server:{
-    // Remove or update allowedHosts as ngrok is typically for local development
-    // For Cloud Run, this is not needed.
-    // allowedHosts:["f2e7-171-79-102-21.ngrok-free.app"]
+    // allowedHosts: ["f2e7-171-79-102-21.ngrok-free.app"] // Remove or comment out for production builds
   },
   resolve: {
     alias: {
