@@ -1,0 +1,28 @@
+# frontend/nginx.template (renamed from nginx.conf)
+
+server {
+    listen ${PORT}; # Nginx will listen on the port specified by the $PORT env variable
+    server_name localhost;
+
+    location /chataiagent/ {
+        alias /usr/share/nginx/html/chataiagent/;
+        try_files $uri $uri/ /chataiagent/index.html;
+    }
+
+    location = / {
+        return 301 /chataiagent/;
+    }
+
+    location = /_healthz {
+        access_log off;
+        return 200 "healthy";
+        add_header Content-Type text/plain;
+    }
+
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_http_version 1.1;
+    gzip_types text/plain text/css application/json application/javascript application/x-javascript text/xml application/xml application/xml+rss text/javascript image/svg+xml;
+}

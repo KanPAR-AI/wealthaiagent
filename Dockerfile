@@ -1,41 +1,26 @@
 # frontend/Dockerfile
 
 # Stage 1: Build the React application
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder 
+# Recommended: Update to Node 20
 WORKDIR /app
-
-# Copy package.json and package-lock.json
 COPY package.json package-lock.json ./
-
-# Install dependencies
 RUN npm install
-
-# Copy the rest of the application code
 COPY . .
-
-# Build the application
-# The output will be in /app/dist, which should be configured for /chataiagent/ base path by vite.config.js
 RUN npm run build
 
 # Stage 2: Serve the application with Nginx
 FROM nginx:1.25-alpine
-
-# Remove default Nginx configuration
+ENV PORT 8080 # Default port, Cloud Run will override this with its own $PORT value
 RUN rm /etc/nginx/conf.d/default.conf
-
-# Copy custom Nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Copy the built static files from the builder stage
-# The build output (dist) already has assets pathed for /chataiagent/
-# Nginx root will be /usr/share/nginx/html; we place our app under chataiagent subdirectory within this root.
+COPY nginx.conf /etc/nginx/nginx.template # Copy as a template
 COPY --from=builder /app/dist /usr/share/nginx/html/chataiagent
 
-# Expose port 80
-EXPOSE 80
+# This script will substitute $PORT in nginx.template and start nginx
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Add a label for the source repository (good practice)
+EXPOSE 8080 
+# Expose the port Nginx will listen on (dynamically set by $PORT)
 LABEL org.opencontainers.image.source https://github.com/KanPAR-AI/wealthaiagent
-
-# Start Nginx
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/usr/local/bin/entrypoint.sh"]
