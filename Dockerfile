@@ -13,7 +13,8 @@ RUN npm run build
 FROM nginx:1.25-alpine
 ENV PORT 8080 # Default port, Cloud Run will override this with its own $PORT value
 RUN rm /etc/nginx/conf.d/default.conf
-COPY nginx.conf /etc/nginx/nginx.template # Copy as a template
+COPY nginx.template /etc/nginx/nginx.template 
+# Copy as a template
 COPY --from=builder /app/dist /usr/share/nginx/html/chataiagent
 
 # This script will substitute $PORT in nginx.template and start nginx
