@@ -1,24 +1,37 @@
-# frontend/nginx.template (renamed from nginx.conf)
+# frontend/nginx.template
 
 server {
-    listen ${PORT}; # Nginx will listen on the port specified by the $PORT env variable
-    server_name localhost;
+    listen ${PORT};
+    server_name localhost; # Will be ignored by Cloud Run
 
-    location /chataiagent/ {
+    # This location block will handle both /chataiagent and /chataiagent/
+    location /chataiagent {
+        # If the request is exactly /chataiagent (no trailing slash),
+        # permanently redirect to /chataiagent/
+        # This ensures consistent URL and that subsequent relative paths work correctly.
+        if ($request_uri = /chataiagent) {
+            return 301 /chataiagent/;
+        }
+
+        # For requests like /chataiagent/ or /chataiagent/some/path
         alias /usr/share/nginx/html/chataiagent/;
-        try_files $uri $uri/ /chataiagent/index.html;
+        index index.html index.htm; # Explicitly define index files
+        try_files $uri $uri/ /chataiagent/index.html; # Serve SPA
     }
 
+    # Redirect requests from the root of the service to /chataiagent/
     location = / {
         return 301 /chataiagent/;
     }
 
+    # Health check endpoint
     location = /_healthz {
         access_log off;
         return 200 "healthy";
         add_header Content-Type text/plain;
     }
 
+    # Gzip compression
     gzip on;
     gzip_vary on;
     gzip_proxied any;
