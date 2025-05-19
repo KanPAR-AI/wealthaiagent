@@ -4,6 +4,9 @@ server {
     listen ${PORT};
     server_name localhost; # Will be ignored by Cloud Run
 
+    port_in_redirect off;
+
+
     # This location block will handle both /chataiagent and /chataiagent/
     location /chataiagent {
         # If the request is exactly /chataiagent (no trailing slash),
