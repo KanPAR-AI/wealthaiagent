@@ -1,14 +1,13 @@
 // frontend/src/App.tsx
+import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import New from "./pages/New";
-import Chat from "./pages/Chat";
 import { ClerkProvider } from '@clerk/clerk-react';
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { SidebarProvider } from "./components/ui/sidebar";
-import { ThemeProvider } from "@/components/theme/theme-provider";
+import Chat from "./pages/Chat";
+import New from "./pages/New";
+import NotFound from "./pages/NotFound";
 
 // Ensure environment variable is loaded (Vite specific)
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -26,7 +25,7 @@ const App = () => (
       {/* Update BrowserRouter with basename */}
       <BrowserRouter basename="/chataiagent">
         <Routes>
-          <Route path="/" element={<Index />} />
+          <Route path="/" element={<New />} />
           <Route path="/new" element={<New />} />
           {/* /chat route directs to New component to generate ID and redirect */}
           <Route path="/chat" element={<New />} />

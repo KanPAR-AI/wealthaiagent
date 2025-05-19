@@ -14,7 +14,6 @@ import { AiGraphContent, AiTableContent, Message, MessageFile } from '@/types/ch
 import { AiLoadingIndicator } from './ai-loading-indicator';
 import { ChatBubble } from './chat-bubbles';
 import { ChatEmptyState } from './chat-empty-state';
-import { ChatHeader } from './chat-header';
 import { ChatLoadingSkeleton } from './chat-loading-skeleton';
 import { SuggestionTiles } from './chat-suggestion-tiles';
 
@@ -402,14 +401,13 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
 
   return (
     <div className="flex flex-col h-full bg-background dark:bg-zinc-800 w-full min-w-0">
-      <ChatHeader />
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {isLoadingHistory ? (
           <ChatLoadingSkeleton />
         ) : (
-          <ScrollArea className="flex-1" type="scroll" ref={scrollAreaRef}>
+          <ScrollArea className="h-[60vh]" type="scroll" ref={scrollAreaRef}>
             <div className="p-4 md:p-6 space-y-6">
-              <div className="max-w-3xl mx-auto w-full space-y-4">
+              <div className="max-w-3xl mx-auto w-full space-y-8">
                 {messages.length === 0 && !isSending && (
                   <ChatEmptyState
                     isFirstMessage={isFirstMessage}
@@ -423,7 +421,7 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
                     message={message}
                     currentUser={clerkUser}
                     actionIcons={actionIcons}
-                    // botAvatarSrc and botAvatarFallback will use defaults from ChatBubble
+                    botAvatarSrc='/logo.svg'
                   />
                 ))}
                 {isSending && (messages.length === 0 || messages[messages.length -1]?.sender === 'user') && (
@@ -446,9 +444,6 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
           )}
           <div className="w-full">
             <PromptInputWithActions onSubmit={handleSendMessage} isLoading={isSending} />
-            <p className="text-xs text-center text-muted-foreground dark:text-zinc-400 pt-2">
-              AI responses may be inaccurate. Use Shift+Enter for newline.
-            </p>
           </div>
         </div>
       </div>

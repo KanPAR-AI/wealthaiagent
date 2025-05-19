@@ -1,5 +1,5 @@
 // src/components/chat/ChatEmptyState.tsx
-
+import { AuroraText } from "../ui/aurora-text";
 import { JSX } from "react";
 
 interface ChatEmptyStateProps {
@@ -13,8 +13,8 @@ export function ChatEmptyState({ isFirstMessage, isSignedIn, userName }: ChatEmp
     <div className="p-6 text-center text-muted-foreground dark:text-zinc-400">
       {isFirstMessage ? (
         <>
-          <h2 className="text-xl font-semibold mb-4 text-foreground dark:text-zinc-200">
-            Hello, {isSignedIn ? userName : 'User'}!
+          <h2 className="text-xl sm:text-2xl font-bold mt-16 text-foreground dark:text-zinc-200">
+            Hello, <AuroraText>{isSignedIn ? userName : 'User'}!</AuroraText>
           </h2>
           <p>How can I help you today?</p>
         </>

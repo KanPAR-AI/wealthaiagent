@@ -1,7 +1,7 @@
 // src/pages/New.tsx
+import { ChatHeader } from '@/components/chat/chat-header';
 import ChatSidebar from '@/components/chat/chat-sidebar';
 import ChatWindow from '@/components/chat/chat-window'; // Adjust path
-// Removed useEffect, useNavigate, nanoid
 
 function New() {
 
@@ -15,7 +15,7 @@ function New() {
 
     {/* Main content area: Takes remaining width, contains ChatWindow */}
     <main className="flex-1 flex flex-col overflow-x-hidden"> {/* Ensure main area handles overflow */}
-       {/* Pass the chatId down as a prop. ChatWindow will manage its own internal layout */}
+    <ChatHeader />
        <ChatWindow />
     </main>
   </div>
