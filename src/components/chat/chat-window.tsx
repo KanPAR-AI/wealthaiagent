@@ -2,35 +2,24 @@
 import { useUser } from '@clerk/clerk-react';
 import { Copy, RefreshCcw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { nanoid } from 'nanoid';
-import React, { JSX, useEffect, useRef, useState } from "react";
+import { JSX, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 // Local/UI component imports
-import { ScrollArea } from "@/components/ui/scroll-area"; // Adjusted path
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { PromptInputWithActions } from "./chat-input";
 
+// Store import
+import { useChatStore } from '@/store/chat';
+
 // Modular Chat Components
-import { AiGraphContent, AiTableContent, Message, MessageFile } from '@/types/chat';
+import { ActionIconDefinition, AiGraphContent, AiTableContent, Message, MessageFile, SuggestionTileData, UserInfo } from '@/types/chat';
 import { AiLoadingIndicator } from './ai-loading-indicator';
 import { ChatBubble } from './chat-bubbles';
 import { ChatEmptyState } from './chat-empty-state';
 import { ChatLoadingSkeleton } from './chat-loading-skeleton';
 import { SuggestionTiles } from './chat-suggestion-tiles';
-
-// --- Type Definitions ---
-
-interface SuggestionTileData {
-  id: number;
-  title: string;
-  description: string;
-}
-interface ActionIconDefinition {
-  icon: React.FC<React.SVGProps<SVGSVGElement>>;
-  type: string;
-  action: (messageId: string) => void;
-}
-interface UserProfileInfo { imageUrl?: string | null; firstName?: string | null; }
-// --- End Type Definitions ---
+import { ImageModal } from './image-modal';
 
 interface ChatWindowProps {
   chatId?: string;
@@ -39,16 +28,26 @@ interface ChatWindowProps {
 export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX.Element {
   const { isSignedIn, user } = useUser();
   const navigate = useNavigate();
+  
+  // Zustand store
+  const { 
+    addMessage, 
+    getMessages, 
+    setPendingMessage, 
+    getPendingMessage, 
+    clearPendingMessage,
+  } = useChatStore();
 
   const [currentChatId, setCurrentChatId] = useState<string | undefined>(chatIdProp);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isFirstMessage, setIsFirstMessage] = useState<boolean>(!chatIdProp);
   const [isLoadingHistory, setIsLoadingHistory] = useState(!!chatIdProp);
   const [isSending, setIsSending] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesRef = useRef(messages); // Ref to current messages for cleanup
+  const messagesRef = useRef(messages);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -59,7 +58,6 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
       msg.files?.forEach(file => {
         if (file.url && file.url.startsWith('blob:')) {
           URL.revokeObjectURL(file.url);
-          // console.log(`REVOKED (ChatWindow): ${file.url} for ${file.name}`);
         }
       });
     });
@@ -72,11 +70,10 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
     };
   }, []);
 
-
   const suggestionTiles: SuggestionTileData[] = [
-    { id: 1, title: "Help me write", description: "Generate content or brainstorm ideas" },
-    { id: 2, title: "Answer questions", description: "Get assistance with any topic" },
-    { id: 3, title: "Summarize text", description: "Condense long documents" },
+    { id: 1, title: "Show me sales data", description: "Generate content or brainstorm ideas" },
+    { id: 2, title: "Analyze my user demographics", description: "Get assistance with any topic" },
+    { id: 3, title: "Show me my product list", description: "Condense long documents" },
     { id: 4, title: "Code assistance", description: "Debug or create new code" }
   ];
 
@@ -89,26 +86,31 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
     }
   };
 
-  // Placeholder implementations for Like/Dislike
   const handleLike = (messageId: string): void => {
     console.log("Liked", messageId);
-    // TODO: Implement like functionality
   };
+  
   const handleDislike = (messageId: string): void => {
     console.log("Disliked", messageId);
-    // TODO: Implement dislike functionality
   };
 
+  const handleImageClick = (url: string) => {
+    setSelectedImageUrl(url);
+  };
 
-  const simulateAiResponse = async (userText: string, userFiles: MessageFile[]) => {
-    console.log(`Simulating AI response for chat ${currentChatId || '(new chat)'}...`);
+  const closeImageModal = () => {
+    setSelectedImageUrl(null);
+  };
+
+  const simulateAiResponse = async (userText: string, userFiles: MessageFile[], chatId: string) => {
+    console.log(`Simulating AI response for chat ${chatId}...`);
     const aiResponseId = nanoid();
-    setIsSending(true); // Make sure this is set if you have an AiLoadingIndicator
+    setIsSending(true);
 
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    if (!scrollAreaRef.current) { // Check if component is still mounted
+    if (!scrollAreaRef.current) {
       console.log("ChatWindow unmounted during AI simulation, aborting state update.");
       setIsSending(false);
       return;
@@ -137,7 +139,7 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
         options: {
           categoryKey: 'quarter',
           dataKeys: ['sales', 'expenses'],
-          colors: ['#82ca9d', '#FA8072'], // Green for sales, Light Red for expenses
+          colors: ['#82ca9d', '#FA8072'],
           xAxisLabel: 'Fiscal Quarter',
           yAxisLabel: 'Amount (USD)',
         },
@@ -157,8 +159,8 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
           { region: 'Other', users: 800 },
         ],
         options: {
-          categoryKey: 'region', // This will be mapped to 'name' in PieChartDisplay
-          dataKeys: ['users'],   // This will be mapped to 'value'
+          categoryKey: 'region',
+          dataKeys: ['users'],
           colors: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AA00FF'],
         },
         description: "North America has the largest user base."
@@ -174,7 +176,7 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
                 { id: 'P1003', name: 'Mechanical Keyboard K7', category: 'Accessories', price: 119.50, stock: 120 },
                 { id: 'P1004', name: '4K Monitor U27', category: 'Electronics', price: 399.00, stock: 75 },
             ],
-            columns: [ // Optional: for specific order or headers
+            columns: [
                 { accessorKey: 'id', header: 'Product ID' },
                 { accessorKey: 'name', header: 'Product Name' },
                 { accessorKey: 'category', header: 'Category' },
@@ -187,17 +189,17 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
       responseText += "How can I assist you further?";
     }
 
-
     const aiResponse: Message = {
       id: aiResponseId,
       message: responseText,
       sender: "bot",
-      structuredContent: structuredContentDemo, // Add the structured content here
+      structuredContent: structuredContentDemo,
       timestamp: new Date().toISOString(),
     };
 
+    // Add to both local state and Zustand store
+    addMessage(chatId, aiResponse);
     setMessages(prev => [...prev, aiResponse]);
-    // setIsSending(false); // This should be in the finally block if used earlier in handleSendMessage
   };
 
   const handleRegenerate = (messageId: string) => {
@@ -205,19 +207,31 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
     if (botMessageIndex > 0 && messages[botMessageIndex].sender === 'bot') {
       const userMessage = messages[botMessageIndex - 1];
       if (userMessage?.sender === 'user') {
-        if (!currentChatId) { console.error("Cannot regenerate, chat ID is missing."); return; }
+        if (!currentChatId) { 
+          console.error("Cannot regenerate, chat ID is missing."); 
+          return; 
+        }
         console.log(`Regenerating response for prompt: "${userMessage.message}" in chat ${currentChatId}`);
         setIsSending(true);
         setMessages(prev => prev.filter(m => m.id !== messageId));
 
-        simulateAiResponse(userMessage.message, userMessage.files || [])
+        simulateAiResponse(userMessage.message, userMessage.files || [], currentChatId)
           .catch(error => {
             console.error("Error regenerating response:", error);
             const errorMsgId = nanoid();
-            setMessages(prev => [...prev, { id: errorMsgId, message: "Error regenerating response.", sender: 'bot', error: 'Failed to regenerate' }]);
+            const errorMsg: Message = { 
+              id: errorMsgId, 
+              message: "Error regenerating response.", 
+              sender: 'bot', 
+              error: 'Failed to regenerate' 
+            };
+            addMessage(currentChatId, errorMsg);
+            setMessages(prev => [...prev, errorMsg]);
           })
           .finally(() => setIsSending(false));
-      } else { console.warn("Could not find preceding user message for regeneration."); }
+      } else { 
+        console.warn("Could not find preceding user message for regeneration."); 
+      }
     }
   };
 
@@ -230,7 +244,7 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
 
   useEffect(() => {
     console.log("ChatWindow: chatIdProp received:", chatIdProp);
-    revokeFileObjectURLs(messagesRef.current); // Revoke previous messages' URLs
+    revokeFileObjectURLs(messagesRef.current);
 
     setCurrentChatId(chatIdProp);
     const isNewChat = !chatIdProp;
@@ -240,70 +254,65 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
     if (isNewChat) {
       console.log("ChatWindow: Detected new chat state (no chatId prop). Clearing messages.");
       setMessages([]);
-      sessionStorage.removeItem('pendingMessage');
     }
-    // For existing chats, history loading effect will handle clearing messages
   }, [chatIdProp]);
 
-
-  const checkAndSendPendingMessage = (idToCheck: string | undefined) => {
-    if (!idToCheck) return;
-    const pending = sessionStorage.getItem('pendingMessage');
+  const checkAndSendPendingMessage = (idToCheck: string) => {
+    const pending = getPendingMessage(idToCheck);
     if (pending) {
-      try {
-        const pendingData = JSON.parse(pending);
-        if (pendingData.targetChatId === idToCheck) {
-          console.log(`ChatWindow: Found pending message for ${idToCheck}, initiating AI response...`);
-          sessionStorage.removeItem('pendingMessage');
-          setIsSending(true);
-          // pendingData.fileInfo will be {name, type, size}, without live blob URLs from original File objects
-          simulateAiResponse(pendingData.text, pendingData.fileInfo || [])
-            .catch(error => {
-              console.error("Error sending pending message:", error);
-              const errorMsgId = nanoid();
-              setMessages(prev => [...prev, { id: errorMsgId, message: "Error sending message.", sender: 'bot', error: 'Failed to send' }]);
-            })
-            .finally(() => setIsSending(false));
-        } else {
-          console.warn("Cleared stale pending message (targetChatId mismatch).");
-          sessionStorage.removeItem('pendingMessage');
-        }
-      } catch (e) {
-        console.error("Failed to parse pending message from sessionStorage:", e);
-        sessionStorage.removeItem('pendingMessage');
-      }
+      console.log(`ChatWindow: Found pending message for ${idToCheck}, initiating AI response...`);
+      clearPendingMessage();
+      setIsSending(true);
+      simulateAiResponse(pending.text, pending.files, idToCheck)
+        .catch(error => {
+          console.error("Error sending pending message:", error);
+          const errorMsgId = nanoid();
+          const errorMsg: Message = { 
+            id: errorMsgId, 
+            message: "Error sending message.", 
+            sender: 'bot', 
+            error: 'Failed to send' 
+          };
+          addMessage(idToCheck, errorMsg);
+          setMessages(prev => [...prev, errorMsg]);
+        })
+        .finally(() => setIsSending(false));
     }
   };
 
   useEffect(() => {
     if (currentChatId && isLoadingHistory) {
       console.log(`ChatWindow: useEffect - Loading history for chat: ${currentChatId}`);
-      revokeFileObjectURLs(messagesRef.current); // Revoke current messages' URLs
-      setMessages([]); // Clear previous messages before loading new history
-
+      revokeFileObjectURLs(messagesRef.current);
+      
+      // Load messages from Zustand store first
+      const storedMessages = getMessages(currentChatId);
+      
       const timer = setTimeout(() => {
-        let fetchedMessages: Message[] = [];
-        if (currentChatId === 'existing-chat-1') {
+        let fetchedMessages: Message[] = storedMessages;
+        
+        // If no stored messages, simulate fetching from API
+        if (fetchedMessages.length === 0 && currentChatId === 'existing-chat-1') {
           fetchedMessages = [
             { id: nanoid(), message: "Hello from history!", sender: 'user' },
             { id: nanoid(), message: "Hi user, this is a historical reply.", sender: 'bot' },
           ];
         }
+        
         console.log(`ChatWindow: History fetch complete for ${currentChatId}. Found ${fetchedMessages.length} messages.`);
-        setMessages(fetchedMessages); // These messages from "history" won't have live blob URLs unless API provides them
+        setMessages(fetchedMessages);
         setIsLoadingHistory(false);
         checkAndSendPendingMessage(currentChatId);
       }, 500);
+      
       return () => clearTimeout(timer);
-    } else if (!currentChatId) { // New chat, not loading history
-        // This case is largely handled by the chatIdProp effect.
-        // Ensure messages are clear and states are correct for a new chat.
-        if (messagesRef.current.length > 0) { // If somehow messages persisted
-            revokeFileObjectURLs(messagesRef.current);
-            setMessages([]);
-        }
-        setIsFirstMessage(true);
-        setIsLoadingHistory(false); // Explicitly set for new chat
+    } else if (!currentChatId) {
+      if (messagesRef.current.length > 0) {
+        revokeFileObjectURLs(messagesRef.current);
+        setMessages([]);
+      }
+      setIsFirstMessage(true);
+      setIsLoadingHistory(false);
     }
   }, [currentChatId, isLoadingHistory]);
 
@@ -331,23 +340,26 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
       };
     });
 
-    const newUserMessage: Message = { id: nanoid(), message: text, sender: "user", files: fileMetadata };
+    const newUserMessage: Message = { 
+      id: nanoid(), 
+      message: text, 
+      sender: "user", 
+      files: fileMetadata,
+      timestamp: new Date().toISOString()
+    };
 
     if (isFirstMessage) {
       console.log("ChatWindow: First message send initiated...");
       const newChatId = `chat_${nanoid(12)}`;
 
-      setMessages(prev => [...prev, newUserMessage]); // Optimistic update with previews
+      // Add user message to both local state and store
+      addMessage(newChatId, newUserMessage);
+      setMessages(prev => [...prev, newUserMessage]);
       setIsSending(true);
       setIsFirstMessage(false);
 
-      // Store only necessary metadata for pending message, not live File objects or blob URLs directly from files array
-      const pendingFileInfo = fileMetadata.map(fm => ({ name: fm.name, type: fm.type, size: fm.size }));
-      sessionStorage.setItem('pendingMessage', JSON.stringify({
-        text,
-        fileInfo: pendingFileInfo, // Store basic metadata, not blob URLs for session storage
-        targetChatId: newChatId
-      }));
+      // Store pending message in Zustand store
+      setPendingMessage(text, fileMetadata, newChatId);
 
       try {
         console.log(`ChatWindow: Simulating registration of new chat: ${newChatId}...`);
@@ -356,12 +368,18 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
         navigate(`/chat/${newChatId}`, { replace: true });
       } catch (error) {
         console.error("ChatWindow: Failed to create/register new chat session:", error);
-        sessionStorage.removeItem('pendingMessage');
-        // Rollback optimistic update, including revoking its URLs
+        clearPendingMessage();
         revokeFileObjectURLs([newUserMessage]);
         setMessages(prev => prev.filter(m => m.id !== newUserMessage.id));
         const errorMsgId = nanoid();
-        setMessages(prev => [...prev, { id: errorMsgId, message: "Error starting new chat.", sender: 'bot', error: 'Failed to start chat' }]);
+        const errorMsg: Message = { 
+          id: errorMsgId, 
+          message: "Error starting new chat.", 
+          sender: 'bot', 
+          error: 'Failed to start chat' 
+        };
+        addMessage(newChatId, errorMsg);
+        setMessages(prev => [...prev, errorMsg]);
         setIsSending(false);
         setIsFirstMessage(true);
       }
@@ -369,21 +387,35 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
       if (!currentChatId) {
         console.error("ChatWindow: Cannot send message, currentChatId is missing for an existing chat.");
         const errorMsgId = nanoid();
-        setMessages(prev => [...prev, { id: errorMsgId, message: "Error: Chat session not found.", sender: 'bot', error: 'Chat ID missing' }]);
+        const errorMsg: Message = { 
+          id: errorMsgId, 
+          message: "Error: Chat session not found.", 
+          sender: 'bot', 
+          error: 'Chat ID missing' 
+        };
+        setMessages(prev => [...prev, errorMsg]);
         return;
       }
 
       console.log(`ChatWindow: Sending message to existing chat ${currentChatId}`);
-      setMessages(prev => [...prev, newUserMessage]); // Optimistic update with previews
+      // Add user message to both local state and store
+      addMessage(currentChatId, newUserMessage);
+      setMessages(prev => [...prev, newUserMessage]);
       setIsSending(true);
 
       try {
-        // Pass fileMetadata (which includes blob URLs for the AI's "local" processing if needed)
-        await simulateAiResponse(text, fileMetadata);
+        await simulateAiResponse(text, fileMetadata, currentChatId);
       } catch (error) {
         console.error("ChatWindow: Error sending message/getting response:", error);
         const errorMsgId = nanoid();
-        setMessages(prev => [...prev, { id: errorMsgId, message: "Error getting AI response.", sender: 'bot', error: 'Failed response' }]);
+        const errorMsg: Message = { 
+          id: errorMsgId, 
+          message: "Error getting AI response.", 
+          sender: 'bot', 
+          error: 'Failed response' 
+        };
+        addMessage(currentChatId, errorMsg);
+        setMessages(prev => [...prev, errorMsg]);
       } finally {
         setIsSending(false);
       }
@@ -394,59 +426,67 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
     handleSendMessage(title, []);
   };
 
-  const clerkUser: UserProfileInfo | undefined = user ? {
+  const clerkUser: UserInfo | undefined = user ? {
     firstName: user.firstName,
     imageUrl: user.imageUrl,
   } : undefined;
 
   return (
-    <div className="flex flex-col h-full bg-background dark:bg-zinc-800 w-full min-w-0">
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        {isLoadingHistory ? (
-          <ChatLoadingSkeleton />
-        ) : (
-          <ScrollArea className="h-[60vh]" type="scroll" ref={scrollAreaRef}>
-            <div className="p-4 md:p-6 space-y-6">
-              <div className="max-w-3xl mx-auto w-full space-y-8">
-                {messages.length === 0 && !isSending && (
-                  <ChatEmptyState
-                    isFirstMessage={isFirstMessage}
-                    isSignedIn={!!isSignedIn}
-                    userName={user?.firstName}
-                  />
-                )}
-                {messages.map((message) => (
-                  <ChatBubble
-                    key={message.id}
-                    message={message}
-                    currentUser={clerkUser}
-                    actionIcons={actionIcons}
-                    botAvatarSrc='/logo.svg'
-                  />
-                ))}
-                {isSending && (messages.length === 0 || messages[messages.length -1]?.sender === 'user') && (
-                  <AiLoadingIndicator />
-                )}
-                <div ref={messagesEndRef} className="h-[1px]" />
+    <>
+      <ImageModal 
+        isOpen={!!selectedImageUrl} 
+        onClose={closeImageModal} 
+        imageUrl={selectedImageUrl} 
+      />
+      <div className="flex flex-col h-full bg-background dark:bg-zinc-800 w-full min-w-0">
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {isLoadingHistory ? (
+            <ChatLoadingSkeleton />
+          ) : (
+            <ScrollArea className="h-[60vh]" type="scroll" ref={scrollAreaRef}>
+              <div className="p-4 md:p-6 space-y-6">
+                <div className="max-w-3xl mx-auto w-full space-y-8">
+                  {messages.length === 0 && !isSending && (
+                    <ChatEmptyState
+                      isFirstMessage={isFirstMessage}
+                      isSignedIn={!!isSignedIn}
+                      userName={user?.firstName}
+                    />
+                  )}
+                  {messages.map((message) => (
+                    <ChatBubble
+                      key={message.id}
+                      message={message}
+                      currentUser={clerkUser}
+                      actionIcons={actionIcons}
+                      botAvatarSrc='/logo.svg'
+                      onImageClick={handleImageClick}
+                    />
+                  ))}
+                  {isSending && (messages.length === 0 || messages[messages.length -1]?.sender === 'user') && (
+                    <AiLoadingIndicator />
+                  )}
+                  <div ref={messagesEndRef} className="h-[1px]" />
+                </div>
               </div>
-            </div>
-          </ScrollArea>
-        )}
-      </div>
-      <div className="p-4 border-t border-border bg-background dark:bg-zinc-800 flex-shrink-0">
-        <div className="max-w-3xl mx-auto">
-          {isFirstMessage && messages.length === 0 && !isSending && !isLoadingHistory && (
-            <SuggestionTiles
-              tiles={suggestionTiles}
-              onSuggestionClick={handleSuggestionClick}
-              disabled={isSending}
-            />
+            </ScrollArea>
           )}
-          <div className="w-full">
-            <PromptInputWithActions onSubmit={handleSendMessage} isLoading={isSending} />
+        </div>
+        <div className="p-4 border-t border-border bg-background dark:bg-zinc-800 flex-shrink-0">
+          <div className="max-w-3xl mx-auto">
+            {isFirstMessage && messages.length === 0 && !isSending && !isLoadingHistory && (
+              <SuggestionTiles
+                tiles={suggestionTiles}
+                onSuggestionClick={handleSuggestionClick}
+                disabled={isSending}
+              />
+            )}
+            <div className="w-full">
+              <PromptInputWithActions onSubmit={handleSendMessage} isLoading={isSending} />
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

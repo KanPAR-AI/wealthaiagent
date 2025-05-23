@@ -1,9 +1,7 @@
-"use client"; // Keep this if your setup requires it (e.g., Next.js App Router)
-
-import { SignedIn, UserButton, useUser } from "@clerk/clerk-react"; // Import Clerk components
+import { SignedIn, UserButton, useUser } from "@clerk/clerk-react";
 import {
   History,
-  MessageSquareText, // Changed icon for list items
+  MessageSquareText, 
   MoreHorizontal,
   Plus,
   Search,
@@ -11,8 +9,7 @@ import {
   Star,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; // Import Link and useNavigate
-
+import { Link, useNavigate } from "react-router-dom"; 
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
-  Sidebar, // Main sidebar container from your ui/sidebar import
+  Sidebar, 
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
@@ -35,16 +32,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator
-} from "@/components/ui/sidebar"; // Adjust path if necessary
+} from "@/components/ui/sidebar"; 
 import { Skeleton } from "@/components/ui/skeleton"; // For loading state
-
-// Define the structure for chat data
-interface Chat {
-  id: string;
-  title: string;
-  date?: string; // Optional date
-  isFavorite?: boolean; // Flag for favorites
-}
+import { Chat } from "@/types/chat";
 
 // Define props for the Sidebar component
 interface SidebarProps {
@@ -182,9 +172,8 @@ export default function ChatSidebar({ currentChatId }: SidebarProps) {
 
 
   return (
-    // Use the Sidebar component from your UI library
-    // Added collapsible="icon" for demonstration
-    <Sidebar collapsible="offcanvas" variant="sidebar" className="border-r flex flex-col h-screen"> {/* Ensure full height */}
+
+    <Sidebar collapsible="offcanvas" variant="sidebar" className="border-r flex flex-col h-screen"> 
       <SidebarHeader className="flex-shrink-0"> {/* Prevent header shrinking */}
         {/* Changed link placement to match original placeholder */}
          <div className="p-2">
@@ -295,7 +284,6 @@ export default function ChatSidebar({ currentChatId }: SidebarProps) {
                        </span>
                   </SignedIn>
               </div>
-               {/* TODO: Add sign-in button if needed when signed out */}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

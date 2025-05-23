@@ -1,68 +1,28 @@
 import { create } from 'zustand';
-
-// Define base type for all message content
-interface BaseMessageContent {
-  type: string;
-}
-
-// Specific message content types
-interface TextMessageContent extends BaseMessageContent {
-  type: 'text';
-  text: string;
-}
-
-interface ImageMessageContent extends BaseMessageContent {
-  type: 'image';
-  url: string;
-  altText?: string;
-}
-
-interface GraphMessageContent extends BaseMessageContent {
-  type: 'graph';
-  data: any; // Adjust based on your graph data structure
-  options?: any; // Adjust based on your graph options
-}
-
-interface TableMessageContent extends BaseMessageContent {
-  type: 'table';
-  headers: string[];
-  rows: string[][];
-}
-
-// Union type for all possible message content
-export type MessageContent =
-  | TextMessageContent
-  | ImageMessageContent
-  | GraphMessageContent
-  | TableMessageContent;
-
-// Define sender types
-export type SenderType = 'user' | 'bot' | 'system';
-
-// Define the structure for message metadata (optional but good practice)
-interface MessageMetadata {
-  timestamp: Date;
-  [key: string]: any; // Allows for adding other metadata if needed
-}
-
-// Define the main Message interface
-export interface ChatMessage {
-  id: string;
-  sender: SenderType;
-  content: MessageContent;
-  metadata?: MessageMetadata;
-}
+import { Message, MessageFile } from '@/types/chat';
 
 // Define the ChatState interface for Zustand
 interface ChatState {
-  chats: Record<string, ChatMessage[]>;
-  addMessage: (chatId: string, message: ChatMessage) => void;
+  chats: Record<string, Message[]>;
+  pendingMessage: { chatId: string; text: string; files: MessageFile[] } | null;
+  
+  // Message management
+  addMessage: (chatId: string, message: Message) => void;
+  updateMessage: (chatId: string, messageId: string, updates: Partial<Message>) => void;
   clearChat: (chatId: string) => void;
+  getMessages: (chatId: string) => Message[];
+  
+  // Pending message management for new chats
+  setPendingMessage: (text: string, files: MessageFile[], targetChatId: string) => void;
+  getPendingMessage: (chatId: string) => { text: string; files: MessageFile[] } | null;
+  clearPendingMessage: () => void;
 }
 
 // Create the Zustand store
-export const useChatStore = create<ChatState>((set) => ({
+export const useChatStore = create<ChatState>((set, get) => ({
   chats: {},
+  pendingMessage: null,
+  
   addMessage: (chatId, message) =>
     set((state) => ({
       chats: {
@@ -70,6 +30,17 @@ export const useChatStore = create<ChatState>((set) => ({
         [chatId]: [...(state.chats[chatId] || []), message],
       },
     })),
+    
+  updateMessage: (chatId, messageId, updates) =>
+    set((state) => ({
+      chats: {
+        ...state.chats,
+        [chatId]: (state.chats[chatId] || []).map(msg => 
+          msg.id === messageId ? { ...msg, ...updates } : msg
+        ),
+      },
+    })),
+    
   clearChat: (chatId) =>
     set((state) => ({
       chats: {
@@ -77,5 +48,28 @@ export const useChatStore = create<ChatState>((set) => ({
         [chatId]: [],
       },
     })),
+    
+  getMessages: (chatId) => {
+    const state = get();
+    return state.chats[chatId] || [];
+  },
+  
+  setPendingMessage: (text, files, targetChatId) =>
+    set({
+      pendingMessage: { chatId: targetChatId, text, files }
+    }),
+    
+  getPendingMessage: (chatId) => {
+    const state = get();
+    if (state.pendingMessage?.chatId === chatId) {
+      return {
+        text: state.pendingMessage.text,
+        files: state.pendingMessage.files
+      };
+    }
+    return null;
+  },
+  
+  clearPendingMessage: () =>
+    set({ pendingMessage: null }),
 }));
-

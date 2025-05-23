@@ -1,63 +1,117 @@
-// src/types/chat.ts
-
-export type MessageSender = "user" | "bot";
-
+/**
+ * Represents a single file attachment in a message.
+ */
 export interface MessageFile {
   name: string;
   type: string;
   size: number;
-  url?: string; // For blob: preview URLs for images/PDFs
+  url?: string; // URL for preview (e.g., blob URL or remote URL)
 }
 
-// --- Definitions for Structured Content ---
+/**
+ * Defines the structure for a node in a graph.
+ */
+export interface GraphNode {
+  id: string;
+  label: string;
+  [key: string]: any;
+}
 
-export interface AiStructuredContentBase {
-  title?: string;
+/**
+ * Defines the structure for a link between nodes in a graph.
+ */
+export interface GraphLink {
+  source: string;
+  target: string;
+  label?: string;
+  [key: string]: any;
+}
+
+/**
+ * Represents structured content of type 'graph'.
+ */
+export interface AiGraphContent {
+  contentType: 'graph';
+  graphType: 'bar' | 'pie' | 'line' | 'network'; // Supported graph types
+  title: string;
+  data: any[];
+  options: {
+    categoryKey: string;
+    dataKeys: string[];
+    colors?: string[];
+    xAxisLabel?: string;
+    yAxisLabel?: string;
+  };
   description?: string;
 }
 
-export type AiGraphType = 'pie' | 'bar' | 'line';
-
-export interface AiGraphContent extends AiStructuredContentBase {
-  contentType: 'graph';
-  graphType: AiGraphType;
-  /**
-   * Data format for Recharts:
-   * - Pie: { name: string, value: number }[] (categoryKey maps to 'name', first dataKey maps to 'value')
-   * - Bar/Line: { categoryKey_value: string, dataKey1_value: number, dataKey2_value?: number ... }[]
-   * Example: data: [{ month: 'Jan', sales: 100, expenses: 50 }, { month: 'Feb', ...}]
-   * Here, categoryKey would be 'month', dataKeys would be ['sales', 'expenses']
-   */
-  data: Record<string, any>[];
-  options: { // Made options required for clarity in chart components
-    categoryKey: string; // Key in data objects for category axis or pie chart names
-    dataKeys: string[];   // Keys in data objects for value axes or pie chart values (first one for pie)
-    colors?: string[];     // Optional array of hex colors for series/slices
-    xAxisLabel?: string;
-    yAxisLabel?: string;
-    // Additional specific options can be added if needed
-  };
-}
-
-export interface AiTableContent extends AiStructuredContentBase {
+/**
+ * Represents structured content of type 'table'.
+ */
+export interface AiTableContent {
   contentType: 'table';
+  title: string;
   data: Record<string, any>[];
-  columns?: {
+  columns: {
     accessorKey: string;
     header: string;
   }[];
+  description?: string;
 }
 
-export type AiStructuredContentType = AiGraphContent | AiTableContent;
 
-// --- Updated Message Interface ---
+/**
+ * Union type for all possible structured content types.
+ */
+export type StructuredContent = AiGraphContent | AiTableContent;
+
+
+/**
+ * Represents a single message in the chat.
+ */
 export interface Message {
   id: string;
-  message: string; // Primary text message
-  sender: MessageSender;
-  structuredContent?: AiStructuredContentType;
+  message: string;
+  sender: 'user' | 'bot';
+  timestamp?: string;
   files?: MessageFile[];
   isLoading?: boolean;
   error?: string;
-  timestamp?: string; // e.g., new Date().toISOString()
+  structuredContent?: StructuredContent;
+}
+
+/**
+ * Represents a single chat session in the sidebar.
+ */
+export interface Chat {
+  id: string;
+  title: string;
+  date?: string;
+  isFavorite?: boolean;
+}
+
+/**
+ * Defines user information needed for displaying avatars and names.
+ */
+export interface UserInfo {
+  imageUrl?: string | null;
+  firstName?: string | null;
+}
+
+/**
+ * Defines an action icon for chat bubbles (e.g., copy, like, dislike).
+ */
+export interface ActionIconDefinition {
+  icon: React.FC<React.SVGProps<SVGSVGElement>>;
+  type: string;
+  action: (messageId: string) => void;
+}
+
+/**
+ * Data for a single suggestion tile.
+ */
+export interface SuggestionTileData {
+  id: number;
+  title: string;
+  description: string;
 }

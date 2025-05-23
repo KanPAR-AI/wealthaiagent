@@ -5,10 +5,10 @@ import { cn } from "@/lib/utils";
 import * as React from "react";
 
 interface ChatBubbleProps {
-  variant?: "sent" | "received"
-  layout?: "default" | "ai"
-  className?: string
-  children: React.ReactNode
+  variant?: "sent" | "received";
+  layout?: "default" | "ai";
+  className?: string;
+  children: React.ReactNode;
 }
 
 export function ChatBubble({
@@ -20,20 +20,20 @@ export function ChatBubble({
     <div
       className={cn(
         "flex items-start gap-2 mb-4",
-        variant === "sent" && "flex-row-reverse",
-        className,
+        variant === "sent" && "sm:flex-row-reverse", // <-- Changed this line
+        className
       )}
     >
       {children}
     </div>
-  )
+  );
 }
 
 interface ChatBubbleMessageProps {
-  variant?: "sent" | "received"
-  isLoading?: boolean
-  className?: string
-  children?: React.ReactNode
+  variant?: "sent" | "received";
+  isLoading?: boolean;
+  className?: string;
+  children?: React.ReactNode;
 }
 
 export function ChatBubbleMessage({
@@ -58,13 +58,13 @@ export function ChatBubbleMessage({
         children
       )}
     </div>
-  )
+  );
 }
 
 interface ChatBubbleAvatarProps {
-  src?: string | null
-  fallback?: string
-  className?: string
+  src?: string | null;
+  fallback?: string;
+  className?: string;
 }
 
 export function ChatBubbleAvatar({
@@ -73,17 +73,17 @@ export function ChatBubbleAvatar({
   className,
 }: ChatBubbleAvatarProps) {
   return (
-    <Avatar className={cn("h-8 w-8", className)}>
+    <Avatar className={cn("h-8 w-8 hidden sm:flex", className)}>
       {src && <AvatarImage src={src} />}
       <AvatarFallback>{fallback}</AvatarFallback>
     </Avatar>
-  )
+  );
 }
 
 interface ChatBubbleActionProps {
-  icon?: React.ReactNode
-  onClick?: () => void
-  className?: string
+  icon?: React.ReactNode;
+  onClick?: () => void;
+  className?: string;
 }
 
 export function ChatBubbleAction({
@@ -100,19 +100,19 @@ export function ChatBubbleAction({
     >
       {icon}
     </Button>
-  )
+  );
 }
 
 export function ChatBubbleActionWrapper({
   className,
   children,
 }: {
-  className?: string
-  children: React.ReactNode
+  className?: string;
+  children: React.ReactNode;
 }) {
   return (
     <div className={cn("flex items-center gap-1 mt-2", className)}>
       {children}
     </div>
-  )
+  );
 }
