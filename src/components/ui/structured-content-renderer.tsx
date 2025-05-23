@@ -1,6 +1,6 @@
 // src/components/chat/structured-content/StructuredContentRenderer.tsx
 import React, { useState, Suspense, lazy } from 'react';
-import { AiStructuredContentType, AiGraphContent, AiTableContent } from '@/types/chat'; // Adjust path
+import { StructuredContent, AiGraphContent, AiTableContent } from '@/types/chat'; // Adjust path
 import FullScreenViewer from './full-screen-viewer';
 import { Maximize2 as ExpandIcon } from 'lucide-react'; // Assuming icon library
 
@@ -13,7 +13,7 @@ const ChartErrorFallback = lazy(() => import('../charts/error-fallback'));
 
 
 interface StructuredContentRendererProps {
-  content: AiStructuredContentType;
+  content: StructuredContent;
 }
 
 const StructuredContentRenderer: React.FC<StructuredContentRendererProps> = ({ content }) => {
