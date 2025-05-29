@@ -1,8 +1,9 @@
 import { ActionIconDefinition, Message, UserInfo } from '@/types/chat';
-import { JSX, useEffect } from 'react';
+import { JSX, useEffect, useState } from 'react';
 import { ChatBubbleAvatar } from '../ui/chat-bubble';
 import StructuredContentRenderer from '../ui/structured-content-renderer';
 import { FileRenderer } from './file-renderer';
+import { motion } from 'framer-motion';
 
 interface ChatBubbleProps {
   message: Message;
@@ -27,6 +28,25 @@ export function ChatBubble({
     ? currentUser?.firstName?.substring(0, 2)?.toUpperCase() || 'U'
     : botAvatarFallback;
 
+  // For streaming text effect
+  const [displayedText, setDisplayedText] = useState('');
+
+  useEffect(() => {
+    if (!isUser && message.message && !message.error && !message.isLoading) {
+      let index = 0;
+      const interval = setInterval(() => {
+        setDisplayedText((prev) => prev + message.message![index]);
+        index++;
+        if (index >= message.message.length) clearInterval(interval);
+      }, 15); // Adjust speed here
+
+      return () => clearInterval(interval);
+    } else {
+      setDisplayedText(message.message || '');
+    }
+  }, [message.message, message.id]);
+
+  // Clean up blob URLs
   useEffect(() => {
     const urlsToRevoke: string[] = [];
     message.files?.forEach(file => {
@@ -47,9 +67,12 @@ export function ChatBubble({
       {!isUser && <ChatBubbleAvatar src={avatarSrc} fallback={avatarFallback} className="flex-shrink-0" />}
 
       <div className={`flex flex-col ${isUser ? 'items-start sm:items-end' : 'items-start'} max-w-[85%] md:max-w-[80%] w-full`}>
-        {/* Message Text Bubble */}
+        {/* Message Bubble */}
         {hasContent && (
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
             className={`px-3 py-2 md:px-4 md:py-2 rounded-2xl break-words text-sm md:text-base ${
               isUser
                 ? 'bg-primary text-primary-foreground dark:dark:text-blue-50'
@@ -61,23 +84,29 @@ export function ChatBubble({
             ) : message.error ? (
               <span className="italic text-red-500">{message.error}</span>
             ) : (
-              message.message || (message.files && message.files.length > 0 ? null : <span className="italic opacity-70">...</span>)
+              <span>{displayedText}</span>
             )}
-             {message.structuredContent && (
-                <div className={message.message ? 'mt-2 pt-2 border-t border-border/50' : ''}>
-                    <StructuredContentRenderer content={message.structuredContent} />
-                </div>
+
+            {message.structuredContent && (
+              <div className={message.message ? 'mt-2 pt-2 border-t border-border/50' : ''}>
+                <StructuredContentRenderer content={message.structuredContent} />
+              </div>
             )}
-          </div>
+          </motion.div>
         )}
 
-        {/* File Attachments - Rendered outside the main bubble */}
+        {/* File Attachments */}
         {message.files && message.files.length > 0 && (
-          <div className={`mt-2 w-full grid gap-2 ${message.files.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25 }}
+            className={`mt-2 w-full grid gap-2 ${message.files.length > 1 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}
+          >
             {message.files.map((file, index) => (
               <FileRenderer key={index} file={file} onImageClick={onImageClick} />
             ))}
-          </div>
+          </motion.div>
         )}
 
         {/* Action Buttons */}
