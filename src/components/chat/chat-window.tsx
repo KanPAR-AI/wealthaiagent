@@ -48,6 +48,7 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesRef = useRef(messages);
+  const prevCount = useRef<number>(messages.length);
 
   useEffect(() => {
     messagesRef.current = messages;
@@ -317,8 +318,20 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
   }, [currentChatId, isLoadingHistory]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block:"start" });
+    // only scroll if a message was truly added
+    if (messages.length > prevCount.current) {
+      const last = messages[messages.length - 1];
+      // optional: only scroll on bot messages
+      if (last.sender === "user") {
+        messagesEndRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+        });
+      }
+    }
+    prevCount.current = messages.length;
   }, [messages]);
+
 
   const handleSendMessage = async (text: string, files: File[]) => {
     if (!text.trim() && files.length === 0) return;
@@ -438,21 +451,29 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
         onClose={closeImageModal} 
         imageUrl={selectedImageUrl} 
       />
-      <div className="flex flex-col h-full bg-background dark:bg-zinc-800 w-full min-w-0">
+      <div className="relative flex flex-col h-full bg-background dark:bg-zinc-800 w-full min-w-0">
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {isLoadingHistory ? (
             <ChatLoadingSkeleton />
           ) : (
-            <ScrollArea className="h-[60vh]" type="scroll"  ref={scrollAreaRef}>
+            <ScrollArea className="md:h-[60vh] h-[80vh]" type="scroll"  ref={scrollAreaRef}>
               <div className="p-4 md:p-6 space-y-6">
                 <div className="max-w-3xl mx-auto w-full space-y-8">
-                  {messages.length === 0 && !isSending && (
-                    <ChatEmptyState
-                      isFirstMessage={isFirstMessage}
-                      isSignedIn={!!isSignedIn}
-                      userName={user?.firstName}
-                    />
-                  )}
+                {messages.length === 0 && !isSending && (
+  <div className="flex flex-col items-center justify-center h-full space-y-6">
+    <ChatEmptyState
+      isFirstMessage={isFirstMessage}
+      isSignedIn={!!isSignedIn}
+      userName={user?.firstName}
+    />
+    <SuggestionTiles
+      tiles={suggestionTiles}
+      onSuggestionClick={handleSuggestionClick}
+      disabled={isSending}
+    />
+  </div>
+)}
+
                   {messages.map((message) => (
                     <ChatBubble
                       key={message.id}
@@ -472,20 +493,12 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
             </ScrollArea>
           )}
         </div>
-        <div className="p-4 border-t border-border bg-background dark:bg-zinc-800 flex-shrink-0">
           <div className="max-w-3xl mx-auto">
-            {isFirstMessage && messages.length === 0 && !isSending && !isLoadingHistory && (
-              <SuggestionTiles
-                tiles={suggestionTiles}
-                onSuggestionClick={handleSuggestionClick}
-                disabled={isSending}
-              />
-            )}
-            <div className="max-w-3xl mx-auto">
+
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-3xl px-4">
               <PromptInputWithActions onSubmit={handleSendMessage} isLoading={isSending} />
             </div>
-          </div>
-        </div>
+            </div>
       </div>
     </>
   );
