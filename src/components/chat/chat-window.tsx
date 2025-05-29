@@ -317,7 +317,7 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
   }, [currentChatId, isLoadingHistory]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block:"start" });
   }, [messages]);
 
   const handleSendMessage = async (text: string, files: File[]) => {
@@ -443,7 +443,7 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
           {isLoadingHistory ? (
             <ChatLoadingSkeleton />
           ) : (
-            <ScrollArea className="h-[60vh]" type="scroll" ref={scrollAreaRef}>
+            <ScrollArea className="h-[60vh]" type="scroll"  ref={scrollAreaRef}>
               <div className="p-4 md:p-6 space-y-6">
                 <div className="max-w-3xl mx-auto w-full space-y-8">
                   {messages.length === 0 && !isSending && (
@@ -481,7 +481,7 @@ export default function ChatWindow({ chatId: chatIdProp }: ChatWindowProps): JSX
                 disabled={isSending}
               />
             )}
-            <div className="w-full">
+            <div className="max-w-3xl mx-auto">
               <PromptInputWithActions onSubmit={handleSendMessage} isLoading={isSending} />
             </div>
           </div>

@@ -177,7 +177,7 @@ export default function ChatSidebar({ currentChatId }: SidebarProps) {
       <SidebarHeader className="flex-shrink-0"> {/* Prevent header shrinking */}
         {/* Changed link placement to match original placeholder */}
          <div className="p-2">
-           <Button asChild className="w-full justify-start gap-2" size="sm">
+           <Button asChild className="w-full justify-start gap-2 " size="sm">
              <Link to="/new">
                <Plus size={16} />
                New Chat
