@@ -115,3 +115,10 @@ export interface SuggestionTileData {
   title: string;
   description: string;
 }
+
+
+export interface ChatWindowProps {
+  chatId?: string;
+  onNewChatCreated?: (newChatId: string) => void;
+  className?: string;
+}
