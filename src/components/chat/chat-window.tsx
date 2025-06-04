@@ -185,7 +185,7 @@ export default function ChatWindow({
         onClose={() => setSelectedImageUrl(null)} 
         imageUrl={selectedImageUrl} 
       />
-      <div className={`flex flex-col h-screen bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
+      <div className={`flex flex-col h-[calc(100vh-60px)] bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
         <div className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-hidden">
             <ScrollArea className="h-full" type="scroll">
