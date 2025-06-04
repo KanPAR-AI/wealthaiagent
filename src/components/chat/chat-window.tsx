@@ -183,24 +183,26 @@ export default function ChatWindow({
         onClose={() => setSelectedImageUrl(null)} 
         imageUrl={selectedImageUrl} 
       />
-      
-      <div className={`relative flex flex-col h-full bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <ScrollArea className="h-full" type="scroll">
+      <div className={`flex flex-col h-full bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-full" type="scroll">
             <div className="p-4 md:p-6 space-y-6">
               <div className="max-w-3xl mx-auto w-full space-y-8">
                 {messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full space-y-6">
+                  <div className="flex flex-col items-center justify-center h-full space-y-4 md:space-y-6 py-8">
                     <ChatEmptyState
                       isFirstMessage={isFirstMessage}
                       isSignedIn={!!isSignedIn}
                       userName={user?.firstName}
                     />
-                    <SuggestionTiles
-                      tiles={suggestionTiles}
-                      onSuggestionClick={(title) => handleSend(title, [])}
-                      disabled={isSending || isRegenerating}
-                    />
+                    <div className="w-full max-w-md md:max-w-none">
+                      <SuggestionTiles
+                        tiles={suggestionTiles}
+                        onSuggestionClick={(title) => handleSend(title, [])}
+                        disabled={isSending || isRegenerating}
+                      />
+                    </div>
                   </div>
                 ) : (
                   <ChatMessageList 
@@ -226,6 +228,7 @@ export default function ChatWindow({
             isLoading={isSending || isRegenerating} 
           />
         </div>
+      </div>
       </div>
     </>
   );

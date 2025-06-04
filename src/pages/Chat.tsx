@@ -13,12 +13,17 @@ function Chat() {
   }
   
   return (
-    // Main container: Full height, horizontal flex
+    // Main container: Full height, mobile-optimized
     <div className="flex h-screen w-full overflow-hidden dark:bg-zinc-900">
-      {/* Main content area: Takes remaining width, contains ChatWindow */}
-      <main className="flex-1 flex flex-col min-h-0 overflow-hidden"> 
-        <ChatHeader />
-        <div className="flex-1 min-h-0">
+      {/* Main content area: Full width on mobile, flex column layout */}
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden w-full"> 
+        {/* Fixed header */}
+        <div className="flex-shrink-0 sticky top-0 z-10 bg-background dark:bg-zinc-900 border-b border-border">
+          <ChatHeader />
+        </div>
+        
+        {/* Chat content area - takes remaining height */}
+        <div className="flex-1 min-h-0 overflow-hidden">
           <ChatWindow chatId={chatid} />
         </div>
       </main>
