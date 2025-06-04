@@ -5,7 +5,6 @@
   text-align: center;
 }
 
-
 @layer utilities {
   .message-content {
     word-wrap: break-word;
@@ -14,40 +13,45 @@
     hyphens: auto;
     line-height: 1.5;
   }
-  
+
   .message-bubble {
-    max-width: calc(100vw - 2rem);
+    max-width: calc(100dvw - 2rem);
     position: relative;
   }
-  
+
   .message-bubble::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+    background: linear-gradient(
+      45deg,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent
+    );
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask-composite: xor;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.3s ease;
   }
-  
+
   .message-bubble:hover::before {
     opacity: 1;
   }
-  
+
   .safe-area-pb {
     padding-bottom: env(safe-area-inset-bottom);
   }
-  
+
   @media (min-width: 768px) {
     .message-bubble {
       max-width: none;
     }
   }
-  
+
   @media (prefers-reduced-motion: reduce) {
     .message-bubble,
     .message-bubble * {
@@ -55,5 +59,31 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
+  }
+}
+
+
+/* Mobile-first: Always use fixed positioning on small screens */
+.mobile-header {
+  position: fixed;
+  top: env(safe-area-inset-top, 0);
+  left: 0;
+  right: 0;
+  z-index: 50;
+}
+
+.mobile-content {
+  padding-top: 60px; /* Adjust to match your header height */
+}
+
+/* Desktop: Use sticky positioning on larger screens */
+@media (min-width: 768px) {
+  .mobile-header {
+    position: sticky;
+    top: 0;
+  }
+  
+  .mobile-content {
+    padding-top: 0;
   }
 }

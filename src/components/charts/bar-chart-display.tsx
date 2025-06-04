@@ -32,7 +32,7 @@ const BarChartDisplay: React.FC<BarChartDisplayProps> = ({ chartData, isFullScre
   return (
     <div style={{ width: '100%', height: isFullScreen ? 'calc(100vh - 200px)' : 350 }} className="my-2">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: xAxisLabel ? 30 : 5 }}>
+        <BarChart data={processedData} margin={{ top: 5, right: 10, left: 10, bottom: xAxisLabel ? 30 : 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey={categoryKey}>
           </XAxis>

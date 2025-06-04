@@ -1,9 +1,8 @@
 import { ActionIconDefinition, Message, UserInfo } from '@/types/chat';
-import { JSX, useEffect, useState, useRef, useCallback } from 'react';
-import { ChatBubbleAvatar } from '../ui/chat-bubble';
+import { motion } from 'framer-motion';
+import { JSX, useCallback, useEffect, useRef, useState } from 'react';
 import StructuredContentRenderer from '../ui/structured-content-renderer';
 import { FileRenderer } from './file-renderer';
-import { motion } from 'framer-motion';
 
 interface ChatBubbleProps {
   message: Message;
@@ -18,19 +17,12 @@ interface ChatBubbleProps {
 
 export function ChatBubble({
   message,
-  currentUser,
-  botAvatarSrc = "/logo.svg",
-  botAvatarFallback = "AI",
   actionIcons,
   onImageClick,
   streamingSpeed = 15,
   enableStreaming = true,
 }: ChatBubbleProps): JSX.Element {
   const isUser = message.sender === 'user';
-  const avatarSrc = isUser ? currentUser?.imageUrl : botAvatarSrc;
-  const avatarFallback = isUser
-    ? currentUser?.firstName?.substring(0, 2)?.toUpperCase() || 'U'
-    : botAvatarFallback;
 
   // For streaming text effect
   const [displayedText, setDisplayedText] = useState('');
@@ -122,28 +114,22 @@ export function ChatBubble({
 
   return (
     <div key={message.id} className={`flex gap-3 ${isUser ? 'justify-start sm:justify-end' : 'justify-start'}`}>
-      {!isUser && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.2 }}
-        >
-          <ChatBubbleAvatar src={avatarSrc} fallback={avatarFallback} className="flex-shrink-0" />
-        </motion.div>
-      )}
-
-      <div className={`flex flex-col ${isUser ? 'items-start sm:items-end' : 'items-start'} max-w-[85%] md:max-w-[80%] w-full`}>
+      <div className={`flex flex-col ${isUser ? 'items-start sm:items-end' : 'items-start'} w-full`}>
         {/* Message Bubble */}
         {hasContent && (
           <motion.div
             variants={bubbleVariants}
             initial="hidden"
             animate="visible"
-            className={`message-bubble px-3 py-2 md:px-4 md:py-2 rounded-2xl break-words text-sm md:text-base relative ${
+            className={`px-3 py-2 md:px-4 md:py-2 rounded-2xl break-words text-sm md:text-base relative max-w-full ${
               isUser
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted dark:bg-zinc-700 dark:text-zinc-200'
             }`}
+            style={{
+              wordBreak: 'break-word',
+              overflowWrap: 'break-word',
+            }}
           >
             {/* Loading state with better UX */}
             {message.isLoading ? (
@@ -161,7 +147,7 @@ export function ChatBubble({
                 <span className="italic text-red-500">{message.error}</span>
               </div>
             ) : (
-              <div className="message-content">
+              <div className="px-0.5 whitespace-pre-wrap">
                 <span>{displayedText}</span>
                 {/* Streaming cursor */}
                 {isStreaming && (
@@ -234,16 +220,6 @@ export function ChatBubble({
           </motion.div>
         )}
       </div>
-
-      {isUser && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.2 }}
-        >
-          <ChatBubbleAvatar src={avatarSrc} fallback={avatarFallback} className="flex-shrink-0" />
-        </motion.div>
-      )}
     </div>
   );
 }
