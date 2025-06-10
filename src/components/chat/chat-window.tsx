@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
 import { ChatMessageList } from '@/components/chat/message-list';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatMessages } from '@/hooks/use-chat-messages';
@@ -10,6 +9,7 @@ import { ChatWindowProps, Message, MessageFile, SuggestionTileData } from '@/typ
 import { useUser } from '@clerk/clerk-react';
 import { Copy, RefreshCcw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { nanoid } from 'nanoid';
+import { useEffect, useState } from 'react';
 import { AiLoadingIndicator } from './ai-loading-indicator';
 import { ChatEmptyState } from './chat-empty-state';
 import { PromptInputWithActions } from "./chat-input";
@@ -31,8 +31,7 @@ export default function ChatWindow({
   const { user, isSignedIn } = useUser();
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
-  const lastMessageRef = useRef<HTMLDivElement>(null);
-  
+ 
   const { chatId, isFirstMessage, startNewSession, setCurrentChatId } = useChatSession(chatIdProp);
   const { messages, addMessage, clearMessages } = useChatMessages(chatId || '');
   const { setPendingMessage, getPendingMessage, clearPendingMessage } = useChatStore();
@@ -161,11 +160,41 @@ export default function ChatWindow({
   ];
 
   useEffect(() => {
-    if (lastUserMessageId && lastMessageRef.current) {
-      lastMessageRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setLastUserMessageId(null);
+    if (lastUserMessageId) {
+      const timeout = setTimeout(() => {
+        const messageElement = document.querySelector(`[data-message-id="${lastUserMessageId}"]`);
+        if (!messageElement) return;
+  
+        const scrollViewport = messageElement.closest('[data-radix-scroll-area-viewport]');
+        if (!scrollViewport) {
+          // fallback
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setLastUserMessageId(null);
+          return;
+        }
+  
+        const messageRect = messageElement.getBoundingClientRect();
+        const containerRect = scrollViewport.getBoundingClientRect();
+        const currentScrollTop = scrollViewport.scrollTop;
+  
+        // Calculate how far the message is from the top of the container
+        const offset = messageRect.top - containerRect.top ;
+  
+        // Scroll so that the message aligns with top
+        scrollViewport.scrollTo({
+          top: currentScrollTop + offset,
+          behavior: 'smooth',
+        });
+
+        console.log(currentScrollTop + offset, currentScrollTop, offset);
+  
+        setLastUserMessageId(null);
+      }, 50); // Slight delay ensures layout is painted
+  
+      return () => clearTimeout(timeout);
     }
   }, [lastUserMessageId]);
+  
 
   return (
     <>
