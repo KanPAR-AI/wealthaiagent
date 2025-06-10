@@ -1,5 +1,6 @@
-import { ActionIconDefinition, Message, UserInfo } from '@/types/chat';
+import { motion } from 'framer-motion';
 import { ChatBubble } from './chat-bubbles';
+import { UserInfo, Message, ActionIconDefinition } from '@/types/chat';
 
 interface ChatMessageListProps {
   messages: Message[];
@@ -7,7 +8,6 @@ interface ChatMessageListProps {
   onImageClick: (url: string) => void;
   actionIcons: ActionIconDefinition[];
   addMessageId?: boolean;
-  lastMessageRef?: React.Ref<HTMLDivElement>;
 }
 
 export const ChatMessageList = ({
@@ -16,26 +16,26 @@ export const ChatMessageList = ({
   onImageClick,
   actionIcons,
   addMessageId = false,
-  lastMessageRef
 }: ChatMessageListProps) => (
   <>
-    {messages.map((message, index) => {
-      const isLast = index === messages.length - 1;
-      return (
-        <div
-          key={message.id}
-          {...(addMessageId && { 'data-message-id': message.id })}
-          ref={isLast ? lastMessageRef : undefined}
-        >
-          <ChatBubble
-            message={message}
-            currentUser={currentUser}
-            botAvatarSrc="/logo.svg"
-            onImageClick={onImageClick}
-            actionIcons={actionIcons}
-          />
-        </div>
-      );
-    })}
+    {messages.map((message) => (
+      <motion.div
+        key={message.id}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        {...(addMessageId && message.sender === 'user' && {
+          'data-message-id': message.id,
+        })}
+      >
+        <ChatBubble
+          message={message}
+          currentUser={currentUser}
+          botAvatarSrc="/logo.svg"
+          onImageClick={onImageClick}
+          actionIcons={actionIcons}
+        />
+      </motion.div>
+    ))}
   </>
 );

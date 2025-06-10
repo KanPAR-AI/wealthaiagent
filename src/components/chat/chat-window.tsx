@@ -174,8 +174,8 @@ export default function ChatWindow({
         onClose={() => setSelectedImageUrl(null)} 
         imageUrl={selectedImageUrl} 
       />
-      <div className={`flex flex-col h-screen bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
-        <div className="flex-1 overflow-hidden pb-4 mt-12">
+      <div className={`flex flex-col h-dvh bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
+        <div className="h-full overflow-hidden pb-4 mt-12 sm:mt-0">
           <ScrollArea className="h-full" type="scroll">
             <div className="p-4 md:p-6 space-y-6">
               <div className="max-w-3xl mx-auto w-full space-y-8">
@@ -204,7 +204,6 @@ export default function ChatWindow({
                     onImageClick={setSelectedImageUrl}
                     actionIcons={actionIcons}
                     addMessageId={true}
-                    lastMessageRef={lastMessageRef}
                   />
                 )}
                 {(isSending || isRegenerating) && <AiLoadingIndicator />}
