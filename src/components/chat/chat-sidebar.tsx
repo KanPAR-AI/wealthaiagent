@@ -192,6 +192,7 @@ export default function ChatSidebar({ currentChatId }: SidebarProps) {
               className="pl-8 h-8" // Adjusted height
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              autoFocus={false}
             />
           </div>
         </div>

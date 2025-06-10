@@ -1,20 +1,20 @@
-import { useUser } from '@clerk/clerk-react';
-import { useRef, useEffect, useState } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { PromptInputWithActions } from "./chat-input";
-import { ChatEmptyState } from './chat-empty-state';
-import { SuggestionTiles } from './chat-suggestion-tiles';
-import { AiLoadingIndicator } from './ai-loading-indicator';
-import { ImageModal } from './image-modal';
+import { useEffect, useRef, useState } from 'react';
 import { ChatMessageList } from '@/components/chat/message-list';
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatMessages } from '@/hooks/use-chat-messages';
 import { useChatSession } from '@/hooks/use-chat-session';
+import { useMessageActions } from '@/hooks/use-message-actions';
 import { generateAiResponse } from '@/services/ai-service';
+import { useChatStore } from '@/store/chat';
 import { ChatWindowProps, Message, MessageFile, SuggestionTileData } from '@/types/chat';
+import { useUser } from '@clerk/clerk-react';
 import { Copy, RefreshCcw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { nanoid } from 'nanoid';
-import { useMessageActions } from '@/hooks/use-message-actions';
-import { useChatStore } from '@/store/chat';
+import { AiLoadingIndicator } from './ai-loading-indicator';
+import { ChatEmptyState } from './chat-empty-state';
+import { PromptInputWithActions } from "./chat-input";
+import { SuggestionTiles } from './chat-suggestion-tiles';
+import { ImageModal } from './image-modal';
 
 const suggestionTiles: SuggestionTileData[] = [
   { id: 1, title: "Show me sales data", description: "Generate content or brainstorm ideas" },
@@ -30,6 +30,8 @@ export default function ChatWindow({
 }: ChatWindowProps) {
   const { user, isSignedIn } = useUser();
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+
+  const lastMessageRef = useRef<HTMLDivElement>(null);
   
   const { chatId, isFirstMessage, startNewSession, setCurrentChatId } = useChatSession(chatIdProp);
   const { messages, addMessage, clearMessages } = useChatMessages(chatId || '');
@@ -43,21 +45,17 @@ export default function ChatWindow({
   } = useMessageActions(chatId || '');
 
   const [isSending, setIsSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [lastUserMessageId, setLastUserMessageId] = useState<string | null>(null);
 
-  // Handle chat changes and pending messages
   useEffect(() => {
     if (chatId) {
-      // Check for pending message when chatId changes
       const pendingMessage = getPendingMessage(chatId);
       if (pendingMessage && !isSending) {
-        // Process the pending message
         handlePendingMessage(pendingMessage.text, pendingMessage.files);
       }
     }
   }, [chatId]);
 
-  // Clear messages when starting a new chat
   useEffect(() => {
     if (isFirstMessage && chatId) {
       clearMessages();
@@ -66,25 +64,21 @@ export default function ChatWindow({
 
   const handlePendingMessage = async (text: string, files: MessageFile[]) => {
     clearPendingMessage();
-    
+    const userMessageId = nanoid();
     const userMessage: Message = {
-      id: nanoid(),
+      id: userMessageId,
       message: text,
       sender: "user",
-      files: files,
+      files,
       timestamp: new Date().toISOString()
     };
-
     const cleanup = addMessage(userMessage);
     setIsSending(true);
+    setLastUserMessageId(userMessageId);
 
     try {
       const aiResponse = await generateAiResponse(text, files);
-      addMessage({
-        ...aiResponse,
-        id: nanoid(),
-        timestamp: new Date().toISOString()
-      });
+      addMessage({ ...aiResponse, id: nanoid(), timestamp: new Date().toISOString() });
     } catch (error) {
       console.error(error)
       addMessage({
@@ -110,18 +104,14 @@ export default function ChatWindow({
       url: f.type.startsWith('image/') ? URL.createObjectURL(f) : undefined
     }));
 
-    // Handle first message in new chat
     if (isFirstMessage) {
-      // Store as pending message first
-      const newChatId = nanoid(); // Generate new chat ID
+      const newChatId = nanoid();
       setPendingMessage(text, fileMetadata, newChatId);
-      
       try {
         const targetChatId = await startNewSession(text, fileMetadata);
         if (targetChatId) {
           setCurrentChatId(targetChatId);
           onNewChatCreated?.(targetChatId);
-          // The useEffect will handle the pending message when chatId changes
         }
       } catch (error) {
         clearPendingMessage();
@@ -130,11 +120,11 @@ export default function ChatWindow({
       return;
     }
 
-    // Handle regular message
     if (!chatId) return;
 
+    const userMessageId = nanoid();
     const userMessage: Message = {
-      id: nanoid(),
+      id: userMessageId,
       message: text,
       sender: "user",
       files: fileMetadata,
@@ -143,14 +133,11 @@ export default function ChatWindow({
 
     const cleanup = addMessage(userMessage);
     setIsSending(true);
+    setLastUserMessageId(userMessageId);
 
     try {
       const aiResponse = await generateAiResponse(text, fileMetadata);
-      addMessage({
-        ...aiResponse,
-        id: nanoid(),
-        timestamp: new Date().toISOString()
-      });
+      addMessage({ ...aiResponse, id: nanoid(), timestamp: new Date().toISOString() });
     } catch (error) {
       console.error(error)
       addMessage({
@@ -173,10 +160,12 @@ export default function ChatWindow({
     { icon: ThumbsDown, type: "Dislike", action: handleDislike },
   ];
 
-  // Scroll to bottom effect
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (lastUserMessageId && lastMessageRef.current) {
+      lastMessageRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setLastUserMessageId(null);
+    }
+  }, [lastUserMessageId]);
 
   return (
     <>
@@ -186,9 +175,8 @@ export default function ChatWindow({
         imageUrl={selectedImageUrl} 
       />
       <div className={`flex flex-col h-screen bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full" type="scroll">
+        <div className="flex-1 overflow-hidden pb-4 mt-12">
+          <ScrollArea className="h-full" type="scroll">
             <div className="p-4 md:p-6 space-y-6">
               <div className="max-w-3xl mx-auto w-full space-y-8">
                 {messages.length === 0 ? (
@@ -209,28 +197,33 @@ export default function ChatWindow({
                 ) : (
                   <ChatMessageList 
                     messages={messages}
-                    currentUser={user ? { 
-                      firstName: user.firstName, 
-                      imageUrl: user.imageUrl 
+                    currentUser={user ? {
+                      firstName: user.firstName,
+                      imageUrl: user.imageUrl
                     } : undefined}
                     onImageClick={setSelectedImageUrl}
                     actionIcons={actionIcons}
+                    addMessageId={true}
+                    lastMessageRef={lastMessageRef}
                   />
                 )}
                 {(isSending || isRegenerating) && <AiLoadingIndicator />}
-                <div ref={messagesEndRef} />
+                <div className="h-40 md:h-32" />
               </div>
             </div>
           </ScrollArea>
         </div>
 
-        <div className="max-w-3xl mx-auto w-full px-4 pb-4">
-          <PromptInputWithActions 
-            onSubmit={handleSend} 
-            isLoading={isSending || isRegenerating} 
-          />
+        <div className="fixed sm:sticky bottom-0 left-0 right-0 bg-background dark:bg-zinc-800 border-t border-border/5 backdrop-blur-sm">
+          <div className="w-full sm:px-4 sm:pb-4">
+            <div className="max-w-3xl mx-auto">
+              <PromptInputWithActions 
+                onSubmit={handleSend} 
+                isLoading={isSending || isRegenerating} 
+              />
+            </div>
+          </div>
         </div>
-      </div>
       </div>
     </>
   );

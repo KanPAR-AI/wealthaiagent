@@ -9,12 +9,10 @@ import { ModeToggle } from '../theme/mode-toggle';
 
 export function ChatHeader(): JSX.Element {
   return (
-    <div className="flex h-16 flex-shrink-0 items-center border-b border-border bg-background dark:bg-zinc-800 px-4 justify-between sticky top-0 z-20 w-full">
+    <div className="flex h-12 flex-shrink-0 items-center bg-background dark:bg-zinc-800 px-4 justify-between sticky top-0 z-20 w-full">
       {<SidebarTrigger className="mr-2" />}
       <div className="flex items-center gap-2 overflow-hidden flex-1">
         <Logo />
-        {/* Optional: Display chat title here */}
-        {/* {chatTitle && <span className="text-sm font-medium truncate">{chatTitle}</span>} */}
       </div>
       <div className="flex items-center gap-4 flex-shrink-0">
       <ModeToggle></ModeToggle>
