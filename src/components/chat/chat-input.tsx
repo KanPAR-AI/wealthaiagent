@@ -93,6 +93,7 @@ export function PromptInputWithActions({ onSubmit, isLoading = false }: PromptIn
 
   const transcribeAudio = async (audioBlob: Blob): Promise<void> => {
     setIsTranscribing(true);
+    console.log(audioBlob);
     try {
       // This is a placeholder for actual speech-to-text integration
       // You would replace this with your preferred speech-to-text service
