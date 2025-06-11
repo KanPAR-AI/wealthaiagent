@@ -11,7 +11,6 @@ export function ImageModal({ isOpen, onClose, imageUrl }: ImageModalProps): JSX.
     return null;
   }
 
-  console.log(imageUrl);
 
   return (
     <div

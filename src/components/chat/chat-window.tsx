@@ -15,6 +15,7 @@ import { ChatEmptyState } from './chat-empty-state';
 import { PromptInputWithActions } from "./chat-input";
 import { SuggestionTiles } from './chat-suggestion-tiles';
 import { ImageModal } from './image-modal';
+import { fileToDataURL } from '@/lib/files';
 
 const suggestionTiles: SuggestionTileData[] = [
   { id: 1, title: "Show me sales data", description: "Generate content or brainstorm ideas" },
@@ -95,14 +96,16 @@ export default function ChatWindow({
 
   const handleSend = async (text: string, files: File[]) => {
     if (!text.trim() && files.length === 0) return;
-
-    const fileMetadata: MessageFile[] = files.map(f => ({
-      name: f.name,
-      type: f.type,
-      size: f.size,
-      url: f.type.startsWith('image/') ? URL.createObjectURL(f) : undefined
-    }));
-
+  
+    const fileMetadata: MessageFile[] = await Promise.all(
+      files.map(async (f) => ({
+        name: f.name,
+        type: f.type,
+        size: f.size,
+        url: f.type.startsWith('image/') ? await fileToDataURL(f) : undefined
+      }))
+    );
+  
     if (isFirstMessage) {
       const newChatId = nanoid();
       setPendingMessage(text, fileMetadata, newChatId);
@@ -118,9 +121,9 @@ export default function ChatWindow({
       }
       return;
     }
-
+  
     if (!chatId) return;
-
+  
     const userMessageId = nanoid();
     const userMessage: Message = {
       id: userMessageId,
@@ -129,11 +132,11 @@ export default function ChatWindow({
       files: fileMetadata,
       timestamp: new Date().toISOString()
     };
-
+  
     const cleanup = addMessage(userMessage);
     setIsSending(true);
     setLastUserMessageId(userMessageId);
-
+  
     try {
       const aiResponse = await generateAiResponse(text, fileMetadata);
       addMessage({ ...aiResponse, id: nanoid(), timestamp: new Date().toISOString() });
@@ -151,6 +154,7 @@ export default function ChatWindow({
       cleanup?.();
     }
   };
+  
 
   const actionIcons = [
     { icon: Copy, type: "Copy", action: handleCopy },
@@ -186,7 +190,6 @@ export default function ChatWindow({
           behavior: 'smooth',
         });
 
-        console.log(currentScrollTop + offset, currentScrollTop, offset);
   
         setLastUserMessageId(null);
       }, 50); // Slight delay ensures layout is painted
