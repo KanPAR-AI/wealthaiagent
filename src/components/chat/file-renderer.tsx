@@ -4,7 +4,7 @@ import { JSX,useState } from 'react';
 
 interface FileRendererProps {
   file: MessageFile;
-  onImageClick: (url: string) => void;
+  onFileClick: (file: MessageFile) => void;
 }
 
 interface PdfPreviewProps {
@@ -13,7 +13,7 @@ interface PdfPreviewProps {
 
 // --- Individual File Preview Components ---
 
-const ImagePreview: React.FC<FileRendererProps> = ({ file, onImageClick }) => {
+const ImagePreview: React.FC<FileRendererProps> = ({ file, onFileClick }) => {
     const [hasError, setHasError] = useState(false);
 
     if (hasError || !file.url) {
@@ -35,7 +35,7 @@ const ImagePreview: React.FC<FileRendererProps> = ({ file, onImageClick }) => {
             />
             <div 
                 className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                onClick={() => onImageClick(file.url!)}
+                onClick={() => onFileClick(file)}
             >
                 <Maximize className="text-white" size={32} />
             </div>
@@ -77,9 +77,9 @@ const GenericFile: React.FC<{ file: MessageFile }> = ({ file }) => (
 
 // --- Main Dispatcher Component ---
 
-export function FileRenderer({ file, onImageClick }: FileRendererProps): JSX.Element {
+export function FileRenderer({ file, onFileClick }: FileRendererProps): JSX.Element {
   if (file.type.startsWith('image/')) { 
-    return <ImagePreview file={file} onImageClick={onImageClick} />;
+    return <ImagePreview file={file} onFileClick={onFileClick} />;
   }
   if (file.type === 'application/pdf' && file.url) {
     return <PdfPreview file={file} />;

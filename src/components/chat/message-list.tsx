@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion';
 import { ChatBubble } from './chat-bubbles';
-import { UserInfo, Message, ActionIconDefinition } from '@/types/chat';
+import { UserInfo, Message, ActionIconDefinition, MessageFile } from '@/types/chat';
 
 interface ChatMessageListProps {
   messages: Message[];
   currentUser?: UserInfo;
-  onImageClick: (url: string) => void;
+  onFileClick: (file: MessageFile) => void;
   actionIcons: ActionIconDefinition[];
   addMessageId?: boolean;
 }
@@ -13,7 +13,7 @@ interface ChatMessageListProps {
 export const ChatMessageList = ({
   messages,
   currentUser,
-  onImageClick,
+  onFileClick,
   actionIcons,
   addMessageId = false,
 }: ChatMessageListProps) => (
@@ -32,7 +32,7 @@ export const ChatMessageList = ({
           message={message}
           currentUser={currentUser}
           botAvatarSrc="/logo.svg"
-          onImageClick={onImageClick}
+          onFileClick={onFileClick}
           actionIcons={actionIcons}
         />
       </motion.div>

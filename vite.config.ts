@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: '/chataiagent/', // Ensures assets are pathed correctly for the subfolder
   server:{
-    allowedHosts: ["e276-223-182-252-208.ngrok-free.app"] // Remove or comment out for production builds
+    allowedHosts: ["bc7d-2401-4900-1c3d-4d6a-bd5b-de75-4037-927a.ngrok-free.app"] // Remove or comment out for production builds
   },
   resolve: {
     alias: {

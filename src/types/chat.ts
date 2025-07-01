@@ -1,3 +1,5 @@
+// types/chat.ts (Updated)
+
 /**
  * Represents a single file attachment in a message.
  */
@@ -59,12 +61,10 @@ export interface AiTableContent {
   description?: string;
 }
 
-
 /**
  * Union type for all possible structured content types.
  */
 export type StructuredContent = AiGraphContent | AiTableContent;
-
 
 /**
  * Represents a single message in the chat.
@@ -75,7 +75,8 @@ export interface Message {
   sender: 'user' | 'bot';
   timestamp?: string;
   files?: MessageFile[];
-  isLoading?: boolean;
+  isLoading?: boolean; // Useful for initial sending state
+  isStreaming?: boolean; // NEW: Indicates if the message content is actively being streamed
   error?: string;
   structuredContent?: StructuredContent;
 }
@@ -115,7 +116,6 @@ export interface SuggestionTileData {
   title: string;
   description: string;
 }
-
 
 export interface ChatWindowProps {
   chatId?: string;

@@ -1,4 +1,4 @@
-import { ActionIconDefinition, Message, UserInfo } from '@/types/chat';
+import { ActionIconDefinition, Message, MessageFile, UserInfo } from '@/types/chat';
 import { motion } from 'framer-motion';
 import { JSX, useCallback, useEffect, useRef, useState } from 'react';
 import StructuredContentRenderer from '../ui/structured-content-renderer';
@@ -10,7 +10,7 @@ interface ChatBubbleProps {
   botAvatarSrc?: string;
   botAvatarFallback?: string;
   actionIcons: ActionIconDefinition[];
-  onImageClick: (url: string) => void;
+  onFileClick: (file: MessageFile) => void;
   streamingSpeed?: number; // Make streaming speed configurable
   enableStreaming?: boolean; // Allow disabling streaming
 }
@@ -18,7 +18,7 @@ interface ChatBubbleProps {
 export function ChatBubble({
   message,
   actionIcons,
-  onImageClick,
+  onFileClick,
   streamingSpeed = 15,
   enableStreaming = true,
 }: ChatBubbleProps): JSX.Element {
@@ -190,7 +190,7 @@ export function ChatBubble({
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.2, delay: index * 0.05 }}
               >
-                <FileRenderer file={file} onImageClick={onImageClick} />
+                <FileRenderer file={file} onFileClick={onFileClick} />
               </motion.div>
             ))}
           </motion.div>

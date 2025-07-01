@@ -1,21 +1,24 @@
+// components/chat/chat-window.tsx (Corrected)
 import { ChatMessageList } from '@/components/chat/message-list';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatMessages } from '@/hooks/use-chat-messages';
 import { useChatSession } from '@/hooks/use-chat-session';
+import { useJwtToken } from '@/hooks/use-jwt-token';
 import { useMessageActions } from '@/hooks/use-message-actions';
-import { generateAiResponse } from '@/services/ai-service';
+import { fileToDataURL } from '@/lib/files';
+import { createChatSession, listenToChatStream, sendChatMessage } from '@/services/chat-service'; // Ensure this path is correct
 import { useChatStore } from '@/store/chat';
-import { ChatWindowProps, Message, MessageFile, SuggestionTileData } from '@/types/chat';
+import { ChatWindowProps, Message, MessageFile, SuggestionTileData } from '@/types/chat'; // Ensure ChatWindowProps is imported
 import { useUser } from '@clerk/clerk-react';
 import { Copy, RefreshCcw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { nanoid } from 'nanoid';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AiLoadingIndicator } from './ai-loading-indicator';
 import { ChatEmptyState } from './chat-empty-state';
 import { PromptInputWithActions } from "./chat-input";
 import { SuggestionTiles } from './chat-suggestion-tiles';
-import { ImageModal } from './image-modal';
-import { fileToDataURL } from '@/lib/files';
+import { FilePreviewModal } from './file-preview-modal';
+// import { DebugPanel } from '../ui/debug'; // Commented out as it might not exist or be needed immediately
 
 const suggestionTiles: SuggestionTileData[] = [
   { id: 1, title: "Show me sales data", description: "Generate content or brainstorm ideas" },
@@ -24,18 +27,19 @@ const suggestionTiles: SuggestionTileData[] = [
   { id: 4, title: "Code assistance", description: "Debug or create new code" }
 ];
 
-export default function ChatWindow({ 
+export default function ChatWindow({
   chatId: chatIdProp,
   onNewChatCreated,
-  className = '' 
+  className = ''
 }: ChatWindowProps) {
   const { user, isSignedIn } = useUser();
-  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+  const { token, isLoadingToken, tokenError } = useJwtToken();
+  const [selectedFile, setSelectedFile] = useState<MessageFile | null>(null);
 
- 
-  const { chatId, isFirstMessage, startNewSession, setCurrentChatId } = useChatSession(chatIdProp);
-  const { messages, addMessage, clearMessages } = useChatMessages(chatId || '');
-  const { setPendingMessage, getPendingMessage, clearPendingMessage } = useChatStore();
+  const { chatId, isFirstMessage, setCurrentChatId } = useChatSession(chatIdProp);
+  // Correctly destructure addMessage and updateMessage from useChatMessages
+  const { messages, addMessage, updateMessage, clearMessages } = useChatMessages(chatId || '');
+  const { getPendingMessage, clearPendingMessage } = useChatStore();
   const {
     handleCopy,
     handleLike,
@@ -46,15 +50,21 @@ export default function ChatWindow({
 
   const [isSending, setIsSending] = useState(false);
   const [lastUserMessageId, setLastUserMessageId] = useState<string | null>(null);
+  const streamingControllerRef = useRef<AbortController | null>(null);
 
+  // Effect to handle pending messages after chat ID and token are available
   useEffect(() => {
-    if (chatId) {
-      const pendingMessage = getPendingMessage(chatId);
-      if (pendingMessage && !isSending) {
-        handlePendingMessage(pendingMessage.text, pendingMessage.files);
+    // Only process if token and chat ID are valid, and not already sending a message
+    if (token && chatId && !isSending && !isLoadingToken) {
+      const pendingMsg = getPendingMessage(chatId);
+      if (pendingMsg) {
+        // Use a flag to prevent re-entry if handlePendingMessage itself sets isSending
+        // This structure relies on handlePendingMessage to clear pending and manage state
+        handlePendingMessage(pendingMsg.text, pendingMsg.files);
       }
     }
-  }, [chatId]);
+  }, [token, chatId, isSending, isLoadingToken, getPendingMessage]);
+
 
   useEffect(() => {
     if (isFirstMessage && chatId) {
@@ -63,7 +73,8 @@ export default function ChatWindow({
   }, [isFirstMessage, chatId, clearMessages]);
 
   const handlePendingMessage = async (text: string, files: MessageFile[]) => {
-    clearPendingMessage();
+    clearPendingMessage(); // Clear pending message once we start processing it
+    
     const userMessageId = nanoid();
     const userMessage: Message = {
       id: userMessageId,
@@ -72,31 +83,83 @@ export default function ChatWindow({
       files,
       timestamp: new Date().toISOString()
     };
-    const cleanup = addMessage(userMessage);
-    setIsSending(true);
+    addMessage(userMessage); // Add user message immediately
     setLastUserMessageId(userMessageId);
 
+    setIsSending(true); // Indicate sending process has started
+
+    // Add a placeholder AI response message
+    const aiMessageId = nanoid();
+    addMessage({ id: aiMessageId, message: '', sender: 'bot', timestamp: new Date().toISOString(), isStreaming: true });
+
     try {
-      const aiResponse = await generateAiResponse(text, files);
-      addMessage({ ...aiResponse, id: nanoid(), timestamp: new Date().toISOString() });
+      if (!token) {
+        throw new Error("Authentication token not available for pending message.");
+      }
+      if (!chatId) {
+        throw new Error("Chat ID not available for pending message.");
+      }
+
+      // After the initial chat is created (which set the chatId), now listen to stream
+      let receivedText = '';
+      streamingControllerRef.current = new AbortController();
+
+      await listenToChatStream(
+        token,
+        chatId, // Use the actual chatId that was set
+        (chunk: string, type: string) => { // Added structuredContent parameter
+          if (type === 'text_chunk') {
+            receivedText += chunk;
+            updateMessage(aiMessageId, { message: receivedText });
+          } 
+          // else if (structuredContent) { // Handle structured content if your SSE sends it
+          //   updateMessage(aiMessageId, { structuredContent: structuredContent });
+          // }
+          // You might combine text and structured content or handle them separately based on your UI needs
+        },
+        () => {
+          updateMessage(aiMessageId, { isStreaming: false });
+          setIsSending(false);
+        },
+        (error) => {
+          console.error("Error in SSE stream for pending message:", error);
+          updateMessage(aiMessageId, {
+            message: receivedText || "Error getting AI response",
+            error: "Failed response",
+            isStreaming: false
+          });
+          setIsSending(false);
+        }
+      );
+
     } catch (error) {
-      console.error(error)
-      addMessage({
-        id: nanoid(),
-        message: "Error getting AI response",
+      console.error("Error processing pending message flow:", error);
+      updateMessage(aiMessageId, {
+        message: "Error during initial chat AI response.",
         sender: "bot",
         error: "Failed response",
-        timestamp: new Date().toISOString()
+        isStreaming: false
       });
-    } finally {
       setIsSending(false);
-      cleanup?.();
     }
   };
 
   const handleSend = async (text: string, files: File[]) => {
     if (!text.trim() && files.length === 0) return;
-  
+    if (!token) {
+      console.error("JWT Token not available. Cannot send message.");
+      // Potentially show a login/error message to the user
+      return;
+    }
+    if (isLoadingToken) {
+      console.log("Token is still loading. Please wait.");
+      return;
+    }
+    if (isSending || isRegenerating) { // Prevent sending if already busy
+        console.log("Already sending or regenerating. Please wait.");
+        return;
+    }
+
     const fileMetadata: MessageFile[] = await Promise.all(
       files.map(async (f) => ({
         name: f.name,
@@ -105,25 +168,9 @@ export default function ChatWindow({
         url: f.type.startsWith('image/') ? await fileToDataURL(f) : undefined
       }))
     );
-  
-    if (isFirstMessage) {
-      const newChatId = nanoid();
-      setPendingMessage(text, fileMetadata, newChatId);
-      try {
-        const targetChatId = await startNewSession(text, fileMetadata);
-        if (targetChatId) {
-          setCurrentChatId(targetChatId);
-          onNewChatCreated?.(targetChatId);
-        }
-      } catch (error) {
-        clearPendingMessage();
-        console.error('Failed to start new session:', error);
-      }
-      return;
-    }
-  
-    if (!chatId) return;
-  
+
+    setIsSending(true); // Indicate sending process has started
+
     const userMessageId = nanoid();
     const userMessage: Message = {
       id: userMessageId,
@@ -132,29 +179,70 @@ export default function ChatWindow({
       files: fileMetadata,
       timestamp: new Date().toISOString()
     };
-  
-    const cleanup = addMessage(userMessage);
-    setIsSending(true);
+    addMessage(userMessage); // Add user message immediately
     setLastUserMessageId(userMessageId);
-  
+
+    // Add a placeholder AI response message
+    const aiMessageId = nanoid();
+    addMessage({ id: aiMessageId, message: '', sender: 'bot', timestamp: new Date().toISOString(), isStreaming: true });
+
     try {
-      const aiResponse = await generateAiResponse(text, fileMetadata);
-      addMessage({ ...aiResponse, id: nanoid(), timestamp: new Date().toISOString() });
+      if (isFirstMessage) {
+        // If it's the first message, create a new chat session
+        const newChatId = await createChatSession(token, "Postman E2E Test Chat", text, fileMetadata);
+        setCurrentChatId(newChatId); // This will trigger the useEffect for pending messages
+        onNewChatCreated?.(newChatId);
+        // The rest of the AI response handling for the first message will be managed
+        // by handlePendingMessage which is triggered by the `chatId` change.
+        // We set isSending here and it will be reset by handlePendingMessage's finally block.
+      } else if (chatId) {
+        // For subsequent messages, send to the existing chat
+        await sendChatMessage(token, chatId, text, fileMetadata);
+
+        // After sending message, start listening to the stream for AI response
+        let receivedText = '';
+        streamingControllerRef.current = new AbortController();
+
+        await listenToChatStream(
+          token,
+          chatId,
+          (chunk: string, type: string) => { 
+            if (type === 'text_chunk') {
+              receivedText += chunk;
+              updateMessage(aiMessageId, { message: receivedText });
+            } 
+            // else if (structuredContent) { // Handle structured content if your SSE sends it
+            //     updateMessage(aiMessageId, { structuredContent: structuredContent });
+            // }
+          },
+          () => {
+            updateMessage(aiMessageId, { isStreaming: false });
+            setIsSending(false); // Reset sending state on stream completion
+          },
+          (error) => {
+            console.error("Error in SSE stream:", error);
+            updateMessage(aiMessageId, {
+              message: receivedText || "Error getting AI response",
+              error: "Failed response",
+              isStreaming: false
+            });
+            setIsSending(false); // Reset sending state on stream error
+          }
+        );
+      }
     } catch (error) {
-      console.error(error)
-      addMessage({
-        id: nanoid(),
-        message: "Error getting AI response",
+      console.error("Failed to send message or start session:", error);
+      updateMessage(aiMessageId, {
+        message: "Error processing message.",
         sender: "bot",
         error: "Failed response",
-        timestamp: new Date().toISOString()
+        isStreaming: false
       });
-    } finally {
-      setIsSending(false);
-      cleanup?.();
+      setIsSending(false); // Ensure sending state is reset on any error
     }
+    // No `finally` block here that unconditionally sets setIsSending(false)
+    // because it's managed by the stream callbacks or handlePendingMessage
   };
-  
 
   const actionIcons = [
     { icon: Copy, type: "Copy", action: handleCopy },
@@ -168,44 +256,61 @@ export default function ChatWindow({
       const timeout = setTimeout(() => {
         const messageElement = document.querySelector(`[data-message-id="${lastUserMessageId}"]`);
         if (!messageElement) return;
-  
+
         const scrollViewport = messageElement.closest('[data-radix-scroll-area-viewport]');
         if (!scrollViewport) {
-          // fallback
           messageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
           setLastUserMessageId(null);
           return;
         }
-  
+
         const messageRect = messageElement.getBoundingClientRect();
         const containerRect = scrollViewport.getBoundingClientRect();
         const currentScrollTop = scrollViewport.scrollTop;
-  
-        // Calculate how far the message is from the top of the container
-        const offset = messageRect.top - containerRect.top ;
-  
-        // Scroll so that the message aligns with top
+
+        const offset = messageRect.top - containerRect.top;
+
         scrollViewport.scrollTo({
           top: currentScrollTop + offset,
           behavior: 'smooth',
         });
 
-  
         setLastUserMessageId(null);
-      }, 50); // Slight delay ensures layout is painted
-  
+      }, 50);
       return () => clearTimeout(timeout);
     }
   }, [lastUserMessageId]);
-  
+
+  if (tokenError) {
+    return (
+      <div className="flex items-center justify-center h-full text-red-500">
+        Authentication Error: {tokenError}. Please refresh or try again later.
+      </div>
+    );
+  }
+
+  if (isLoadingToken) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        Loading authentication...
+      </div>
+    );
+  }
 
   return (
     <>
-      <ImageModal 
-        isOpen={!!selectedImageUrl} 
-        onClose={() => setSelectedImageUrl(null)} 
-        imageUrl={selectedImageUrl} 
+      <FilePreviewModal
+        isOpen={!!selectedFile}
+        onClose={() => setSelectedFile(null)}
+        file={selectedFile}
       />
+
+      {/* <DebugPanel
+        onDebugMessage={handleDebugMessage}
+        disabled={isSending || isRegenerating}
+        isVisible={true}
+      /> */}
+
       <div className={`flex flex-col h-dvh bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
         <div className="h-full overflow-hidden pb-4 mt-12 sm:mt-0">
           <ScrollArea className="h-full" type="scroll">
@@ -227,13 +332,13 @@ export default function ChatWindow({
                     </div>
                   </div>
                 ) : (
-                  <ChatMessageList 
+                  <ChatMessageList
                     messages={messages}
                     currentUser={user ? {
                       firstName: user.firstName,
                       imageUrl: user.imageUrl
                     } : undefined}
-                    onImageClick={setSelectedImageUrl}
+                    onFileClick={(file: MessageFile) => setSelectedFile(file)}
                     actionIcons={actionIcons}
                     addMessageId={true}
                   />
@@ -248,9 +353,9 @@ export default function ChatWindow({
         <div className="fixed sm:sticky bottom-0 left-0 right-0 bg-background dark:bg-zinc-800 border-t border-border/5 backdrop-blur-sm">
           <div className="w-full sm:px-4 sm:pb-4">
             <div className="max-w-3xl mx-auto">
-              <PromptInputWithActions 
-                onSubmit={handleSend} 
-                isLoading={isSending || isRegenerating} 
+              <PromptInputWithActions
+                onSubmit={handleSend}
+                isLoading={isSending || isRegenerating || isLoadingToken}
               />
             </div>
           </div>
