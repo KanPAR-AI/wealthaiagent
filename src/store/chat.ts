@@ -4,7 +4,6 @@ import { create } from 'zustand';
 import { Message, MessageFile } from '@/types/chat';
 
 
-
 interface AuthState {
   token: string | null;
   tokenError: string | null;
