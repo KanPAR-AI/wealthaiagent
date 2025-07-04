@@ -3,6 +3,7 @@ import { listenToChatStream, sendChatMessage } from '@/services/chat-service'; /
 import { useState } from 'react';
 import { useChatMessages } from './use-chat-messages';
 import { useJwtToken } from './use-jwt-token'; // Import the JWT token hook
+import { Message } from '@/types/chat'; // Import Message type
 
 export const useMessageActions = (chatId: string) => {
   // Destructure `updateMessage` as well from useChatMessages
@@ -11,7 +12,7 @@ export const useMessageActions = (chatId: string) => {
   const [isRegenerating, setIsRegenerating] = useState(false);
 
   const handleCopy = (messageId: string) => {
-    const message = messages.find(m => m.id === messageId);
+    const message = messages.find((m: Message) => m.id === messageId);
     if (message) {
       navigator.clipboard.writeText(message.message)
         .then(() => console.log("Copied to clipboard"))
@@ -37,7 +38,7 @@ export const useMessageActions = (chatId: string) => {
       return;
     }
 
-    const botMessageIndex = messages.findIndex(m => m.id === messageId);
+    const botMessageIndex = messages.findIndex((m: Message) => m.id === messageId);
     // Ensure it's a bot message at the target ID
     if (botMessageIndex === -1 || messages[botMessageIndex].sender !== 'bot') {
         console.warn("Attempted to regenerate a non-bot message or message not found.");
