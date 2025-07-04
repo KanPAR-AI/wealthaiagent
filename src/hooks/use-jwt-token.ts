@@ -1,16 +1,9 @@
 // hooks/use-jwt-token.ts
-import { useEffect } from "react";
-import { useAuthStore } from "@/store/chat";
+import { useEffect } from 'react';
+import { useAuthStore } from '@/store/chat';
 
 export const useJwtToken = () => {
-  const {
-    token,
-    tokenError,
-    isLoadingToken,
-    setToken,
-    setTokenError,
-    setIsLoadingToken,
-  } = useAuthStore();
+  const { token, tokenError, isLoadingToken, setToken, setTokenError, setIsLoadingToken } = useAuthStore();
 
   useEffect(() => {
     // Only fetch the token if it's not already in the store
@@ -25,19 +18,16 @@ export const useJwtToken = () => {
     const getJwtToken = async () => {
       setIsLoadingToken(true);
       try {
-        const response = await fetch(
-          "https://chatbackend.yourfinadvisor.com/api/v1/auth/token",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams({
-              username: "testuser",
-              password: "", // Secure this in a real implementation
-            }).toString(),
-          }
-        );
+        const response = await fetch('https://chatbackend.yourfinadvisor.com/api/v1/auth/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            username: 'testuser',
+            password: '', // Secure this in a real implementation
+          }).toString(),
+        });
 
         if (!response.ok) {
           throw new Error(`Authentication failed: ${response.statusText}`);
