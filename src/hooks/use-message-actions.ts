@@ -3,6 +3,7 @@ import { listenToChatStream, sendChatMessage } from '@/services/chat-service'; /
 import { useState } from 'react';
 import { useChatMessages } from './use-chat-messages';
 import { useJwtToken } from './use-jwt-token'; // Import the JWT token hook
+import { Message } from '@/types/chat'; // Import Message type
 
 export const useMessageActions = (chatId: string) => {
   // Destructure `updateMessage` as well from useChatMessages
