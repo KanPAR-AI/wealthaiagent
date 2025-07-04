@@ -14,7 +14,7 @@ import { ChatWindowProps, MessageFile, SuggestionTileData } from '@/types/chat';
 import { useUser } from '@clerk/clerk-react';
 import { Copy, RefreshCcw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { nanoid } from 'nanoid';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { AiLoadingIndicator } from './ai-loading-indicator';
 import { ChatEmptyState } from './chat-empty-state';
 import { PromptInputWithActions } from "./chat-input";
@@ -42,6 +42,14 @@ export default function ChatWindow({
   const getPendingMessage = useChatStore(state => state.getPendingMessage);
   const clearPendingMessage = useChatStore(state => state.clearPendingMessage);
   
+  // Memoize the pending message to avoid repeated calls
+  const pendingMessage = useMemo(() => {
+    if (chatId) {
+      return getPendingMessage(chatId);
+    }
+    return null;
+  }, [chatId, getPendingMessage]);
+  
   const {
     handleCopy,
     handleLike,
@@ -53,13 +61,15 @@ export default function ChatWindow({
   const [isSending, setIsSending] = useState(false);
   const [lastUserMessageId, setLastUserMessageId] = useState<string | null>(null);
   const streamingControllerRef = useRef<AbortController | null>(null);
+  const isProcessingRef = useRef(false);
 
   // Effect to handle pending messages.
-  // The dependency array has been corrected to remove `isSending` and `isRegenerating`.
-  // The effect now only runs when external dependencies change. The guard condition inside
-  // prevents it from processing a message if another one is already in flight.
   useEffect(() => {
     const processPendingMessage = async (text: string, files: MessageFile[]) => {
+      // Clear the pending message immediately to prevent re-processing
+      clearPendingMessage();
+      isProcessingRef.current = true;
+      
       const userMessageId = nanoid();
       addMessage({
         id: userMessageId,
@@ -95,6 +105,7 @@ export default function ChatWindow({
           () => {
             updateMessage(aiMessageId, { isStreaming: false });
             setIsSending(false);
+            isProcessingRef.current = false;
           },
           (error) => {
             console.error("Error in SSE stream for pending message:", error);
@@ -104,6 +115,7 @@ export default function ChatWindow({
               isStreaming: false
             });
             setIsSending(false);
+            isProcessingRef.current = false;
           }
         );
       } catch (error) {
@@ -114,31 +126,27 @@ export default function ChatWindow({
           isStreaming: false
         });
         setIsSending(false);
+        isProcessingRef.current = false;
       }
     };
 
     // This guard prevents the effect from running if a message is already being sent or regenerated,
     // or if the necessary credentials are not yet available.
-    if (token && chatId && !isSending && !isRegenerating && !isLoadingToken) {
-      const pendingMsg = getPendingMessage(chatId);
-      if (pendingMsg) {
-        console.log("Found pending message, attempting to process:", pendingMsg);
-        processPendingMessage(pendingMsg.text, pendingMsg.files);
-      }
+    if (token && chatId && !isProcessingRef.current && !isSending && !isRegenerating && !isLoadingToken && pendingMessage) {
+      console.log("Found pending message, attempting to process:", pendingMessage);
+      processPendingMessage(pendingMessage.text, pendingMessage.files);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     token,
     chatId,
     isLoadingToken,
-    isSending,          
-    isRegenerating,     
-    getPendingMessage, 
+    isSending,
+    isRegenerating,
+    pendingMessage,
     clearPendingMessage,
     addMessage,
     updateMessage
   ]);
-
 
   useEffect(() => {
     if (isFirstMessage && chatId) {

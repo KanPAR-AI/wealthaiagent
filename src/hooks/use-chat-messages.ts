@@ -1,14 +1,27 @@
 // hooks/use-chat-messages.ts
 import { useChatStore } from '@/store/chat';
 import { Message } from '@/types/chat';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 
 /**
  * A hook to manage messages for a specific chat ID,
  * interacting with the central Zustand chat store.
  */
 export const useChatMessages = (chatId: string) => {
-  const messages = useChatStore(state => state.chats[chatId]?.messages || []);
+  // Use a ref to cache the empty array to prevent infinite loops
+  const emptyArrayRef = useRef<Message[]>([]);
+  
+  // Use a stable selector to avoid the getSnapshot warning
+  const selector = useCallback(
+    (state: any) => {
+      const messages = state.chats[chatId]?.messages;
+      // Return the same empty array reference if messages don't exist
+      return messages || emptyArrayRef.current;
+    },
+    [chatId]
+  );
+  
+  const messages = useChatStore(selector);
   const addMessageToStore = useChatStore(state => state.addMessage);
   const updateMessageInStore = useChatStore(state => state.updateMessage);
   const clearChatInStore = useChatStore(state => state.clearChat);
