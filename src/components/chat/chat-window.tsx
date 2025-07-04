@@ -155,95 +155,105 @@ export default function ChatWindow({
     }
   }, [isFirstMessage, chatId, clearMessages]);
 
-  const handleSend = async (text: string, files: File[]) => {
-    if (!text.trim() && files.length === 0) return;
-    if (isSending || isRegenerating) {
-      console.log("Already sending or regenerating. Please wait.");
-      return;
+  // components/chat/chat-window.tsx
+
+const handleSend = async (text: string, files: File[]) => {
+  // Prevent sending empty messages or actions while busy
+  if (!text.trim() && files.length === 0) return;
+  if (isSending || isRegenerating) {
+    console.log("Already sending or regenerating. Please wait.");
+    return;
+  }
+  if (isLoadingToken || !token) {
+    console.error("Token not available or still loading. Cannot send message.");
+    return;
+  }
+
+  // Process any attached files
+  const fileMetadata: MessageFile[] = await Promise.all(
+    files.map(async (f) => ({
+      name: f.name,
+      type: f.type,
+      size: f.size,
+      url: f.type.startsWith('image/') ? await fileToDataURL(f) : undefined
+    }))
+  );
+
+  setIsSending(true);
+
+  // Add the user's message to the UI immediately
+  const userMessageId = nanoid();
+  addMessage({
+    id: userMessageId,
+    message: text,
+    sender: "user",
+    files: fileMetadata,
+    timestamp: new Date().toISOString()
+  });
+  setLastUserMessageId(userMessageId);
+
+  // Add a placeholder for the AI's streaming response
+  const aiMessageId = nanoid();
+  addMessage({ id: aiMessageId, message: '', sender: 'bot', timestamp: new Date().toISOString(), isStreaming: true });
+
+  let currentChatIdForStream: string | undefined = chatId;
+
+  try {
+    // 💡 FIX: This condition now correctly handles cases where `isFirstMessage`
+    // is incorrectly 'false' by also checking for the existence of `chatId`.
+    // If there's no chatId, it will always create a new session.
+    if (isFirstMessage || !chatId) {
+      const newChatId = await createChatSession(token, "Postman E2E Test Chat", text, fileMetadata);
+      setCurrentChatId(newChatId);
+      onNewChatCreated?.(newChatId);
+      currentChatIdForStream = newChatId;
+    } else {
+      // This block is now safe because the condition above guarantees `chatId` exists.
+      await sendChatMessage(token, chatId, text, fileMetadata);
     }
-    if (isLoadingToken || !token) {
-      console.error("Token not available or still loading. Cannot send message.");
-      return;
+
+    // Ensure we have a chat ID before starting the stream
+    if (!currentChatIdForStream) {
+      throw new Error("Cannot listen to chat stream: Chat ID is not defined.");
     }
 
-    const fileMetadata: MessageFile[] = await Promise.all(
-      files.map(async (f) => ({
-        name: f.name,
-        type: f.type,
-        size: f.size,
-        url: f.type.startsWith('image/') ? await fileToDataURL(f) : undefined
-      }))
-    );
+    let receivedText = '';
+    streamingControllerRef.current = new AbortController();
 
-    setIsSending(true);
-
-    const userMessageId = nanoid();
-    addMessage({
-      id: userMessageId,
-      message: text,
-      sender: "user",
-      files: fileMetadata,
-      timestamp: new Date().toISOString()
-    });
-    setLastUserMessageId(userMessageId);
-
-    const aiMessageId = nanoid();
-    addMessage({ id: aiMessageId, message: '', sender: 'bot', timestamp: new Date().toISOString(), isStreaming: true });
-
-    let currentChatIdForStream: string | undefined = chatId;
-
-    try {
-      if (isFirstMessage) {
-        const newChatId = await createChatSession(token, "Postman E2E Test Chat", text, fileMetadata);
-        setCurrentChatId(newChatId);
-        onNewChatCreated?.(newChatId);
-        currentChatIdForStream = newChatId;
-      } else if (chatId) {
-        await sendChatMessage(token, chatId, text, fileMetadata);
-      } else {
-        throw new Error("Chat ID is not available and it's not the first message.");
-      }
-
-      if (!currentChatIdForStream) {
-        throw new Error("Cannot listen to chat stream: Chat ID is not defined.");
-      }
-
-      let receivedText = '';
-      streamingControllerRef.current = new AbortController();
-
-      await listenToChatStream(
-        token,
-        currentChatIdForStream,
-        (chunk: string, type: string) => {
-          if (type === 'text_chunk') {
-            receivedText += chunk;
-            updateMessage(aiMessageId, { message: receivedText });
-          }
-        },
-        () => {
-          updateMessage(aiMessageId, { isStreaming: false });
-          setIsSending(false);
-        },
-        (error) => {
-          console.error("Error in SSE stream:", error);
-          updateMessage(aiMessageId, {
-            message: receivedText || "Error getting AI response",
-            error: "Failed response",
-            isStreaming: false
-          });
-          setIsSending(false);
+    // Listen for the server-sent events (SSE) stream
+    await listenToChatStream(
+      token,
+      currentChatIdForStream,
+      (chunk: string, type: string) => {
+        if (type === 'text_chunk') {
+          receivedText += chunk;
+          updateMessage(aiMessageId, { message: receivedText });
         }
-      );
-    } catch (error) {
-      console.error("Failed to send message or start session:", error);
-      updateMessage(aiMessageId, {
-        message: "Error processing message.",
-        error: "Failed response",
-        isStreaming: false
-      });
-      setIsSending(false);
-    }
-  };
+      },
+      () => { // onComplete
+        updateMessage(aiMessageId, { isStreaming: false });
+        setIsSending(false);
+      },
+      (error) => { // onError
+        console.error("Error in SSE stream:", error);
+        updateMessage(aiMessageId, {
+          message: receivedText || "Error getting AI response",
+          error: "Failed response",
+          isStreaming: false
+        });
+        setIsSending(false);
+      }
+    );
+  } catch (error) {
+    console.error("Failed to send message or start session:", error);
+    updateMessage(aiMessageId, {
+      message: "Error processing message.",
+      error: "Failed response",
+      isStreaming: false
+    });
+    setIsSending(false);
+  }
+};
 
   const actionIcons = [
     { icon: Copy, type: "Copy", action: handleCopy },

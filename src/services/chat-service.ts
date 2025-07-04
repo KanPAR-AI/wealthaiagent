@@ -171,7 +171,10 @@ export const listenToChatStream = async (
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
-    let partial = "";
+    let buffer = "";
+
+    // A unique placeholder to protect apostrophes during the replacement process.
+    const APOSTROPHE_PLACEHOLDER = "___APOSTROPHE___";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -180,28 +183,49 @@ export const listenToChatStream = async (
         break;
       }
 
-      const chunk = decoder.decode(value, { stream: true });
-      partial += chunk;
-
-      const lines = partial.split("\n");
-      partial = lines.pop() || ""; // Keep incomplete last line
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
 
       for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith("data:")) continue;
+        if (!line.startsWith("data:")) continue;
 
-        const jsonString = trimmed.replace(/^data:\s*/, "");
+        const payload = line.replace(/^data:\s*/, "");
 
-        try {
-          const parsed = JSON.parse(jsonString);
-          // This part depends on the actual structure of your SSE events.
-          // Assuming 'type' and 'content' as per your original generateAiResponse.
-          // If your SSE sends structured content (graph/table), you'd handle that here.
-          onMessageChunk(parsed.content || "", parsed.type || "text_chunk");
-        } catch (err) {
-          console.warn("Invalid JSON content in SSE stream:", jsonString, err);
-          onError(new Error("Invalid SSE data received."));
-          // Optionally, you might want to stop reading here or just log and continue
+        if (payload.startsWith("{")) {
+          try {
+            // --- START: Robust Parsing Hack ---
+
+            // 1. Protect apostrophes that are inside double-quoted strings
+            //    (like in "we're") by replacing them with a placeholder.
+            const protectedPayload = payload.replace(/"([^"]*)"/g, (group) => {
+              return '"' + group.replace(/'/g, APOSTROPHE_PLACEHOLDER) + '"';
+            });
+            
+            // 2. Now it's safe to replace all remaining single quotes with double quotes.
+            const jsonString = protectedPayload.replace(/'/g, '"');
+
+            // 3. Restore the protected apostrophes.
+            const finalJson = jsonString.replace(new RegExp(APOSTROPHE_PLACEHOLDER, "g"), "'");
+
+            // --- END: Robust Parsing Hack ---
+
+            const parsedEvent = JSON.parse(finalJson);
+            
+            if (parsedEvent.type === 'message_delta') {
+                onMessageChunk(parsedEvent.delta, "text_chunk");
+            } else if (parsedEvent.type === 'message_complete') {
+              console.log("Received message_complete signal.");
+            } else if (parsedEvent.type) {
+              const content = parsedEvent.message?.content || parsedEvent.content || "";
+              onMessageChunk(content, parsedEvent.type);
+            }
+          } catch (err) {
+            console.warn("Could not parse a structured event from the stream:", payload, err);
+          }
+        } else {
+          // This handles any data that is not a structured object.
+          onMessageChunk(payload, "text_chunk");
         }
       }
     }

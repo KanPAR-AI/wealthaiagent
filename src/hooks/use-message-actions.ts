@@ -11,7 +11,7 @@ export const useMessageActions = (chatId: string) => {
   const [isRegenerating, setIsRegenerating] = useState(false);
 
   const handleCopy = (messageId: string) => {
-    const message = messages.find(m => m.id === messageId);
+    const message = messages.find((m: { id: string; }) => m.id === messageId);
     if (message) {
       navigator.clipboard.writeText(message.message)
         .then(() => console.log("Copied to clipboard"))
@@ -37,7 +37,7 @@ export const useMessageActions = (chatId: string) => {
       return;
     }
 
-    const botMessageIndex = messages.findIndex(m => m.id === messageId);
+    const botMessageIndex = messages.findIndex((m: { id: string; }) => m.id === messageId);
     // Ensure it's a bot message at the target ID
     if (botMessageIndex === -1 || messages[botMessageIndex].sender !== 'bot') {
         console.warn("Attempted to regenerate a non-bot message or message not found.");
