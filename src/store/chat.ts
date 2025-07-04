@@ -3,6 +3,25 @@
 import { create } from 'zustand';
 import { Message, MessageFile } from '@/types/chat';
 
+
+
+interface AuthState {
+  token: string | null;
+  tokenError: string | null;
+  isLoadingToken: boolean;
+  setToken: (token: string | null) => void;
+  setTokenError: (error: string | null) => void;
+  setIsLoadingToken: (loading: boolean) => void;
+}
+
+export const useAuthStore = create<AuthState>((set) => ({
+  token: null,
+  tokenError: null,
+  isLoadingToken: true, // Initially true until the first token fetch
+  setToken: (token) => set({ token, tokenError: null, isLoadingToken: false }),
+  setTokenError: (error) => set({ tokenError: error, token: null, isLoadingToken: false }),
+  setIsLoadingToken: (loading) => set({ isLoadingToken: loading }),
+}));
 // Define the ChatState interface for Zustand
 interface ChatState {
   chats: Record<string, { messages: Message[] }>; // Changed to explicitly hold messages

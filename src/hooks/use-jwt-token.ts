@@ -1,14 +1,22 @@
-import { useState, useEffect } from 'react';
+// hooks/use-jwt-token.ts
+import { useEffect } from 'react';
+import { useAuthStore } from '@/store/chat';
 
 export const useJwtToken = () => {
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoadingToken, setIsLoadingToken] = useState(true);
-  const [tokenError, setTokenError] = useState<string | null>(null);
+  const { token, tokenError, isLoadingToken, setToken, setTokenError, setIsLoadingToken } = useAuthStore();
 
   useEffect(() => {
+    // Only fetch the token if it's not already in the store
+    if (token || tokenError) {
+      // If we already have a token or an error, the loading is done.
+      setIsLoadingToken(false);
+      return;
+    }
+
     let isMounted = true;
 
     const getJwtToken = async () => {
+      setIsLoadingToken(true);
       try {
         const response = await fetch('https://chatbackend.yourfinadvisor.com/api/v1/auth/token', {
           method: 'POST',
@@ -17,7 +25,7 @@ export const useJwtToken = () => {
           },
           body: new URLSearchParams({
             username: 'testuser',
-            password: '', // Secure this in real implementation
+            password: '', // Secure this in a real implementation
           }).toString(),
         });
 
@@ -34,19 +42,15 @@ export const useJwtToken = () => {
         if (isMounted) {
           setTokenError(error.message || "Unknown error occurred");
         }
-      } finally {
-        if (isMounted) {
-          setIsLoadingToken(false);
-        }
       }
     };
 
     getJwtToken();
 
     return () => {
-      isMounted = false; // cleanup to prevent state updates on unmounted components
+      isMounted = false; // Cleanup to prevent state updates on unmounted components
     };
-  }, []);
+  }, [token, tokenError, setToken, setTokenError, setIsLoadingToken]);
 
   return { token, isLoadingToken, tokenError };
 };
