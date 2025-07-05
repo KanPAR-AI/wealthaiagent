@@ -88,9 +88,3 @@ options:
 # Optional: Specify a timeout for the build
 timeout: '1200s' # 20 minutes
 
-# Store test results as build artifacts
-artifacts:
-  objects:
-    location: 'gs://aiagentapi-build-artifacts/${_SERVICE_NAME}/${BUILD_ID}'
-    paths:
-      - 'coverage/**/*'
