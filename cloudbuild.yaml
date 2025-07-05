@@ -5,6 +5,19 @@
 # are relative to this file's location (the 'frontend/' directory).
 
 steps:
+  # 0. Run tests before building Docker image (optional but recommended)
+  - name: 'node:20-alpine'
+    id: 'Run Tests'
+    entrypoint: 'sh'
+    args:
+      - '-c'
+      - |
+        npm ci
+        npm run test:ci -- --coverage
+        npm run lint
+    env:
+      - 'CI=true'
+
   # 1. Build the Docker image
   # The build context '.' refers to the 'frontend/' directory because this
   # cloudbuild.yaml is inside 'frontend/'. The Dockerfile is also expected
@@ -17,6 +30,7 @@ steps:
       # _TAG will be $COMMIT_SHA from the trigger, or a manual tag from a script
       - '${_REGION}-docker.pkg.dev/aiagentapi/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${_TAG}'
       - '.' # Build context is the current directory (frontend/)
+    waitFor: ['Run Tests'] # Only build if tests pass
 
   # 2. Push the Docker image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
@@ -24,10 +38,7 @@ steps:
     args:
       - 'push'
       - '${_REGION}-docker.pkg.dev/aiagentapi/${_ARTIFACT_REPO}/${_SERVICE_NAME}:${_TAG}'
-    # This step depends on the successful completion of the 'Build Docker Image' step.
-    # Not strictly necessary to specify waitFor if steps are sequential and you don't use '-' as ID,
-    # but can be explicit.
-    # waitFor: ['Build Docker Image']
+    waitFor: ['Build Docker Image']
 
   # 3. Deploy the image to Google Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -49,8 +60,7 @@ steps:
       # Optional: Add other flags like memory, cpu, min/max instances, environment variables as needed
       # Example: '--memory=512Mi', '--cpu=1', '--min-instances=0', '--max-instances=2'
       # Example: '--set-env-vars=KEY1=VALUE1,KEY2=VALUE2'
-    # This step depends on the successful completion of the 'Push Docker Image' step.
-    # waitFor: ['Push Docker Image']
+    waitFor: ['Push Docker Image']
 
 # The 'images' field is primarily for build provenance (e.g., for Binary Authorization,
 # vulnerability scanning integration if enabled).
@@ -76,4 +86,11 @@ options:
   # diskSizeGb: 100 # Optional: Request a larger disk for the build if needed
 
 # Optional: Specify a timeout for the build
-# timeout: '1200s' # 20 minutes
+timeout: '1200s' # 20 minutes
+
+# Store test results as build artifacts
+artifacts:
+  objects:
+    location: 'gs://aiagentapi-build-artifacts/${_SERVICE_NAME}/${BUILD_ID}'
+    paths:
+      - 'coverage/**/*'
