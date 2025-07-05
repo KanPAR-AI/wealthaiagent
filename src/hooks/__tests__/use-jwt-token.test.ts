@@ -53,7 +53,7 @@ describe('useJwtToken', () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            username: 'user@example.com',
+            username: 'test_username',
             password: 'password123'
           }),
         })
