@@ -1,6 +1,9 @@
+// components/chat/chat-bubble.tsx
+
 import { ActionIconDefinition, Message, MessageFile, UserInfo } from '@/types/chat';
 import { motion } from 'framer-motion';
-import { JSX, useCallback, useEffect, useRef, useState } from 'react';
+import { JSX, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import StructuredContentRenderer from '../ui/structured-content-renderer';
 import { FileRenderer } from './file-renderer';
 
@@ -11,60 +14,26 @@ interface ChatBubbleProps {
   botAvatarFallback?: string;
   actionIcons: ActionIconDefinition[];
   onFileClick: (file: MessageFile) => void;
-  streamingSpeed?: number; // Make streaming speed configurable
-  enableStreaming?: boolean; // Allow disabling streaming
 }
+
+// A simple component for the blinking cursor
+const BlinkingCursor = () => (
+  <motion.span
+    animate={{ opacity: [1, 0] }}
+    transition={{ duration: 0.8, repeat: Infinity }}
+    className="inline-block w-px h-4 bg-current ml-0.5 align-bottom"
+  />
+);
 
 export function ChatBubble({
   message,
   actionIcons,
   onFileClick,
-  streamingSpeed = 15,
-  enableStreaming = true,
 }: ChatBubbleProps): JSX.Element {
   const isUser = message.sender === 'user';
+  const hasContent = message.message || message.structuredContent;
 
-  // For streaming text effect
-  const [displayedText, setDisplayedText] = useState('');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Memoized cleanup function
-  const cleanup = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setIsStreaming(false);
-  }, []);
-
-  // Enhanced streaming effect with better control
-  useEffect(() => {
-    if (!isUser && message.message && !message.error && !message.isLoading) {
-      if (enableStreaming) {
-        setIsStreaming(true);
-        setDisplayedText('');
-        let index = 0;
-        
-        intervalRef.current = setInterval(() => {
-          setDisplayedText(message.message!.substring(0, index + 1));
-          index++;
-          
-          if (index >= message.message!.length) {
-            cleanup();
-          }
-        }, streamingSpeed);
-
-        return cleanup;
-      } else {
-        setDisplayedText(message.message);
-      }
-    } else {
-      setDisplayedText(message.message || '');
-    }
-  }, [message.message, message.id, isUser, message.error, message.isLoading, enableStreaming, streamingSpeed, cleanup]);
-
-  // Clean up blob URLs with better dependency tracking
+  // Effect to revoke blob URLs when the component unmounts or files change
   useEffect(() => {
     const urlsToRevoke: string[] = [];
     message.files?.forEach(file => {
@@ -84,32 +53,31 @@ export function ChatBubble({
     };
   }, [message.files]);
 
-  const hasContent = message.message || message.structuredContent;
-
-  // Enhanced animation variants
+  // Animation variants for the bubble
   const bubbleVariants = {
     hidden: { opacity: 0, y: 10, scale: 0.98 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
+    visible: {
+      opacity: 1,
+      y: 0,
       scale: 1,
-      transition: { 
-        duration: 0.3, 
-        ease: [0.4, 0, 0.2, 1] as [number, number, number, number] // Type as tuple
-      }
-    }
+      transition: {
+        duration: 0.3,
+        ease: [0.4, 0, 0.2, 1] as [number, number, number, number],
+      },
+    },
   };
 
+  // Animation variants for the file attachments container
   const fileVariants = {
     hidden: { opacity: 0, y: 12 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
-      transition: { 
+      transition: {
         duration: 0.3,
-        delay: 0.1 
-      }
-    }
+        delay: 0.1,
+      },
+    },
   };
 
   return (
@@ -126,41 +94,23 @@ export function ChatBubble({
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-muted dark:bg-zinc-700 dark:text-zinc-200'
             }`}
-            style={{
-              wordBreak: 'break-word',
-              overflowWrap: 'break-word',
-            }}
+            style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
           >
-            {/* Loading state with better UX */}
-            {message.isLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
-                  <div className="w-2 h-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-                  <div className="w-2 h-2 bg-current rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
-                </div>
-                <span className="italic opacity-70 text-xs">Typing...</span>
-              </div>
-            ) : message.error ? (
+            {message.error ? (
               <div className="flex items-center gap-2">
                 <span className="text-red-500 text-xs">⚠</span>
                 <span className="italic text-red-500">{message.error}</span>
               </div>
             ) : (
               <div className="px-0.5 whitespace-pre-wrap">
-                <span>{displayedText}</span>
-                {/* Streaming cursor */}
-                {isStreaming && (
-                  <motion.span
-                    animate={{ opacity: [1, 0] }}
-                    transition={{ duration: 0.8, repeat: Infinity }}
-                    className="inline-block w-0.5 h-4 bg-current ml-0.5"
-                  />
-                )}
+                {/* Directly render the message content, which is updated by the parent */}
+                <ReactMarkdown>{message.message}</ReactMarkdown>
+                {/* Show cursor if the message is from the bot and the parent indicates it's still streaming */}
+                {message.sender === 'bot' && message.isStreaming && <BlinkingCursor />}
               </div>
             )}
-
-            {/* Structured content with conditional spacing */}
+            
+            {/* Structured content rendering */}
             {message.structuredContent && (
               <div className={`${message.message ? 'mt-3 pt-3 border-t border-border/30' : ''}`}>
                 <StructuredContentRenderer content={message.structuredContent} />
@@ -169,15 +119,15 @@ export function ChatBubble({
           </motion.div>
         )}
 
-        {/* File Attachments with improved grid */}
+        {/* File Attachments */}
         {message.files && message.files.length > 0 && (
           <motion.div
             variants={fileVariants}
             initial="hidden"
             animate="visible"
             className={`mt-2 w-full grid gap-2 ${
-              message.files.length === 1 
-                ? 'grid-cols-1' 
+              message.files.length === 1
+                ? 'grid-cols-1'
                 : message.files.length === 2
                 ? 'grid-cols-1 sm:grid-cols-2'
                 : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
@@ -196,8 +146,8 @@ export function ChatBubble({
           </motion.div>
         )}
 
-        {/* Action Buttons with improved accessibility */}
-        {!isUser && !message.isLoading && !message.error && actionIcons.length > 0 && (
+        {/* Action Buttons */}
+        {!isUser && !message.isStreaming && !message.error && actionIcons.length > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

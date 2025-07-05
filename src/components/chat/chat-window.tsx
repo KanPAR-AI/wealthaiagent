@@ -20,6 +20,7 @@ import { ChatEmptyState } from './chat-empty-state';
 import { PromptInputWithActions } from "./chat-input";
 import { SuggestionTiles } from './chat-suggestion-tiles';
 import { FilePreviewModal } from './file-preview-modal';
+import { useNavigate } from 'react-router-dom';
 
 const suggestionTiles: SuggestionTileData[] = [
   { id: 1, title: "Show me sales data", description: "Generate content or brainstorm ideas" },
@@ -39,16 +40,11 @@ export default function ChatWindow({
 
   const { chatId, isFirstMessage, setCurrentChatId } = useChatSession(chatIdProp);
   const { messages, addMessage, updateMessage, clearMessages } = useChatMessages(chatId || '');
-  const getPendingMessage = useChatStore(state => state.getPendingMessage);
-  const clearPendingMessage = useChatStore(state => state.clearPendingMessage);
+  const navigate = useNavigate();
   
   // Memoize the pending message to avoid repeated calls
-  const pendingMessage = useMemo(() => {
-    if (chatId) {
-      return getPendingMessage(chatId);
-    }
-    return null;
-  }, [chatId, getPendingMessage]);
+  const pendingMessage = useChatStore(state => state.pendingMessage);
+  const clearPendingMessage = useChatStore(state => state.clearPendingMessage);
   
   const {
     handleCopy,
@@ -65,11 +61,19 @@ export default function ChatWindow({
 
   // Effect to handle pending messages.
   useEffect(() => {
-    const processPendingMessage = async (text: string, files: MessageFile[]) => {
-      // Clear the pending message immediately to prevent re-processing
-      clearPendingMessage();
-      isProcessingRef.current = true;
+    // Guard to ensure we only process a pending message meant for the *current* chat
+    if (token && chatId && pendingMessage && pendingMessage.chatId === chatId && !isProcessingRef.current) {
       
+      const { text, files } = pendingMessage;
+  
+      // --- Start processing ---
+      isProcessingRef.current = true;
+      console.log("Processing pending message for new chat:", pendingMessage);
+  
+      // 1. Clear the pending message from the store IMMEDIATELY to prevent loops.
+      clearPendingMessage();
+  
+      // 2. Add the user's message to the UI.
       const userMessageId = nanoid();
       addMessage({
         id: userMessageId,
@@ -79,73 +83,69 @@ export default function ChatWindow({
         timestamp: new Date().toISOString()
       });
       setLastUserMessageId(userMessageId);
+      
+      // 3. Set loading state for the UI
       setIsSending(true);
-
+  
+      // 4. Add a placeholder for the AI's streaming response.
       const aiMessageId = nanoid();
       addMessage({ id: aiMessageId, message: '', sender: 'bot', timestamp: new Date().toISOString(), isStreaming: true });
+      
+      // 5. DO NOT send the message again. Just listen for the stream.
+      const startListening = async () => {
+        try {
+          // THE FIX IS HERE: The call to `sendChatMessage` has been REMOVED.
+          // We immediately listen for the stream that was already started by `createChatSession`.
 
-      try {
-        if (!token) throw new Error("Authentication token not available for pending message.");
-        if (!chatId) throw new Error("Chat ID not available for pending message.");
-
-        await sendChatMessage(token, chatId, text, files);
-
-        let receivedText = '';
-        streamingControllerRef.current = new AbortController();
-
-        await listenToChatStream(
-          token,
-          chatId,
-          (chunk: string, type: string) => {
-            if (type === 'text_chunk') {
-              receivedText += chunk;
-              updateMessage(aiMessageId, { message: receivedText });
+          let receivedText = '';
+          streamingControllerRef.current = new AbortController();
+  
+          await listenToChatStream(
+            token,
+            chatId,
+            (chunk: string, type: string) => {
+              if (type === 'text_chunk') {
+                receivedText += chunk;
+                updateMessage(aiMessageId, { message: receivedText });
+              }
+            },
+            () => { // onComplete
+              updateMessage(aiMessageId, { isStreaming: false });
+              setIsSending(false); // This will now be called correctly.
+              isProcessingRef.current = false;
+            },
+            (error) => { // onError
+              console.error("Error in SSE stream for pending message:", error);
+              updateMessage(aiMessageId, {
+                message: receivedText || "Error receiving AI response.",
+                error: "Failed response",
+                isStreaming: false
+              });
+              setIsSending(false);
+              isProcessingRef.current = false;
             }
-          },
-          () => {
-            updateMessage(aiMessageId, { isStreaming: false });
-            setIsSending(false);
-            isProcessingRef.current = false;
-          },
-          (error) => {
-            console.error("Error in SSE stream for pending message:", error);
-            updateMessage(aiMessageId, {
-              message: receivedText || "Error getting AI response",
-              error: "Failed response",
-              isStreaming: false
-            });
-            setIsSending(false);
-            isProcessingRef.current = false;
-          }
-        );
-      } catch (error) {
-        console.error("Error processing pending message flow:", error);
-        updateMessage(aiMessageId, {
-          message: "Error during initial chat AI response.",
-          error: "Failed response",
-          isStreaming: false
-        });
-        setIsSending(false);
-        isProcessingRef.current = false;
-      }
-    };
-
-    // This guard prevents the effect from running if a message is already being sent or regenerated,
-    // or if the necessary credentials are not yet available.
-    if (token && chatId && !isProcessingRef.current && !isSending && !isRegenerating && !isLoadingToken && pendingMessage) {
-      console.log("Found pending message, attempting to process:", pendingMessage);
-      processPendingMessage(pendingMessage.text, pendingMessage.files);
+          );
+        } catch (error) {
+          console.error("Failed to listen to chat stream:", error);
+          updateMessage(aiMessageId, {
+            message: "Error connecting to AI.",
+            error: "Failed response",
+            isStreaming: false
+          });
+          setIsSending(false);
+          isProcessingRef.current = false;
+        }
+      };
+  
+      startListening();
     }
   }, [
-    token,
     chatId,
-    isLoadingToken,
-    isSending,
-    isRegenerating,
-    pendingMessage,
-    clearPendingMessage,
+    pendingMessage, // Correctly listen for changes to the pending message object
+    token,
     addMessage,
-    updateMessage
+    updateMessage,
+    clearPendingMessage
   ]);
 
   useEffect(() => {
@@ -155,75 +155,82 @@ export default function ChatWindow({
     }
   }, [isFirstMessage, chatId, clearMessages]);
 
-  // components/chat/chat-window.tsx
 
 const handleSend = async (text: string, files: File[]) => {
   // Prevent sending empty messages or actions while busy
   if (!text.trim() && files.length === 0) return;
-  if (isSending || isRegenerating) {
-    console.log("Already sending or regenerating. Please wait.");
-    return;
-  }
-  if (isLoadingToken || !token) {
-    console.error("Token not available or still loading. Cannot send message.");
+  if (isSending || isRegenerating || isLoadingToken || !token) {
+    console.warn("Send aborted: busy, loading, or no token.");
     return;
   }
 
-  // Process any attached files
+  // Set loading state immediately
+  setIsSending(true);
+
   const fileMetadata: MessageFile[] = await Promise.all(
     files.map(async (f) => ({
       name: f.name,
       type: f.type,
       size: f.size,
-      url: f.type.startsWith('image/') ? await fileToDataURL(f) : undefined
+      url: f.type.startsWith('image/') ? await fileToDataURL(f) : undefined,
     }))
   );
 
-  setIsSending(true);
+  // --- 1. Logic for a NEW CHAT ---
+  // If there's no chatId, we create a new session and redirect.
+  // No messages are added to the UI here.
+  if (!chatId) {
+    try {
+      // Create the session on the backend to get a chat ID.
+      // The API call itself sends the first message content.
+      const newChatId = await createChatSession(token, "New Chat", text, fileMetadata);
+      
+      // Set the message as 'pending' for the new page to process.
+      useChatStore.getState().setPendingMessage(text, fileMetadata, newChatId);
+      
+      // Redirect to the new chat page.
+      navigate(`/chat/${newChatId}`);
+      
+      // Note: We intentionally DO NOT call addMessage or setIsSending(false) here.
+      // The new page load will handle the UI state.
+    } catch (error) {
+      console.error("Failed to create new chat session:", error);
+      // Display an error to the user if session creation fails.
+      setIsSending(false); 
+    }
+    return; // Stop execution for new chats
+  }
 
-  // Add the user's message to the UI immediately
+  // --- 2. Logic for an EXISTING CHAT ---
+  // This code only runs if a chatId already exists.
   const userMessageId = nanoid();
   addMessage({
     id: userMessageId,
     message: text,
     sender: "user",
     files: fileMetadata,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
   setLastUserMessageId(userMessageId);
 
-  // Add a placeholder for the AI's streaming response
   const aiMessageId = nanoid();
-  addMessage({ id: aiMessageId, message: '', sender: 'bot', timestamp: new Date().toISOString(), isStreaming: true });
-
-  let currentChatIdForStream: string | undefined = chatId;
+  addMessage({
+    id: aiMessageId,
+    message: '',
+    sender: 'bot',
+    timestamp: new Date().toISOString(),
+    isStreaming: true, // This will show the bubble with the blinking cursor
+  });
 
   try {
-    // 💡 FIX: This condition now correctly handles cases where `isFirstMessage`
-    // is incorrectly 'false' by also checking for the existence of `chatId`.
-    // If there's no chatId, it will always create a new session.
-    if (isFirstMessage || !chatId) {
-      const newChatId = await createChatSession(token, "Postman E2E Test Chat", text, fileMetadata);
-      setCurrentChatId(newChatId);
-      onNewChatCreated?.(newChatId);
-      currentChatIdForStream = newChatId;
-    } else {
-      // This block is now safe because the condition above guarantees `chatId` exists.
-      await sendChatMessage(token, chatId, text, fileMetadata);
-    }
-
-    // Ensure we have a chat ID before starting the stream
-    if (!currentChatIdForStream) {
-      throw new Error("Cannot listen to chat stream: Chat ID is not defined.");
-    }
-
+    await sendChatMessage(token, chatId, text, fileMetadata);
+    
     let receivedText = '';
     streamingControllerRef.current = new AbortController();
 
-    // Listen for the server-sent events (SSE) stream
     await listenToChatStream(
       token,
-      currentChatIdForStream,
+      chatId,
       (chunk: string, type: string) => {
         if (type === 'text_chunk') {
           receivedText += chunk;
@@ -239,22 +246,21 @@ const handleSend = async (text: string, files: File[]) => {
         updateMessage(aiMessageId, {
           message: receivedText || "Error getting AI response",
           error: "Failed response",
-          isStreaming: false
+          isStreaming: false,
         });
         setIsSending(false);
       }
     );
   } catch (error) {
-    console.error("Failed to send message or start session:", error);
+    console.error("Failed to send message:", error);
     updateMessage(aiMessageId, {
       message: "Error processing message.",
       error: "Failed response",
-      isStreaming: false
+      isStreaming: false,
     });
     setIsSending(false);
   }
 };
-
   const actionIcons = [
     { icon: Copy, type: "Copy", action: handleCopy },
     { icon: RefreshCcw, type: "Regenerate", action: handleRegenerate },
