@@ -1,6 +1,7 @@
 // hooks/use-jwt-token.ts
 import { useEffect } from 'react';
 import { useAuthStore } from '@/store/chat';
+import { getApiUrl } from '@/config/environment';
 
 export const useJwtToken = () => {
   const { token, tokenError, isLoadingToken, setToken, setTokenError, setIsLoadingToken } = useAuthStore();
@@ -18,15 +19,15 @@ export const useJwtToken = () => {
     const getJwtToken = async () => {
       setIsLoadingToken(true);
       try {
-        const response = await fetch('https://chatbackend.yourfinadvisor.com/api/v1/auth/token', {
+        const response = await fetch(getApiUrl('/auth/token'), {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json',
           },
-          body: new URLSearchParams({
-            username: 'testuser',
-            password: '', // Secure this in a real implementation
-          }).toString(),
+          body: JSON.stringify({
+            username: 'user@example.com', // Replace with actual user info
+            password: 'password123'        // Replace with actual auth
+          }),
         });
 
         if (!response.ok) {

@@ -1,4 +1,5 @@
 import { MessageFile } from '@/types/chat';
+import { FileRenderer } from './file-renderer';
 import { X } from 'lucide-react';
 import { JSX } from 'react';
 
@@ -7,7 +8,6 @@ interface FilePreviewModalProps {
   onClose: () => void;
   file: MessageFile | null;
 }
-
 
 export function FilePreviewModal({
   isOpen,

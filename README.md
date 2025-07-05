@@ -88,42 +88,50 @@ yarn install
 pnpm install
 ```
 
-3. Create `.env` file:
-```env
-VITE_CLERK_PUBLISHABLE_KEY=your_clerk_key
-VITE_BASE_URL=http://localhost:5173
+3. Set up environment configuration:
+```bash
+# Create local environment file
+npm run env:init
+
+# Edit with your configuration
+nano .env.local
 ```
+
+4. Verify configuration:
+```bash
+npm run env:check
+```
+
+For detailed configuration instructions, see [CONFIGURATION.md](./CONFIGURATION.md).
 
 ### Development
 
 ```bash
+# Using the enhanced local deployment script
+npm run deploy:local
+
+# Or run directly
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173) with your browser to see the result.
 
 ### Production Build
 
-1. Build the application:
+1. Set up production environment:
 ```bash
-npm run build
-# or
-yarn build
-# or
-pnpm build
+cp config/env.production.example .env.production
+# Edit with production values
+nano .env.production
 ```
 
-2. Start production server:
+2. Build and deploy:
 ```bash
-npm run start
-# or
-yarn start
-# or
-pnpm start
+# Build for production
+npm run deploy:production
+
+# Deploy to Google Cloud Platform
+npm run deploy:gcp
 ```
 
 ## Code Documentation
@@ -270,29 +278,118 @@ interface AiGraphContent {
 
 ## Testing
 
-Run tests with:
+### Quick Start - Local Testing
+
+The project includes a comprehensive `test-local.sh` script that runs all necessary checks before starting the development server:
+
 ```bash
-npm test
-# or
-yarn test
-# or
-pnpm test
+# Run all tests and start dev server
+./test-local.sh
+
+# Run with coverage report
+./test-local.sh --coverage
+
+# Run tests in watch mode
+./test-local.sh --watch
+
+# Skip tests (useful for quick development)
+./test-local.sh --skip-tests
+
+# Skip build step
+./test-local.sh --skip-build
+
+# Show all available options
+./test-local.sh --help
 ```
 
-Test coverage includes:
-- Component rendering
-- Hook behavior
-- State management
-- AI service responses
+The script will:
+1. ✅ Check Node.js version (requires v18+)
+2. 📦 Install/update dependencies
+3. 🔍 Run ESLint for code quality
+4. 🧪 Run all unit tests
+5. 🔨 Build the application
+6. 🚀 Start the development server
+
+### Running Tests Manually
+
+Run tests with:
+```bash
+# Run all tests once
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests in CI mode (no watch, with coverage)
+npm run test:ci
+
+# Generate test summary report
+npm run test:summary
+```
+
+### Test Coverage
+
+Current test coverage includes:
+- ✅ JWT Authentication (TC_001-TC_006)
+- ✅ File Upload functionality (TC_007-TC_018)
+- ✅ File Preview features (TC_019-TC_020)
+- ✅ Chat session management
+- ✅ Message streaming
+- ✅ State management (Zustand)
+
+Coverage thresholds are set at 70% for:
+- Branches
+- Functions
+- Lines
+- Statements
 
 ### Test Structure
 ```
-__tests__/
+src/
 ├── components/
+│   └── chat/
+│       └── __tests__/
+│           ├── chat-input.test.tsx
+│           └── file-preview-modal.test.tsx
 ├── hooks/
+│   └── __tests__/
+│       ├── use-jwt-token.test.ts
+│       └── use-chat-session.test.tsx
 ├── services/
-└── utils/
+│   └── __tests__/
+│       └── chat-service.test.ts
+└── store/
+    └── __tests__/
+        └── chat.test.ts
 ```
+
+### Writing Tests
+
+Example test structure:
+```typescript
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { renderWithProviders } from '@/test/utils';
+
+describe('Component Name', () => {
+  it('should handle user interaction', async () => {
+    const user = userEvent.setup();
+    const mockHandler = jest.fn();
+    
+    render(<Component onAction={mockHandler} />);
+    
+    const button = screen.getByRole('button');
+    await user.click(button);
+    
+    expect(mockHandler).toHaveBeenCalled();
+  });
+});
+```
+
+For more testing examples and best practices, see [TESTING.md](./TESTING.md).
 
 ## Deployment
 
@@ -338,7 +435,12 @@ docker run -p 4173:4173 react-vite-chat
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `VITE_CLERK_PUBLISHABLE_KEY` | Clerk publishable key | Yes |
-| `VITE_BASE_URL` | Application base URL | Yes |
+| `VITE_API_BASE_URL` | Backend API base URL | Yes |
+| `VITE_API_VERSION` | API version (e.g., v1) | Yes |
+| `VITE_APP_BASE_PATH` | Application base path | No |
+| `VITE_ENABLE_DEBUG` | Enable debug mode | No |
+
+See [CONFIGURATION.md](./CONFIGURATION.md) for complete environment variable documentation.
 
 ## Vite Configuration
 

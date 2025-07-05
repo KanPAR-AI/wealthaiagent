@@ -14,9 +14,12 @@ export const useChatSession = (initialChatId?: string) => {
   // State to track if navigation has already happened for a new session
   const [hasNavigatedNewSession, setHasNavigatedNewSession] = useState(false);
 
-  const startNewSession = useCallback(async (text: string, files: MessageFile[]) => {
+  const startNewSession = useCallback(async (
+    messageText: string,
+    files: MessageFile[]
+  ): Promise<string> => {
     const newChatId = `chat_${nanoid(12)}`;
-    setPendingMessage(text, files, newChatId);
+    setPendingMessage(messageText, files, newChatId);
     setChatId(newChatId);
     setIsFirstMessage(true);
     setHasNavigatedNewSession(false);

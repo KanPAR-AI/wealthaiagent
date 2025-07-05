@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Test coverage
+coverage/
+*.lcov
+
+# Test artifacts
+test-results/
+junit.xml

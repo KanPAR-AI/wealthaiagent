@@ -1,7 +1,6 @@
 // services/api-service.ts
 import { Message, MessageFile } from "@/types/chat";
-
-const BASE_URL = "https://chatbackend.yourfinadvisor.com"; // Matches your Postman baseUrl
+import { getApiUrl } from "@/config/environment";
 
 interface ChatResponse {
   chat: {
@@ -23,11 +22,11 @@ export const createChatSession = async (
   firstMessageContent: string,
   files: MessageFile[]
 ): Promise<string> => {
-  const response = await fetch(`${BASE_URL}/api/v1/chats`, {
-    method: "POST",
+  const response = await fetch(getApiUrl('/chats'), {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${jwt}`,
+      'Authorization': `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       title: title,
@@ -63,7 +62,7 @@ export const sendChatMessage = async (
   content: string,
   files: MessageFile[]
 ): Promise<void> => {
-  const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/messages`, {
+  const response = await fetch(getApiUrl(`/chats/${chatId}/messages`), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -96,7 +95,7 @@ export const fetchChatHistory = async (
   jwt: string,
   chatId: string
 ): Promise<ChatResponse> => {
-  const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}`, {
+  const response = await fetch(getApiUrl(`/chats/${chatId}`), {
     method: "GET",
     headers: {
       Authorization: `Bearer ${jwt}`,
@@ -121,7 +120,7 @@ export const deleteChatSession = async (
   jwt: string,
   chatId: string
 ): Promise<void> => {
-  const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}`, {
+  const response = await fetch(getApiUrl(`/chats/${chatId}`), {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${jwt}`,
@@ -155,7 +154,7 @@ export const listenToChatStream = async (
   onError: (error: Error) => void
 ) => {
   try {
-    const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/stream`, {
+    const response = await fetch(getApiUrl(`/chats/${chatId}/stream`), {
       method: "GET",
       headers: {
         Accept: "text/event-stream",
