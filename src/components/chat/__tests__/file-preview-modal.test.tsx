@@ -16,7 +16,7 @@ describe('FilePreviewModal', () => {
     const imageFile: MessageFile = {
       name: 'test-image.jpg',
       type: 'image/jpeg',
-      size: 2048,
+      size: 1024,
       url: 'https://example.com/test-image.jpg'
     };
 
@@ -51,21 +51,30 @@ describe('FilePreviewModal', () => {
     });
 
     it('should close preview when clicking outside', async () => {
+      const user = userEvent.setup();
+      const mockOnClose = jest.fn();
+      const file: MessageFile = {
+        name: 'test-image.jpg',
+        type: 'image/jpeg',
+        size: 1024,
+        url: 'https://example.com/test-image.jpg'
+      };
+
       render(
         <FilePreviewModal
+          file={file}
           isOpen={true}
           onClose={mockOnClose}
-          file={imageFile}
         />
       );
 
-      // Click on the backdrop
-      const backdrop = screen.getByRole('presentation').firstElementChild;
+      // Click on the backdrop (the outer div with bg-black/80)
+      const backdrop = document.querySelector('.fixed.inset-0.bg-black\\/80');
       if (backdrop) {
         await user.click(backdrop);
       }
 
-      expect(mockOnClose).toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
     it('should handle different image formats', () => {

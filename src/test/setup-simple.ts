@@ -62,14 +62,46 @@ if (typeof ReadableStream === 'undefined') {
 // Mock navigator.mediaDevices
 Object.defineProperty(navigator, 'mediaDevices', {
   value: {
-    getUserMedia: jest.fn()
+    getUserMedia: jest.fn().mockResolvedValue({
+      getTracks: () => [{
+        stop: jest.fn()
+      }]
+    })
   },
   writable: true
 });
 
+// Mock MediaRecorder
+(global as any).MediaRecorder = class MediaRecorder {
+  state = 'inactive';
+  ondataavailable: any;
+  onstop: any;
+  
+  constructor(stream: any) {
+    // Mock constructor
+  }
+  
+  start() {
+    this.state = 'recording';
+  }
+  
+  stop() {
+    this.state = 'inactive';
+    if (this.ondataavailable) {
+      this.ondataavailable({ data: new Blob(['mock audio'], { type: 'audio/webm' }) });
+    }
+    if (this.onstop) {
+      this.onstop();
+    }
+  }
+};
+
+// Mock window.alert
+global.alert = jest.fn();
+
 // Cleanup after each test
 afterEach(() => {
-  cleanup();
+  jest.clearAllMocks();
 });
 
 // Mock window.matchMedia

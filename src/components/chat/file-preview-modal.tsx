@@ -1,3 +1,4 @@
+import React from 'react';
 import { MessageFile } from '@/types/chat';
 import { X } from 'lucide-react';
 import { JSX } from 'react';
