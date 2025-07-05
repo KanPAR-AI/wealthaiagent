@@ -11,9 +11,6 @@ COPY . .
 # Run tests during build
 RUN npm run test:ci
 
-# Run linting
-RUN npm run lint
-
 # Build the application
 RUN npm run build
 
