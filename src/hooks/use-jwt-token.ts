@@ -15,34 +15,46 @@ export const useJwtToken = () => {
     }
 
     let isMounted = true;
-
     const getJwtToken = async () => {
       setIsLoadingToken(true);
       try {
+        // Option 1: Using URLSearchParams (recommended)
+        const formData = new URLSearchParams();
+        formData.append('username', 'test_username');
+        formData.append('password', 'kzjdbv');
+    
         const response = await fetch(getApiUrl('/auth/token'), {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: JSON.stringify({
-            username: 'user@example.com', // Replace with actual user info
-            password: 'password123'        // Replace with actual auth
-          }),
+          body: formData,
         });
-
+    
+        // Option 2: Manual string construction (alternative)
+        /*
+        const response = await fetch(getApiUrl('/auth/token'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: 'username=test_username&password=kzjdbv',
+        });
+        */
+    
+        // Handle response
         if (!response.ok) {
-          throw new Error(`Authentication failed: ${response.statusText}`);
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-
+        
         const data = await response.json();
-        if (isMounted) {
-          setToken(data.access_token);
-        }
-      } catch (error: any) {
-        console.error("Error fetching JWT token:", error);
-        if (isMounted) {
-          setTokenError(error.message || "Unknown error occurred");
-        }
+        return data;
+        
+      } catch (error) {
+        console.error('Error getting JWT token:', error);
+        throw error;
+      } finally {
+        setIsLoadingToken(false);
       }
     };
 
