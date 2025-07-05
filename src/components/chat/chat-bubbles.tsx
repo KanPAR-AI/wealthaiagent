@@ -27,7 +27,7 @@ export function ChatBubble({
   // For streaming text effect
   const [displayedText, setDisplayedText] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Memoized cleanup function
   const cleanup = useCallback(() => {
