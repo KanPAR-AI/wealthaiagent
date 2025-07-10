@@ -4,19 +4,19 @@ import { ActionIconDefinition, Message, MessageFile, UserInfo } from '@/types/ch
 import { motion } from 'framer-motion';
 import { JSX, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import StructuredContentRenderer from '../ui/structured-content-renderer';
-import { FileRenderer } from './file-renderer';
+import StructuredContentRenderer from '../ui/structured-content-renderer'; // Assuming this component exists
+import { FileRenderer } from './file-renderer'; // Import the FileRenderer component
 
 interface ChatBubbleProps {
   message: Message;
   currentUser: UserInfo | undefined;
   botAvatarSrc?: string;
-  botAvatarFallback?: string;
+  botAvatarFallback?: string; // Optional fallback for bot avatar
   actionIcons: ActionIconDefinition[];
-  onFileClick: (file: MessageFile) => void;
+  onFileClick: (file: MessageFile) => void; // Handler for when a file is clicked
 }
 
-// A simple component for the blinking cursor
+// A simple component for the blinking cursor during streaming
 const BlinkingCursor = () => (
   <motion.span
     animate={{ opacity: [1, 0] }}
@@ -31,9 +31,12 @@ export function ChatBubble({
   onFileClick,
 }: ChatBubbleProps): JSX.Element {
   const isUser = message.sender === 'user';
-  const hasContent = message.message || message.structuredContent;
+  // A message has content if it has text OR structured content OR files
+  const hasContent = message.message || message.structuredContent || (message.files && message.files.length > 0);
 
   // Effect to revoke blob URLs when the component unmounts or files change
+  // This is important if you were creating blob URLs on the frontend for temporary previews.
+  // Given your backend provides direct URLs, this might be less critical but good practice if any blob URLs are still generated.
   useEffect(() => {
     const urlsToRevoke: string[] = [];
     message.files?.forEach(file => {
@@ -51,9 +54,9 @@ export function ChatBubble({
         }
       });
     };
-  }, [message.files]);
+  }, [message.files]); // Re-run if files array changes
 
-  // Animation variants for the bubble
+  // Animation variants for the message bubble
   const bubbleVariants = {
     hidden: { opacity: 0, y: 10, scale: 0.98 },
     visible: {
@@ -75,7 +78,7 @@ export function ChatBubble({
       y: 0,
       transition: {
         duration: 0.3,
-        delay: 0.1,
+        delay: 0.1, // Slight delay after bubble appears
       },
     },
   };
@@ -83,8 +86,9 @@ export function ChatBubble({
   return (
     <div key={message.id} className={`flex gap-3 ${isUser ? 'justify-start sm:justify-end' : 'justify-start'}`}>
       <div className={`flex flex-col ${isUser ? 'items-start sm:items-end' : 'items-start'} w-full`}>
-        {/* Message Bubble */}
-        {hasContent && (
+        {/* Message Bubble (for text and structured content) */}
+        {/* Only render the bubble if there's text or structured content */}
+        {(message.message || message.structuredContent) && (
           <motion.div
             variants={bubbleVariants}
             initial="hidden"
@@ -103,9 +107,9 @@ export function ChatBubble({
               </div>
             ) : (
               <div className="px-0.5 whitespace-pre-wrap">
-                {/* Directly render the message content, which is updated by the parent */}
+                {/* Render Markdown text content */}
                 <ReactMarkdown>{message.message}</ReactMarkdown>
-                {/* Show cursor if the message is from the bot and the parent indicates it's still streaming */}
+                {/* Show blinking cursor if bot message is still streaming */}
                 {message.sender === 'bot' && message.isStreaming && <BlinkingCursor />}
               </div>
             )}
@@ -120,11 +124,13 @@ export function ChatBubble({
         )}
 
         {/* File Attachments */}
+        {/* Render files if they exist, regardless of text content */}
         {message.files && message.files.length > 0 && (
           <motion.div
             variants={fileVariants}
             initial="hidden"
             animate="visible"
+            // Adjust grid columns based on number of files for better layout
             className={`mt-2 w-full grid gap-2 ${
               message.files.length === 1
                 ? 'grid-cols-1'
@@ -140,13 +146,14 @@ export function ChatBubble({
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.2, delay: index * 0.05 }}
               >
+                {/* Render each file using the FileRenderer component */}
                 <FileRenderer file={file} onFileClick={onFileClick} />
               </motion.div>
             ))}
           </motion.div>
         )}
 
-        {/* Action Buttons */}
+        {/* Action Buttons for bot messages (copy, regenerate, like, dislike) */}
         {!isUser && !message.isStreaming && !message.error && actionIcons.length > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
