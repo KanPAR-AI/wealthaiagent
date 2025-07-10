@@ -157,6 +157,8 @@ export default function ChatWindow({
   // IMPORTANT FIX HERE: handleSend now accepts MessageFile[]
   const handleSend = async (text: string, attachments: MessageFile[]) => {
     // Prevent sending empty messages or actions while busy
+
+    console.log("message:",text,attachments)
     if (!text.trim() && attachments.length === 0) {
       console.warn("Send aborted: No text and no files to send.");
       return; // Do not proceed if both text and files are empty
@@ -315,6 +317,7 @@ export default function ChatWindow({
         isOpen={!!selectedFile}
         onClose={() => setSelectedFile(null)}
         file={selectedFile}
+        
       />
       {/* Main Chat Window Layout */}
       <div className={`flex flex-col h-dvh bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>

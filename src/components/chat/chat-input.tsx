@@ -263,7 +263,7 @@ export function PromptInputWithActions({
 
       {/* Main text input area */}
       <PromptInputTextarea
-        placeholder="Ask me anything, or use the mic to talk..."
+        placeholder="Ask me anything..."
         onKeyDown={handleKeyDown}
         disabled={isBusy}
         className="dark:text-white text-zinc-950"

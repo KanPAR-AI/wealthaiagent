@@ -105,8 +105,15 @@ if (env.isDevelopment && env.enableDebug) {
 // Export helper to construct API URLs
 export function getApiUrl(endpoint: string): string {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  // Avoid double prefixing if endpoint already includes /api/v1
+  if (cleanEndpoint.startsWith(`/api/${env.apiVersion}`)) {
+    return `${env.apiBaseUrl}${cleanEndpoint}`;
+  }
+
   return `${env.apiBaseUrl}/api/${env.apiVersion}${cleanEndpoint}`;
 }
+
 
 // Export helper to construct app URLs
 export function getAppUrl(path: string): string {

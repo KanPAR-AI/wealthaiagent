@@ -32,11 +32,7 @@ export const createChatSession = async (
       title: title,
       firstMessage: {
         content: firstMessageContent,
-        attachments: files.map((file) => ({
-          name: file.name,
-          type: file.type,
-          url: file.url, // Assuming URL is available for attachments
-        })),
+        attachments: files.map(file => file.url),
       },
     }),
   });
@@ -70,11 +66,7 @@ export const sendChatMessage = async (
     },
     body: JSON.stringify({
       content: content,
-      attachments: files.map((file) => ({
-        name: file.name,
-        type: file.type,
-        url: file.url, // Assuming URL is available for attachments
-      })),
+      attachments: files.map(file => file.url),
     }),
   });
 
@@ -226,3 +218,16 @@ export const listenToChatStream = async (
     onError(error);
   }
 };
+
+export async function fetchFileWithToken(url: string, token: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch file: ${response.statusText}`);
+  }
+
+  const blob = await response.blob();
+  return URL.createObjectURL(blob); // Safe for preview
+}
