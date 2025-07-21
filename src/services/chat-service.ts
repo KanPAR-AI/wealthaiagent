@@ -2,15 +2,41 @@
 import { Message, MessageFile } from "@/types/chat";
 import { getApiUrl } from "@/config/environment";
 
-interface ChatResponse {
+
+// TODO: Align the message types for chat history with the backend. Remove the interfaces below and use only those from @/types
+
+export interface ChatMessage {
+  id: string;
+  content: string;
+  attachments: Attachment[];
+  chatId: string;
+  sender: 'user' | 'assistant';
+  timestamp: string;
+  status: string;
+  metadata: any;
+}
+
+export interface ChatResponse {
   chat: {
     id: string;
-    messageCount: number;
     title: string;
-    // Add other chat properties if they exist in your API response
+    createdAt: string;
+    updatedAt: string;
+    userId: string;
+    messageCount: number;
+    lastMessage: any;
   };
-  messages: Omit<Message, "id" | "timestamp">[];
+  messages: ChatMessage[];
+  hasMoreMessages: boolean;
 }
+
+export interface Attachment {
+  name: string;
+  type: string;
+  url: string;
+  size: number;
+}
+
 
 /**
  * Creates a new chat session.

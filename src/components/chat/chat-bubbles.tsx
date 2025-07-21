@@ -95,7 +95,7 @@ export function ChatBubble({
             animate="visible"
             className={`px-3 py-2 md:px-4 md:py-2 rounded-2xl break-words text-sm md:text-base relative max-w-full ${
               isUser
-                ? 'bg-primary text-primary-foreground'
+                ? 'bg-primary text-primary-foreground dark:text-zinc-100'
                 : 'bg-muted dark:bg-zinc-700 dark:text-zinc-200'
             }`}
             style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
