@@ -7,7 +7,6 @@ import { JSX, useEffect, useState } from 'react';
 // Helper to securely fetch and blobify the file
 const usePreviewUrl = (file: MessageFile | null, jwt: string | null) => {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  console.log(file,jwt)
 
   useEffect(() => {
     if (!file || !jwt) return;
@@ -50,7 +49,6 @@ export function FilePreviewModal({
 }: FilePreviewModalProps): JSX.Element | null {
   const {token} = useJwtToken();
   const blobUrl = usePreviewUrl(file, token);
-  console.log(blobUrl)
 
   if (!isOpen || !file || !token) return null;
 

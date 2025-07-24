@@ -97,8 +97,7 @@ export function ChatBubble({
               isUser
                 ? 'bg-primary text-primary-foreground dark:text-zinc-100'
                 : 'bg-muted dark:bg-zinc-700 dark:text-zinc-200'
-            }`}
-            style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+            } break-words overflow-wrap-break-word word-break-break-word`}
           >
             {message.error ? (
               <div className="flex items-center gap-2">

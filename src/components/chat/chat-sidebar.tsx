@@ -1,7 +1,7 @@
 import { SignedIn, UserButton, useUser } from "@clerk/clerk-react";
 import {
   History,
-  MessageSquareText, 
+  MessageSquareText,
   MoreHorizontal,
   Plus,
   Search,
@@ -9,7 +9,9 @@ import {
   Star,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; 
+import { Link, useNavigate } from "react-router-dom";
+import { useJwtToken } from "@/hooks/use-jwt-token";
+import { getApiUrl } from "@/config/environment"; // Assuming the function is in 'lib/utils'
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
-  Sidebar, 
+  Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
@@ -31,260 +33,290 @@ import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarSeparator
-} from "@/components/ui/sidebar"; 
-import { Skeleton } from "@/components/ui/skeleton"; // For loading state
-import { Chat } from "@/types/chat";
+  SidebarSeparator,
+} from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// Define props for the Sidebar component
-interface SidebarProps {
+// --- Types ---
+interface Chat {
+  id: string;
+  title: string;
+  updatedAt: string;
+  isFavorite: boolean;
+}
+
+interface ChatSidebarProps {
   currentChatId?: string;
 }
 
-// --- Mock Data (Replace with API calls) ---
-const initialChats: Chat[] = [
-  { id: "chat_1", title: "Project brainstorming", date: "2h ago", isFavorite: false },
-  { id: "chat_2", title: "Marketing strategy", date: "5h ago", isFavorite: true },
-  { id: "chat_3", title: "Website redesign ideas", date: "Yesterday", isFavorite: false },
-  { id: "chat_4", title: "Product roadmap", date: "2 days ago", isFavorite: false },
-  { id: "chat_5", title: "Content calendar", date: "3 days ago", isFavorite: false },
-  { id: "chat_6", title: "Research summary", date: "Apr 15", isFavorite: true },
-  { id: "chat_7", title: "Quarterly goals", date: "Mar 28", isFavorite: true },
-  { id: "chat_8", title: "Competitor Analysis", date: "May 01", isFavorite: false },
-  { id: "chat_9", title: "User Interview Notes", date: "May 03", isFavorite: false },
+// --- Helper Functions ---
+function formatChatDate(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffSeconds = Math.round((now.getTime() - date.getTime()) / 1000);
+    const diffMinutes = Math.round(diffSeconds / 60);
+    const diffHours = Math.round(diffMinutes / 60);
+    const diffDays = Math.round(diffHours / 24);
 
-];
-// --- End Mock Data ---
+    if (diffSeconds < 60) return `${diffSeconds}s ago`;
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
 
-// Rename component to Sidebar and accept props
-export default function ChatSidebar({ currentChatId }: SidebarProps) {
+
+// --- Main Component ---
+export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [chats, setChats] = useState<Chat[]>(initialChats); // State to hold chats
-  const [isLoading, setIsLoading] = useState(false); // Loading state for chats
-  const navigate = useNavigate(); // Hook for navigation actions
-  const { user } = useUser(); // Get user info if needed elsewhere
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // --- Data Fetching Simulation ---
+  const navigate = useNavigate();
+  const { user } = useUser();
+  const { token } = useJwtToken();
+
+  // --- Data Fetching ---
   useEffect(() => {
-    setIsLoading(true);
-    // TODO: Replace with actual API call to fetch user's chats
-    console.log("Fetching chat history...");
-    setTimeout(() => {
-      // In a real app, you'd fetch based on the logged-in user
-      setChats(initialChats);
+    if (!token) {
       setIsLoading(false);
-      console.log("Chat history loaded.");
-    }, 1000); // Simulate network delay
-  }, []); // Runs once on mount
-  // --- End Data Fetching Simulation ---
+      return;
+    }
+
+    const fetchChats = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(getApiUrl('chats?page=1&limit=20'), {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!response.ok) throw new Error("Failed to fetch chat history");
+        
+        const data: Chat[] = await response.json();
+        const sortedData = data.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        setChats(sortedData);
+
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "An unknown error occurred");
+        console.error("Error fetching chats:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchChats();
+  }, [token]);
 
   // --- Filtering Logic ---
   const filteredChats = useMemo(() => {
-    if (!searchQuery) {
-      return chats;
-    }
+    if (!searchQuery) return chats;
     return chats.filter((chat) =>
       chat.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [chats, searchQuery]);
 
   const favoriteChats = useMemo(() => {
-      return filteredChats.filter(chat => chat.isFavorite);
+    return filteredChats.filter(chat => chat.isFavorite).sort((a,b) => a.title.localeCompare(b.title));
   }, [filteredChats]);
 
   const recentChats = useMemo(() => {
-       // Show non-favorites in recent, or all if search is active
-      return filteredChats.filter(chat => !chat.isFavorite || searchQuery);
-      // Add sorting by date if available/needed
+    return filteredChats.filter(chat => !chat.isFavorite || searchQuery);
   }, [filteredChats, searchQuery]);
-  // --- End Filtering Logic ---
 
-  // --- Action Handlers ---
-  const handleRenameChat = (chatId: string) => {
-      const newTitle = prompt("Enter new chat title:", chats.find(c => c.id === chatId)?.title);
-      if (newTitle && newTitle.trim() !== "") {
-          console.log(`Renaming chat ${chatId} to "${newTitle}"`);
-          // TODO: Call API to rename chat
-          setChats(prev => prev.map(c => c.id === chatId ? { ...c, title: newTitle.trim() } : c));
-      }
+
+  // --- Action Handlers with Optimistic UI ---
+  const handleToggleFavorite = async (chatId: string) => {
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) return;
+
+    const originalChats = [...chats];
+    const newFavoriteStatus = !chat.isFavorite;
+    setChats(prev => prev.map(c => c.id === chatId ? { ...c, isFavorite: newFavoriteStatus } : c));
+
+    try {
+      const response = await fetch(getApiUrl(`/chats/${chatId}/favorite`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ isFavorite: newFavoriteStatus }),
+      });
+      if (!response.ok) throw new Error('Failed to update favorite status.');
+    } catch (err) {
+      console.error(err);
+      setChats(originalChats); // Revert on error
+      alert("Error: Could not update favorite status.");
+    }
   };
 
-  const handleDeleteChat = (chatId: string) => {
-      if (window.confirm("Are you sure you want to delete this chat?")) {
-          console.log(`Deleting chat ${chatId}`);
-          // TODO: Call API to delete chat
-          setChats(prev => prev.filter(c => c.id !== chatId));
-          // Optional: Navigate away if deleting the current chat
-          if (currentChatId === chatId) {
-              navigate("/new", { replace: true });
-          }
-      }
+  const handleRenameChat = async (chatId: string) => {
+    const originalChat = chats.find(c => c.id === chatId);
+    const newTitle = prompt("Enter new chat title:", originalChat?.title);
+
+    if (!newTitle || newTitle.trim() === "" || !originalChat) return;
+
+    const originalChats = [...chats];
+    setChats(prev => prev.map(c => c.id === chatId ? { ...c, title: newTitle.trim() } : c));
+
+    try {
+      // TODO: Replace with your actual rename endpoint
+      // const response = await fetch(getApiUrl(`/chats/${chatId}/rename`), {
+      //   method: 'PUT',
+      //   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      //   body: JSON.stringify({ title: newTitle.trim() }),
+      // });
+      // if (!response.ok) throw new Error("Failed to rename chat.");
+      console.log(`Simulating API call to rename chat ${chatId} to "${newTitle.trim()}"`);
+    } catch(err) {
+      console.error(err);
+      setChats(originalChats);
+      alert("Error: Could not rename the chat.");
+    }
   };
 
-  const handleToggleFavorite = (chatId: string) => {
-      console.log(`Toggling favorite for chat ${chatId}`);
-      // TODO: Call API to update favorite status
-      setChats(prev => prev.map(c => c.id === chatId ? { ...c, isFavorite: !c.isFavorite } : c));
+  const handleDeleteChat = async (chatId: string) => {
+    if (!window.confirm("Are you sure you want to delete this chat?")) return;
+    
+    const originalChats = [...chats];
+    setChats(prev => prev.filter(c => c.id !== chatId));
+
+    if (currentChatId === chatId) {
+      navigate("/new", { replace: true });
+    }
+
+    try {
+      // TODO: Replace with your actual delete endpoint
+      // const response = await fetch(getApiUrl(`/chats/${chatId}`), {
+      //   method: 'DELETE',
+      //   headers: { Authorization: `Bearer ${token}` },
+      // });
+      // if (!response.ok) throw new Error("Failed to delete chat.");
+      console.log(`Simulating API call to delete chat ${chatId}`);
+    } catch(err) {
+      console.error(err);
+      setChats(originalChats);
+      alert("Error: Could not delete the chat.");
+    }
   };
-  // --- End Action Handlers ---
 
-
+  // --- Render Functions ---
   const renderChatMenuItem = (chat: Chat) => (
-     <SidebarMenuItem key={chat.id}>
-        {/* Link wraps the button content */}
-        <Link to={`/chat/${chat.id}`} className="flex-grow overflow-hidden">
+     <SidebarMenuItem key={chat.id} className="group">
+       <Link to={`/chat/${chat.id}`} className="flex-grow overflow-hidden text-sm">
            <SidebarMenuButton
-              tooltip={chat.title}
-              isActive={currentChatId === chat.id} // Highlight active chat
-              className="w-full" // Ensure button takes full width within Link
+             tooltip={chat.title}
+             isActive={currentChatId === chat.id}
+             className="w-full"
            >
-              {/* Use a consistent chat icon */}
-              <MessageSquareText size={16} className="flex-shrink-0" />
-              <span className="truncate">{chat.title}</span> {/* Ensure text truncates */}
+             <MessageSquareText size={16} className="flex-shrink-0" />
+             <span className="truncate flex-grow">{chat.title}</span>
+             <span className="text-xs text-muted-foreground ml-2 flex-shrink-0 group-hover:hidden">
+                {formatChatDate(chat.updatedAt)}
+             </span>
            </SidebarMenuButton>
-        </Link>
+       </Link>
 
-        {/* Dropdown for actions */}
-        <DropdownMenu>
-           <DropdownMenuTrigger asChild>
-              <SidebarMenuAction showOnHover aria-label={`Actions for ${chat.title}`}>
-                 <MoreHorizontal size={16} />
-              </SidebarMenuAction>
-           </DropdownMenuTrigger>
-           <DropdownMenuContent side="right" align="start">
-              <DropdownMenuItem onClick={() => handleRenameChat(chat.id)}>
-                 Rename
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleToggleFavorite(chat.id)}>
-                 {chat.isFavorite ? "Remove from favorites" : "Add to favorites"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                 className="text-red-600 focus:text-red-700 focus:bg-red-50"
-                 onClick={() => handleDeleteChat(chat.id)}
-              >
-                 Delete Chat
-              </DropdownMenuItem>
-           </DropdownMenuContent>
-        </DropdownMenu>
+       <DropdownMenu>
+         <DropdownMenuTrigger asChild>
+           <SidebarMenuAction showOnHover aria-label={`Actions for ${chat.title}`}>
+               <MoreHorizontal size={16} />
+           </SidebarMenuAction>
+         </DropdownMenuTrigger>
+         <DropdownMenuContent side="right" align="start">
+           <DropdownMenuItem onClick={() => handleRenameChat(chat.id)}>Rename</DropdownMenuItem>
+           <DropdownMenuItem onClick={() => handleToggleFavorite(chat.id)}>
+             {chat.isFavorite ? "Remove from favorites" : "Add to favorites"}
+           </DropdownMenuItem>
+           <DropdownMenuSeparator />
+           <DropdownMenuItem
+             className="text-red-600 focus:text-red-700 focus:bg-red-50"
+             onClick={() => handleDeleteChat(chat.id)}
+           >
+             Delete Chat
+           </DropdownMenuItem>
+         </DropdownMenuContent>
+       </DropdownMenu>
      </SidebarMenuItem>
   );
 
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+         <div className="p-2 space-y-2">
+           <Skeleton className="h-5 w-1/3" /><Skeleton className="h-8 w-full" />
+           <Skeleton className="h-8 w-full" /><Skeleton className="h-5 w-1/3 mt-4" />
+           <Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" />
+         </div>
+      );
+    }
+    if (error) {
+      return <div className="p-4 text-center text-sm text-red-500">{error}</div>;
+    }
+    if (chats.length > 0 && filteredChats.length === 0) {
+      return <div className="p-4 text-center text-sm text-muted-foreground">No chats found for "{searchQuery}".</div>;
+    }
+    if (chats.length === 0) {
+      return <div className="p-4 text-center text-sm text-muted-foreground">No chat history yet. Start a new chat!</div>;
+    }
+
+    return (
+      <>
+        {favoriteChats.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="flex items-center"><Star size={14} className="mr-2 text-yellow-500" /> Favorites</SidebarGroupLabel>
+            <SidebarGroupContent><SidebarMenu>{favoriteChats.map(renderChatMenuItem)}</SidebarMenu></SidebarGroupContent>
+          </SidebarGroup>
+        )}
+        {favoriteChats.length > 0 && recentChats.length > 0 && <SidebarSeparator />}
+        {recentChats.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="flex items-center"><History size={14} className="mr-2" /> Recent Chats</SidebarGroupLabel>
+            <SidebarGroupContent><SidebarMenu>{recentChats.map(renderChatMenuItem)}</SidebarMenu></SidebarGroupContent>
+          </SidebarGroup>
+        )}
+      </>
+    );
+  };
 
   return (
-
-    <Sidebar collapsible="offcanvas" variant="sidebar" className="border-r flex flex-col h-screen"> 
-      <SidebarHeader className="flex-shrink-0"> {/* Prevent header shrinking */}
-        {/* Changed link placement to match original placeholder */}
-         <div className="p-2">
-           <Button asChild className="w-full justify-start gap-2 " size="sm">
-             <Link to="/new">
-               <Plus size={16} />
-               New Chat
-             </Link>
-           </Button>
-         </div>
+    <Sidebar collapsible="offcanvas" variant="sidebar" className="border-r flex flex-col h-screen">
+      <SidebarHeader className="flex-shrink-0">
+        <div className="p-2">
+          <Button asChild className="w-full justify-start gap-2" size="sm">
+            <Link to="/new"><Plus size={16} /> New Chat</Link>
+          </Button>
+        </div>
         <div className="px-2 pb-2">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search chats..."
-              className="pl-8 h-8" // Adjusted height
+              className="pl-8 h-8"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              autoFocus={false}
             />
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="flex-grow"> {/* Allow content to grow and scroll */}
-        {/* Loading State */}
-        {isLoading && (
-             <div className="p-2 space-y-2">
-                <Skeleton className="h-5 w-1/3" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-5 w-1/3 mt-4" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
-             </div>
-        )}
+      <SidebarContent className="flex-grow">{renderContent()}</SidebarContent>
 
-        {/* Favorites Section - Only show if not loading and favorites exist */}
-        {!isLoading && favoriteChats.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="flex items-center"> {/* Use flex for alignment */}
-              <Star size={14} className="mr-2 text-yellow-500" /> {/* Adjusted size */}
-              Favorites
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {favoriteChats.map(renderChatMenuItem)}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-        {!isLoading && favoriteChats.length > 0 && recentChats.length > 0 && <SidebarSeparator />}
-
-        {/* Recent Chats Section - Only show if not loading */}
-        {!isLoading && recentChats.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="flex items-center"> {/* Use flex */}
-              <History size={14} className="mr-2" /> {/* Adjusted size */}
-              Recent Chats
-            </SidebarGroupLabel>
-            {/* Removed redundant Plus action, covered by header button */}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {recentChats.map(renderChatMenuItem)}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
-
-         {/* Empty state when not loading and no results */}
-         {!isLoading && chats.length > 0 && filteredChats.length === 0 && (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                  No chats found matching "{searchQuery}".
-              </div>
-          )}
-         {!isLoading && chats.length === 0 && (
-             <div className="p-4 text-center text-sm text-muted-foreground">
-                  No chat history yet. Start a new chat!
-             </div>
-          )}
-
-
-      </SidebarContent>
-
-      <SidebarFooter className="mt-auto flex-shrink-0"> {/* Prevent footer shrinking */}
+      <SidebarFooter className="mt-auto flex-shrink-0">
         <SidebarSeparator />
         <SidebarMenu>
-          {/* Settings Item (Example: Could link to a settings page) */}
           <SidebarMenuItem>
-             <Link to="/settings" className="flex-grow"> {/* Example Link */}
-                 <SidebarMenuButton tooltip="Settings">
-                    <Settings size={16} />
-                    <span>Settings</span>
-                 </SidebarMenuButton>
-             </Link>
-          </SidebarMenuItem>
-
-          {/* Clerk User Button */}
-          <SidebarMenuItem>
-             {/* Render UserButton only when signed in */}
-              <div className="p-2 group-data-[collapsible=icon]:p-0"> {/* Adjust padding for collapsed state */}
-                  <SignedIn>
-                      <UserButton afterSignOutUrl="/" />
-                      {/* Optionally show user name when expanded */}
-                      <span className="text-sm ml-2 group-data-[collapsible=icon]:hidden">
-                          {user?.primaryEmailAddress?.emailAddress}
-                       </span>
-                  </SignedIn>
-              </div>
+            <div className="flex items-center p-2 w-full">
+              <SignedIn>
+                <UserButton afterSignOutUrl="/" />
+                <span className="text-sm ml-2 truncate group-data-[collapsible=icon]:hidden">
+                  {user?.primaryEmailAddress?.emailAddress}
+                </span>
+              </SignedIn>
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

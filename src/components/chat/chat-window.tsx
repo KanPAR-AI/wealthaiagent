@@ -11,13 +11,14 @@ import { ChatWindowProps, Message, MessageFile, SuggestionTileData } from '@/typ
 import { useUser } from '@clerk/clerk-react';
 import { Copy, RefreshCcw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { nanoid } from 'nanoid';
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AiLoadingIndicator } from './ai-loading-indicator';
 import { ChatEmptyState } from './chat-empty-state';
 import { PromptInputWithActions } from "./chat-input";
 import { SuggestionTiles } from './chat-suggestion-tiles';
 import { FilePreviewModal } from './file-preview-modal';
-import { useNavigate } from 'react-router-dom';
+import { ChatLoadingSkeleton } from './chat-loading-skeleton';
 
 const suggestionTiles: SuggestionTileData[] = [
   { id: 1, title: "Show me sales data", description: "Generate content or brainstorm ideas" },
@@ -27,15 +28,16 @@ const suggestionTiles: SuggestionTileData[] = [
 ];
 
 export default function ChatWindow({
-  chatId: chatIdProp,
+  chatId,
   className = ''
 }: ChatWindowProps) {
   const { user, isSignedIn } = useUser();
   const { token, isLoadingToken, tokenError } = useJwtToken();
   const [selectedFile, setSelectedFile] = useState<MessageFile | null>(null);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(!!chatId);
 
 
-  const { chatId, isFirstMessage } = useChatSession(chatIdProp);
+  const {isFirstMessage } = useChatSession(chatId);
   const { messages, addMessage, updateMessage, clearMessages } = useChatMessages(chatId || '');
   const navigate = useNavigate();
 
@@ -135,6 +137,7 @@ export default function ChatWindow({
   ]);
 
   useEffect(() => {
+    console.log("Loading chat history",chatId)
     const loadChatHistory = async () => {
       if (!chatId || !token) return;
   
@@ -159,10 +162,12 @@ export default function ChatWindow({
         });
   
         // Clear previous messages
+        setIsHistoryLoading(true);
         clearMessages();
   
         // Add loaded messages one by one (preserving order)
         loadedMessages.forEach((m) => addMessage(m));
+        setIsHistoryLoading(false)
       } catch (err) {
         console.error('Failed to load chat history:', err);
       }
@@ -327,7 +332,9 @@ export default function ChatWindow({
           <ScrollArea className="h-full" type="scroll">
             <div className="p-4 md:p-6 space-y-6">
               <div className="max-w-3xl mx-auto w-full space-y-8">
-                {messages.length === 0 ? (
+                {isHistoryLoading ? (
+                  <ChatLoadingSkeleton />
+                ) : messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full space-y-4 md:space-y-6 py-8">
                     <ChatEmptyState
                       isFirstMessage={isFirstMessage}
@@ -339,24 +346,28 @@ export default function ChatWindow({
                         tiles={suggestionTiles}
                         onSuggestionClick={(title) => handleSend(title, [])}
                         // Disable suggestions if sending or regenerating OR if a new chat is initiating
-                        disabled={isSending || isRegenerating || isNewChatInitiating} 
+                        disabled={isSending || isRegenerating || isNewChatInitiating}
                       />
                     </div>
                   </div>
                 ) : (
                   <ChatMessageList
                     messages={messages}
-                    currentUser={user ? {
-                      firstName: user.firstName,
-                      imageUrl: user.imageUrl
-                    } : undefined}
+                    currentUser={
+                      user
+                        ? {
+                            firstName: user.firstName,
+                            imageUrl: user.imageUrl,
+                          }
+                        : undefined
+                    }
                     onFileClick={(file: MessageFile) => setSelectedFile(file)}
                     actionIcons={actionIcons}
                     addMessageId={true}
                   />
                 )}
                 {/* Conditionally render AiLoadingIndicator based on isSending AND NOT isNewChatInitiating */}
-                {(isSending || isRegenerating) && !isNewChatInitiating && <AiLoadingIndicator />} 
+                {(isSending || isRegenerating) && !isNewChatInitiating && <AiLoadingIndicator />}
                 <div className="h-40 md:h-32" />
               </div>
             </div>
