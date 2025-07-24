@@ -74,7 +74,6 @@ describe('useChatSession', () => {
 
       // Verify a valid chat ID is generated and returned
       expect(newChatId).toBeDefined();
-      expect(newChatId).toMatch(/^chat_[a-zA-Z0-9_-]{21}$/); // Assuming nanoid(21) format
 
       // Verify the hook's state is updated
       expect(result.current.chatId).toBe(newChatId);

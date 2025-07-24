@@ -135,7 +135,7 @@ function GenericFile({ file }: { file: MessageFile }) {
 
 // --- Main Dispatcher ---
 export function FileRenderer({ file, onFileClick }: FileRendererProps): JSX.Element {
-  if (file.type.startsWith('image/')) {
+  if (file.type?.startsWith('image/')) {
     return <ImagePreview file={file} onFileClick={onFileClick} />;
   }
 
