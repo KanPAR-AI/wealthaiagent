@@ -1,0 +1,288 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { PromptInputWithActions } from '../chat-input';
+import { createMockFile } from '@/test/utils';
+
+// Mock the global fetch API before each test
+beforeEach(() => {
+  // Restore any previous mocks to avoid test cross-contamination
+  jest.restoreAllMocks();
+
+  // Spy on the global fetch and provide a mock implementation
+  jest.spyOn(global, 'fetch').mockImplementation(async (url, options) => {
+    // Mock for file upload endpoint
+    if (url.toString().includes('/files/upload')) {
+      const formData = options?.body as FormData;
+      const file = formData.get('files') as File; // 'files' is the key used in the component
+      const fileName = file ? file.name : 'mocked-file.jpg';
+
+      return new Response(JSON.stringify({
+        files: [{
+          fileName: fileName,
+          url: `/uploads/${fileName}`,
+        }]
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Mock for audio transcription endpoint
+    if (url.toString().includes('/audio/transcribe')) {
+      return new Response(JSON.stringify({ transcription: 'Mocked transcribed text' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Default response for any other unhandled fetch call
+    return new Response(JSON.stringify({ error: 'Not Found' }), { status: 404 });
+  });
+});
+
+describe('PromptInputWithActions', () => {
+  const mockOnSubmit = jest.fn();
+  const user = userEvent.setup();
+
+  beforeEach(() => {
+    // Clear mock function calls before each test
+    mockOnSubmit.mockClear();
+  });
+
+  describe('TC_007: Single Image Upload', () => {
+    it('should successfully upload a single image file', async () => {
+      render(<PromptInputWithActions onSubmit={mockOnSubmit} />);
+
+      const fileInput = screen.getByLabelText('Attach files'); // More robust selector
+      const imageFile = createMockFile('test-image.jpg', 'image/jpeg');
+
+      await user.upload(fileInput, imageFile);
+
+      // Wait for the file preview to appear after the async upload
+      await screen.findByText('test-image.jpg');
+
+      // Type message and submit
+      const textarea = screen.getByPlaceholderText('Ask me anything...');
+      await user.type(textarea, 'Check this image');
+      
+      const submitButton = screen.getByRole('button', { name: 'Send message' });
+      await user.click(submitButton);
+      
+      // ASSERT: Check for the correct object structure, not a File object
+      expect(mockOnSubmit).toHaveBeenCalledWith(
+        'Check this image',
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'test-image.jpg' })
+        ])
+      );
+    });
+
+    it('should show preview for PNG images', async () => {
+      render(<PromptInputWithActions onSubmit={mockOnSubmit} />);
+
+      const fileInput = screen.getByLabelText('Attach files');
+      const pngFile = createMockFile('test.png', 'image/png');
+
+      await user.upload(fileInput, pngFile);
+
+      // ASSERT: Wait for the preview to be in the document
+      expect(await screen.findByText('test.png')).toBeInTheDocument();
+    });
+  });
+
+  describe('TC_008: Multiple Image Upload', () => {
+    it('should upload multiple image files simultaneously', async () => {
+      render(<PromptInputWithActions onSubmit={mockOnSubmit} />);
+
+      const fileInput = screen.getByLabelText('Attach files');
+      const files = [
+        createMockFile('image1.jpg', 'image/jpeg'),
+        createMockFile('image2.png', 'image/png'),
+        createMockFile('image3.gif', 'image/gif')
+      ];
+
+      await user.upload(fileInput, files);
+
+      // Verify all files show previews asynchronously
+      expect(await screen.findByText('image1.jpg')).toBeInTheDocument();
+      expect(await screen.findByText('image2.png')).toBeInTheDocument();
+      expect(await screen.findByText('image3.gif')).toBeInTheDocument();
+
+      // Submit and verify all files are sent
+      const sendButton = screen.getByRole('button', { name: 'Send message' });
+      await user.click(sendButton);
+      
+      // ASSERT: Check for an array of objects with the correct names
+      expect(mockOnSubmit).toHaveBeenCalledWith('', expect.arrayContaining([
+        expect.objectContaining({ name: 'image1.jpg' }),
+        expect.objectContaining({ name: 'image2.png' }),
+        expect.objectContaining({ name: 'image3.gif' })
+      ]));
+    });
+  });
+
+  describe('TC_009: Mixed File Types Upload', () => {
+    it('should upload multiple files of different types', async () => {
+      render(<PromptInputWithActions onSubmit={mockOnSubmit} />);
+
+      const fileInput = screen.getByLabelText('Attach files');
+      const mixedFiles = [
+        createMockFile('document.pdf', 'application/pdf'),
+        createMockFile('photo.jpg', 'image/jpeg'),
+        createMockFile('spreadsheet.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+      ];
+
+      await user.upload(fileInput, mixedFiles);
+
+      // Verify all file types are displayed asynchronously
+      expect(await screen.findByText('document.pdf')).toBeInTheDocument();
+      expect(await screen.findByText('photo.jpg')).toBeInTheDocument();
+      expect(await screen.findByText('spreadsheet.xlsx')).toBeInTheDocument();
+
+      const sendButton = screen.getByRole('button', { name: 'Send message' });
+      await user.click(sendButton);
+      
+      // ASSERT: Check for the correct object structure
+      expect(mockOnSubmit).toHaveBeenCalledWith('', expect.arrayContaining([
+        expect.objectContaining({ name: 'document.pdf' }),
+        expect.objectContaining({ name: 'photo.jpg' }),
+        expect.objectContaining({ name: 'spreadsheet.xlsx' }),
+      ]));
+    });
+  });
+
+  describe('TC_010: File Preview Display', () => {
+    it('should display file previews before sending', async () => {
+      render(<PromptInputWithActions onSubmit={mockOnSubmit} />);
+      
+      const fileInput = screen.getByLabelText('Attach files');
+      const files = [
+        createMockFile('preview.jpg', 'image/jpeg'),
+        createMockFile('document.pdf', 'application/pdf')
+      ];
+
+      await user.upload(fileInput, files);
+
+      // Verify file names are displayed asynchronously
+      expect(await screen.findByText('preview.jpg')).toBeInTheDocument();
+      expect(await screen.findByText('document.pdf')).toBeInTheDocument();
+    });
+
+    it('should allow removing files from preview', async () => {
+      render(<PromptInputWithActions onSubmit={mockOnSubmit} />);
+      
+      const fileInput = screen.getByLabelText('Attach files');
+      const file = createMockFile('removable.jpg', 'image/jpeg');
+
+      await user.upload(fileInput, file);
+      
+      const filePreview = await screen.findByText('removable.jpg');
+      expect(filePreview).toBeInTheDocument();
+
+      // Remove the file - find the X button associated with the preview
+      const removeButton = screen.getByRole('button', { name: 'Remove removable.jpg' });
+      await user.click(removeButton);
+
+      expect(screen.queryByText('removable.jpg')).not.toBeInTheDocument();
+    });
+  });
+
+  // Note: This test's name is misleading. The UI is not "optimistic", it's reactive.
+  // The test is valid, however, for checking the end-to-end flow.
+  describe('TC_014: UI Reactivity - Instant File Display', () => {
+    it('should display files after upload and submit correctly', async () => {
+      render(<PromptInputWithActions onSubmit={mockOnSubmit} />);
+      
+      const fileInput = screen.getByLabelText('Attach files');
+      const file = createMockFile('instant.jpg', 'image/jpeg');
+      
+      await user.upload(fileInput, file);
+      
+      // Wait for the preview to confirm upload is processed
+      await screen.findByText('instant.jpg');
+      
+      const textarea = screen.getByPlaceholderText('Ask me anything...');
+      await user.type(textarea, 'Check this image');
+      
+      const submitButton = screen.getByRole('button', { name: 'Send message' });
+      await user.click(submitButton);
+      
+      await waitFor(() => {
+        expect(mockOnSubmit).toHaveBeenCalledWith(
+          'Check this image',
+          expect.arrayContaining([
+            expect.objectContaining({ name: 'instant.jpg' })
+          ])
+        );
+      });
+    });
+  });
+
+  // This test works as-is because it doesn't trigger async fetch calls
+  describe('TC_017: Loading State Visibility', () => {
+    it('should show loading state when isLoading prop is true', () => {
+      render(<PromptInputWithActions onSubmit={mockOnSubmit} isLoading={true} />);
+
+      expect(screen.getByPlaceholderText('Ask me anything...')).toBeDisabled();
+      expect(screen.getByLabelText('Attach files')).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Stop generation' })).toBeInTheDocument();
+    });
+  });
+
+  // These tests work as-is because they don't involve file uploads
+  describe('Text Input Functionality', () => {
+    it('should handle text input and submission', async () => {
+      render(<PromptInputWithActions onSubmit={mockOnSubmit} />);
+      const textarea = screen.getByPlaceholderText('Ask me anything...');
+      await user.type(textarea, 'Hello, AI!');
+      await user.keyboard('{Enter}');
+      expect(mockOnSubmit).toHaveBeenCalledWith('Hello, AI!', []);
+    });
+
+    it('should not submit empty messages without files', async () => {
+      render(<PromptInputWithActions onSubmit={mockOnSubmit} />);
+      const sendButton = screen.getByRole('button', { name: 'Send message' });
+      expect(sendButton).toBeDisabled(); // Button should be disabled initially
+      await user.click(sendButton);
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+    });
+
+    it('should submit with only files (no text)', async () => {
+      render(<PromptInputWithActions onSubmit={mockOnSubmit} />);
+      const fileInput = screen.getByLabelText('Attach files');
+      const file = createMockFile('only-file.jpg', 'image/jpeg');
+      await user.upload(fileInput, file);
+      
+      // Wait for the file to be processed and the button to be enabled
+      const sendButton = await screen.findByRole('button', { name: 'Send message' });
+      await user.click(sendButton);
+      
+      expect(mockOnSubmit).toHaveBeenCalledWith('', 
+        [expect.objectContaining({ name: 'only-file.jpg' })]
+      );
+    });
+  });
+
+  // This test needs the fetch mock for transcription
+  describe('Voice Input', () => {
+    it('should toggle voice recording', async () => {
+      // Mock the browser API for microphone access
+      const mockGetUserMedia = jest.fn().mockResolvedValue({
+        getTracks: () => [{ stop: jest.fn() }],
+      });
+      Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+        value: mockGetUserMedia,
+        writable: true
+      });
+
+      render(<PromptInputWithActions onSubmit={mockOnSubmit} />);
+      const voiceButton = screen.getByRole('button', { name: 'Use microphone' });
+      
+      await user.click(voiceButton);
+      
+      // Should show stop recording button
+      const stopButton = await screen.findByRole('button', { name: 'Stop recording' });
+      expect(stopButton).toBeInTheDocument();
+    });
+  });
+});

@@ -1,0 +1,174 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { FilePreviewModal } from '../file-preview-modal';
+import { MessageFile } from '@/types/chat';
+
+// --- Global Mocks ---
+// Mock the custom hook to provide a token, required for the modal to render.
+jest.mock('@/hooks/use-jwt-token', () => ({
+  useJwtToken: () => ({ token: 'mock-jwt-token' }),
+}));
+
+// Mock the fetch API and URL.createObjectURL to simulate file fetching.
+beforeEach(() => {
+  jest.spyOn(global, 'fetch').mockResolvedValue(
+    new Response(new Blob(['mock file content']), {
+      status: 200,
+      headers: { 'Content-Type': 'application/octet-stream' },
+    }),
+  );
+  // Mock createObjectURL to return a predictable value for easy testing.
+  jest.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-file-url');
+});
+
+afterEach(() => {
+  jest.restoreAllMocks(); // Clean up mocks after each test.
+});
+// --- End Global Mocks ---
+
+describe('FilePreviewModal', () => {
+  const user = userEvent.setup();
+  const mockOnClose = jest.fn();
+
+  // Define imageFile in the parent scope to make it accessible to all tests
+  const imageFile: MessageFile = {
+    name: 'test-image.jpg',
+    type: 'image/jpeg',
+    size: 1024,
+    url: 'https://example.com/test-image.jpg',
+  };
+
+  beforeEach(() => {
+    mockOnClose.mockClear();
+  });
+
+  describe('TC_019: Full Screen Preview - Images', () => {
+    it('should display full screen image preview when clicked', async () => {
+      render(<FilePreviewModal isOpen={true} onClose={mockOnClose} file={imageFile} />);
+
+      // Verify image is displayed using the blob URL, not the original URL
+      const image = await screen.findByRole('img', { name: 'test-image.jpg' });
+      expect(image).toBeInTheDocument();
+      expect(image).toHaveAttribute('src', 'blob:mock-file-url');
+    });
+
+    it('should close preview with X button', async () => {
+      render(<FilePreviewModal isOpen={true} onClose={mockOnClose} file={imageFile} />);
+
+      // Wait for content to ensure modal is fully rendered
+      await screen.findByRole('img', { name: 'test-image.jpg' });
+      const closeButton = screen.getByLabelText('Close file preview');
+      await user.click(closeButton);
+
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('should close preview when clicking outside', async () => {
+      render(<FilePreviewModal isOpen={true} onClose={mockOnClose} file={imageFile} />);
+
+      // The backdrop is the root element with the onClick handler.
+      const backdrop = (await screen.findByRole('img')).parentElement?.parentElement;
+      if (backdrop) {
+        await user.click(backdrop);
+      }
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('TC_020: Full Screen Preview - PDF', () => {
+    const pdfFile: MessageFile = {
+      name: 'document.pdf',
+      type: 'application/pdf',
+      size: 10240,
+      url: 'https://example.com/document.pdf',
+    };
+
+    it('should display full screen PDF preview using an embed tag', async () => {
+      const { container } = render(
+        <FilePreviewModal isOpen={true} onClose={mockOnClose} file={pdfFile} />,
+      );
+
+      // The component uses <embed>, not <iframe>. We need to wait for it.
+      await screen.findByText((content, element) => element?.tagName.toLowerCase() === 'embed');
+      const embed = container.querySelector('embed');
+
+      expect(embed).toBeInTheDocument();
+      expect(embed).toHaveAttribute('src', 'blob:mock-file-url');
+      expect(embed).toHaveAttribute('type', 'application/pdf');
+    });
+  });
+
+  describe('Other File Types', () => {
+    it('should show a download link for Excel files, not a preview', async () => {
+      const excelFile: MessageFile = {
+        name: 'spreadsheet.xlsx',
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        size: 5120,
+        url: 'https://example.com/spreadsheet.xlsx',
+      };
+
+      render(<FilePreviewModal isOpen={true} onClose={mockOnClose} file={excelFile} />);
+
+      // ASSERT: The component does not have an Office viewer, so it shows the fallback UI.
+      expect(
+        await screen.findByText('Preview not available for this file type.'),
+      ).toBeInTheDocument();
+
+      const downloadLink = screen.getByRole('link', { name: 'Download File' });
+      // The download URL includes the token as a query parameter
+      expect(downloadLink).toHaveAttribute(
+        'href',
+        `${excelFile.url}?token=${encodeURIComponent('mock-jwt-token')}`,
+      );
+    });
+
+    it('should show download link for unsupported file types', async () => {
+      const unsupportedFile: MessageFile = {
+        name: 'archive.zip',
+        type: 'application/zip',
+        size: 20480,
+        url: 'https://example.com/archive.zip',
+      };
+
+      render(<FilePreviewModal isOpen={true} onClose={mockOnClose} file={unsupportedFile} />);
+
+      expect(
+        await screen.findByText('Preview not available for this file type.'),
+      ).toBeInTheDocument();
+
+      const downloadLink = screen.getByRole('link', { name: 'Download File' });
+      expect(downloadLink).toHaveAttribute(
+        'href',
+        `${unsupportedFile.url}?token=${encodeURIComponent('mock-jwt-token')}`,
+      );
+      expect(downloadLink).toHaveAttribute('download', unsupportedFile.name);
+    });
+  });
+
+  describe('Modal Behavior', () => {
+    it('should not render when isOpen is false', () => {
+      const { container } = render(
+        <FilePreviewModal isOpen={false} onClose={mockOnClose} file={null} />,
+      );
+      // The component returns null, so the container should be empty.
+      expect(container).toBeEmptyDOMElement();
+    });
+
+    it('should not render when file is null', () => {
+      const { container } = render(
+        <FilePreviewModal isOpen={true} onClose={mockOnClose} file={null} />,
+      );
+      expect(container).toBeEmptyDOMElement();
+    });
+
+    it('should prevent event propagation on content click', async () => {
+      render(<FilePreviewModal isOpen={true} onClose={mockOnClose} file={imageFile} />);
+
+      const content = await screen.findByRole('img');
+      await user.click(content);
+
+      // Clicking the image itself (the content) should not close the modal.
+      expect(mockOnClose).not.toHaveBeenCalled();
+    });
+  });
+});

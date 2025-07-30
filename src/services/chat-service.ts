@@ -1,17 +1,42 @@
 // services/api-service.ts
 import { Message, MessageFile } from "@/types/chat";
+import { getApiUrl } from "@/config/environment";
 
-const BASE_URL = "https://chatbackend.yourfinadvisor.com"; // Matches your Postman baseUrl
 
-interface ChatResponse {
+// TODO: Align the message types for chat history with the backend. Remove the interfaces below and use only those from @/types
+
+export interface ChatMessage {
+  id: string;
+  content: string;
+  attachments: Attachment[];
+  chatId: string;
+  sender: 'user' | 'assistant';
+  timestamp: string;
+  status: string;
+  metadata: any;
+}
+
+export interface ChatResponse {
   chat: {
     id: string;
-    messageCount: number;
     title: string;
-    // Add other chat properties if they exist in your API response
+    createdAt: string;
+    updatedAt: string;
+    userId: string;
+    messageCount: number;
+    lastMessage: any;
   };
-  messages: Omit<Message, "id" | "timestamp">[];
+  messages: ChatMessage[];
+  hasMoreMessages: boolean;
 }
+
+export interface Attachment {
+  name: string;
+  type: string;
+  url: string;
+  size: number;
+}
+
 
 /**
  * Creates a new chat session.
@@ -23,21 +48,17 @@ export const createChatSession = async (
   firstMessageContent: string,
   files: MessageFile[]
 ): Promise<string> => {
-  const response = await fetch(`${BASE_URL}/api/v1/chats`, {
-    method: "POST",
+  const response = await fetch(getApiUrl('/chats'), {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${jwt}`,
+      'Authorization': `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       title: title,
       firstMessage: {
         content: firstMessageContent,
-        attachments: files.map((file) => ({
-          name: file.name,
-          type: file.type,
-          url: file.url, // Assuming URL is available for attachments
-        })),
+        attachments: files.map(file => file.url),
       },
     }),
   });
@@ -63,7 +84,7 @@ export const sendChatMessage = async (
   content: string,
   files: MessageFile[]
 ): Promise<void> => {
-  const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/messages`, {
+  const response = await fetch(getApiUrl(`/chats/${chatId}/messages`), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -71,11 +92,7 @@ export const sendChatMessage = async (
     },
     body: JSON.stringify({
       content: content,
-      attachments: files.map((file) => ({
-        name: file.name,
-        type: file.type,
-        url: file.url, // Assuming URL is available for attachments
-      })),
+      attachments: files.map(file => file.url),
     }),
   });
 
@@ -96,7 +113,7 @@ export const fetchChatHistory = async (
   jwt: string,
   chatId: string
 ): Promise<ChatResponse> => {
-  const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}`, {
+  const response = await fetch(getApiUrl(`/chats/${chatId}`), {
     method: "GET",
     headers: {
       Authorization: `Bearer ${jwt}`,
@@ -121,7 +138,7 @@ export const deleteChatSession = async (
   jwt: string,
   chatId: string
 ): Promise<void> => {
-  const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}`, {
+  const response = await fetch(getApiUrl(`/chats/${chatId}`), {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${jwt}`,
@@ -155,7 +172,7 @@ export const listenToChatStream = async (
   onError: (error: Error) => void
 ) => {
   try {
-    const response = await fetch(`${BASE_URL}/api/v1/chats/${chatId}/stream`, {
+    const response = await fetch(getApiUrl(`/chats/${chatId}/stream`), {
       method: "GET",
       headers: {
         Accept: "text/event-stream",
@@ -172,13 +189,12 @@ export const listenToChatStream = async (
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
-
-    // A unique placeholder to protect apostrophes during the replacement process.
     const APOSTROPHE_PLACEHOLDER = "___APOSTROPHE___";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) {
+        // This is a fallback for when the connection closes without a 'message_complete' signal.
         onComplete();
         break;
       }
@@ -194,28 +210,23 @@ export const listenToChatStream = async (
 
         if (payload.startsWith("{")) {
           try {
-            // --- START: Robust Parsing Hack ---
-
-            // 1. Protect apostrophes that are inside double-quoted strings
-            //    (like in "we're") by replacing them with a placeholder.
+            // Robust JSON parsing logic...
             const protectedPayload = payload.replace(/"([^"]*)"/g, (group) => {
               return '"' + group.replace(/'/g, APOSTROPHE_PLACEHOLDER) + '"';
             });
-            
-            // 2. Now it's safe to replace all remaining single quotes with double quotes.
             const jsonString = protectedPayload.replace(/'/g, '"');
-
-            // 3. Restore the protected apostrophes.
             const finalJson = jsonString.replace(new RegExp(APOSTROPHE_PLACEHOLDER, "g"), "'");
-
-            // --- END: Robust Parsing Hack ---
-
             const parsedEvent = JSON.parse(finalJson);
             
             if (parsedEvent.type === 'message_delta') {
                 onMessageChunk(parsedEvent.delta, "text_chunk");
             } else if (parsedEvent.type === 'message_complete') {
-              console.log("Received message_complete signal.");
+              // --- FIX: Act on the 'message_complete' signal ---
+              // The backend has explicitly signaled the end of the message.
+              // Call the onComplete callback to update the UI state.
+              console.log("Received message_complete signal. Finalizing stream.");
+              onComplete();
+              return; // Exit the function as the stream for this message is finished.
             } else if (parsedEvent.type) {
               const content = parsedEvent.message?.content || parsedEvent.content || "";
               onMessageChunk(content, parsedEvent.type);
@@ -224,7 +235,6 @@ export const listenToChatStream = async (
             console.warn("Could not parse a structured event from the stream:", payload, err);
           }
         } else {
-          // This handles any data that is not a structured object.
           onMessageChunk(payload, "text_chunk");
         }
       }
@@ -234,3 +244,16 @@ export const listenToChatStream = async (
     onError(error);
   }
 };
+
+export async function fetchFileWithToken(url: string, token: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch file: ${response.statusText}`);
+  }
+
+  const blob = await response.blob();
+  return URL.createObjectURL(blob); // Safe for preview
+}

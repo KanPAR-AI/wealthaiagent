@@ -1,10 +1,9 @@
-// store/chat.ts (Updated)
+// store/chat.ts
 
 import { create } from 'zustand';
-import { Message, MessageFile } from '@/types/chat';
+import { Message, MessageFile } from '@/types/chat'; // Import MessageFile
 
-
-
+// --- Auth State Management ---
 interface AuthState {
   token: string | null;
   tokenError: string | null;
@@ -22,9 +21,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   setTokenError: (error) => set({ tokenError: error, token: null, isLoadingToken: false }),
   setIsLoadingToken: (loading) => set({ isLoadingToken: loading }),
 }));
-// Define the ChatState interface for Zustand
+
+// --- Chat State Management ---
 interface ChatState {
-  chats: Record<string, { messages: Message[] }>; // Changed to explicitly hold messages
+  chats: Record<string, { messages: Message[] }>;
+  // pendingMessage now correctly includes MessageFile[]
   pendingMessage: { chatId: string; text: string; files: MessageFile[] } | null;
 
   // Message management

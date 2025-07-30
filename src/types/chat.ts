@@ -1,13 +1,13 @@
-// types/chat.ts (Updated)
+// types/chat.ts
 
 /**
  * Represents a single file attachment in a message.
  */
 export interface MessageFile {
   name: string;
-  type: string;
-  size: number;
-  url?: string; // URL for preview (e.g., blob URL or remote URL)
+  type: string; // MIME type, e.g., 'image/png', 'application/pdf'
+  size: number; // Size in bytes
+  url: string; // Remote URL for preview or download (not optional for uploaded files)
 }
 
 /**
@@ -71,14 +71,14 @@ export type StructuredContent = AiGraphContent | AiTableContent;
  */
 export interface Message {
   id: string;
-  message: string;
+  message: string; // The text content of the message
   sender: 'user' | 'bot';
   timestamp?: string;
-  files?: MessageFile[];
+  files?: MessageFile[]; // Array of attached files
   isLoading?: boolean; // Useful for initial sending state
-  isStreaming?: boolean; // NEW: Indicates if the message content is actively being streamed
-  error?: string;
-  structuredContent?: StructuredContent;
+  isStreaming?: boolean; // Indicates if the message content is actively being streamed
+  error?: string; // Error message if something went wrong
+  structuredContent?: StructuredContent; // Structured data like graphs or tables
 }
 
 /**
@@ -117,6 +117,9 @@ export interface SuggestionTileData {
   description: string;
 }
 
+/**
+ * Props for the main ChatWindow component.
+ */
 export interface ChatWindowProps {
   chatId?: string;
   onNewChatCreated?: (newChatId: string) => void;

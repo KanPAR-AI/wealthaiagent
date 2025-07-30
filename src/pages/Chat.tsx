@@ -24,7 +24,7 @@ function Chat() {
         
         {/* Chat content area - takes remaining height */}
         <div className="flex-1 min-h-0 overflow-hidden sm:p-0 ">
-          <ChatWindow chatId={chatid} />
+          <ChatWindow chatId={chatid} key={chatid} />
         </div>
       </main>
     </div>

@@ -5,8 +5,13 @@ FROM node:20-alpine AS builder
 # Recommended: Update to Node 20
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm ci
 COPY . .
+
+# Run tests during build
+RUN npm run test:ci
+
+# Build the application
 RUN npm run build
 
 # Stage 2: Serve the application with Nginx
