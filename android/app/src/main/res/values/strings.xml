@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Your Fin Advisor</string>
-    <string name="title_activity_main">Your Fin Advisor</string>
-    <string name="package_name">chat.yourfinadvisor.com</string>
-    <string name="custom_url_scheme">chat.yourfinadvisor.com</string>
-</resources>
