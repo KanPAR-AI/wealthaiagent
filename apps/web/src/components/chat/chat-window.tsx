@@ -58,12 +58,15 @@ export default function ChatWindow({
   const [lastUserMessageId, setLastUserMessageId] = useState<string | null>(null);
   const streamingControllerRef = useRef<AbortController | null>(null);
   const isProcessingRef = useRef(false);
+  // State to track if we're processing a pending message to prevent interference
+  const [isProcessingPendingMessage, setIsProcessingPendingMessage] = useState(false);
 
   useEffect(() => {
     if (token && chatId && pendingMessage && pendingMessage.chatId === chatId && !isProcessingRef.current) {
       const { text, files } = pendingMessage;
 
       isProcessingRef.current = true;
+      setIsProcessingPendingMessage(true);
       console.log("Processing pending message for new chat:", pendingMessage);
 
       clearPendingMessage();
@@ -101,6 +104,7 @@ export default function ChatWindow({
               updateMessage(aiMessageId, { isStreaming: false });
               setIsSending(false);
               isProcessingRef.current = false;
+              setIsProcessingPendingMessage(false);
             },
             (error) => { // onError
               console.error("Error in SSE stream for pending message:", error);
@@ -111,6 +115,7 @@ export default function ChatWindow({
               });
               setIsSending(false);
               isProcessingRef.current = false;
+              setIsProcessingPendingMessage(false);
             }
           );
         } catch (error) {
@@ -122,6 +127,7 @@ export default function ChatWindow({
           });
           setIsSending(false);
           isProcessingRef.current = false;
+          setIsProcessingPendingMessage(false);
         }
       };
 
@@ -140,6 +146,12 @@ export default function ChatWindow({
     console.log("Loading chat history",chatId)
     const loadChatHistory = async () => {
       if (!chatId || !token) return;
+      
+      // Don't load history if we're processing a pending message
+      if (isProcessingPendingMessage) {
+        console.log("Skipping chat history load - pending message being processed");
+        return;
+      }
   
       try {
         const chatResponse = await fetchChatHistory(token, chatId);
@@ -161,29 +173,38 @@ export default function ChatWindow({
           };
         });
   
-        // Clear previous messages
-        setIsHistoryLoading(true);
-        clearMessages();
+        // Only clear messages if we have loaded messages (existing chat)
+        // Don't clear if it's a new chat with no history yet
+        if (loadedMessages.length > 0) {
+          setIsHistoryLoading(true);
+          clearMessages();
   
-        // Add loaded messages one by one (preserving order)
-        loadedMessages.forEach((m) => addMessage(m));
+          // Add loaded messages one by one (preserving order)
+          loadedMessages.forEach((m) => addMessage(m));
+        }
         setIsHistoryLoading(false)
       } catch (err) {
         console.error('Failed to load chat history:', err);
+        setIsHistoryLoading(false)
       }
     };
   
     loadChatHistory();
-  }, [chatId, token, clearMessages, addMessage]);
+  }, [chatId, token, clearMessages, addMessage, isProcessingPendingMessage]);
   
   
 
   useEffect(() => {
     if (isFirstMessage && chatId) {
+      // Don't clear messages if we're processing a pending message
+      if (isProcessingPendingMessage) {
+        console.log("Skipping first message clear - pending message being processed");
+        return;
+      }
       console.log("Detected first message for new chat ID, clearing messages.");
       clearMessages();
     }
-  }, [isFirstMessage, chatId, clearMessages]);
+  }, [isFirstMessage, chatId, clearMessages, isProcessingPendingMessage]);
 
   const handleSend = async (text: string, attachments: MessageFile[]) => {
     console.log("message:",text,attachments)

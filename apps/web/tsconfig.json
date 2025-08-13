@@ -9,7 +9,7 @@
     "moduleResolution": "Bundler", 
     
     "paths": {
-      "@/*": ["apps/web/src/*"]
+      "@/*": ["src/*"]
     },
     "types": ["@testing-library/jest-dom","node"]
   }
