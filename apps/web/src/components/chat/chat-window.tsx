@@ -295,10 +295,10 @@ export default function ChatWindow({
   };
 
   const actionIcons = [
-    { icon: Copy, type: "Copy", action: handleCopy },
-    { icon: RefreshCcw, type: "Regenerate", action: handleRegenerate },
-    { icon: ThumbsUp, type: "Like", action: handleLike },
-    { icon: ThumbsDown, type: "Dislike", action: handleDislike },
+    { icon: Copy as React.FC<React.SVGProps<SVGSVGElement>>, type: "Copy", action: handleCopy },
+    { icon: RefreshCcw as React.FC<React.SVGProps<SVGSVGElement>>, type: "Regenerate", action: handleRegenerate },
+    { icon: ThumbsUp as React.FC<React.SVGProps<SVGSVGElement>>, type: "Like", action: handleLike },
+    { icon: ThumbsDown as React.FC<React.SVGProps<SVGSVGElement>>, type: "Dislike", action: handleDislike },
   ];
 
   useEffect(() => {

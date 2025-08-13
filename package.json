@@ -1,13 +1,19 @@
 {
-    "name": "wealthwise-monorepo",
-    "private": true,
-    "version": "1.0.0",
-    "scripts": {
-      "web": "pnpm --filter web",
-      "mobile": "pnpm --filter mobile"
-    },
-    "devDependencies": {
-      "typescript": "^5.0.0",
-      "prettier": "^3.0.0"
-    }
+  "name": "wealthwise-monorepo",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "pnpm@9.15.1",
+  "scripts": {
+    "web": "pnpm --filter web",
+    "mobile": "pnpm --filter mobile",
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "clean": "turbo clean"
+  },
+  "devDependencies": {
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
   }
+}
