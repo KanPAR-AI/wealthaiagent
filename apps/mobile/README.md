@@ -1,50 +1,113 @@
-# Welcome to your Expo app 👋
+# YourFinAdvisor Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A React Native mobile application built with Expo for the YourFinAdvisor chat platform.
 
-## Get started
+## Features
 
-1. Install dependencies
+- Real-time chat with AI assistant
+- File upload and preview
+- Message history
+- Authentication with Clerk
+- Cross-platform (iOS, Android, Web)
 
+## Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+- Expo CLI (`npm install -g @expo/cli`)
+- iOS Simulator (for iOS development)
+- Android Studio (for Android development)
+
+## Setup
+
+1. **Install dependencies:**
    ```bash
    npm install
    ```
 
-2. Start the app
-
-   ```bash
-   npx expo start
+2. **Environment Configuration:**
+   Create a `.env` file in the mobile app directory:
+   ```env
+   EXPO_PUBLIC_API_URL=http://localhost:8080/api/v1
+   EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_key_here
    ```
 
-In the output, you'll find options to open the app in a
+3. **Start the development server:**
+   ```bash
+   npm start
+   ```
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+4. **Run on different platforms:**
+   - **Web:** `npm run web`
+   - **iOS:** `npm run ios`
+   - **Android:** `npm run android`
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## API Integration
 
-## Get a fresh project
+The mobile app connects to the YourFinAdvisor backend API for:
+- Chat session management
+- Message streaming
+- File uploads
+- Authentication
 
-When you're ready, run:
+### API Endpoints Used:
+- `POST /api/v1/chats` - Create new chat
+- `GET /api/v1/chats/{id}` - Get chat history
+- `POST /api/v1/chats/{id}/messages` - Send message
+- `GET /api/v1/chats/{id}/stream` - Stream AI responses
+- `POST /api/v1/auth/token` - Get JWT token
 
+## Architecture
+
+- **Components:** React Native components in `components/`
+- **Hooks:** Custom hooks in `hooks/`
+- **Services:** API integration in `services/`
+- **Store:** State management with Zustand in `store/`
+- **Types:** Shared types from `@wealthwise/types`
+
+## Troubleshooting
+
+### Metro Bundler Issues
+If you encounter Metro bundler errors:
+1. Clear Metro cache: `npx expo start --clear`
+2. Reset project: `npm run reset-project`
+
+### NativeWind Issues
+If you see CSS-related errors:
+1. Ensure `react-native-css-interop` is installed
+2. Check babel configuration
+3. Verify Tailwind config
+
+### API Connection Issues
+1. Ensure backend server is running
+2. Check `EXPO_PUBLIC_API_URL` environment variable
+3. Verify network connectivity
+
+## Development
+
+### Adding New Features
+1. Create components in `components/`
+2. Add hooks in `hooks/`
+3. Update services in `services/`
+4. Add types to shared packages if needed
+
+### Testing
 ```bash
-npm run reset-project
+npm test
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Building for Production
+```bash
+npx expo build:android
+npx expo build:ios
+```
 
-## Learn more
+## Dependencies
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Key dependencies:
+- `expo-router` - Navigation
+- `nativewind` - Styling
+- `zustand` - State management
+- `@clerk/clerk-react` - Authentication
+- `@wealthwise/hooks` - Shared hooks
+- `@wealthwise/types` - Shared types
