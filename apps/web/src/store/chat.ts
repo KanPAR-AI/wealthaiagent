@@ -1,7 +1,7 @@
 // store/chat.ts
 
 import { create } from 'zustand';
-import { Message, MessageFile } from '@/types/chat'; // Import MessageFile
+import { Message, MessageFile } from '@wealthwise/types'; // Import from shared package
 
 // --- Auth State Management ---
 interface AuthState {

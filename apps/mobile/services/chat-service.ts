@@ -1,7 +1,56 @@
 import { MessageFile } from '@wealthwise/types';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
-// Update this to match your backend URL
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+// Environment configuration helper (same as in use-jwt-token-mobile.ts)
+const getEnvironmentConfig = () => {
+  // Priority order: .env file > app.json > platform-specific defaults
+  const envApiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+  const envApiUrl = process.env.EXPO_PUBLIC_API_URL;
+  const appJsonApiUrl = Constants.expoConfig?.extra?.apiUrl;
+  
+  let baseUrl = envApiBaseUrl || envApiUrl || appJsonApiUrl;
+  
+  // If no explicit URL is set, determine the correct localhost IP based on platform
+  if (!baseUrl) {
+    const isAndroid = Platform.OS === 'android';
+    const isIOS = Platform.OS === 'ios';
+    
+    if (isAndroid) {
+      // Android emulator uses 10.0.2.2 to access host machine's localhost
+      baseUrl = 'http://10.0.2.2:8080';
+    } else if (isIOS) {
+      // iOS simulator can use localhost directly
+      baseUrl = 'http://localhost:8080';
+    } else {
+      // Web or other platforms
+      baseUrl = 'http://localhost:8080';
+    }
+  }
+  
+  // Remove /api/v1 suffix if present to normalize the base URL
+  baseUrl = baseUrl.replace(/\/api\/v\d+$/, '');
+  
+  // Get API version from environment or default to v1
+  const apiVersion = process.env.EXPO_PUBLIC_API_VERSION || 'v1';
+  
+  return {
+    baseUrl,
+    apiVersion,
+    fullApiUrl: `${baseUrl}/api/${apiVersion}`
+  };
+};
+
+// Get the API base URL for this service
+const config = getEnvironmentConfig();
+const API_BASE_URL = config.fullApiUrl;
+
+console.log('Chat Service Environment Config:', {
+  baseUrl: config.baseUrl,
+  apiVersion: config.apiVersion,
+  fullApiUrl: config.fullApiUrl,
+  finalApiBaseUrl: API_BASE_URL
+});
 
 interface ChatResponse {
   id: string;
@@ -14,7 +63,7 @@ interface ChatResponse {
     attachments?: Array<{
       name: string;
       type: string;
-      url: string;
+      content: string;
       size: number;
     }>;
   }>;
@@ -35,20 +84,15 @@ interface ChatDetail {
     attachments?: Array<{
       name: string;
       type: string;
-      url: string;
+      content: string;
       size: number;
     }>;
   }>;
   hasMoreMessages: boolean;
 }
 
-export async function createChatSession(
-  token: string,
-  title: string,
-  message: string,
-  attachments: MessageFile[]
-): Promise<string> {
-  console.log('Creating chat session:', { title, message, attachments });
+export async function createChatSession(token: string): Promise<string> {
+  console.log('Creating chat session');
   
   const response = await fetch(`${API_BASE_URL}/chats`, {
     method: 'POST',
@@ -57,16 +101,7 @@ export async function createChatSession(
       'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify({
-      title,
-      firstMessage: {
-        content: message,
-        attachments: attachments.map(file => ({
-          name: file.name,
-          type: file.type,
-          url: file.url,
-          size: file.size,
-        })),
-      },
+      title: 'New Chat',
     }),
   });
 
@@ -119,7 +154,7 @@ export async function sendChatMessage(
       attachments: attachments.map(file => ({
         name: file.name,
         type: file.type,
-        url: file.url,
+        content: file.content,
         size: file.size,
       })),
     }),
@@ -134,8 +169,7 @@ export async function listenToChatStream(
   token: string,
   chatId: string,
   onChunk: (chunk: string, type: string) => void,
-  onComplete: () => void,
-  onError: (error: any) => void
+  signal?: AbortSignal
 ): Promise<void> {
   console.log('Listening to chat stream:', chatId);
   
@@ -147,6 +181,7 @@ export async function listenToChatStream(
         'Accept': 'text/event-stream',
         'Cache-Control': 'no-cache',
       },
+      signal,
     });
 
     if (!response.ok) {
@@ -180,11 +215,9 @@ export async function listenToChatStream(
             if (data.type === 'message_delta') {
               onChunk(data.delta, 'text_chunk');
             } else if (data.type === 'message_complete') {
-              onComplete();
               return;
             } else if (data.type === 'error') {
-              onError(new Error(data.error));
-              return;
+              throw new Error(data.error);
             }
           } catch (e) {
             console.warn('Failed to parse SSE data:', line, e);
@@ -192,10 +225,12 @@ export async function listenToChatStream(
         }
       }
     }
-
-    onComplete();
   } catch (error) {
+    if (error.name === 'AbortError') {
+      console.log('Stream aborted');
+      return;
+    }
     console.error('Stream error:', error);
-    onError(error);
+    throw error;
   }
 }

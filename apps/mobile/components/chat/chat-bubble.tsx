@@ -1,126 +1,125 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { Copy, ThumbsUp, ThumbsDown, RefreshCw, FileText, Image } from '@expo/vector-icons';
 import { Message, MessageFile } from '@wealthwise/types';
 import { FileRenderer } from './file-renderer';
 import { MessageActions } from './message-actions';
 
 interface ChatBubbleProps {
   message: Message;
-  currentUser?: {
-    firstName?: string;
-    imageUrl?: string;
-  };
-  onFileClick?: (file: MessageFile) => void;
-  onCopy?: (messageId: string) => void;
-  onLike?: (messageId: string) => void;
-  onDislike?: (messageId: string) => void;
-  onRegenerate?: () => void;
+  onCopy: () => void;
+  onLike: () => void;
+  onDislike: () => void;
+  onRegenerate: () => void;
+  isRegenerating: boolean;
 }
 
 export function ChatBubble({
   message,
-  currentUser,
-  onFileClick,
   onCopy,
   onLike,
   onDislike,
   onRegenerate,
+  isRegenerating
 }: ChatBubbleProps) {
+  const [showActions, setShowActions] = useState(false);
   const isUser = message.sender === 'user';
-  const isBot = message.sender === 'bot';
+
+  const handleCopy = () => {
+    onCopy();
+    Alert.alert('Copied!', 'Message copied to clipboard');
+  };
+
+  const handleFileClick = (file: MessageFile) => {
+    // TODO: Implement file preview modal
+    Alert.alert('File Preview', `Opening ${file.name}`);
+  };
+
+  const getFileIcon = (fileType: string) => {
+    if (fileType.startsWith('image/')) {
+      return <Image size={16} color="#6B7280" />;
+    }
+    return <FileText size={16} color="#6B7280" />;
+  };
 
   return (
     <View className={`flex-row ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <View className={`max-w-[80%] ${isUser ? 'order-2' : 'order-1'}`}>
-        {/* Avatar */}
-        {!isUser && (
-          <View className="w-8 h-8 rounded-full bg-primary mb-2 items-center justify-center">
-            <Text className="text-primary-foreground text-sm font-medium">AI</Text>
-          </View>
-        )}
-
-        {/* Message Content */}
-        <View
-          className={`rounded-lg p-4 ${
-            isUser
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-foreground'
-          }`}
-        >
-          {/* Message Text */}
+      <View
+        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+          isUser
+            ? 'bg-blue-500 rounded-br-md'
+            : 'bg-white border border-gray-200 rounded-bl-md'
+        }`}
+      >
+        {/* Message text */}
+        {message.message && (
           <Text
-            className={`text-base ${
-              isUser ? 'text-primary-foreground' : 'text-foreground'
+            className={`text-base leading-6 ${
+              isUser ? 'text-white' : 'text-gray-900'
             }`}
           >
             {message.message}
           </Text>
+        )}
 
-          {/* Files */}
-          {message.files && message.files.length > 0 && (
-            <View className="mt-3 space-y-2">
-              {message.files.map((file, index) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => onFileClick?.(file)}
-                  className="bg-background/50 rounded-md p-2"
+        {/* Files */}
+        {message.files && message.files.length > 0 && (
+          <View className="mt-3 space-y-2">
+            {message.files.map((file, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => handleFileClick(file)}
+                className={`flex-row items-center p-2 rounded-lg ${
+                  isUser ? 'bg-blue-400' : 'bg-gray-100'
+                }`}
+              >
+                {getFileIcon(file.type)}
+                <Text
+                  className={`ml-2 text-sm flex-1 ${
+                    isUser ? 'text-white' : 'text-gray-700'
+                  }`}
+                  numberOfLines={1}
                 >
-                  <FileRenderer file={file} />
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+                  {file.name}
+                </Text>
+                <Text
+                  className={`text-xs ${
+                    isUser ? 'text-blue-100' : 'text-gray-500'
+                  }`}
+                >
+                  {(file.size / 1024).toFixed(1)} KB
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
-          {/* Error State */}
-          {message.error && (
-            <View className="mt-2 p-2 bg-destructive/10 rounded-md">
-              <Text className="text-destructive text-sm">{message.error}</Text>
-            </View>
-          )}
+        {/* Timestamp */}
+        <Text
+          className={`text-xs mt-2 ${
+            isUser ? 'text-blue-100' : 'text-gray-500'
+          }`}
+        >
+          {new Date(message.timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </Text>
 
-          {/* Loading State */}
-          {message.isStreaming && (
-            <View className="mt-2 flex-row items-center">
-              <View className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse mr-2" />
-              <Text className="text-muted-foreground text-sm">AI is typing...</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Message Actions */}
-        {isBot && (
+        {/* Message actions */}
+        {!isUser && (
           <MessageActions
-            messageId={message.id}
-            onCopy={onCopy}
+            message={message}
+            onCopy={handleCopy}
             onLike={onLike}
             onDislike={onDislike}
             onRegenerate={onRegenerate}
+            isRegenerating={isRegenerating}
+            showActions={showActions}
+            onToggleActions={() => setShowActions(!showActions)}
           />
         )}
       </View>
-
-      {/* User Avatar */}
-      {isUser && currentUser && (
-        <View className="order-1 ml-2">
-          {currentUser.imageUrl ? (
-            <Image
-              source={{ uri: currentUser.imageUrl }}
-              className="w-8 h-8 rounded-full"
-            />
-          ) : (
-            <View className="w-8 h-8 rounded-full bg-secondary items-center justify-center">
-              <Text className="text-secondary-foreground text-sm font-medium">
-                {currentUser.firstName?.[0] || 'U'}
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
     </View>
   );
 }

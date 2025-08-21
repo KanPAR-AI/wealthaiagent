@@ -1,23 +1,16 @@
 import React from 'react';
-import { View, Text, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { MessageFile } from '@wealthwise/types';
 
 interface FileRendererProps {
   file: MessageFile;
+  onFileClick?: (file: MessageFile) => void;
 }
 
-export function FileRenderer({ file }: FileRendererProps) {
+export function FileRenderer({ file, onFileClick }: FileRendererProps) {
   const isImage = file.type.startsWith('image/');
   const isPdf = file.type === 'application/pdf';
-  const isText = file.type.startsWith('text/');
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+  const isText = file.type.startsWith('text/') || file.type.includes('json') || file.type.includes('xml');
 
   const getFileIcon = () => {
     if (isImage) return '🖼️';
@@ -26,26 +19,46 @@ export function FileRenderer({ file }: FileRendererProps) {
     return '📎';
   };
 
+  const getFileSize = () => {
+    if (file.size < 1024) return `${file.size} B`;
+    if (file.size < 1024 * 1024) return `${(file.size / 1024).toFixed(1)} KB`;
+    return `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const handleFileClick = () => {
+    if (onFileClick) {
+      onFileClick(file);
+    }
+  };
+
   return (
-    <View className="flex-row items-center space-x-2">
-      <Text className="text-lg">{getFileIcon()}</Text>
-      
+    <TouchableOpacity
+      onPress={handleFileClick}
+      className="flex-row items-center p-3 bg-gray-50 rounded-lg border border-gray-200"
+    >
+      {/* File icon */}
+      <Text className="text-2xl mr-3">{getFileIcon()}</Text>
+
+      {/* File info */}
       <View className="flex-1">
-        <Text className="text-foreground text-sm font-medium" numberOfLines={1}>
+        <Text className="text-sm font-medium text-gray-900 mb-1" numberOfLines={1}>
           {file.name}
         </Text>
-        <Text className="text-muted-foreground text-xs">
-          {formatFileSize(file.size || 0)}
+        <Text className="text-xs text-gray-500">
+          {getFileSize()} • {file.type}
         </Text>
       </View>
 
-      {isImage && file.url && (
-        <Image
-          source={{ uri: file.url }}
-          className="w-12 h-12 rounded-md"
-          resizeMode="cover"
-        />
+      {/* Preview for images */}
+      {isImage && file.content && (
+        <View className="ml-3">
+          <Image
+            source={{ uri: `data:${file.type};base64,${file.content}` }}
+            className="w-12 h-12 rounded-lg"
+            resizeMode="cover"
+          />
+        </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
