@@ -1,0 +1,18 @@
+<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" fill="url(#grad)" rx="19.200000000000003"/>
+  <g fill="white" opacity="0.9">
+    <!-- Chart bars -->
+    <rect x="48" y="115.19999999999999" width="15.36" height="48"/>
+    <rect x="76.80000000000001" y="86.4" width="15.36" height="76.80000000000001"/>
+    <rect x="105.60000000000001" y="67.19999999999999" width="15.36" height="96"/>
+    <rect x="134.39999999999998" y="96" width="15.36" height="67.19999999999999"/>
+    <!-- AI text -->
+    <text x="96" y="144" text-anchor="middle" font-family="Arial, sans-serif" font-size="23.04" font-weight="bold">AI</text>
+  </g>
+</svg>
