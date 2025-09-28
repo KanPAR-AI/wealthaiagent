@@ -1,0 +1,1493 @@
+{
+	"info": {
+		"_postman_id": "29dfe8a3-f973-4ca2-9120-c26ba5256d96",
+		"name": "YourFinAdvisor E2E Chat Flow with AI",
+		"description": "A collection to test the full lifecycle of the chat API including AI assistant responses, file uploads, and chat favorites functionality.\n\n**Important Notes:**\n\n1. Run the '0. Authenticate and Get Token' request first to set the JWT for all other requests.\n    \n2. File upload tests (0a-0e) require you to manually select files in Postman. These tests verify authentication, single/multiple file uploads, and error handling.\n    \n3. Favorites tests (1c-1f) demonstrate marking/unmarking chats as favorites and verifying the sorting behavior.\n    \n4. For test '3b. Wait and check for AI response' - The auto_reply runs in background, so you may need to manually wait 3-5 seconds before running this test, or run it twice.\n    \n5. SSE tests (6, 6c) will show raw event data in Postman. For proper streaming experience, use a browser or SSE client.\n    \n\n**New Favorites Feature:**\n\n- Chats can be marked as favorites with automatic ranking\n    \n- Favorites appear at the top of chat lists, sorted by rank (highest/newest first)\n    \n- Non-favorites are sorted by date after favorites",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "45986761",
+		"_collection_link": "https://finadvisordev.postman.co/workspace/finadvisorDEV-Workspace~1a449275-63e6-4295-8f75-f96030eee41a/collection/26433417-29dfe8a3-f973-4ca2-9120-c26ba5256d96?action=share&source=collection_link&creator=45986761"
+	},
+	"item": [
+		{
+			"name": "0. Authenticate and Get Token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"const response = pm.response.json();",
+							"pm.test(\"Access token is received\", function () {",
+							"    pm.expect(response.access_token).to.not.be.empty;",
+							"    pm.environment.set(\"jwt_token\", response.access_token);",
+							"    console.log(\"JWT Token saved to environment.\");",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "username",
+							"value": "test_username"
+						},
+						{
+							"key": "password",
+							"value": ""
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/auth/token",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth",
+						"token"
+					]
+				},
+				"description": "Authenticates the hardcoded 'testuser' to get a JWT access token."
+			},
+			"response": []
+		},
+		{
+			"name": "Test CORS",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "username",
+							"value": "test_username",
+							"type": "text"
+						},
+						{
+							"key": "password",
+							"value": "",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/auth/token",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"auth",
+						"token"
+					]
+				},
+				"description": "Generated from cURL: curl -X POST \\\n  'https://chatbackend.yourfinadvisor.com/api/v1/auth/token' \\\n  -H 'Content-Type: application/x-www-form-urlencoded' \\\n  -d 'username=testuser&password='"
+			},
+			"response": []
+		},
+		{
+			"name": "0a. Upload Single File",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Check if we got a validation error (no file selected)",
+							"if (pm.response.code === 422) {",
+							"    pm.test(\"IMPORTANT: Please select a file before running this test\", function () {",
+							"        console.error(\"No file selected! Please:\");",
+							"        console.error(\"1. Go to Body tab\");",
+							"        console.error(\"2. Select 'form-data'\");",
+							"        console.error(\"3. Make sure KEY is 'files' with TYPE 'File'\");",
+							"        console.error(\"4. Click 'Select Files' and choose a file\");",
+							"        pm.expect.fail(\"No file selected - please select a file and run again\");",
+							"    });",
+							"} else {",
+							"    pm.test(\"Status code is 201 Created\", function () {",
+							"        pm.response.to.have.status(201);",
+							"    });",
+							"",
+							"    const response = pm.response.json();",
+							"",
+							"    pm.test(\"File upload response structure is correct\", function () {",
+							"        pm.expect(response).to.have.property('files');",
+							"        pm.expect(response.files).to.be.an('array');",
+							"        pm.expect(response.files).to.have.lengthOf(1);",
+							"    });",
+							"",
+							"    pm.test(\"File metadata is complete\", function () {",
+							"        const file = response.files[0];",
+							"        pm.expect(file).to.have.property('id');",
+							"        pm.expect(file).to.have.property('fileName');",
+							"        pm.expect(file).to.have.property('fileSize');",
+							"        pm.expect(file).to.have.property('mimeType');",
+							"        pm.expect(file).to.have.property('createdAt');",
+							"        ",
+							"        // Save file ID for later tests",
+							"        pm.environment.set(\"uploadedFileId\", file.id);",
+							"        console.log(\"Uploaded file ID saved:\", file.id);",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Create a test file content",
+							"const fileContent = \"This is a test file for upload testing.\";",
+							"const blob = new Blob([fileContent], { type: 'text/plain' });",
+							"",
+							"// Note: In Postman, you'll need to manually select a file",
+							"// This is just for documentation purposes"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "files",
+							"description": "Select a test file to upload",
+							"type": "file",
+							"src": "postman-cloud:///1f05a3db-e181-46c0-bbd9-bb533ea4cdfe"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/files/upload",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"files",
+						"upload"
+					]
+				},
+				"description": "Tests uploading a single file with authentication. The file ID is saved for use in subsequent tests."
+			},
+			"response": []
+		},
+		{
+			"name": "0b. Upload Multiple Files",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Check if we got a validation error (no files selected)",
+							"if (pm.response.code === 422) {",
+							"    pm.test(\"IMPORTANT: Please select files before running this test\", function () {",
+							"        console.error(\"No files selected! Please:\");",
+							"        console.error(\"1. Go to Body tab\");",
+							"        console.error(\"2. Select 'form-data'\");",
+							"        console.error(\"3. You should see 3 rows with KEY 'files'\");",
+							"        console.error(\"4. For each row: set TYPE to 'File' and click 'Select Files'\");",
+							"        console.error(\"5. Select different files for each row\");",
+							"        pm.expect.fail(\"No files selected - please select at least 2 files and run again\");",
+							"    });",
+							"} else {",
+							"    pm.test(\"Status code is 201 Created\", function () {",
+							"        pm.response.to.have.status(201);",
+							"    });",
+							"",
+							"    const response = pm.response.json();",
+							"",
+							"    pm.test(\"Multiple files uploaded successfully\", function () {",
+							"        pm.expect(response).to.have.property('files');",
+							"        pm.expect(response.files).to.be.an('array');",
+							"        pm.expect(response.files.length).to.be.at.least(2);",
+							"        ",
+							"        console.log(`Uploaded ${response.files.length} files`);",
+							"        response.files.forEach((file, index) => {",
+							"            console.log(`File ${index + 1}: ${file.fileName} (${file.fileSize} bytes)`);",
+							"        });",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "files",
+							"description": "First file to upload",
+							"type": "file",
+							"src": []
+						},
+						{
+							"key": "files",
+							"description": "Second file to upload",
+							"type": "file",
+							"src": []
+						},
+						{
+							"key": "files",
+							"description": "Third file to upload (optional)",
+							"type": "file",
+							"src": []
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/files/upload",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"files",
+						"upload"
+					]
+				},
+				"description": "Tests uploading multiple files in a single request."
+			},
+			"response": []
+		},
+		{
+			"name": "0c. Get File Metadata",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"File metadata retrieved successfully\", function () {",
+							"    pm.expect(response).to.have.property('id');",
+							"    pm.expect(response).to.have.property('fileName');",
+							"    pm.expect(response).to.have.property('fileSize');",
+							"    pm.expect(response).to.have.property('mimeType');",
+							"    pm.expect(response).to.have.property('createdAt');",
+							"});",
+							"",
+							"pm.test(\"Download URL is provided\", function () {",
+							"    pm.expect(response).to.have.property('url');",
+							"    if (response.url) {",
+							"        pm.expect(response.url).to.include('https://');",
+							"        console.log(\"Download URL generated (expires in 15 minutes)\");",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/files/{{uploadedFileId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"files",
+						"{{uploadedFileId}}"
+					]
+				},
+				"description": "Retrieves metadata and download URL for the previously uploaded file."
+			},
+			"response": []
+		},
+		{
+			"name": "0c2. Download File",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"File download headers are correct\", function () {",
+							"    pm.expect(pm.response.headers.has('Content-Disposition')).to.be.true;",
+							"    pm.expect(pm.response.headers.has('Content-Type')).to.be.true;",
+							"    pm.expect(pm.response.headers.has('Content-Length')).to.be.true;",
+							"});",
+							"",
+							"pm.test(\"File content is received\", function () {",
+							"    pm.expect(pm.response.text()).to.not.be.empty;",
+							"    console.log(\"File downloaded successfully\");",
+							"    console.log(\"Content-Type:\", pm.response.headers.get('Content-Type'));",
+							"    console.log(\"Content-Length:\", pm.response.headers.get('Content-Length'));",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/files/{{uploadedFileId}}/download",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"files",
+						"{{uploadedFileId}}",
+						"download"
+					]
+				},
+				"description": "Downloads the previously uploaded file. The file content will be returned with appropriate headers for download."
+			},
+			"response": []
+		},
+		{
+			"name": "0d. Upload Without Auth (Should Fail)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 401 Unauthorized\", function () {",
+							"    pm.response.to.have.status(401);",
+							"});",
+							"",
+							"pm.test(\"Error message indicates authentication required\", function () {",
+							"    const response = pm.response.json();",
+							"    pm.expect(response).to.have.property('error');",
+							"    pm.expect(response.error).to.have.property('message');",
+							"    pm.expect(response.error.message.toLowerCase()).to.include('not authenticated');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "files",
+							"type": "file",
+							"src": []
+						}
+					]
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/files/upload",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"files",
+						"upload"
+					]
+				},
+				"description": "Tests that file upload requires authentication and fails without a valid token."
+			},
+			"response": []
+		},
+		{
+			"name": "0e. Get Non-existent File (Should Fail)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 404 Not Found\", function () {",
+							"    pm.response.to.have.status(404);",
+							"});",
+							"",
+							"pm.test(\"Error message indicates file not found\", function () {",
+							"    const response = pm.response.json();",
+							"    pm.expect(response.error.message.toLowerCase()).to.include('not found');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/files/non-existent-file-id-12345",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"files",
+						"non-existent-file-id-12345"
+					]
+				},
+				"description": "Tests that requesting a non-existent file returns 404."
+			},
+			"response": []
+		},
+		{
+			"name": "1. Create a new chat",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201 Created\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Chat ID is created\", function () {",
+							"    pm.expect(response.chat.id).to.not.be.empty;",
+							"    pm.environment.set(\"chatId\", response.chat.id);",
+							"    console.log(\"Chat ID saved to environment:\", pm.environment.get(\"chatId\"));",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"title\": \"Postman E2E Test Chat\",\n  \"firstMessage\": {\n    \"content\": \"Initial message from Postman.\",\n    \"attachments\": []\n  }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats"
+					]
+				},
+				"description": "Creates a new chat session and saves its ID to an environment variable `chatId`."
+			},
+			"response": []
+		},
+		{
+			"name": "1b. Create chat with AI-generated title",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201 Created\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Chat ID is created\", function () {",
+							"    pm.expect(response.chat.id).to.not.be.empty;",
+							"    pm.environment.set(\"aiChatId\", response.chat.id);",
+							"    console.log(\"AI Chat ID saved to environment:\", pm.environment.get(\"aiChatId\"));",
+							"});",
+							"",
+							"pm.test(\"AI generated title exists\", function () {",
+							"    pm.expect(response.chat.title).to.not.be.empty;",
+							"    pm.expect(response.chat.title).to.not.equal(\"New Chat\");",
+							"    console.log(\"AI generated title:\", response.chat.title);",
+							"});",
+							"",
+							"pm.test(\"Chat has favorite fields initialized\", function () {",
+							"    pm.expect(response.chat).to.have.property('isFavorite');",
+							"    pm.expect(response.chat.isFavorite).to.be.false;",
+							"    pm.expect(response.chat).to.have.property('favoriteRank');",
+							"    pm.expect(response.chat.favoriteRank).to.be.null;",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"firstMessage\": {\n    \"content\": \"What are the best investment strategies for retirement planning?\",\n    \"attachments\": []\n  }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats"
+					]
+				},
+				"description": "Creates a new chat without title to test AI title generation."
+			},
+			"response": []
+		},
+		{
+			"name": "1c. Mark chat as favorite",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Chat is marked as favorite\", function () {",
+							"    pm.expect(response.isFavorite).to.be.true;",
+							"    pm.expect(response.favoriteRank).to.be.a('number');",
+							"    pm.expect(response.favoriteRank).to.be.at.least(1);",
+							"    console.log(\"Chat marked as favorite with rank:\", response.favoriteRank);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"isFavorite\": true\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats/{{chatId}}/favorite",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats",
+						"{{chatId}}",
+						"favorite"
+					]
+				},
+				"description": "Marks a chat as favorite. The favoriteRank will be automatically assigned."
+			},
+			"response": []
+		},
+		{
+			"name": "1d. Get chats list with favorites",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"const chats = pm.response.json();",
+							"",
+							"pm.test(\"Response is an array of chats\", function () {",
+							"    pm.expect(chats).to.be.an('array');",
+							"    pm.expect(chats.length).to.be.at.least(1);",
+							"});",
+							"",
+							"// Find favorite chats",
+							"const favoriteChats = chats.filter(chat => chat.isFavorite);",
+							"const nonFavoriteChats = chats.filter(chat => !chat.isFavorite);",
+							"",
+							"pm.test(\"Favorite chats appear first\", function () {",
+							"    if (favoriteChats.length > 0 && nonFavoriteChats.length > 0) {",
+							"        // Get the index of the first non-favorite",
+							"        const firstNonFavoriteIndex = chats.findIndex(chat => !chat.isFavorite);",
+							"        // All chats before this index should be favorites",
+							"        for (let i = 0; i < firstNonFavoriteIndex; i++) {",
+							"            pm.expect(chats[i].isFavorite).to.be.true;",
+							"        }",
+							"        console.log(`Found ${favoriteChats.length} favorites at the top of the list`);",
+							"    }",
+							"});",
+							"",
+							"pm.test(\"Favorites are sorted by rank (descending)\", function () {",
+							"    if (favoriteChats.length > 1) {",
+							"        for (let i = 0; i < favoriteChats.length - 1; i++) {",
+							"            pm.expect(favoriteChats[i].favoriteRank).to.be.at.least(favoriteChats[i + 1].favoriteRank);",
+							"        }",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats?page=1&limit=20",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "1"
+						},
+						{
+							"key": "limit",
+							"value": "20"
+						}
+					]
+				},
+				"description": "Gets the list of chats. Favorites should appear at the top, sorted by rank."
+			},
+			"response": []
+		},
+		{
+			"name": "1e. Unmark chat as favorite",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Chat is unmarked as favorite\", function () {",
+							"    pm.expect(response.isFavorite).to.be.false;",
+							"    pm.expect(response.favoriteRank).to.be.null;",
+							"    console.log(\"Chat unmarked as favorite\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"isFavorite\": false\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats/{{chatId}}/favorite",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats",
+						"{{chatId}}",
+						"favorite"
+					]
+				},
+				"description": "Unmarks a chat as favorite by setting isFavorite to false."
+			},
+			"response": []
+		},
+		{
+			"name": "1f. Toggle non-existent chat favorite (Should Fail)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 404 Not Found\", function () {",
+							"    pm.response.to.have.status(404);",
+							"});",
+							"",
+							"pm.test(\"Error message indicates chat not found\", function () {",
+							"    const response = pm.response.json();",
+							"    pm.expect(response.error.message.toLowerCase()).to.include('not found');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"isFavorite\": true\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats/non-existent-chat-id-12345/favorite",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats",
+						"non-existent-chat-id-12345",
+						"favorite"
+					]
+				},
+				"description": "Tests that toggling favorite on a non-existent chat returns 404."
+			},
+			"response": []
+		},
+		{
+			"name": "2. Send a follow-up message",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"content\": \"Second message from Postman.\",\n  \"attachments\": []\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats/{{chatId}}/messages",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats",
+						"{{chatId}}",
+						"messages"
+					]
+				},
+				"description": "Sends another message to the chat created in the previous step."
+			},
+			"response": []
+		},
+		{
+			"name": "2b. Send message with auto-reply",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"const response = pm.response.json();",
+							"pm.test(\"Message was created\", function () {",
+							"    pm.expect(response.id).to.not.be.empty;",
+							"    pm.expect(response.sender).to.equal(\"user\");",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"content\": \"hi \",\n  \"attachments\": []\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats/{{aiChatId}}/messages?auto_reply=true",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats",
+						"{{aiChatId}}",
+						"messages"
+					],
+					"query": [
+						{
+							"key": "auto_reply",
+							"value": "true"
+						}
+					]
+				},
+				"description": "Sends a message with auto_reply=true to trigger AI response generation."
+			},
+			"response": []
+		},
+		{
+			"name": "3. Get chat and verify content",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Chat has 2 messages\", function () {",
+							"    pm.expect(response.chat.messageCount).to.equal(2);",
+							"    pm.expect(response.messages).to.have.lengthOf(2);",
+							"});",
+							"",
+							"pm.test(\"Message content is correct\", function () {",
+							"    pm.expect(response.messages[0].content).to.equal(\"Initial message from Postman.\");",
+							"    pm.expect(response.messages[1].content).to.equal(\"Second message from Postman.\");",
+							"});",
+							"",
+							"pm.test(\"Chat has favorite fields\", function () {",
+							"    pm.expect(response.chat).to.have.property('isFavorite');",
+							"    pm.expect(response.chat).to.have.property('favoriteRank');",
+							"    // The favorite state depends on whether test 1c or 1e was run last",
+							"    console.log(\"Chat favorite status:\", response.chat.isFavorite);",
+							"    console.log(\"Chat favorite rank:\", response.chat.favoriteRank);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats/{{chatId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats",
+						"{{chatId}}"
+					]
+				},
+				"description": "Retrieves the chat and runs tests to verify the content is correct."
+			},
+			"response": []
+		},
+		{
+			"name": "3b. Wait and check for AI response",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"const response = pm.response.json();",
+							"",
+							"// Note: In Postman, you may need to manually wait a few seconds",
+							"// before running this test to allow the background AI response to be generated",
+							"pm.test(\"Check for AI response (may need manual delay)\", function () {",
+							"    console.log(\"Total messages found:\", response.messages.length);",
+							"    console.log(\"Message count:\", response.chat.messageCount);",
+							"    ",
+							"    // Find assistant message",
+							"    const assistantMessage = response.messages.find(msg => msg.sender === \"assistant\");",
+							"    ",
+							"    if (assistantMessage) {",
+							"        console.log(\"AI Response found:\", assistantMessage.content);",
+							"        pm.expect(assistantMessage.content).to.not.be.empty;",
+							"    } else {",
+							"        console.warn(\"No AI response yet. The auto_reply runs in background.\");",
+							"        console.warn(\"Try running this request again after a few seconds.\");",
+							"        // Make this a warning instead of failure",
+							"        pm.expect.fail(\"AI response not generated yet. This is expected if run immediately after sending message.\");",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Note: setTimeout doesn't work in Postman to delay requests",
+							"// You may need to manually wait before running this test"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats/{{aiChatId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats",
+						"{{aiChatId}}"
+					]
+				},
+				"description": "Checks if AI response was generated after auto_reply request."
+			},
+			"response": []
+		},
+		{
+			"name": "6. Test SSE Stream",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "text/event-stream"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats/{{chatId}}/stream",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats",
+						"{{chatId}}",
+						"stream"
+					]
+				},
+				"description": "Connects to the Server-Sent Events stream to observe real-time messages. Run this request manually after creating a chat. Note: Postman doesn't fully support SSE, so you'll see the raw event stream data."
+			},
+			"response": []
+		},
+		{
+			"name": "6b. Send message for streaming",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"const response = pm.response.json();",
+							"pm.test(\"Message was created\", function () {",
+							"    pm.expect(response.id).to.not.be.empty;",
+							"    pm.environment.set(\"messageIdForStream\", response.id);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"content\": \"What are mutual funds and how do they work?\",\n  \"attachments\": []\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats/{{aiChatId}}/messages",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats",
+						"{{aiChatId}}",
+						"messages"
+					]
+				},
+				"description": "Sends a message to prepare for streaming test."
+			},
+			"response": []
+		},
+		{
+			"name": "6c. Test AI Stream Response",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "text/event-stream"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats/{{aiChatId}}/stream",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats",
+						"{{aiChatId}}",
+						"stream"
+					]
+				},
+				"description": "Tests the AI streaming response. This will stream an AI-generated response based on the latest message in the chat. Note: In Postman, you'll see the raw SSE events. For proper streaming experience, use a browser or SSE client."
+			},
+			"response": []
+		},
+		{
+			"name": "4. Delete the chat",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 204 No Content\", function () {",
+							"    pm.response.to.have.status(204);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats/{{chatId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats",
+						"{{chatId}}"
+					]
+				},
+				"description": "Deletes the chat session."
+			},
+			"response": []
+		},
+		{
+			"name": "4b. Delete AI chat",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 204 No Content\", function () {",
+							"    pm.response.to.have.status(204);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats/{{aiChatId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats",
+						"{{aiChatId}}"
+					]
+				},
+				"description": "Deletes the AI chat session."
+			},
+			"response": []
+		},
+		{
+			"name": "5. Verify chat is deleted",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 404 Not Found\", function () {",
+							"    pm.response.to.have.status(404);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/v1/chats/{{chatId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"chats",
+						"{{chatId}}"
+					]
+				},
+				"description": "Confirms that the chat is no longer accessible after being deleted."
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{jwt_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://127.0.0.1:8080",
+			"type": "string"
+		}
+	]
+}
