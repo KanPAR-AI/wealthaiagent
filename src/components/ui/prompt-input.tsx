@@ -80,6 +80,9 @@ function PromptInput({
         <div
           className={cn(
             "border-input bg-background sm:rounded-3xl rounded-b-none rounded-t-3xl sm:border border-t p-2 shadow-xs",
+            // Safari-specific container fixes
+            "overflow-hidden", // Prevent content from expanding beyond container
+            "max-w-full", // Ensure container doesn't exceed viewport
             className
           )}
         >
@@ -107,11 +110,25 @@ function PromptInputTextarea({
     if (disableAutosize) return
 
     if (!textareaRef.current) return
-    textareaRef.current.style.height = "auto"
-    textareaRef.current.style.height =
-      typeof maxHeight === "number"
-        ? `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
-        : `min(${textareaRef.current.scrollHeight}px, ${maxHeight})`
+    
+    // Safari-specific fix: Reset height and use a more controlled approach
+    const textarea = textareaRef.current
+    textarea.style.height = "auto"
+    
+    // Calculate the desired height with proper constraints
+    const scrollHeight = textarea.scrollHeight
+    const maxHeightPx = typeof maxHeight === "number" ? maxHeight : 240
+    
+    // Ensure height doesn't exceed maxHeight and has a minimum
+    const newHeight = Math.max(44, Math.min(scrollHeight, maxHeightPx))
+    textarea.style.height = `${newHeight}px`
+    
+    // Safari-specific: Set overflow to auto when content exceeds maxHeight
+    if (scrollHeight > maxHeightPx) {
+      textarea.style.overflowY = "auto"
+    } else {
+      textarea.style.overflowY = "hidden"
+    }
   }, [value, maxHeight, disableAutosize])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -130,10 +147,23 @@ function PromptInputTextarea({
       onKeyDown={handleKeyDown}
       className={cn(
         "text-black min-h-[44px] w-full resize-none border-none bg-transparent shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+        // Safari-specific fixes
+        "overflow-hidden", // Prevent Safari from expanding beyond container
+        "box-border", // Ensure proper box model
+        "max-h-[240px]", // Set maximum height constraint
+        "text-base", // Ensure 16px font size to prevent iOS Safari auto-zoom
         className
       )}
       rows={1}
       disabled={disabled}
+      style={{
+        // Additional Safari-specific styles
+        WebkitAppearance: "none",
+        WebkitBorderRadius: "0",
+        fontSize: "16px", // Explicit 16px to prevent iOS Safari auto-zoom
+        WebkitTextSizeAdjust: "100%", // Prevent text size adjustment on iOS
+        ...props.style
+      }}
       {...props}
     />
   )

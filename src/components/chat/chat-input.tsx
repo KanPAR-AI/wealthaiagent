@@ -218,11 +218,12 @@ export function PromptInputWithActions({
   const isBusy = isLoading || isUploading || isTranscribing || isRecording;
 
   return (
-    <PromptInput
-      value={input}
-      onValueChange={setInput}
-      className="w-full relative"
-    >
+    <div className="w-full max-w-full overflow-hidden">
+      <PromptInput
+        value={input}
+        onValueChange={setInput}
+        className="w-full relative max-w-full"
+      >
       {/* Display uploaded files */}
       {uploadedFiles.length > 0 && (
         <div className="flex flex-wrap gap-2 pb-2 px-3">
@@ -330,6 +331,7 @@ export function PromptInputWithActions({
           </Button>
         </PromptInputAction>
       </PromptInputActions>
-    </PromptInput>
+      </PromptInput>
+    </div>
   );
 }
