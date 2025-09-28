@@ -1,4 +1,3 @@
-import { SignedIn, UserButton, useUser } from "@clerk/clerk-react";
 import {
   History,
   MessageSquareText,
@@ -75,7 +74,6 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
   const [error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
-  const { user } = useUser();
   const { token } = useJwtToken();
 
   // --- Data Fetching ---
@@ -310,12 +308,12 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
         <SidebarMenu>
           <SidebarMenuItem>
             <div className="flex items-center p-2 w-full">
-              <SignedIn>
-                <UserButton afterSignOutUrl="/" />
-                <span className="text-sm ml-2 truncate group-data-[collapsible=icon]:hidden">
-                  {user?.primaryEmailAddress?.emailAddress}
-                </span>
-              </SignedIn>
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-xs font-medium">U</span>
+              </div>
+              <span className="text-sm ml-2 truncate group-data-[collapsible=icon]:hidden">
+                User
+              </span>
             </div>
           </SidebarMenuItem>
         </SidebarMenu>

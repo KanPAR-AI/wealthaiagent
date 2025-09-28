@@ -2,7 +2,6 @@
 
 import { create } from 'zustand';
 import { Message, MessageFile } from '@/types'; // Import from local types
-import { env } from '@/config/environment';
 
 // --- Auth State Management ---
 interface AuthState {
@@ -14,10 +13,6 @@ interface AuthState {
   setIsLoadingToken: (loading: boolean) => void;
 }
 
-// Check if we have a valid Clerk key
-const hasValidClerkKey = env.clerkPublishableKey && 
-  env.clerkPublishableKey !== 'pk_test_fallback_key_for_development' &&
-  env.clerkPublishableKey.startsWith('pk_');
 
 export const useAuthStore = create<AuthState>((set) => ({
   token: null, // Always start with null

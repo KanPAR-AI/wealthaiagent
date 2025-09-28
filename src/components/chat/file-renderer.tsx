@@ -5,7 +5,7 @@ import { Download, FileText, Maximize, TriangleAlert } from 'lucide-react';
 import React, { JSX, useEffect, useState } from 'react';
 import { fetchFileWithToken } from '@/services/chat-service';
 import { Loader2 } from 'lucide-react';
-import { useJwtTokenWeb } from '@/hooks/use-jwt-token-web';
+import { useJwtToken } from '@/hooks/use-jwt-token';
 
 interface FileRendererProps {
   file: MessageFile;
@@ -17,7 +17,7 @@ function ImagePreview({ file, onFileClick }: FileRendererProps) {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(false);
-    const { token } = useJwtTokenWeb();
+    const { token } = useJwtToken();
   
     useEffect(() => {
       if (!file.url || !token) {
@@ -81,7 +81,7 @@ function ImagePreview({ file, onFileClick }: FileRendererProps) {
 function PdfPreview({ file }: { file: MessageFile }) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
-  const { token } = useJwtTokenWeb();
+  const { token } = useJwtToken();
 
   useEffect(() => {
     if (!file.url || !token) return;
@@ -118,7 +118,7 @@ function PdfPreview({ file }: { file: MessageFile }) {
 
 // --- Fallback for other files ---
 function GenericFile({ file }: { file: MessageFile }) {
-  const { token } = useJwtTokenWeb();
+  const { token } = useJwtToken();
 
   const secureUrl = token
     ? `${file.url}?token=${encodeURIComponent(token)}`

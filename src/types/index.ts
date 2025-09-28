@@ -1,22 +1,5 @@
-// Local type definitions to replace @wealthwise/types
-
-export interface Message {
-  id: string;
-  message: string;
-  sender: 'user' | 'bot';
-  timestamp?: string;
-  files?: MessageFile[];
-  isStreaming?: boolean;
-  error?: string;
-  structuredContent?: any;
-}
-
-export interface MessageFile {
-  name: string;
-  type: string;
-  url: string;
-  size: number;
-}
+// Re-export types from chat.ts for backward compatibility
+export * from './chat';
 
 export interface ChatResponse {
   chat: {
@@ -28,17 +11,6 @@ export interface ChatResponse {
     messageCount: number;
     lastMessage: any;
   };
-  messages: Message[];
+  messages: any[];
   hasMoreMessages: boolean;
-}
-
-export interface ChatWindowProps {
-  chatId?: string;
-  className?: string;
-}
-
-export interface SuggestionTileData {
-  id: number;
-  title: string;
-  description: string;
 }

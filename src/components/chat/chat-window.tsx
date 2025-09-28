@@ -8,8 +8,6 @@ import { useMessageActions } from '@/hooks/use-message-actions';
 import { createChatSession, fetchChatHistory, listenToChatStream, sendChatMessage } from '@/services/chat-service';
 import { useChatStore } from '@/store/chat';
 import { ChatWindowProps, Message, MessageFile, SuggestionTileData } from '@/types';
-import { useUser } from '@clerk/clerk-react';
-import { env } from '@/config/environment';
 import { Copy, RefreshCcw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { nanoid } from 'nanoid';
 import { useEffect, useRef, useState } from 'react';
@@ -32,15 +30,6 @@ export default function ChatWindow({
   chatId,
   className = ''
 }: ChatWindowProps) {
-  // Check if we have a valid Clerk key
-  const hasValidClerkKey = env.clerkPublishableKey && 
-    env.clerkPublishableKey !== 'pk_test_fallback_key_for_development' &&
-    env.clerkPublishableKey.startsWith('pk_');
-
-  // Only use Clerk hooks if we have a valid key
-  const clerkUser = hasValidClerkKey ? useUser() : null;
-  const user = clerkUser?.user;
-  const isSignedIn = clerkUser?.isSignedIn || false;
   const { token, isLoadingToken, tokenError } = useJwtToken();
   const [selectedFile, setSelectedFile] = useState<MessageFile | null>(null);
   const [isHistoryLoading, setIsHistoryLoading] = useState(!!chatId);
@@ -387,8 +376,8 @@ export default function ChatWindow({
                   <div className="flex flex-col items-center justify-center h-full space-y-4 md:space-y-6 py-8">
                     <ChatEmptyState
                       isFirstMessage={isFirstMessage}
-                      isSignedIn={!!isSignedIn}
-                      userName={user?.firstName}
+                      isSignedIn={true}
+                      userName="User"
                     />
                     <div className="w-full max-w-md md:max-w-none">
                       <SuggestionTiles
@@ -402,14 +391,10 @@ export default function ChatWindow({
                 ) : (
                   <ChatMessageList
                     messages={messages}
-                    currentUser={
-                      user
-                        ? {
-                            firstName: user.firstName,
-                            imageUrl: user.imageUrl,
-                          }
-                        : undefined
-                    }
+                    currentUser={{
+                      firstName: "User",
+                      imageUrl: undefined,
+                    }}
                     onFileClick={(file: MessageFile) => setSelectedFile(file)}
                     actionIcons={actionIcons}
                     addMessageId={true}

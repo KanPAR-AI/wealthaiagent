@@ -1,9 +1,6 @@
 // Environment configuration with validation and defaults
 
 interface EnvironmentConfig {
-  // Clerk Authentication
-  clerkPublishableKey: string;
-  
   // API Configuration
   apiBaseUrl: string;
   apiVersion: string;
@@ -66,9 +63,6 @@ function getNumberEnv(key: string, defaultValue: number): number {
 
 // Create and export the environment configuration
 export const env: EnvironmentConfig = {
-  // Clerk Authentication
-  clerkPublishableKey: getRequiredEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fallback_key_for_development'),
-  
   // API Configuration
   apiBaseUrl: getOptionalEnv('VITE_API_BASE_URL', 'https://chatbackend.yourfinadvisor.com') || '',
   apiVersion: getOptionalEnv('VITE_API_VERSION', 'v1') || '',
@@ -101,7 +95,6 @@ if (env.isDevelopment && env.enableDebug) {
   console.log('Environment Configuration:', {
     ...env,
     // Don't log sensitive values
-    clerkPublishableKey: '***',
     testPassword: '***',
   });
 }

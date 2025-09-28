@@ -2,7 +2,6 @@
 // This file is used during testing to avoid import.meta issues
 
 interface EnvironmentConfig {
-  clerkPublishableKey: string;
   apiBaseUrl: string;
   apiVersion: string;
   appBasePath: string;
@@ -20,7 +19,6 @@ interface EnvironmentConfig {
 }
 
 export const env: EnvironmentConfig = {
-  clerkPublishableKey: 'pk_test_mock',
   apiBaseUrl: 'http://localhost:8080',
   apiVersion: 'v1',
   appBasePath: '',

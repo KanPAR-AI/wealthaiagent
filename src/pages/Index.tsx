@@ -1,19 +1,16 @@
 import { Link } from 'react-router-dom';
-import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
 import Logo from '@/components/ui/logo'; // Adjust path if needed
 
 function Index() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4 w-full">
        <header className="absolute top-4 right-4">
-         <SignedOut>
-           <SignInButton mode="modal">
-             <button className="px-4 py-2 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 shadow">Sign In</button>
-           </SignInButton>
-         </SignedOut>
-         <SignedIn>
-           <UserButton/>
-         </SignedIn>
+         <div className="flex items-center gap-2">
+           <span className="text-sm text-muted-foreground">Demo Mode</span>
+           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+             <span className="text-xs font-medium">U</span>
+           </div>
+         </div>
        </header>
 
        <div className="text-center">

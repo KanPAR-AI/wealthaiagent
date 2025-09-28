@@ -9,7 +9,6 @@ import { TextEncoder, TextDecoder } from 'util';
     env: {
       DEV: true,
       PROD: false,
-      VITE_CLERK_PUBLISHABLE_KEY: 'pk_test_mock',
       VITE_API_BASE_URL: 'http://localhost:8080',
       VITE_API_VERSION: 'v1',
       VITE_APP_BASE_PATH: '',
