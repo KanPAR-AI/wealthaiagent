@@ -1,6 +1,6 @@
 // hooks/use-chat-messages.ts
 import { useChatStore } from '@/store/chat';
-import { Message } from '@/types/chat';
+import { Message } from '@/types';
 import { useCallback, useRef } from 'react';
 
 /**

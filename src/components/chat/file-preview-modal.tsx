@@ -1,6 +1,6 @@
 // components/chat/file-preview-modal.tsx
 import { useJwtToken } from '@/hooks/use-jwt-token';
-import { MessageFile } from '@/types/chat';
+import { MessageFile } from '@/types';
 import { X } from 'lucide-react';
 import { JSX, useEffect, useState } from 'react';
 

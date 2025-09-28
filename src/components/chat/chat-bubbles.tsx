@@ -1,6 +1,6 @@
 // components/chat/chat-bubble.tsx
 
-import { ActionIconDefinition, Message, MessageFile, UserInfo } from '@/types/chat';
+import { ActionIconDefinition, Message, MessageFile, UserInfo } from '@/types';
 import { motion } from 'framer-motion';
 import { JSX, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';

@@ -20,9 +20,9 @@ const hasValidClerkKey = env.clerkPublishableKey &&
   env.clerkPublishableKey.startsWith('pk_');
 
 export const useAuthStore = create<AuthState>((set) => ({
-  token: hasValidClerkKey ? null : 'demo-token-for-development', // Provide fallback token for demo mode
+  token: null, // Always start with null
   tokenError: null,
-  isLoadingToken: hasValidClerkKey, // Only show loading if we have a real Clerk key
+  isLoadingToken: true, // Always start with loading true to trigger auth
   setToken: (token) => set({ token, tokenError: null, isLoadingToken: false }),
   setTokenError: (error) => set({ tokenError: error, token: null, isLoadingToken: false }),
   setIsLoadingToken: (loading) => set({ isLoadingToken: loading }),

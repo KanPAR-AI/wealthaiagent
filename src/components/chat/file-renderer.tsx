@@ -1,11 +1,11 @@
 // components/chat/file-renderer.tsx
 
-import { MessageFile } from '@/types/chat';
+import { MessageFile } from '@/types';
 import { Download, FileText, Maximize, TriangleAlert } from 'lucide-react';
-import { JSX, useEffect, useState } from 'react';
+import React, { JSX, useEffect, useState } from 'react';
 import { fetchFileWithToken } from '@/services/chat-service';
 import { Loader2 } from 'lucide-react';
-import { useJwtToken } from '@/hooks/use-jwt-token';
+import { useJwtTokenWeb } from '@/hooks/use-jwt-token-web';
 
 interface FileRendererProps {
   file: MessageFile;
@@ -17,17 +17,24 @@ function ImagePreview({ file, onFileClick }: FileRendererProps) {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(false);
-    const { token } = useJwtToken();
+    const { token } = useJwtTokenWeb();
   
     useEffect(() => {
-      if (!file.url || !token) return;
+      if (!file.url || !token) {
+        console.log('ImagePreview: Missing URL or token', { url: file.url, hasToken: !!token });
+        return;
+      }
+      console.log('ImagePreview: Loading image', file.url);
       setIsLoading(true);
+      setError(false);
       fetchFileWithToken(file.url, token)
         .then((url) => {
+          console.log('ImagePreview: Successfully loaded image');
           setPreviewUrl(url);
           setIsLoading(false);
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error('Failed to load image:', err);
           setError(true);
           setIsLoading(false);
         });
@@ -74,13 +81,17 @@ function ImagePreview({ file, onFileClick }: FileRendererProps) {
 function PdfPreview({ file }: { file: MessageFile }) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
-  const { token } = useJwtToken();
+  const { token } = useJwtTokenWeb();
 
   useEffect(() => {
     if (!file.url || !token) return;
+    setError(false);
     fetchFileWithToken(file.url, token)
       .then(setPdfUrl)
-      .catch(() => setError(true));
+      .catch((err) => {
+        console.error('Failed to load PDF:', err);
+        setError(true);
+      });
   }, [file.url, token]);
 
   if (error || !pdfUrl) {
@@ -107,7 +118,7 @@ function PdfPreview({ file }: { file: MessageFile }) {
 
 // --- Fallback for other files ---
 function GenericFile({ file }: { file: MessageFile }) {
-  const { token } = useJwtToken();
+  const { token } = useJwtTokenWeb();
 
   const secureUrl = token
     ? `${file.url}?token=${encodeURIComponent(token)}`
@@ -133,15 +144,80 @@ function GenericFile({ file }: { file: MessageFile }) {
   );
 }
 
+// Helper function to detect file type from URL
+function detectFileTypeFromUrl(url: string): string {
+  const extension = url.split('.').pop()?.toLowerCase();
+  
+  switch (extension) {
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+    case 'gif':
+    case 'webp':
+    case 'svg':
+    case 'bmp':
+      return 'image/' + extension;
+    case 'pdf':
+      return 'application/pdf';
+    case 'txt':
+      return 'text/plain';
+    case 'doc':
+    case 'docx':
+      return 'application/msword';
+    case 'xls':
+    case 'xlsx':
+      return 'application/vnd.ms-excel';
+    default:
+      return 'application/octet-stream';
+  }
+}
+
+// Error boundary component for file rendering
+function FileRendererErrorBoundary({ children, file }: { children: React.ReactNode; file: MessageFile }) {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    const handleError = () => setHasError(true);
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
+  if (hasError) {
+    return (
+      <div className="w-full h-48 flex flex-col items-center justify-center bg-zinc-100 dark:bg-zinc-800 rounded-md text-destructive">
+        <TriangleAlert className="size-8" />
+        <span className="text-xs mt-2">Failed to render file</span>
+        <span className="text-xs text-muted-foreground mt-1">{file.name}</span>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 // --- Main Dispatcher ---
 export function FileRenderer({ file, onFileClick }: FileRendererProps): JSX.Element {
-  if (file.type?.startsWith('image/')) {
-    return <ImagePreview file={file} onFileClick={onFileClick} />;
-  }
+  // Use detected type if the file type is unknown or generic
+  const fileType = file.type === 'application/octet-stream' || !file.type 
+    ? detectFileTypeFromUrl(file.url) 
+    : file.type;
 
-  if (file.type === 'application/pdf') {
-    return <PdfPreview file={file} />;
-  }
+  console.log('FileRenderer: Processing file', { 
+    name: file.name, 
+    originalType: file.type, 
+    detectedType: fileType, 
+    url: file.url 
+  });
 
-  return <GenericFile file={file} />;
+  return (
+    <FileRendererErrorBoundary file={file}>
+      {fileType.startsWith('image/') ? (
+        <ImagePreview file={{ ...file, type: fileType }} onFileClick={onFileClick} />
+      ) : fileType === 'application/pdf' ? (
+        <PdfPreview file={{ ...file, type: fileType }} />
+      ) : (
+        <GenericFile file={{ ...file, type: fileType }} />
+      )}
+    </FileRendererErrorBoundary>
+  );
 }

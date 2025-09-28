@@ -3,11 +3,11 @@ import { ChatMessageList } from '@/components/chat/message-list';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatMessages } from '@/hooks/use-chat-messages';
 import { useChatSession } from '@/hooks/use-chat-session';
-import { useJwtTokenWeb } from '@/hooks/use-jwt-token-web';
+import { useJwtToken } from '@/hooks/use-jwt-token';
 import { useMessageActions } from '@/hooks/use-message-actions';
 import { createChatSession, fetchChatHistory, listenToChatStream, sendChatMessage } from '@/services/chat-service';
 import { useChatStore } from '@/store/chat';
-import { ChatWindowProps, Message, MessageFile, SuggestionTileData } from '@/types/chat';
+import { ChatWindowProps, Message, MessageFile, SuggestionTileData } from '@/types';
 import { useUser } from '@clerk/clerk-react';
 import { env } from '@/config/environment';
 import { Copy, RefreshCcw, ThumbsDown, ThumbsUp } from "lucide-react";
@@ -41,7 +41,7 @@ export default function ChatWindow({
   const clerkUser = hasValidClerkKey ? useUser() : null;
   const user = clerkUser?.user;
   const isSignedIn = clerkUser?.isSignedIn || false;
-  const { token, isLoadingToken, tokenError } = useJwtTokenWeb();
+  const { token, isLoadingToken, tokenError } = useJwtToken();
   const [selectedFile, setSelectedFile] = useState<MessageFile | null>(null);
   const [isHistoryLoading, setIsHistoryLoading] = useState(!!chatId);
 
@@ -166,13 +166,32 @@ export default function ChatWindow({
         const chatResponse = await fetchChatHistory(token, chatId);
   
         const loadedMessages:Message[] = chatResponse.messages.map((msg) => {
-          const files: MessageFile[] = (msg.attachments || []).map((att) => ({
-            name: att.name,
-            type: att.type,
-            url: att.url,
-            size: att.size,
-          }));
-  
+          const files: MessageFile[] = (msg.attachments || []).map((att: any) => {
+            console.log('Processing attachment:', att);
+            
+            // Handle both string URLs and object attachments
+            if (typeof att === 'string') {
+              // Backend sends just URL strings
+              const fileName = att.split('/').pop() || 'Unknown file';
+              return {
+                name: fileName,
+                type: 'application/octet-stream', // Default type, will be detected by FileRenderer
+                url: att,
+                size: 0, // Unknown size
+              };
+            } else {
+              // Backend sends attachment objects
+              return {
+                name: att.name || 'Unknown file',
+                type: att.type || 'application/octet-stream',
+                url: att.url,
+                size: att.size || 0,
+              };
+            }
+          });
+
+          console.log('Loaded message with files:', { messageId: msg.id, fileCount: files.length, files });
+
           return {
             id: msg.id,
             message: msg.content,

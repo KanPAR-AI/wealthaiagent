@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '@/store/chat';
 import { nanoid } from 'nanoid';
-import { MessageFile } from '@/types/chat';
+import { MessageFile } from '@/types';
 
 export const useChatSession = (initialChatId?: string) => {
   const [chatId, setChatId] = useState(initialChatId);

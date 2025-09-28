@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { ChatBubble } from './chat-bubbles'; // Assuming chat-bubbles.tsx contains ChatBubble
-import { UserInfo, Message, ActionIconDefinition, MessageFile } from '@/types/chat';
+import { UserInfo, Message, ActionIconDefinition, MessageFile } from '@/types';
 
 interface ChatMessageListProps {
   messages: Message[];

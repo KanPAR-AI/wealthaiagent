@@ -55,7 +55,7 @@ export const useMessageActions = (chatId: string) => {
 
     // Option 1: Replace the existing bot message with the new streamed content
     // We update the existing bot message to show it's streaming again
-    updateMessage(messageId, { message: '', isStreaming: true, error: undefined, structuredContent: undefined });
+    updateMessage(messageId, { message: '', isStreaming: true, error: undefined });
 
     // Option 2 (if you prefer a brand new message):
     // const newAiMessageId = nanoid();

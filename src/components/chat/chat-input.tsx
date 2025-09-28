@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/prompt-input";
 import { getApiUrl } from "@/config/environment";
 import { useJwtToken } from "@/hooks/use-jwt-token";
-import { MessageFile } from "@/types/chat"; // Import MessageFile
+import { MessageFile } from "@/types"; // Import MessageFile
 import { ArrowUp, Mic, MicOff, Paperclip, Square, X } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 

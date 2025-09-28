@@ -2,13 +2,13 @@
 
 export interface Message {
   id: string;
-  content: string;
-  attachments: MessageFile[];
-  chatId: string;
-  sender: 'user' | 'assistant';
-  timestamp: string;
-  status: string;
-  metadata?: any;
+  message: string;
+  sender: 'user' | 'bot';
+  timestamp?: string;
+  files?: MessageFile[];
+  isStreaming?: boolean;
+  error?: string;
+  structuredContent?: any;
 }
 
 export interface MessageFile {
@@ -30,4 +30,15 @@ export interface ChatResponse {
   };
   messages: Message[];
   hasMoreMessages: boolean;
+}
+
+export interface ChatWindowProps {
+  chatId?: string;
+  className?: string;
+}
+
+export interface SuggestionTileData {
+  id: number;
+  title: string;
+  description: string;
 }
