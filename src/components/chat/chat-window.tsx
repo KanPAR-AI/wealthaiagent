@@ -3,12 +3,13 @@ import { ChatMessageList } from '@/components/chat/message-list';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatMessages } from '@/hooks/use-chat-messages';
 import { useChatSession } from '@/hooks/use-chat-session';
-import { useJwtToken } from '@/hooks/use-jwt-token';
+import { useJwtTokenWeb } from '@/hooks/use-jwt-token-web';
 import { useMessageActions } from '@/hooks/use-message-actions';
 import { createChatSession, fetchChatHistory, listenToChatStream, sendChatMessage } from '@/services/chat-service';
 import { useChatStore } from '@/store/chat';
 import { ChatWindowProps, Message, MessageFile, SuggestionTileData } from '@/types/chat';
 import { useUser } from '@clerk/clerk-react';
+import { env } from '@/config/environment';
 import { Copy, RefreshCcw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { nanoid } from 'nanoid';
 import { useEffect, useRef, useState } from 'react';
@@ -31,8 +32,16 @@ export default function ChatWindow({
   chatId,
   className = ''
 }: ChatWindowProps) {
-  const { user, isSignedIn } = useUser();
-  const { token, isLoadingToken, tokenError } = useJwtToken();
+  // Check if we have a valid Clerk key
+  const hasValidClerkKey = env.clerkPublishableKey && 
+    env.clerkPublishableKey !== 'pk_test_fallback_key_for_development' &&
+    env.clerkPublishableKey.startsWith('pk_');
+
+  // Only use Clerk hooks if we have a valid key
+  const clerkUser = hasValidClerkKey ? useUser() : null;
+  const user = clerkUser?.user;
+  const isSignedIn = clerkUser?.isSignedIn || false;
+  const { token, isLoadingToken, tokenError } = useJwtTokenWeb();
   const [selectedFile, setSelectedFile] = useState<MessageFile | null>(null);
   const [isHistoryLoading, setIsHistoryLoading] = useState(!!chatId);
 
@@ -58,12 +67,15 @@ export default function ChatWindow({
   const [lastUserMessageId, setLastUserMessageId] = useState<string | null>(null);
   const streamingControllerRef = useRef<AbortController | null>(null);
   const isProcessingRef = useRef(false);
+  // State to track if we're processing a pending message to prevent interference
+  const [isProcessingPendingMessage, setIsProcessingPendingMessage] = useState(false);
 
   useEffect(() => {
     if (token && chatId && pendingMessage && pendingMessage.chatId === chatId && !isProcessingRef.current) {
       const { text, files } = pendingMessage;
 
       isProcessingRef.current = true;
+      setIsProcessingPendingMessage(true);
       console.log("Processing pending message for new chat:", pendingMessage);
 
       clearPendingMessage();
@@ -101,6 +113,7 @@ export default function ChatWindow({
               updateMessage(aiMessageId, { isStreaming: false });
               setIsSending(false);
               isProcessingRef.current = false;
+              setIsProcessingPendingMessage(false);
             },
             (error) => { // onError
               console.error("Error in SSE stream for pending message:", error);
@@ -111,6 +124,7 @@ export default function ChatWindow({
               });
               setIsSending(false);
               isProcessingRef.current = false;
+              setIsProcessingPendingMessage(false);
             }
           );
         } catch (error) {
@@ -122,6 +136,7 @@ export default function ChatWindow({
           });
           setIsSending(false);
           isProcessingRef.current = false;
+          setIsProcessingPendingMessage(false);
         }
       };
 
@@ -140,6 +155,12 @@ export default function ChatWindow({
     console.log("Loading chat history",chatId)
     const loadChatHistory = async () => {
       if (!chatId || !token) return;
+      
+      // Don't load history if we're processing a pending message
+      if (isProcessingPendingMessage) {
+        console.log("Skipping chat history load - pending message being processed");
+        return;
+      }
   
       try {
         const chatResponse = await fetchChatHistory(token, chatId);
@@ -161,29 +182,38 @@ export default function ChatWindow({
           };
         });
   
-        // Clear previous messages
-        setIsHistoryLoading(true);
-        clearMessages();
+        // Only clear messages if we have loaded messages (existing chat)
+        // Don't clear if it's a new chat with no history yet
+        if (loadedMessages.length > 0) {
+          setIsHistoryLoading(true);
+          clearMessages();
   
-        // Add loaded messages one by one (preserving order)
-        loadedMessages.forEach((m) => addMessage(m));
+          // Add loaded messages one by one (preserving order)
+          loadedMessages.forEach((m) => addMessage(m));
+        }
         setIsHistoryLoading(false)
       } catch (err) {
         console.error('Failed to load chat history:', err);
+        setIsHistoryLoading(false)
       }
     };
   
     loadChatHistory();
-  }, [chatId, token, clearMessages, addMessage]);
+  }, [chatId, token, clearMessages, addMessage, isProcessingPendingMessage]);
   
   
 
   useEffect(() => {
     if (isFirstMessage && chatId) {
+      // Don't clear messages if we're processing a pending message
+      if (isProcessingPendingMessage) {
+        console.log("Skipping first message clear - pending message being processed");
+        return;
+      }
       console.log("Detected first message for new chat ID, clearing messages.");
       clearMessages();
     }
-  }, [isFirstMessage, chatId, clearMessages]);
+  }, [isFirstMessage, chatId, clearMessages, isProcessingPendingMessage]);
 
   const handleSend = async (text: string, attachments: MessageFile[]) => {
     console.log("message:",text,attachments)
@@ -274,10 +304,10 @@ export default function ChatWindow({
   };
 
   const actionIcons = [
-    { icon: Copy, type: "Copy", action: handleCopy },
-    { icon: RefreshCcw, type: "Regenerate", action: handleRegenerate },
-    { icon: ThumbsUp, type: "Like", action: handleLike },
-    { icon: ThumbsDown, type: "Dislike", action: handleDislike },
+    { icon: Copy as React.FC<React.SVGProps<SVGSVGElement>>, type: "Copy", action: handleCopy },
+    { icon: RefreshCcw as React.FC<React.SVGProps<SVGSVGElement>>, type: "Regenerate", action: handleRegenerate },
+    { icon: ThumbsUp as React.FC<React.SVGProps<SVGSVGElement>>, type: "Like", action: handleLike },
+    { icon: ThumbsDown as React.FC<React.SVGProps<SVGSVGElement>>, type: "Dislike", action: handleDislike },
   ];
 
   useEffect(() => {

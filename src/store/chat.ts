@@ -1,7 +1,8 @@
 // store/chat.ts
 
 import { create } from 'zustand';
-import { Message, MessageFile } from '@/types/chat'; // Import MessageFile
+import { Message, MessageFile } from '@/types'; // Import from local types
+import { env } from '@/config/environment';
 
 // --- Auth State Management ---
 interface AuthState {
@@ -13,10 +14,15 @@ interface AuthState {
   setIsLoadingToken: (loading: boolean) => void;
 }
 
+// Check if we have a valid Clerk key
+const hasValidClerkKey = env.clerkPublishableKey && 
+  env.clerkPublishableKey !== 'pk_test_fallback_key_for_development' &&
+  env.clerkPublishableKey.startsWith('pk_');
+
 export const useAuthStore = create<AuthState>((set) => ({
-  token: null,
+  token: hasValidClerkKey ? null : 'demo-token-for-development', // Provide fallback token for demo mode
   tokenError: null,
-  isLoadingToken: true, // Initially true until the first token fetch
+  isLoadingToken: hasValidClerkKey, // Only show loading if we have a real Clerk key
   setToken: (token) => set({ token, tokenError: null, isLoadingToken: false }),
   setTokenError: (error) => set({ tokenError: error, token: null, isLoadingToken: false }),
   setIsLoadingToken: (loading) => set({ isLoadingToken: loading }),

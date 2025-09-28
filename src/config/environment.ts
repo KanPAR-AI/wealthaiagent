@@ -32,9 +32,13 @@ interface EnvironmentConfig {
 }
 
 // Helper function to get required environment variable
-function getRequiredEnv(key: string): string {
+function getRequiredEnv(key: string, fallback?: string): string {
   const value = import.meta.env[key];
   if (!value) {
+    if (fallback) {
+      console.warn(`Missing environment variable: ${key}, using fallback`);
+      return fallback;
+    }
     throw new Error(`Missing required environment variable: ${key}`);
   }
   return value;
@@ -63,7 +67,7 @@ function getNumberEnv(key: string, defaultValue: number): number {
 // Create and export the environment configuration
 export const env: EnvironmentConfig = {
   // Clerk Authentication
-  clerkPublishableKey: getRequiredEnv('VITE_CLERK_PUBLISHABLE_KEY'),
+  clerkPublishableKey: getRequiredEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fallback_key_for_development'),
   
   // API Configuration
   apiBaseUrl: getOptionalEnv('VITE_API_BASE_URL', 'https://chatbackend.yourfinadvisor.com') || '',

@@ -1,7 +1,7 @@
 // src/components/chat/structured-content/charts/BarChartDisplay.tsx
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from 'recharts';
-import { AiGraphContent } from '@/types/chat'; // Adjust path
+import { AiGraphContent } from '../../types/chat'; // Adjust path
 import ChartErrorFallback from './error-fallback';
 
 interface BarChartDisplayProps {
