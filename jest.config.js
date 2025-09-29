@@ -20,7 +20,9 @@ export default {
         moduleResolution: 'node',
         target: 'es2017',
         lib: ['es2017', 'dom'],
-        outDir: './dist'
+        outDir: './dist',
+        skipLibCheck: true,
+        isolatedModules: true
       }
     }]
   },
