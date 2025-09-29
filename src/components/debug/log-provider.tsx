@@ -88,10 +88,15 @@ export const LogProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             console.error("error in log provider")
         }
 
+        const responseHeaders: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          responseHeaders[key] = value;
+        });
+
         updateLog(logId, {
           status: response.status, statusText: response.statusText, endTime,
           duration: endTime - startTime,
-          responseHeaders: Object.fromEntries(response.headers.entries()),
+          responseHeaders,
           responseBody, success: response.ok
         });
         return response;

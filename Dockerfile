@@ -1,11 +1,18 @@
 # frontend/Dockerfile
 
 # Stage 1: Build the React application
-FROM node:20-alpine AS builder 
+FROM node:20-alpine AS builder
 # Recommended: Update to Node 20
 WORKDIR /app
-COPY package.json  ./
-RUN npm i
+
+# Install python/pip and build dependencies for native modules
+RUN apk add --no-cache python3 make g++
+
+COPY package.json package-lock.json* ./
+# Clean install with forced architecture and rebuild native modules
+RUN npm ci --legacy-peer-deps && \
+    npm rebuild && \
+    npm install --platform=linuxmusl --arch=x64 --libc=musl --force
 COPY . .
 
 # Run tests during build
