@@ -2,17 +2,20 @@
 
 # Stage 1: Build the React application
 FROM node:20-alpine AS builder
-# Recommended: Update to Node 20
 WORKDIR /app
 
 # Install python/pip and build dependencies for native modules
 RUN apk add --no-cache python3 make g++
 
+# Copy package files
 COPY package.json package-lock.json* ./
-# Clean install with forced architecture and rebuild native modules
-RUN npm ci --legacy-peer-deps && \
-    npm rebuild && \
-    npm install --platform=linuxmusl --arch=x64 --libc=musl --force
+
+# Install dependencies with clean slate
+# Remove any existing node_modules and package-lock to avoid conflicts
+RUN rm -rf node_modules package-lock.json && \
+    npm install --legacy-peer-deps && \
+    npm rebuild
+
 COPY . .
 
 # Run tests during build
