@@ -51,6 +51,9 @@
     /* Use visual viewport height instead of dynamic viewport height on iOS */
     height: 100vh;
     height: 100dvh;
+    /* Ensure the container doesn't shrink when keyboard appears */
+    min-height: 100vh;
+    min-height: 100dvh;
   }
 
   /* iOS Safari specific viewport handling */
@@ -58,13 +61,22 @@
     .ios-keyboard-fix {
       /* Fallback for older iOS versions */
       height: 100vh;
+      min-height: 100vh;
+      /* Let iOS Safari handle viewport changes naturally */
+      position: relative;
     }
     
-    /* Ensure input area adjusts to keyboard */
+    /* Ensure input area stays at bottom and adjusts naturally */
     .ios-input-container {
-      position: sticky;
+      position: fixed;
       bottom: 0;
+      left: 0;
+      right: 0;
       z-index: 1000;
+      /* Use safe area for devices with home indicator */
+      padding-bottom: env(safe-area-inset-bottom);
+      /* Let iOS Safari push this up naturally when keyboard appears */
+      transform: none !important;
     }
 
     /* Prevent zoom on input focus */
@@ -88,6 +100,11 @@
     /* Ensure proper scrolling behavior */
     .ios-keyboard-fix {
       -webkit-overflow-scrolling: touch;
+    }
+
+    /* Add padding to chat content to account for fixed input bar */
+    .ios-keyboard-fix .chat-content {
+      padding-bottom: 120px; /* Space for input bar */
     }
   }
 

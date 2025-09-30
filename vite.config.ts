@@ -64,7 +64,7 @@ export default defineConfig({
   ],
   base: '/chataiagent/', // Ensures assets are pathed correctly for the subfolder
   server:{
-    allowedHosts: ["c71b64854548.ngrok-free.app"] // Remove or comment out for production builds
+    allowedHosts: ["e597ac4441c7.ngrok-free.app"] // Remove or comment out for production builds
   },
   resolve: {
     alias: {

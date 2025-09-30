@@ -14,16 +14,17 @@ export function useIOSKeyboard() {
     if (!isIOSSafari) return;
 
     const initialViewportHeight = window.innerHeight;
-    let currentViewportHeight = window.innerHeight;
 
     const handleResize = () => {
-      currentViewportHeight = window.innerHeight;
+      const currentViewportHeight = window.innerHeight;
       const heightDifference = initialViewportHeight - currentViewportHeight;
       
       // If viewport height decreased significantly, keyboard is likely open
       if (heightDifference > 150) {
         setIsKeyboardOpen(true);
-        setKeyboardHeight(heightDifference);
+        // Don't move the input bar up by the full keyboard height
+        // Instead, just move it up enough to stay above the keyboard
+        setKeyboardHeight(Math.min(heightDifference * 0.3, 100)); // Limit to 100px max
       } else {
         setIsKeyboardOpen(false);
         setKeyboardHeight(0);
@@ -35,7 +36,8 @@ export function useIOSKeyboard() {
         const heightDifference = initialViewportHeight - window.visualViewport.height;
         if (heightDifference > 150) {
           setIsKeyboardOpen(true);
-          setKeyboardHeight(heightDifference);
+          // Use a smaller offset to keep input bar just above keyboard
+          setKeyboardHeight(Math.min(heightDifference * 0.2, 80)); // Limit to 80px max
         } else {
           setIsKeyboardOpen(false);
           setKeyboardHeight(0);

@@ -84,8 +84,8 @@ export function ChatBubble({
   };
 
   return (
-    <div key={message.id} className={`flex gap-3 ${isUser ? 'justify-start sm:justify-end' : 'justify-start'}`}>
-      <div className={`flex flex-col ${isUser ? 'items-start sm:items-end' : 'items-start'} w-full`}>
+    <div key={message.id} className={`flex gap-3 ${isUser ? 'justify-start sm:justify-end' : 'justify-start'} w-full min-w-0`}>
+      <div className={`flex flex-col ${isUser ? 'items-start sm:items-end' : 'items-start'} w-full min-w-0 max-w-full`}>
         {/* Message Bubble (for text and structured content) */}
         {/* Only render the bubble if there's text or structured content */}
         {(message.message || message.structuredContent) && (
@@ -93,11 +93,11 @@ export function ChatBubble({
             variants={bubbleVariants}
             initial="hidden"
             animate="visible"
-            className={`px-3 py-2 md:px-4 md:py-2 rounded-2xl break-words text-sm md:text-base relative max-w-full ${
+            className={`px-3 py-2 md:px-4 md:py-2 rounded-2xl text-sm md:text-base relative max-w-full min-w-0 overflow-hidden chat-bubble-content ${
               isUser
                 ? 'bg-primary text-primary-foreground dark:text-zinc-100'
                 : 'bg-muted dark:bg-zinc-700 dark:text-zinc-200'
-            } break-words overflow-wrap-break-word word-break-break-word`}
+            } break-all overflow-wrap-anywhere hyphens-auto`}
           >
             {message.error ? (
               <div className="flex items-center gap-2">
@@ -105,9 +105,45 @@ export function ChatBubble({
                 <span className="italic text-red-500">{message.error}</span>
               </div>
             ) : (
-              <div className="px-0.5 whitespace-pre-wrap">
+              <div className="px-0.5 whitespace-pre-wrap break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
                 {/* Render Markdown text content */}
-                <ReactMarkdown>{message.message}</ReactMarkdown>
+                <div className="break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
+                  <ReactMarkdown 
+                    components={{
+                    // Handle code blocks and inline code to prevent overflow
+                    code: ({ children, className, ...props }: any) => {
+                      const isInline = !className?.includes('language-');
+                      return isInline ? (
+                        <code className="break-all overflow-wrap-anywhere bg-muted/50 px-1 py-0.5 rounded text-xs" {...props}>
+                          {children}
+                        </code>
+                      ) : (
+                        <code className="block overflow-x-auto bg-muted/50 p-2 rounded text-xs whitespace-pre" {...props}>
+                          {children}
+                        </code>
+                      );
+                    },
+                    // Handle pre blocks
+                    pre: ({ children, ...props }) => (
+                      <pre className="overflow-x-auto bg-muted/50 p-2 rounded text-xs whitespace-pre break-words" {...props}>
+                        {children}
+                      </pre>
+                    ),
+                    // Handle links to prevent overflow
+                    a: ({ children, href, ...props }) => (
+                      <a 
+                        href={href} 
+                        className="break-all overflow-wrap-anywhere text-blue-600 hover:text-blue-800 underline" 
+                        {...props}
+                      >
+                        {children}
+                      </a>
+                    ),
+                  }}
+                    >
+                      {message.message}
+                    </ReactMarkdown>
+                  </div>
                 {/* Show blinking cursor if bot message is still streaming */}
                 {message.sender === 'bot' && message.isStreaming && <BlinkingCursor />}
               </div>
