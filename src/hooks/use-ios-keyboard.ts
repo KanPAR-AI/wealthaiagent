@@ -13,7 +13,7 @@ export function useIOSKeyboard() {
 
     if (!isIOSSafari) return;
 
-    let initialViewportHeight = window.innerHeight;
+    const initialViewportHeight = window.innerHeight;
     let currentViewportHeight = window.innerHeight;
 
     const handleResize = () => {
