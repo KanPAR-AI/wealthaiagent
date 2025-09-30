@@ -1,18 +1,39 @@
 # frontend/Dockerfile
 
 # Stage 1: Build the React application
-FROM node:20-alpine AS builder 
-# Recommended: Update to Node 20
+FROM node:20-alpine AS builder
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+
+# Install python/pip and build dependencies for native modules
+RUN echo "Installing build dependencies..." && \
+    apk add --no-cache python3 make g++ && \
+    echo "Build dependencies installed successfully"
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Debug: Show package.json content
+RUN echo "Package.json contents:" && cat package.json | head -20
+
+# Install dependencies with verbose logging
+RUN echo "Starting npm install..." && \
+    rm -rf node_modules package-lock.json && \
+    npm install --legacy-peer-deps 2>&1 && \
+    echo "npm install completed successfully"
+
+# Copy application code
 COPY . .
 
-# Run tests during build
-RUN npm run test:ci
+# Debug: List files
+RUN echo "Files in /app:" && ls -la
 
-# Build the application
-RUN npm run build
+# Run tests during build with verbose output
+RUN echo "Running tests..." && \
+    npm run test:ci 2>&1 || (echo "Tests failed with exit code $?" && exit 1)
+
+# Build the application with verbose output
+RUN echo "Building application..." && \
+    npm run build 2>&1 || (echo "Build failed with exit code $?" && exit 1)
 
 # Stage 2: Serve the application with Nginx
 FROM nginx:1.25-alpine

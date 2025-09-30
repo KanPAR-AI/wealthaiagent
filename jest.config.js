@@ -19,7 +19,10 @@ export default {
         module: 'commonjs',
         moduleResolution: 'node',
         target: 'es2017',
-        lib: ['es2017', 'dom']
+        lib: ['es2017', 'dom'],
+        outDir: './dist',
+        skipLibCheck: true,
+        isolatedModules: true
       }
     }]
   },

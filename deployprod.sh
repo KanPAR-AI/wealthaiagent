@@ -52,7 +52,7 @@ gcloud services enable run.googleapis.com \
     iam.googleapis.com --project=${PROJECT_ID} --quiet
 
 # Configuration for your deployment
-ARTIFACT_REPO_NAME="frontend-docker-repo" # Your chosen Artifact Registry repository name
+ARTIFACT_REPO_NAME="yourfinadvisor-repo" # Your chosen Artifact Registry repository name
 REGION="us-central1"                 # Your chosen Google Cloud region
 SERVICE_NAME="wealthaiagent-frontend"  # Your chosen Cloud Run service name
 
