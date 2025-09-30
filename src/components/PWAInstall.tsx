@@ -8,8 +8,8 @@ interface PWAInstallComponent {
 }
 
 // Mock PWA registration for development
-const useRegisterSW = (options?: any): PWAInstallComponent => {
-  const [needRefresh, setNeedRefresh] = useState<[boolean, (value: boolean) => void]>([false, () => {}]);
+const useRegisterSW = (_options?: any): PWAInstallComponent => {
+  const [needRefresh, _setNeedRefresh] = useState<[boolean, (value: boolean) => void]>([false, () => {}]);
   const updateServiceWorker = async (reloadPage?: boolean) => {
     if (reloadPage) {
       window.location.reload();
@@ -37,7 +37,7 @@ const PWAInstall: React.FC = () => {
 
   // PWA update registration
   const {
-    needRefresh: [needRefresh, setNeedRefresh],
+    needRefresh: [needRefresh, _setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
     onRegistered(r: any) {

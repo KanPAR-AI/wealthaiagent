@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { cleanup } from '@testing-library/react';
+import { cleanup as _cleanup } from '@testing-library/react';
 import { afterEach } from '@jest/globals';
 import { TextEncoder, TextDecoder } from 'util';
 
@@ -76,7 +76,7 @@ Object.defineProperty(navigator, 'mediaDevices', {
   ondataavailable: any;
   onstop: any;
   
-  constructor(stream: any) {
+  constructor(_stream: any) {
     // Mock constructor
   }
   

@@ -8,7 +8,6 @@ import { ModeToggle } from '../theme/mode-toggle';
 function FallbackAuthSection() {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-sm text-muted-foreground">Demo Mode</span>
       <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
         <span className="text-xs font-medium">D</span>
       </div>

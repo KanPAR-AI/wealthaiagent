@@ -4,7 +4,6 @@ import {
   MoreHorizontal,
   Plus,
   Search,
-  Settings,
   Star,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";

@@ -1,5 +1,5 @@
 // services/api-service.ts
-import { Message, MessageFile } from "@/types";
+import { MessageFile } from "@/types";
 import { getApiUrl } from "@/config/environment";
 
 

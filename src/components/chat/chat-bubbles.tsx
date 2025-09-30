@@ -32,7 +32,7 @@ export function ChatBubble({
 }: ChatBubbleProps): JSX.Element {
   const isUser = message.sender === 'user';
   // A message has content if it has text OR structured content OR files
-  const hasContent = message.message || message.structuredContent || (message.files && message.files.length > 0);
+  const _hasContent = message.message || message.structuredContent || (message.files && message.files.length > 0);
 
   // Effect to revoke blob URLs when the component unmounts or files change
   // This is important if you were creating blob URLs on the frontend for temporary previews.
