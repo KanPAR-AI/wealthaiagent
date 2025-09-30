@@ -46,6 +46,51 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 
+  /* iOS Safari keyboard fixes */
+  .ios-keyboard-fix {
+    /* Use visual viewport height instead of dynamic viewport height on iOS */
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* iOS Safari specific viewport handling */
+  @supports (-webkit-touch-callout: none) {
+    .ios-keyboard-fix {
+      /* Fallback for older iOS versions */
+      height: 100vh;
+    }
+    
+    /* Ensure input area adjusts to keyboard */
+    .ios-input-container {
+      position: sticky;
+      bottom: 0;
+      z-index: 1000;
+    }
+
+    /* Prevent zoom on input focus */
+    input, textarea, select {
+      font-size: 16px;
+    }
+
+    /* Better touch targets for iOS */
+    button, input, textarea {
+      -webkit-tap-highlight-color: transparent;
+    }
+  }
+
+  /* Additional iOS Safari fixes */
+  @media screen and (max-width: 768px) {
+    /* Use safe area for mobile */
+    .ios-input-container {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    /* Ensure proper scrolling behavior */
+    .ios-keyboard-fix {
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+
   @media (min-width: 768px) {
     .message-bubble {
       max-width: none;

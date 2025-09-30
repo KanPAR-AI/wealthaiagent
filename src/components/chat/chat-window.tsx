@@ -12,6 +12,7 @@ import { Copy, RefreshCcw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { nanoid } from 'nanoid';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useIOSKeyboard } from '@/hooks/use-ios-keyboard';
 import { AiLoadingIndicator } from './ai-loading-indicator';
 import { ChatEmptyState } from './chat-empty-state';
 import { PromptInputWithActions } from "./chat-input";
@@ -33,6 +34,7 @@ export default function ChatWindow({
   const { token, isLoadingToken, tokenError } = useJwtToken();
   const [selectedFile, setSelectedFile] = useState<MessageFile | null>(null);
   const [isHistoryLoading, setIsHistoryLoading] = useState(!!chatId);
+  const { isKeyboardOpen, keyboardHeight } = useIOSKeyboard();
 
 
   const {isFirstMessage } = useChatSession(chatId);
@@ -365,7 +367,7 @@ export default function ChatWindow({
         onClose={() => setSelectedFile(null)}
         file={selectedFile}
       />
-      <div className={`flex flex-col h-dvh bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
+      <div className={`flex flex-col ios-keyboard-fix bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
         <div className="h-full overflow-hidden pb-4 mt-12 sm:mt-0">
           <ScrollArea className="h-full" type="scroll">
             <div className="p-4 md:p-6 space-y-6">
@@ -408,7 +410,13 @@ export default function ChatWindow({
           </ScrollArea>
         </div>
 
-        <div className="fixed sm:sticky bottom-0 left-0 right-0 bg-background dark:bg-zinc-800 border-t border-border/5 backdrop-blur-sm">
+        <div 
+          className="fixed sm:sticky bottom-0 left-0 right-0 bg-background dark:bg-zinc-800 border-t border-border/5 backdrop-blur-sm ios-input-container"
+          style={{
+            transform: isKeyboardOpen ? `translateY(-${keyboardHeight}px)` : 'translateY(0)',
+            transition: 'transform 0.3s ease-in-out'
+          }}
+        >
           <div className="w-full sm:px-4 sm:pb-4">
             <div className="max-w-3xl mx-auto">
               <PromptInputWithActions
