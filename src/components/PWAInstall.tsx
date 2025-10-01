@@ -125,7 +125,7 @@ const PWAInstall: React.FC = () => {
 
   const handleUpdateDismiss = () => {
     setShowUpdatePrompt(false);
-    setNeedRefresh(false);
+    _setNeedRefresh(false);
   };
 
   // Don't show if already dismissed recently (within 7 days)
