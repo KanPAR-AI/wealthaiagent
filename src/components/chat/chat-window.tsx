@@ -1,7 +1,7 @@
 // components/chat/chat-window.tsx
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, RefreshCcw, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Copy, RefreshCcw, ThumbsDown, ThumbsUp, ChevronDown } from "lucide-react";
 
 import { ChatMessageList } from '@/components/chat/message-list';
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,6 +40,11 @@ export default function ChatWindow({
   const { isFirstMessage } = useChatSession(chatId);
   const { messages, addMessage, updateMessage, clearMessages } = useChatMessages(chatId || '');
   const _navigate = useNavigate();
+
+  // Scroll to bottom functionality
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
 
   const clearPendingMessage = useChatStore(state => state.clearPendingMessage);
 
@@ -119,6 +124,27 @@ export default function ChatWindow({
     }
   }, [isFirstMessage, chatId, clearMessages, isProcessingPendingMessage]);
 
+  // Scroll to bottom function
+  const scrollToBottom = () => {
+    const scrollViewport = scrollViewportRef.current || document.querySelector('[data-radix-scroll-area-viewport]');
+    if (scrollViewport) {
+      scrollViewport.scrollTo({
+        top: scrollViewport.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  // Handle scroll events to show/hide scroll to bottom button
+  const handleScroll = () => {
+    const scrollViewport = scrollViewportRef.current || document.querySelector('[data-radix-scroll-area-viewport]');
+    if (scrollViewport) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollViewport;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShowScrollToBottom(!isNearBottom && scrollHeight > clientHeight);
+    }
+  };
+
   // Handle auto-scrolling to new messages
   useEffect(() => {
     if (lastUserMessageId) {
@@ -143,6 +169,22 @@ export default function ChatWindow({
       return () => clearTimeout(timeout);
     }
   }, [lastUserMessageId, setLastUserMessageId]);
+
+  // Add scroll event listener
+  useEffect(() => {
+    const scrollViewport = document.querySelector('[data-radix-scroll-area-viewport]');
+    if (scrollViewport) {
+      scrollViewportRef.current = scrollViewport as HTMLDivElement;
+      scrollViewport.addEventListener('scroll', handleScroll);
+      
+      // Initial check
+      handleScroll();
+      
+      return () => {
+        scrollViewport.removeEventListener('scroll', handleScroll);
+      };
+    }
+  }, [messages.length]); // Re-run when messages change
 
   const actionIcons = [
     { icon: Copy as React.FC<React.SVGProps<SVGSVGElement>>, type: "Copy", action: handleCopy },
@@ -175,8 +217,8 @@ export default function ChatWindow({
         file={selectedFile}
       />
       <div className={`flex flex-col ios-keyboard-fix bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
-        <div className="h-full overflow-hidden pb-4 mt-12 sm:mt-0 chat-content">
-          <ScrollArea className="h-[80vh]" type="scroll">
+        <div className="h-full overflow-hidden pb-4 mt-12 sm:mt-0 chat-content relative">
+          <ScrollArea ref={scrollAreaRef} className="h-[80vh]" type="scroll">
             <div className="p-4 md:p-6 space-y-6 min-w-0">
               <div className="max-w-3xl mx-auto w-full space-y-8 min-w-0">
                 {isHistoryLoading ? (
@@ -215,6 +257,17 @@ export default function ChatWindow({
               </div>
             </div>
           </ScrollArea>
+          
+          {/* Scroll to Bottom Button */}
+          {showScrollToBottom && (
+            <button
+              onClick={scrollToBottom}
+              className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-primary/70 text-primary-foreground hover:bg-primary/90 rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-105 z-10"
+              aria-label="Scroll to bottom"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         <div className="fixed sm:sticky bottom-0 left-0 right-0 bg-background dark:bg-zinc-800 border-t border-border/5 backdrop-blur-sm ios-input-container">
