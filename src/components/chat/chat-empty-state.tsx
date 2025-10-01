@@ -8,19 +8,14 @@ interface ChatEmptyStateProps {
   userName?: string | null;
 }
 
-export function ChatEmptyState({ isFirstMessage, isSignedIn, userName }: ChatEmptyStateProps): JSX.Element {
+export function ChatEmptyState({ isSignedIn, userName }: ChatEmptyStateProps): JSX.Element {
   return (
-    <div className="p-6 text-center text-muted-foreground dark:text-zinc-400">
-      {isFirstMessage ? (
-        <>
+    <div className="text-start text-muted-foreground dark:text-zinc-400">
+
           <h2 className="text-xl sm:text-2xl font-bold mt-16 text-foreground dark:text-zinc-200">
-            Hello, <AuroraText>{isSignedIn ? userName : 'User'}!</AuroraText>
+            Hello, How can I help you today?
           </h2>
-          <p>How can I help you today?</p>
-        </>
-      ) : (
-        <p>No messages in this chat yet. Send a message to start!</p>
-      )}
+     
     </div>
   );
 }

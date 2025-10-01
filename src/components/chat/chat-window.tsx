@@ -26,10 +26,10 @@ import { usePendingMessage } from './hooks/use-pending-message';
 import { useMessageSending } from './hooks/use-message-sending';
 
 const suggestionTiles: SuggestionTileData[] = [
-  { id: 1, title: "Show me sales data", description: "Generate content or brainstorm ideas" },
-  { id: 2, title: "Analyze my user demographics", description: "Get assistance with any topic" },
-  { id: 3, title: "Show me my product list", description: "Condense long documents" },
-  { id: 4, title: "Code assistance", description: "Debug or create new code" }
+  { id: 1, title: "How does AI work?", description: "" },
+  { id: 2, title: "Are black holes real?", description: "" },
+  { id: 3, title: "How many Rs are in the word \"strawberry\"?", description: "" },
+  { id: 4, title: "What is the meaning of life?", description: "" }
 ];
 
 export default function ChatWindow({
@@ -177,12 +177,12 @@ export default function ChatWindow({
       <div className={`flex flex-col ios-keyboard-fix bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
         <div className="h-full overflow-hidden pb-4 mt-12 sm:mt-0 chat-content">
           <ScrollArea className="h-[80vh]" type="scroll">
-            <div className="p-4 md:p-6 space-y-6 min-w-0">
+            <div className="p-4 md:p-6 space-y-6 min-w-0">``
               <div className="max-w-3xl mx-auto w-full space-y-8 min-w-0">
                 {isHistoryLoading ? (
                   <ChatLoadingSkeleton />
                 ) : messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full space-y-4 md:space-y-6 py-8">
+                  <div className="flex flex-col items-start justify-center h-full space-y-4 md:space-y-6 py-8 px-4">
                     <ChatEmptyState
                       isFirstMessage={isFirstMessage}
                       isSignedIn={true}
