@@ -29,7 +29,7 @@ interface EnvironmentConfig {
 }
 
 // Helper function to get required environment variable
-function getRequiredEnv(key: string, fallback?: string): string {
+function _getRequiredEnv(key: string, fallback?: string): string {
   const value = import.meta.env[key];
   if (!value) {
     if (fallback) {

@@ -12,9 +12,9 @@ function Chat() {
   }
   
   return (
-    <div className="flex h-screen w-full overflow-hidden dark:bg-zinc-900">
+    <div className="flex h-screen w-full overflow-hidden dark:bg-zinc-800">
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden w-full"> 
-        <div className="flex-shrink-0 fixed sm:sticky z-10 bg-background dark:bg-zinc-900 border-b border-border w-full">
+        <div className="flex-shrink-0 fixed sm:sticky z-10 bg-background dark:bg-zinc-800 border-b border-border w-full">
           <ChatHeader />
         </div>
         <div className="flex-1 min-h-0 overflow-hidden sm:p-0">

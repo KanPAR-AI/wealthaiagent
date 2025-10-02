@@ -140,3 +140,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Chat bubble overflow prevention */
+.chat-bubble-content {
+  word-break: break-all !important;
+  overflow-wrap: anywhere !important;
+  hyphens: auto !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.chat-bubble-content * {
+  word-break: break-all !important;
+  overflow-wrap: anywhere !important;
+  max-width: 100% !important;
+}

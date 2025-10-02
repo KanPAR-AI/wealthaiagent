@@ -31,7 +31,7 @@ const usePreviewUrl = (file: MessageFile | null, jwt: string | null) => {
     return () => {
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
-  }, [file, jwt]);
+  }, [file, jwt, blobUrl]);
 
   return blobUrl;
 };
@@ -54,7 +54,7 @@ export function FilePreviewModal({
 
   const isImage = file.type?.startsWith('image/');
   const isPDF = file.type === 'application/pdf';
-  const isExcel = file.type?.includes('spreadsheetml') || file.type?.includes('excel');
+  const _isExcel = file.type?.includes('spreadsheetml') || file.type?.includes('excel');
 
   return (
     <div

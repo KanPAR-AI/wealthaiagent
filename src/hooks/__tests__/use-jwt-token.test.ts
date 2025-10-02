@@ -154,7 +154,7 @@ describe('useJwtToken', () => {
       // Mock network error
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-      const { result } = renderHook(() => useJwtToken());
+      const { result: _result } = renderHook(() => useJwtToken());
 
       // Wait for the error to be handled and setTokenError to be called
       await waitFor(() => {

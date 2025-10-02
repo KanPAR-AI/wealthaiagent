@@ -6,7 +6,6 @@ function Index() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4 w-full">
        <header className="absolute top-4 right-4">
          <div className="flex items-center gap-2">
-           <span className="text-sm text-muted-foreground">Demo Mode</span>
            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
              <span className="text-xs font-medium">U</span>
            </div>
