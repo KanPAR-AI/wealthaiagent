@@ -172,6 +172,180 @@ function detectFileTypeFromUrl(url: string): string {
   }
 }
 
+// Helper function to detect file type by making a GET request with Range header
+async function detectFileTypeFromServer(url: string, token: string): Promise<string> {
+  try {
+    console.log('detectFileTypeFromServer: Making GET request with Range header to', url);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        Range: 'bytes=0-1023' // Only fetch first 1KB to get headers and detect type
+      }
+    });
+    
+    if (response.ok || response.status === 206) { // 206 is Partial Content
+      const contentType = response.headers.get('content-type');
+      console.log('detectFileTypeFromServer: Content-Type header:', contentType);
+      
+      // If we got a content type, use it
+      if (contentType && contentType !== 'application/octet-stream') {
+        return contentType;
+      }
+      
+      // If content type is still unknown, try to detect from the actual content
+      const blob = await response.blob();
+      const detectedType = await detectFileTypeFromBlob(blob);
+      console.log('detectFileTypeFromServer: Detected type from blob:', detectedType);
+      return detectedType;
+    } else if (response.status === 416) { // Range Not Satisfiable - try without Range header
+      console.log('detectFileTypeFromServer: Range not supported, trying without Range header');
+      return await detectFileTypeFromServerWithoutRange(url, token);
+    } else {
+      console.log('detectFileTypeFromServer: GET request failed with status', response.status);
+      return 'application/octet-stream';
+    }
+  } catch (error) {
+    console.error('detectFileTypeFromServer: Error making GET request:', error);
+    return 'application/octet-stream';
+  }
+}
+
+// Fallback function to detect file type without Range header
+async function detectFileTypeFromServerWithoutRange(url: string, token: string): Promise<string> {
+  try {
+    console.log('detectFileTypeFromServerWithoutRange: Making GET request without Range header to', url);
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 
+        Authorization: `Bearer ${token}`
+      }
+    });
+    
+    if (response.ok) {
+      const contentType = response.headers.get('content-type');
+      console.log('detectFileTypeFromServerWithoutRange: Content-Type header:', contentType);
+      
+      // If we got a content type, use it
+      if (contentType && contentType !== 'application/octet-stream') {
+        return contentType;
+      }
+      
+      // If content type is still unknown, try to detect from the actual content
+      // Only read first 1KB to avoid downloading large files
+      const blob = await response.blob();
+      const smallBlob = blob.slice(0, 1024);
+      const detectedType = await detectFileTypeFromBlob(smallBlob);
+      console.log('detectFileTypeFromServerWithoutRange: Detected type from blob:', detectedType);
+      return detectedType;
+    } else {
+      console.log('detectFileTypeFromServerWithoutRange: GET request failed with status', response.status);
+      return 'application/octet-stream';
+    }
+  } catch (error) {
+    console.error('detectFileTypeFromServerWithoutRange: Error making GET request:', error);
+    return 'application/octet-stream';
+  }
+}
+
+// Helper function to detect file type from blob content
+async function detectFileTypeFromBlob(blob: Blob): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const arrayBuffer = reader.result as ArrayBuffer;
+      const uint8Array = new Uint8Array(arrayBuffer);
+      
+      // Check magic bytes for common file types
+      if (uint8Array.length >= 4) {
+        // PNG: 89 50 4E 47
+        if (uint8Array[0] === 0x89 && uint8Array[1] === 0x50 && uint8Array[2] === 0x4E && uint8Array[3] === 0x47) {
+          resolve('image/png');
+          return;
+        }
+        
+        // JPEG: FF D8 FF
+        if (uint8Array[0] === 0xFF && uint8Array[1] === 0xD8 && uint8Array[2] === 0xFF) {
+          resolve('image/jpeg');
+          return;
+        }
+        
+        // GIF: 47 49 46 38
+        if (uint8Array[0] === 0x47 && uint8Array[1] === 0x49 && uint8Array[2] === 0x46 && uint8Array[3] === 0x38) {
+          resolve('image/gif');
+          return;
+        }
+        
+        // PDF: 25 50 44 46
+        if (uint8Array[0] === 0x25 && uint8Array[1] === 0x50 && uint8Array[2] === 0x44 && uint8Array[3] === 0x46) {
+          resolve('application/pdf');
+          return;
+        }
+        
+        // WebP: 52 49 46 46 (RIFF) followed by 57 45 42 50 (WEBP)
+        if (uint8Array.length >= 12 && 
+            uint8Array[0] === 0x52 && uint8Array[1] === 0x49 && uint8Array[2] === 0x46 && uint8Array[3] === 0x46 &&
+            uint8Array[8] === 0x57 && uint8Array[9] === 0x45 && uint8Array[10] === 0x42 && uint8Array[11] === 0x50) {
+          resolve('image/webp');
+          return;
+        }
+      }
+      
+      resolve('application/octet-stream');
+    };
+    reader.readAsArrayBuffer(blob.slice(0, 1024)); // Only read first 1KB
+  });
+}
+
+// Dynamic file type detection component for chat history files
+function DynamicFileRenderer({ file, onFileClick }: FileRendererProps) {
+  const [detectedType, setDetectedType] = useState<string>(file.type);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const { token } = useJwtToken();
+
+  useEffect(() => {
+    // Only try to detect type if it's unknown or generic
+    if (file.type === 'application/octet-stream' && token) {
+      setIsDetecting(true);
+      detectFileTypeFromServer(file.url, token)
+        .then((detectedType) => {
+          console.log('DynamicFileRenderer: Detected type:', detectedType);
+          setDetectedType(detectedType);
+          setIsDetecting(false);
+        })
+        .catch((error) => {
+          console.error('DynamicFileRenderer: Failed to detect type:', error);
+          setDetectedType(file.type);
+          setIsDetecting(false);
+        });
+    }
+  }, [file.url, file.type, token]);
+
+  if (isDetecting) {
+    return (
+      <div className="w-full h-48 flex flex-col items-center justify-center bg-zinc-100 dark:bg-zinc-800 rounded-md">
+        <Loader2 className="animate-spin size-6 text-zinc-500 mb-2" />
+        <span className="text-xs text-muted-foreground">Detecting file type...</span>
+      </div>
+    );
+  }
+
+  // Use the detected type for rendering
+  const fileWithDetectedType = { ...file, type: detectedType };
+
+  return (
+    <FileRendererErrorBoundary file={file}>
+      {detectedType.startsWith('image/') ? (
+        <ImagePreview file={fileWithDetectedType} onFileClick={onFileClick} />
+      ) : detectedType === 'application/pdf' ? (
+        <PdfPreview file={fileWithDetectedType} />
+      ) : (
+        <GenericFile file={fileWithDetectedType} />
+      )}
+    </FileRendererErrorBoundary>
+  );
+}
+
 // Error boundary component for file rendering
 function FileRendererErrorBoundary({ children, file }: { children: React.ReactNode; file: MessageFile }) {
   const [hasError, setHasError] = useState(false);
@@ -197,7 +371,7 @@ function FileRendererErrorBoundary({ children, file }: { children: React.ReactNo
 
 // --- Main Dispatcher ---
 export function FileRenderer({ file, onFileClick }: FileRendererProps): JSX.Element {
-  // Use detected type if the file type is unknown or generic
+  // First try to detect type from URL extension
   const fileType = file.type === 'application/octet-stream' || !file.type 
     ? detectFileTypeFromUrl(file.url) 
     : file.type;
@@ -208,6 +382,12 @@ export function FileRenderer({ file, onFileClick }: FileRendererProps): JSX.Elem
     detectedType: fileType, 
     url: file.url 
   });
+
+  // If we still have unknown type and it looks like a chat history file (generic name), use dynamic detection
+  if (fileType === 'application/octet-stream' && (file.name === 'download' || file.name === 'file')) {
+    console.log('FileRenderer: Using DynamicFileRenderer for chat history file');
+    return <DynamicFileRenderer file={file} onFileClick={onFileClick} />;
+  }
 
   return (
     <FileRendererErrorBoundary file={file}>
