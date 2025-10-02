@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.  #comment#
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Commands
 
@@ -95,6 +95,31 @@ React Router v7 with AppLayout wrapper:
 - **Path aliases**: Use `@/` for imports from `src/`
 - **Base path**: `/chataiagent/` for deployment
 - **TypeScript**: Strict mode with project references
+
+## Core System Flows
+
+### Chat Creation & Messaging
+1. **New Chat**: POST `/api/v1/chats` → returns chat ID → navigate to `/chat/:id`
+2. **Existing Chat Messages**: POST `/api/v1/chats/:id/messages` with content and file URLs
+3. **History Loading**: GET `/api/v1/chats/:id` fetches full message history (skipped during pending message processing to avoid race conditions)
+
+### Real-time Streaming (SSE)
+- Opens connection via GET `/api/v1/chats/:id/stream`
+- Processes events: `message_delta` (text chunks), `message_complete`, `graph_data`, `table_data`
+- Handles UTF-8 decoding and chunk assembly
+- Auto-closes on completion
+
+### File Operations
+1. **Upload**: POST `/api/v1/files/upload` as multipart/form-data → returns secure URLs
+2. **Preview**: Fetches file with JWT auth → creates blob URL → displays in modal → cleanup on close
+3. **Attachments**: Stored as `MessageFile[]` with `{name, type, url, size}`
+
+### Key Implementation Details
+- **Authentication**: All API calls include JWT in Authorization header
+- **Optimistic Updates**: UI updates immediately for favorites, then syncs with backend
+- **Memory Management**: Blob URLs cleaned up via `URL.revokeObjectURL()`
+- **Error Handling**: SSE streams handle reconnection and error states
+- **Pending Messages**: Stored in Zustand for new chat creation flow
 
 ## Important Notes
 
