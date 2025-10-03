@@ -50,7 +50,9 @@ src/
 │   ├── table/           # Table components
 │   └── debug/           # Debug components
 ├── hooks/               # Global custom React hooks
+│   └── use-cached-file.ts  # File caching hook
 ├── services/            # API services and business logic
+│   └── file-cache.ts    # IndexedDB file caching service
 ├── store/               # Zustand state stores
 ├── types/               # TypeScript type definitions
 ├── utils/               # Utility functions
@@ -71,6 +73,8 @@ src/
 7. **Single Responsibility Principle**: Each hook and component has a focused purpose
 8. **Separation of Concerns**: UI logic separated from business logic
 9. **Hook Composition**: Complex components broken down into focused custom hooks
+10. **Cache-First Strategy**: Local caching with backend fallback for optimal performance
+11. **Granular State Management**: Fine-grained loading states for better UX
 
 ---
 
@@ -188,16 +192,20 @@ ChatSidebar
 #### 5. **PromptInputWithActions** (`src/components/chat/chat-input.tsx`)
 **Responsibility**: Message input and actions
 - Handles text input
-- Manages file uploads
+- Manages file uploads with instant previews
 - Provides voice recording
 - Handles message submission
+- Manages granular loading states
 
 **Key Features**:
-- Multi-file upload
+- Multi-file upload with instant previews
 - Voice-to-text transcription
 - Real-time validation
 - Progress indicators
 - Keyboard shortcuts
+- **Granular Loading States**: Users can type while files upload
+- **File Caching Integration**: Instant previews using IndexedDB cache
+- **Smart UI Controls**: Only disables conflicting actions during operations
 
 ### UI Components
 
@@ -220,28 +228,30 @@ ChatSidebar
 - Renders message content
 - Handles message formatting
 - Provides action buttons
-- Manages file attachments
+- Manages file attachments with instant previews
 
 **Key Features**:
 - Markdown rendering
-- File attachment display
+- File attachment display with instant previews
 - Action button integration
 - Message status indicators
 - Responsive layout
+- **File Caching Integration**: Uses IndexedDB cache for instant file previews
 
 #### 8. **FilePreviewModal** (`src/components/chat/file-preview-modal.tsx`)
-**Responsibility**: Secure file preview
+**Responsibility**: Secure file preview with instant loading
 - Handles file preview display
-- Manages blob URL creation
+- Manages blob URL creation from cache
 - Provides download functionality
 - Ensures secure access
 
 **Key Features**:
-- Image preview
-- PDF viewer
+- Image preview with instant loading
+- PDF viewer with instant loading
 - Download functionality
 - Secure blob handling
 - Responsive modal
+- **File Caching Integration**: Instant previews using IndexedDB cache
 
 ### Utility Components
 
@@ -325,7 +335,20 @@ ChatSidebar
 - Navigation handling
 - Pending message management
 
-### 5. **ChatWindow Custom Hooks** (`src/components/chat/hooks/`)
+### 5. **File Caching System** (`src/services/file-cache.ts`, `src/hooks/use-cached-file.ts`)
+**Responsibility**: Local file caching for instant previews
+- **FileCacheService**: IndexedDB-based storage for file blobs
+- **useCachedFile**: React hook for seamless file fetching with caching
+- **Cache Management**: Automatic cleanup and size management
+
+**Key Features**:
+- **Instant Previews**: Files cached after first load for instant subsequent views
+- **Smart Cache Management**: 100MB limit with LRU eviction and 7-day expiration
+- **Seamless Fallback**: Cache miss → backend fetch → cache result
+- **Memory Management**: Proper blob URL cleanup prevents memory leaks
+- **No Backend Changes**: Works with existing backend integration
+
+### 6. **ChatWindow Custom Hooks** (`src/components/chat/hooks/`)
 **Responsibility**: ChatWindow component logic separation
 - **useChatWindowState**: Centralized state management for chat window
 - **useChatHistory**: Chat history loading and management logic
@@ -746,6 +769,7 @@ Authorization: Bearer {jwt_token}
 **Response**: File blob data
 **Usage**: Secure file preview with authentication
 **State Management**: Creates blob URL for preview
+**Caching**: Files are cached in IndexedDB for instant subsequent previews
 
 ---
 
@@ -789,6 +813,12 @@ Uses the same endpoints as `ChatWindow`:
 - Fallback to polling if SSE fails
 - Error state management
 
+#### 5. File Caching Errors
+- Cache miss fallback to backend
+- IndexedDB storage errors handled gracefully
+- Memory cleanup on cache failures
+- Blob URL cleanup prevents memory leaks
+
 ---
 
 ## Security & Performance
@@ -800,10 +830,13 @@ Uses the same endpoints as `ChatWindow`:
 - Automatic token refresh
 - Token validation on each request
 
-#### 2. File Access
+#### 2. File Access with Caching
 - Authenticated file downloads
 - Secure blob URL generation
 - Proper cleanup of blob URLs
+- **IndexedDB Security**: Files cached locally with same authentication requirements
+- **Cache Isolation**: Each user's cache is isolated and secure
+- **Memory Management**: Automatic cleanup prevents data persistence issues
 
 #### 3. CORS Configuration
 - Proper CORS headers for API access
@@ -817,12 +850,21 @@ Uses the same endpoints as `ChatWindow`:
 - Chunked message updates
 - Efficient re-rendering
 
-#### 2. File Handling
-- Lazy loading of file previews
-- Blob URL management
-- Memory cleanup
+#### 2. File Handling with Caching
+- **IndexedDB Caching**: Files cached locally for instant previews
+- **Cache-First Strategy**: Check cache → fetch if miss → cache result
+- **Smart Cache Management**: 100MB limit with LRU eviction and 7-day expiration
+- **Memory Management**: Proper blob URL cleanup prevents memory leaks
+- **Instant Previews**: Previously viewed files load instantly
+- **Seamless Fallback**: Graceful degradation when cache fails
 
-#### 3. State Management
+#### 3. Granular Loading States
+- **Smart UI Controls**: Only disables conflicting actions during operations
+- **User-Friendly UX**: Users can type while files upload
+- **Clear Feedback**: Tooltips explain why actions are disabled
+- **Logical Restrictions**: Prevents race conditions and conflicts
+
+#### 4. State Management
 - Optimistic UI updates
 - Efficient state updates
 - Minimal re-renders
@@ -1139,9 +1181,19 @@ npm run deploy:production
 - Recent chats cached in Zustand store
 - Automatic cleanup on navigation
 
-#### 3. File Caching
-- Blob URLs cached for previews
-- Automatic cleanup on component unmount
+#### 3. File Caching with IndexedDB
+- **Local File Storage**: Files cached in IndexedDB for instant previews
+- **Cache-First Strategy**: Check local cache before backend fetch
+- **Smart Eviction**: LRU (Least Recently Used) eviction with size limits
+- **Automatic Cleanup**: 7-day expiration with automatic cleanup
+- **Memory Management**: Proper blob URL cleanup prevents memory leaks
+- **Seamless Integration**: Works with existing backend without changes
+
+#### 4. Granular Loading States
+- **Smart UI Controls**: Only disables conflicting actions during operations
+- **User Experience**: Users can continue typing while files upload
+- **Clear Feedback**: Tooltips explain why actions are disabled
+- **Performance**: Reduces perceived loading time through better UX
 
 ### Future Enhancements
 
@@ -1154,6 +1206,12 @@ npm run deploy:production
 - File sharing between users
 - Advanced search functionality
 - Export chat history
+- **File Caching Enhancements**:
+  - Cache compression for large files
+  - Background sync for offline support
+  - Cache warming strategies
+  - Analytics and usage tracking
+  - Custom cache policies per file type
 
 ### Troubleshooting
 
@@ -1178,6 +1236,12 @@ npm run deploy:production
    - Check Zustand store updates
    - Verify component re-rendering
    - Monitor memory usage
+
+5. **File Caching Issues**
+   - Check IndexedDB support in browser
+   - Verify cache size limits (100MB)
+   - Monitor blob URL cleanup
+   - Check for memory leaks in file previews
 
 ---
 
@@ -1258,12 +1322,16 @@ The project has undergone significant code quality improvements to enhance maint
 - **Memory Management**: Proper cleanup in custom hooks
 - **Bundle Size**: No significant impact, improved tree-shaking potential
 - **Development Experience**: Faster debugging and development
+- **File Caching**: Instant file previews through IndexedDB caching
+- **Granular Loading States**: Better perceived performance through smart UI controls
 
 ##### Maintainability Benefits
 - **Easier Debugging**: Isolated logic is easier to trace
 - **Simpler Testing**: Focused hooks are easier to test
 - **Better Documentation**: Clear separation makes code self-documenting
 - **Future Development**: Easier to add new features and modifications
+- **File Caching System**: Centralized caching logic with clear separation of concerns
+- **Granular State Management**: Easier to understand and modify loading states
 
 #### 6. **Development Workflow**
 
@@ -1287,18 +1355,27 @@ The project has undergone significant code quality improvements to enhance maint
 3. **Performance Optimization**: Identify and fix performance bottlenecks
 4. **Accessibility**: Improve accessibility compliance
 5. **Documentation**: Expand inline documentation and examples
+6. **File Caching Improvements**: 
+   - Cache compression for large files
+   - Background sync for offline support
+   - Cache warming strategies
+   - Analytics and usage tracking
+   - Custom cache policies per file type
 
 #### Quality Metrics
 - **Code Complexity**: Reduced through hook composition
 - **Maintainability Index**: Improved through separation of concerns
 - **Technical Debt**: Reduced through refactoring and cleanup
 - **Developer Productivity**: Enhanced through better code organization
+- **File Caching Performance**: Instant file previews improve user experience
+- **Memory Management**: Proper cleanup and eviction strategies prevent memory leaks
+- **Cache Hit Rate**: High cache hit rates reduce backend load and improve performance
 
 ---
 
 ## Conclusion
 
-This PWA provides a comprehensive chat interface with AI integration, file handling, and real-time communication. The frontend architecture is designed for scalability, maintainability, and user experience. The component structure follows React best practices with clear separation of concerns, and the API integration is robust with comprehensive error handling.
+This PWA provides a comprehensive chat interface with AI integration, file handling, and real-time communication. The frontend architecture is designed for scalability, maintainability, and user experience. The component structure follows React best practices with clear separation of concerns, and the API integration is robust with comprehensive error handling. The file caching system provides instant previews through IndexedDB storage, while granular loading states ensure a smooth user experience during file operations.
 
 ### Key Architecture Highlights
 
@@ -1308,9 +1385,51 @@ This PWA provides a comprehensive chat interface with AI integration, file handl
 4. **TypeScript Integration**: Full type safety throughout the application
 5. **PWA Capabilities**: Offline support and app-like experience
 6. **Real-time Features**: SSE streaming for AI responses
-7. **File Handling**: Secure file upload, preview, and management
+7. **File Handling with Caching**: Secure file upload, instant previews, and local caching
 8. **Responsive Design**: Mobile-first approach with Tailwind CSS
 9. **Code Quality**: Comprehensive linting, testing, and refactoring for maintainability
 10. **Separation of Concerns**: Complex components broken down into focused, single-purpose hooks
+11. **File Caching System**: IndexedDB-based local caching for instant file previews
+12. **Granular Loading States**: Smart UI controls that only disable conflicting actions
+13. **Cache-First Strategy**: Local caching with seamless backend fallback
+14. **Memory Management**: Proper cleanup and eviction strategies for optimal performance
 
 For additional information, refer to the source code in the respective component files and the test implementations for usage examples.
+
+## File Caching System Documentation
+
+### Overview
+The file caching system provides instant file previews through IndexedDB storage, significantly improving user experience by eliminating loading delays for previously viewed files.
+
+### Key Components
+- **FileCacheService** (`src/services/file-cache.ts`): IndexedDB-based storage service
+- **useCachedFile** (`src/hooks/use-cached-file.ts`): React hook for seamless file fetching
+- **Integration**: Used in `file-renderer.tsx`, `file-preview-modal.tsx`, and `chat-input.tsx`
+
+### Features
+- **Instant Previews**: Files cached after first load for instant subsequent views
+- **Smart Cache Management**: 100MB limit with LRU eviction and 7-day expiration
+- **Seamless Fallback**: Cache miss → backend fetch → cache result
+- **Memory Management**: Proper blob URL cleanup prevents memory leaks
+- **No Backend Changes**: Works with existing backend integration
+
+### Usage
+```tsx
+import { useCachedFile } from '@/hooks/use-cached-file';
+
+function MyFileComponent({ file }) {
+  const { token } = useJwtToken();
+  const { blobUrl, isLoading, error } = useCachedFile(file, token);
+  
+  if (error) return <ErrorComponent />;
+  if (isLoading) return <LoadingComponent />;
+  
+  return <img src={blobUrl} alt={file.name} />;
+}
+```
+
+### Performance Benefits
+- **Instant Previews**: Previously viewed files load instantly
+- **Reduced Network Usage**: Files only fetched once from backend
+- **Better Perceived Performance**: Smooth, responsive interface
+- **Memory Efficient**: Automatic cleanup prevents memory leaks

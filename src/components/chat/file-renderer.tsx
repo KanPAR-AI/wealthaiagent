@@ -6,6 +6,7 @@ import React, { JSX, useEffect, useState } from 'react';
 import { fetchFileWithToken } from '@/services/chat-service';
 import { Loader2 } from 'lucide-react';
 import { useJwtToken } from '@/hooks/use-jwt-token';
+import { useCachedFile } from '@/hooks/use-cached-file';
 
 interface FileRendererProps {
   file: MessageFile;
@@ -14,33 +15,10 @@ interface FileRendererProps {
 
 // --- Image Preview ---
 function ImagePreview({ file, onFileClick }: FileRendererProps) {
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(false);
     const { token } = useJwtToken();
+    const { blobUrl, isLoading, error } = useCachedFile(file, token);
   
-    useEffect(() => {
-      if (!file.url || !token) {
-        console.log('ImagePreview: Missing URL or token', { url: file.url, hasToken: !!token });
-        return;
-      }
-      console.log('ImagePreview: Loading image', file.url);
-      setIsLoading(true);
-      setError(false);
-      fetchFileWithToken(file.url, token)
-        .then((url) => {
-          console.log('ImagePreview: Successfully loaded image');
-          setPreviewUrl(url);
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          console.error('Failed to load image:', err);
-          setError(true);
-          setIsLoading(false);
-        });
-    }, [file.url, token]);
-  
-    if (error || !previewUrl) {
+    if (error || !blobUrl) {
       return (
         <div className="w-full h-48 flex flex-col items-center justify-center bg-zinc-100 dark:bg-zinc-800 rounded-md text-destructive">
           <TriangleAlert className="size-8" />
@@ -58,9 +36,8 @@ function ImagePreview({ file, onFileClick }: FileRendererProps) {
         )}
   
         <img
-          src={previewUrl}
+          src={blobUrl}
           alt={`Preview of ${file.name}`}
-          onLoad={() => setIsLoading(false)} // double-safe
           className="max-w-full h-auto max-h-72 object-contain mx-auto transition-opacity duration-300"
           style={{ opacity: isLoading ? 0 : 1 }}
         />
@@ -79,22 +56,10 @@ function ImagePreview({ file, onFileClick }: FileRendererProps) {
 
 // --- PDF Preview ---
 function PdfPreview({ file }: { file: MessageFile }) {
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [error, setError] = useState(false);
   const { token } = useJwtToken();
+  const { blobUrl, isLoading, error } = useCachedFile(file, token);
 
-  useEffect(() => {
-    if (!file.url || !token) return;
-    setError(false);
-    fetchFileWithToken(file.url, token)
-      .then(setPdfUrl)
-      .catch((err) => {
-        console.error('Failed to load PDF:', err);
-        setError(true);
-      });
-  }, [file.url, token]);
-
-  if (error || !pdfUrl) {
+  if (error || !blobUrl) {
     return (
       <div className="w-full h-48 flex items-center justify-center text-destructive bg-zinc-100 dark:bg-zinc-800 rounded-md">
         <TriangleAlert className="size-8 mr-2" />
@@ -105,12 +70,18 @@ function PdfPreview({ file }: { file: MessageFile }) {
 
   return (
     <div className="w-full h-[400px] border border-border rounded-md overflow-hidden">
+      {isLoading && (
+        <div className="w-full h-full flex items-center justify-center bg-zinc-100 dark:bg-zinc-800">
+          <Loader2 className="animate-spin size-6 text-zinc-500" />
+        </div>
+      )}
       <iframe
-        src={pdfUrl}
+        src={blobUrl}
         title={`PDF preview of ${file.name}`}
         width="100%"
         height="100%"
         className="border-none"
+        style={{ opacity: isLoading ? 0 : 1 }}
       />
     </div>
   );
@@ -302,10 +273,11 @@ function DynamicFileRenderer({ file, onFileClick }: FileRendererProps) {
   const [detectedType, setDetectedType] = useState<string>(file.type);
   const [isDetecting, setIsDetecting] = useState(false);
   const { token } = useJwtToken();
+  const { blobUrl, isLoading, error } = useCachedFile(file, token);
 
   useEffect(() => {
     // Only try to detect type if it's unknown or generic
-    if (file.type === 'application/octet-stream' && token) {
+    if (file.type === 'application/octet-stream' && token && blobUrl) {
       setIsDetecting(true);
       detectFileTypeFromServer(file.url, token)
         .then((detectedType) => {
@@ -319,13 +291,21 @@ function DynamicFileRenderer({ file, onFileClick }: FileRendererProps) {
           setIsDetecting(false);
         });
     }
-  }, [file.url, file.type, token]);
+  }, [file.url, file.type, token, blobUrl]);
 
-  if (isDetecting) {
+  if (isDetecting || isLoading) {
     return (
       <div className="w-full h-48 flex flex-col items-center justify-center bg-zinc-100 dark:bg-zinc-800 rounded-md">
         <Loader2 className="animate-spin size-6 text-zinc-500 mb-2" />
-        <span className="text-xs text-muted-foreground">Detecting file type...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full h-48 flex flex-col items-center justify-center bg-zinc-100 dark:bg-zinc-800 rounded-md text-destructive">
+        <TriangleAlert className="size-8" />
+        <span className="text-xs mt-2">Failed to load file</span>
       </div>
     );
   }

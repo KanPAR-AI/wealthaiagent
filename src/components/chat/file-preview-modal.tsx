@@ -1,40 +1,9 @@
 // components/chat/file-preview-modal.tsx
 import { useJwtToken } from '@/hooks/use-jwt-token';
+import { useCachedFile } from '@/hooks/use-cached-file';
 import { MessageFile } from '@/types';
-import { X } from 'lucide-react';
-import { JSX, useEffect, useState } from 'react';
-
-// Helper to securely fetch and blobify the file
-const usePreviewUrl = (file: MessageFile | null, jwt: string | null) => {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!file || !jwt) return;
-
-    const fetchBlob = async () => {
-      try {
-        const res = await fetch(file.url, {
-          headers: { Authorization: `Bearer ${jwt}` },
-        });
-        console.log(res)
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        setBlobUrl(url);
-      } catch (err) {
-        console.error('Failed to fetch preview blob:', err);
-        setBlobUrl(null);
-      }
-    };
-
-    fetchBlob();
-
-    return () => {
-      if (blobUrl) URL.revokeObjectURL(blobUrl);
-    };
-  }, [file, jwt, blobUrl]);
-
-  return blobUrl;
-};
+import { X, Loader2 } from 'lucide-react';
+import { JSX } from 'react';
 
 interface FilePreviewModalProps {
   isOpen: boolean;
@@ -47,8 +16,8 @@ export function FilePreviewModal({
   onClose,
   file,
 }: FilePreviewModalProps): JSX.Element | null {
-  const {token} = useJwtToken();
-  const blobUrl = usePreviewUrl(file, token);
+  const { token } = useJwtToken();
+  const { blobUrl, isLoading, error } = useCachedFile(file, token);
 
   if (!isOpen || !file || !token) return null;
 
@@ -73,7 +42,25 @@ export function FilePreviewModal({
         className="relative max-h-full w-full h-full max-w-5xl bg-white rounded-lg shadow-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {isImage && blobUrl ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="flex flex-col items-center">
+              <Loader2 className="animate-spin size-8 text-zinc-500 mb-4" />
+              <span className="text-zinc-600">Loading preview...</span>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+            <p className="text-xl font-semibold text-red-600 mb-4">Failed to load preview</p>
+            <a
+              href={file.url + `?token=${encodeURIComponent(token)}`}
+              download={file.name}
+              className="text-blue-400 underline hover:text-blue-300"
+            >
+              Download File
+            </a>
+          </div>
+        ) : isImage && blobUrl ? (
           <img
             src={blobUrl}
             alt={file.name}
@@ -86,7 +73,7 @@ export function FilePreviewModal({
             className="w-full h-full"
           />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full p-8 text-center text-white">
+          <div className="flex flex-col items-center justify-center h-full p-8 text-center text-zinc-600">
             <p className="text-xl font-semibold">Preview not available for this file type.</p>
             <a
               href={file.url + `?token=${encodeURIComponent(token)}`}

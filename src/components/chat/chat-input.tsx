@@ -9,14 +9,77 @@ import {
 } from "@/components/ui/prompt-input";
 import { getApiUrl } from "@/config/environment";
 import { useJwtToken } from "@/hooks/use-jwt-token";
+import { useCachedFile } from "@/hooks/use-cached-file";
 import { MessageFile } from "@/types"; // Import MessageFile
-import { ArrowUp, Mic, MicOff, Paperclip, Square, X } from "lucide-react";
+import { ArrowUp, Mic, MicOff, Paperclip, Square, X, Loader2, FileText } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 
 // Props for the PromptInputWithActions component
 interface PromptInputWithActionsProps {
   onSubmit: (text: string, attachments: MessageFile[]) => void; // Changed to MessageFile[]
   isLoading?: boolean;
+}
+
+// Component to show file preview with loading state
+function FilePreviewItem({ file, onRemove, isUploading }: { file: MessageFile; onRemove: () => void; isUploading: boolean }) {
+  const { token } = useJwtToken();
+  const { blobUrl, isLoading, error } = useCachedFile(file, token);
+
+  const isImage = file.type?.startsWith('image/');
+  const isPDF = file.type === 'application/pdf';
+
+  return (
+    <div className="bg-secondary flex items-center gap-2 rounded-lg p-2 text-sm max-w-[200px]">
+      {isLoading ? (
+        <div className="flex items-center gap-2 flex-1">
+          <Loader2 className="size-4 animate-spin text-muted-foreground" />
+          <span className="text-muted-foreground text-xs">Loading...</span>
+        </div>
+      ) : error ? (
+        <div className="flex items-center gap-2 flex-1">
+          <FileText className="size-4 text-destructive" />
+          <span className="text-destructive text-xs truncate" title={file.name}>
+            {file.name}
+          </span>
+        </div>
+      ) : isImage && blobUrl ? (
+        <div className="flex items-center gap-2 flex-1">
+          <img 
+            src={blobUrl} 
+            alt={file.name}
+            className="size-8 object-cover rounded"
+          />
+          <span className="text-xs truncate" title={file.name}>
+            {file.name}
+          </span>
+        </div>
+      ) : isPDF && blobUrl ? (
+        <div className="flex items-center gap-2 flex-1">
+          <FileText className="size-4 text-red-500" />
+          <span className="text-xs truncate" title={file.name}>
+            {file.name}
+          </span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 flex-1">
+          <FileText className="size-4 text-muted-foreground" />
+          <span className="text-xs truncate" title={file.name}>
+            {file.name}
+          </span>
+        </div>
+      )}
+      
+      <button
+        type="button"
+        onClick={onRemove}
+        className="hover:bg-secondary-foreground/10 rounded-full p-1 flex-shrink-0 disabled:opacity-50"
+        disabled={isUploading}
+        aria-label={`Remove ${file.name}`}
+      >
+        <X className="size-3" />
+      </button>
+    </div>
+  );
 }
 
 export function PromptInputWithActions({
@@ -214,7 +277,13 @@ export function PromptInputWithActions({
     setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Determine if the input area is busy (loading, uploading, recording, transcribing)
+  // More granular loading states for better UX
+  const canType = !isLoading && !isTranscribing;
+  const canRecord = !isLoading && !isUploading && !isTranscribing;
+  const canAttachFiles = !isLoading && !isUploading && !isTranscribing && !isRecording;
+  const canSend = !isLoading && (!isUploading || input.trim()) && !isTranscribing && !isRecording;
+  
+  // Legacy isBusy for backward compatibility (used in some places)
   const isBusy = isLoading || isUploading || isTranscribing || isRecording;
 
   return (
@@ -224,23 +293,16 @@ export function PromptInputWithActions({
         onValueChange={setInput}
         className="w-full relative max-w-full"
       >
-      {/* Display uploaded files */}
+      {/* Display uploaded files with previews */}
       {uploadedFiles.length > 0 && (
         <div className="flex flex-wrap gap-2 pb-2 px-3">
           {uploadedFiles.map((file, index) => (
-            <div key={index} className="bg-secondary flex items-center gap-2 rounded-lg px-3 py-2 text-sm">
-              <Paperclip className="size-4 flex-shrink-0" />
-              <span className="max-w-[120px] truncate" title={file.name}>{file.name}</span>
-              <button
-                type="button"
-                onClick={() => handleRemoveFile(index)}
-                className="hover:bg-secondary/50 rounded-full p-1 disabled:opacity-50"
-                disabled={isBusy}
-                aria-label={`Remove ${file.name}`}
-              >
-                <X className="size-4" />
-              </button>
-            </div>
+            <FilePreviewItem
+              key={index}
+              file={file}
+              onRemove={() => handleRemoveFile(index)}
+              isUploading={isUploading}
+            />
           ))}
         </div>
       )}
@@ -266,7 +328,7 @@ export function PromptInputWithActions({
       <PromptInputTextarea
         placeholder="Ask me anything..."
         onKeyDown={handleKeyDown}
-        disabled={isBusy}
+        disabled={!canType}
         className="dark:text-white text-zinc-950"
       />
 
@@ -274,10 +336,18 @@ export function PromptInputWithActions({
       <PromptInputActions className="flex items-center justify-between gap-2 pt-2">
         <div className="flex items-center gap-1">
           {/* Attach files button */}
-          <PromptInputAction tooltip="Attach files">
+          <PromptInputAction tooltip={
+            !canAttachFiles 
+              ? isUploading 
+                ? "Please wait for current upload to finish" 
+                : isRecording 
+                  ? "Please stop recording first"
+                  : "File attachment temporarily disabled"
+              : "Attach files"
+          }>
             <label
               htmlFor="file-upload"
-              className={`hover:bg-secondary-foreground/10 flex h-8 w-8 items-center justify-center rounded-full ${isBusy ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+              className={`hover:bg-secondary-foreground/10 flex h-8 w-8 items-center justify-center rounded-full ${!canAttachFiles ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
             >
               <input
                 type="file"
@@ -286,21 +356,29 @@ export function PromptInputWithActions({
                 className="hidden"
                 id="file-upload"
                 ref={uploadInputRef}
-                disabled={isBusy}
+                disabled={!canAttachFiles}
               />
               <Paperclip className="text-primary size-5" />
             </label>
           </PromptInputAction>
 
           {/* Microphone button */}
-          <PromptInputAction tooltip={isRecording ? "Stop recording" : "Use microphone"}>
+          <PromptInputAction tooltip={
+            !canRecord
+              ? isUploading
+                ? "Please wait for file upload to finish"
+                : "Microphone temporarily disabled"
+              : isRecording 
+                ? "Stop recording" 
+                : "Use microphone"
+          }>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               className={`h-8 w-8 rounded-full ${isRecording ? 'text-red-500 bg-red-500/10' : 'text-primary'}`}
               onClick={handleVoiceToggle}
-              disabled={isLoading || isUploading || isTranscribing}
+              disabled={!canRecord}
             >
               {isRecording ? <MicOff className="size-5" /> : <Mic className="size-5" />}
             </Button>
@@ -308,15 +386,23 @@ export function PromptInputWithActions({
         </div>
 
         {/* Send/Stop button */}
-        <PromptInputAction tooltip={isLoading ? "Stop generation" : "Send message"}>
+        <PromptInputAction tooltip={
+          !canSend
+            ? isUploading && !input.trim()
+              ? "Please wait for file upload to finish or add some text"
+              : "Send message"
+            : isLoading 
+              ? "Stop generation" 
+              : "Send message"
+        }>
           <Button
             type="button"
             variant="default"
             size="icon"
             className="h-8 w-8 rounded-full"
             onClick={handleSubmitInternal}
-            // Disable if busy OR if there's no text and no uploaded files
-            disabled={isBusy || (!input.trim() && uploadedFiles.length === 0)}
+            // Disable if can't send OR if there's no text and no uploaded files
+            disabled={!canSend || (!input.trim() && uploadedFiles.length === 0)}
           >
             {isUploading || isTranscribing ? (
               // Show spinning loader for upload/transcribe
