@@ -51,11 +51,20 @@ export function usePendingMessage({
       setIsSending(true);
 
       const aiMessageId = nanoid();
-      addMessage({ id: aiMessageId, message: '', sender: 'bot', timestamp: new Date().toISOString(), isStreaming: true });
+      addMessage({ 
+        id: aiMessageId, 
+        message: '', 
+        sender: 'bot', 
+        timestamp: new Date().toISOString(), 
+        isStreaming: true,
+        streamingContent: '',
+        streamingChunks: [],
+      });
 
       const startListening = async () => {
         try {
           let receivedText = '';
+          let streamingChunks: string[] = [];
           setStreamingController(new AbortController());
 
           await listenToChatStream(
@@ -64,11 +73,20 @@ export function usePendingMessage({
             (chunk: string, type: string) => {
               if (type === 'text_chunk') {
                 receivedText += chunk;
-                updateMessage(aiMessageId, { message: receivedText });
+                streamingChunks.push(chunk);
+                updateMessage(aiMessageId, { 
+                  message: receivedText, // Keep for backward compatibility
+                  streamingContent: receivedText,
+                  streamingChunks: [...streamingChunks],
+                });
               }
             },
             () => { // onComplete
-              updateMessage(aiMessageId, { isStreaming: false });
+              updateMessage(aiMessageId, { 
+                isStreaming: false,
+                message: receivedText, // Ensure final content is in message field
+                streamingContent: receivedText,
+              });
               setIsSending(false);
               isProcessingRef.current = false;
               setIsProcessingPendingMessage(false);
@@ -77,6 +95,7 @@ export function usePendingMessage({
               console.error("Error in SSE stream for pending message:", error);
               updateMessage(aiMessageId, {
                 message: receivedText || "Error receiving AI response.",
+                streamingContent: receivedText || "Error receiving AI response.",
                 error: "Failed response",
                 isStreaming: false
               });
@@ -89,6 +108,7 @@ export function usePendingMessage({
           console.error("Failed to listen to chat stream:", error);
           updateMessage(aiMessageId, {
             message: "Error connecting to AI.",
+            streamingContent: "Error connecting to AI.",
             error: "Failed response",
             isStreaming: false
           });

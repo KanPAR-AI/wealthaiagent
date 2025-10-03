@@ -6,6 +6,7 @@ import New from "./pages/New";
 import NotFound from "./pages/NotFound";
 import Logs from "./pages/Logs";
 import PWAInstall from "./components/PWAInstall";
+import LoginPage from "./pages/Login";
 
 const App = () => (
   <AppProviders>
@@ -22,6 +23,7 @@ const App = () => (
 
         {/* Routes outside the layout, like a 404 page, won't have the sidebar */}
         <Route path="*" element={<NotFound />} />
+        <Route path="/login" element={<LoginPage />} />
       </Routes>
       <PWAInstall />
     </BrowserRouter>

@@ -3,9 +3,9 @@
 import { ActionIconDefinition, Message, MessageFile, UserInfo } from '@/types';
 import { motion } from 'framer-motion';
 import { JSX, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
 import StructuredContentRenderer from '../ui/structured-content-renderer'; // Assuming this component exists
 import { FileRenderer } from './file-renderer'; // Import the FileRenderer component
+import { StreamingResponse } from './streaming-response';
 
 interface ChatBubbleProps {
   message: Message;
@@ -16,14 +16,6 @@ interface ChatBubbleProps {
   onFileClick: (file: MessageFile) => void; // Handler for when a file is clicked
 }
 
-// A simple component for the blinking cursor during streaming
-const BlinkingCursor = () => (
-  <motion.span
-    animate={{ opacity: [1, 0] }}
-    transition={{ duration: 0.8, repeat: Infinity }}
-    className="inline-block w-px h-4 bg-current ml-0.5 align-bottom"
-  />
-);
 
 export function ChatBubble({
   message,
@@ -33,6 +25,18 @@ export function ChatBubble({
   const isUser = message.sender === 'user';
   // A message has content if it has text OR structured content OR files
   const _hasContent = message.message || message.structuredContent || (message.files && message.files.length > 0);
+
+  // Debug logging for bot messages
+  if (!isUser) {
+    console.log('ChatBubble bot message:', {
+      id: message.id,
+      message: message.message?.substring(0, 50) + '...',
+      streamingContent: message.streamingContent?.substring(0, 50) + '...',
+      isStreaming: message.isStreaming,
+      messageLength: message.message?.length || 0,
+      streamingContentLength: message.streamingContent?.length || 0
+    });
+  }
 
   // Effect to revoke blob URLs when the component unmounts or files change
   // This is important if you were creating blob URLs on the frontend for temporary previews.
@@ -88,7 +92,7 @@ export function ChatBubble({
       <div className={`flex flex-col ${isUser ? 'items-start sm:items-end' : 'items-start'} w-full min-w-0 max-w-full`}>
         {/* Message Bubble (for text and structured content) */}
         {/* Only render the bubble if there's text or structured content */}
-        {(message.message || message.structuredContent) && (
+        {(message.message || message.streamingContent || message.structuredContent) && (
           <motion.div
             variants={bubbleVariants}
             initial="hidden"
@@ -106,46 +110,18 @@ export function ChatBubble({
               </div>
             ) : (
               <div className="px-0.5 whitespace-pre-wrap break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
-                {/* Render Markdown text content */}
-                <div className="break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
-                  <ReactMarkdown 
-                    components={{
-                    // Handle code blocks and inline code to prevent overflow
-                    code: ({ children, className, ...props }: any) => {
-                      const isInline = !className?.includes('language-');
-                      return isInline ? (
-                        <code className="break-all overflow-wrap-anywhere bg-muted/50 px-1 py-0.5 rounded text-xs" {...props}>
-                          {children}
-                        </code>
-                      ) : (
-                        <code className="block overflow-x-auto bg-muted/50 p-2 rounded text-xs whitespace-pre" {...props}>
-                          {children}
-                        </code>
-                      );
-                    },
-                    // Handle pre blocks
-                    pre: ({ children, ...props }) => (
-                      <pre className="overflow-x-auto bg-muted/50 p-2 rounded text-xs whitespace-pre break-words" {...props}>
-                        {children}
-                      </pre>
-                    ),
-                    // Handle links to prevent overflow
-                    a: ({ children, href, ...props }) => (
-                      <a 
-                        href={href} 
-                        className="break-all overflow-wrap-anywhere text-blue-600 hover:text-blue-800 underline" 
-                        {...props}
-                      >
-                        {children}
-                      </a>
-                    ),
-                  }}
-                    >
-                      {message.message}
-                    </ReactMarkdown>
+                {/* Render content using StreamingResponse for bot messages, plain text for user messages */}
+                {message.sender === 'bot' ? (
+                  <StreamingResponse 
+                    content={message.streamingContent || message.message}
+                    isStreaming={message.isStreaming || false}
+                    className="chat-bubble-content"
+                  />
+                ) : (
+                  <div className="break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
+                    {message.message}
                   </div>
-                {/* Show blinking cursor if bot message is still streaming */}
-                {message.sender === 'bot' && message.isStreaming && <BlinkingCursor />}
+                )}
               </div>
             )}
             

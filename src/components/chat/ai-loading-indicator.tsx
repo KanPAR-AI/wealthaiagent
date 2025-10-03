@@ -8,7 +8,7 @@ interface AiLoadingIndicatorProps {
 }
 
 export function AiLoadingIndicator({
-    avatarSrc = "/logo.svg",
+    avatarSrc = "./logo.svg",
     avatarFallback = "AI"
 }: AiLoadingIndicatorProps): JSX.Element {
     return (

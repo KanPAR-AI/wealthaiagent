@@ -18,6 +18,7 @@ import React, { useEffect, useRef, useState } from "react";
 interface PromptInputWithActionsProps {
   onSubmit: (text: string, attachments: MessageFile[]) => void; // Changed to MessageFile[]
   isLoading?: boolean;
+  isInEmptyState?: boolean; // New prop to control border radius styling
 }
 
 // Component to show file preview with loading state
@@ -85,6 +86,7 @@ function FilePreviewItem({ file, onRemove, isUploading }: { file: MessageFile; o
 export function PromptInputWithActions({
   onSubmit,
   isLoading = false,
+  isInEmptyState = false,
 }: PromptInputWithActionsProps) {
   const [input, setInput] = useState<string>("");
   const [uploadedFiles, setUploadedFiles] = useState<MessageFile[]>([]); // Use MessageFile[]
@@ -292,6 +294,7 @@ export function PromptInputWithActions({
         value={input}
         onValueChange={setInput}
         className="w-full relative max-w-full"
+        isInEmptyState={isInEmptyState}
       >
       {/* Display uploaded files with previews */}
       {uploadedFiles.length > 0 && (

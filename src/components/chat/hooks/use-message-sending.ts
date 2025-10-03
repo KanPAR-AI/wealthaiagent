@@ -82,12 +82,15 @@ export function useMessageSending({
       sender: 'bot',
       timestamp: new Date().toISOString(),
       isStreaming: true,
+      streamingContent: '',
+      streamingChunks: [],
     });
 
     try {
       await sendChatMessage(token, chatId, text, attachments);
 
       let receivedText = '';
+      let streamingChunks: string[] = [];
       setStreamingController(new AbortController());
 
       await listenToChatStream(
@@ -96,17 +99,29 @@ export function useMessageSending({
         (chunk: string, type: string) => {
           if (type === 'text_chunk') {
             receivedText += chunk;
-            updateMessage(aiMessageId, { message: receivedText });
+            streamingChunks.push(chunk);
+            console.log('Streaming chunk received:', chunk);
+            console.log('Total content so far:', receivedText);
+            updateMessage(aiMessageId, { 
+              message: receivedText, // Keep for backward compatibility
+              streamingContent: receivedText,
+              streamingChunks: [...streamingChunks],
+            });
           }
         },
         () => { // onComplete
-          updateMessage(aiMessageId, { isStreaming: false });
+          updateMessage(aiMessageId, { 
+            isStreaming: false,
+            message: receivedText, // Ensure final content is in message field
+            streamingContent: receivedText,
+          });
           setIsSending(false);
         },
         (error) => { // onError
           console.error("Error in SSE stream:", error);
           updateMessage(aiMessageId, {
             message: receivedText || "Error getting AI response",
+            streamingContent: receivedText || "Error getting AI response",
             error: "Failed response",
             isStreaming: false,
           });
@@ -117,6 +132,7 @@ export function useMessageSending({
       console.error("Failed to send message:", error);
       updateMessage(aiMessageId, {
         message: "Error processing message.",
+        streamingContent: "Error processing message.",
         error: "Failed response",
         isStreaming: false,
       });

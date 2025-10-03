@@ -26,10 +26,10 @@ import { usePendingMessage } from './hooks/use-pending-message';
 import { useMessageSending } from './hooks/use-message-sending';
 
 const suggestionTiles: SuggestionTileData[] = [
-  { id: 1, title: "Show me sales data", description: "Generate content or brainstorm ideas" },
-  { id: 2, title: "Analyze my user demographics", description: "Get assistance with any topic" },
-  { id: 3, title: "Show me my product list", description: "Condense long documents" },
-  { id: 4, title: "Code assistance", description: "Debug or create new code" }
+  { id: 1, title: "What is a SIP?", description: "Learn about Systematic Investment Plans." },
+  { id: 2, title: "What is a mutual fund?", description: "Understand the basics of mutual funds." },
+  { id: 3, title: "What is a credit score?", description: "Find out what a credit score means." },
+  { id: 4, title: "What is compound interest?", description: "See how compound interest works." }
 ];
 
 export default function ChatWindow({
@@ -217,70 +217,88 @@ export default function ChatWindow({
         file={selectedFile}
       />
       <div className={`flex flex-col ios-keyboard-fix bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
-        <div className="h-full overflow-hidden pb-4 mt-12 sm:mt-0 chat-content relative">
-          <ScrollArea ref={scrollAreaRef} className="h-[80vh]" type="scroll">
-            <div className="p-4 md:p-6 space-y-6 min-w-0">
-              <div className="max-w-3xl mx-auto w-full space-y-8 min-w-0">
-                {isHistoryLoading ? (
-                  <ChatLoadingSkeleton />
-                ) : messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full space-y-4 md:space-y-6 py-8">
-                    <ChatEmptyState
-                      isFirstMessage={isFirstMessage}
-                      isSignedIn={true}
-                      userName="User"
-                    />
-                    <div className="w-full max-w-md md:max-w-none">
-                      <SuggestionTiles
-                        tiles={suggestionTiles}
-                        onSuggestionClick={(title) => handleSend(title, [])}
-                        // Disable suggestions if sending or regenerating OR if a new chat is initiating
-                        disabled={isSending || isRegenerating || isNewChatInitiating}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <ChatMessageList
-                    messages={messages}
-                    currentUser={{
-                      firstName: "User",
-                      imageUrl: undefined,
-                    }}
-                    onFileClick={(file: MessageFile) => setSelectedFile(file)}
-                    actionIcons={actionIcons}
-                    addMessageId={true}
+        {messages.length === 0 && !isHistoryLoading ? (
+          // Empty state with centered input
+          <div className="flex flex-col items-center justify-center h-full min-h-[80vh] px-4 md:px-6 space-y-8">
+            <div className="max-w-3xl mx-auto w-full space-y-8 min-w-0">
+              <div className="flex flex-col items-center justify-center space-y-4 md:space-y-6">
+                <ChatEmptyState />
+                <div className="w-full max-w-md md:max-w-none">
+
+                </div>
+              </div>
+              
+                {/* Centered input bar for empty state */}
+                <div className="w-full max-w-3xl mx-auto flex flex-col gap-4">
+                  <PromptInputWithActions
+                    onSubmit={handleSend}
+                    // Disable input if sending, regenerating, loading token, OR if a new chat is initiating
+                    isLoading={isSending || isRegenerating || isLoadingToken || isNewChatInitiating}
+                    isInEmptyState={true}
                   />
-                )}
-                {/* Conditionally render AiLoadingIndicator based on isSending AND NOT isNewChatInitiating */}
-                {(isSending || isRegenerating) && !isNewChatInitiating && <AiLoadingIndicator />}
-                <div className="h-40 md:h-32" />
+                  <SuggestionTiles
+                    tiles={suggestionTiles}
+                    onSuggestionClick={(title) => handleSend(title, [])}
+                    // Disable suggestions if sending or regenerating OR if a new chat is initiating
+                    disabled={isSending || isRegenerating || isNewChatInitiating}
+                  />
               </div>
             </div>
-          </ScrollArea>
-          
-          {/* Scroll to Bottom Button */}
-          {showScrollToBottom && (
-            <button
-              onClick={scrollToBottom}
-              className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-primary/70 text-primary-foreground hover:bg-primary/90 rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-105 z-10"
-              aria-label="Scroll to bottom"
-            >
-              <ChevronDown className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
-        <div className="fixed sm:sticky bottom-0 left-0 right-0 bg-background dark:bg-zinc-800 border-t border-border/5 backdrop-blur-sm ios-input-container">
-          <div className="w-full sm:px-4 sm:pb-4">
-            <div className="max-w-3xl mx-auto">
-              <PromptInputWithActions
-                onSubmit={handleSend}
-                // Disable input if sending, regenerating, loading token, OR if a new chat is initiating
-                isLoading={isSending || isRegenerating || isLoadingToken || isNewChatInitiating} 
-              />
-            </div>
           </div>
-        </div>
+        ) : (
+          // Chat with messages - original layout
+          <>
+            <div className="h-full overflow-hidden pb-4 mt-12 sm:mt-0 chat-content relative">
+              <ScrollArea ref={scrollAreaRef} className="h-[80vh]" type="scroll">
+                <div className="p-4 md:p-6 space-y-6 min-w-0">
+                  <div className="max-w-3xl mx-auto w-full space-y-8 min-w-0">
+                    {isHistoryLoading ? (
+                      <ChatLoadingSkeleton />
+                    ) : (
+                      <ChatMessageList
+                        messages={messages}
+                        currentUser={{
+                          firstName: "User",
+                          imageUrl: undefined,
+                        }}
+                        onFileClick={(file: MessageFile) => setSelectedFile(file)}
+                        actionIcons={actionIcons}
+                        addMessageId={true}
+                      />
+                    )}
+                    {/* Conditionally render AiLoadingIndicator based on isSending AND NOT isNewChatInitiating */}
+                    {(isSending || isRegenerating) && !isNewChatInitiating && <AiLoadingIndicator />}
+                    <div className="h-40 md:h-32" />
+                  </div>
+                </div>
+              </ScrollArea>
+              
+              {/* Scroll to Bottom Button */}
+              {showScrollToBottom && (
+                <button
+                  onClick={scrollToBottom}
+                  className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-primary/70 text-primary-foreground hover:bg-primary/90 rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-105 z-10"
+                  aria-label="Scroll to bottom"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="fixed sm:sticky bottom-0 left-0 right-0 bg-background dark:bg-zinc-800 border-t border-border/5 backdrop-blur-sm ios-input-container">
+              <div className="w-full sm:px-4 sm:pb-4">
+                <div className="max-w-3xl mx-auto">
+                  <PromptInputWithActions
+                    onSubmit={handleSend}
+                    // Disable input if sending, regenerating, loading token, OR if a new chat is initiating
+                    isLoading={isSending || isRegenerating || isLoadingToken || isNewChatInitiating}
+                    isInEmptyState={false}
+                  />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </>
   );

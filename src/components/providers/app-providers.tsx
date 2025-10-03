@@ -10,7 +10,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     <LogProvider>
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
         <TooltipProvider>
-          <SidebarProvider>
+          <SidebarProvider defaultOpen={false}>
             <Sonner /> {/* For toast notifications */}
             {children}
           </SidebarProvider>

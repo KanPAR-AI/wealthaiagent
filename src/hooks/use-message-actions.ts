@@ -55,7 +55,13 @@ export const useMessageActions = (chatId: string) => {
 
     // Option 1: Replace the existing bot message with the new streamed content
     // We update the existing bot message to show it's streaming again
-    updateMessage(messageId, { message: '', isStreaming: true, error: undefined });
+    updateMessage(messageId, { 
+      message: '', 
+      streamingContent: '',
+      streamingChunks: [],
+      isStreaming: true, 
+      error: undefined 
+    });
 
     // Option 2 (if you prefer a brand new message):
     // const newAiMessageId = nanoid();
@@ -70,6 +76,7 @@ export const useMessageActions = (chatId: string) => {
 
       // 2. Listen to the SSE stream for the new AI response
       let receivedText = '';
+      let streamingChunks: string[] = [];
       // We don't need a new AbortController here for the regeneration stream
       // as it's typically managed by the main ChatWindow, but if you want to
       // control this stream independently, you could create one.
@@ -81,7 +88,12 @@ export const useMessageActions = (chatId: string) => {
         (chunk, type) => { // structuredContent is also returned by listenToChatStream
           if (type === 'text_chunk') {
             receivedText += chunk;
-            updateMessage(aiMessageToUpdateId, { message: receivedText });
+            streamingChunks.push(chunk);
+            updateMessage(aiMessageToUpdateId, { 
+              message: receivedText, // Keep for backward compatibility
+              streamingContent: receivedText,
+              streamingChunks: [...streamingChunks],
+            });
           } 
           // else if (structuredContent) {
           //   updateMessage(aiMessageToUpdateId, { structuredContent: structuredContent });
@@ -89,13 +101,18 @@ export const useMessageActions = (chatId: string) => {
         },
         () => {
           // On completion of stream
-          updateMessage(aiMessageToUpdateId, { isStreaming: false });
+          updateMessage(aiMessageToUpdateId, { 
+            isStreaming: false,
+            message: receivedText, // Ensure final content is in message field
+            streamingContent: receivedText,
+          });
           setIsRegenerating(false); // Reset regeneration status
         },
         (error) => {
           console.error("Regeneration stream failed:", error);
           updateMessage(aiMessageToUpdateId, {
             message: receivedText || "Failed to regenerate response.",
+            streamingContent: receivedText || "Failed to regenerate response.",
             error: "Regeneration error",
             isStreaming: false
           });
@@ -107,6 +124,7 @@ export const useMessageActions = (chatId: string) => {
       console.error("Regeneration process failed:", error);
       updateMessage(aiMessageToUpdateId, {
         message: "Failed to regenerate response.",
+        streamingContent: "Failed to regenerate response.",
         sender: "bot", // Ensure sender is bot
         error: "Regeneration error",
         isStreaming: false

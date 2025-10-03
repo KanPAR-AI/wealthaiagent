@@ -71,12 +71,14 @@ export type StructuredContent = AiGraphContent | AiTableContent;
  */
 export interface Message {
   id: string;
-  message: string; // The text content of the message
+  message: string; // The text content of the message (legacy field, kept for backward compatibility)
   sender: 'user' | 'bot';
   timestamp?: string;
   files?: MessageFile[]; // Array of attached files
   isLoading?: boolean; // Useful for initial sending state
   isStreaming?: boolean; // Indicates if the message content is actively being streamed
+  streamingContent?: string; // Accumulated streaming content for real-time rendering
+  streamingChunks?: string[]; // Individual chunks received (optional, for debugging)
   error?: string; // Error message if something went wrong
   structuredContent?: StructuredContent; // Structured data like graphs or tables
 }

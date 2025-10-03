@@ -48,6 +48,7 @@ type PromptInputProps = {
   onSubmit?: () => void
   children: React.ReactNode
   className?: string
+  isInEmptyState?: boolean
 }
 
 function PromptInput({
@@ -58,6 +59,7 @@ function PromptInput({
   onValueChange,
   onSubmit,
   children,
+  isInEmptyState = false,
 }: PromptInputProps) {
   const [internalValue, setInternalValue] = useState(value || "")
 
@@ -79,7 +81,9 @@ function PromptInput({
       >
         <div
           className={cn(
-            "border-input bg-background sm:rounded-3xl rounded-b-none rounded-t-3xl sm:border border-t p-2 shadow-xs",
+            "border-input bg-background sm:rounded-3xl sm:border border-t p-2 shadow-xs",
+            // Conditional border radius based on empty state
+            isInEmptyState ? "rounded-3xl" : "rounded-b-none rounded-t-3xl",
             // Safari-specific container fixes
             "overflow-hidden", // Prevent content from expanding beyond container
             "max-w-full", // Ensure container doesn't exceed viewport

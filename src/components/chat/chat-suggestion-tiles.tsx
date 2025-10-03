@@ -1,4 +1,56 @@
-import { JSX } from "react";
+'use client';
+
+import { Button } from '@/components/ui/button';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
+import type { ComponentProps } from 'react';
+
+export type SuggestionsProps = ComponentProps<typeof ScrollArea>;
+
+export const Suggestions = ({
+  className,
+  children,
+  ...props
+}: SuggestionsProps) => (
+  <ScrollArea className="w-full overflow-x-auto whitespace-nowrap hidden sm:block" {...props}>
+    <div className={cn('flex w-max flex-nowrap items-center gap-2', className)}>
+      {children}
+    </div>
+    <ScrollBar className="hidden" orientation="horizontal" />
+  </ScrollArea>
+);
+
+export type SuggestionProps = Omit<ComponentProps<typeof Button>, 'onClick'> & {
+  suggestion: string;
+  onClick?: (suggestion: string) => void;
+};
+
+export const Suggestion = ({
+  suggestion,
+  onClick,
+  className,
+  variant = 'outline',
+  size = 'sm',
+  children,
+  ...props
+}: SuggestionProps) => {
+  const handleClick = () => {
+    onClick?.(suggestion);
+  };
+
+  return (
+    <Button
+      className={cn('cursor-pointer rounded-full px-4', className)}
+      onClick={handleClick}
+      size={size}
+      type="button"
+      variant={variant}
+      {...props}
+    >
+      {children || suggestion}
+    </Button>
+  );
+};
 
 interface SuggestionTileData {
   id: number;
@@ -12,20 +64,19 @@ interface SuggestionTilesProps {
   disabled?: boolean;
 }
 
-export function SuggestionTiles({ tiles, onSuggestionClick, disabled = false }: SuggestionTilesProps): JSX.Element {
+export function SuggestionTiles({ tiles, onSuggestionClick, disabled = false }: SuggestionTilesProps) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+    <Suggestions>
       {tiles.map((tile) => (
-        <button
+        <Suggestion
           key={tile.id}
-          onClick={() => onSuggestionClick(tile.title)}
+          suggestion={tile.title}
+          onClick={onSuggestionClick}
           disabled={disabled}
-          className="p-3 text-left bg-background dark:bg-zinc-700 hover:bg-muted dark:hover:bg-zinc-600 rounded-lg border border-border transition-all disabled:opacity-50 disabled:pointer-events-none"
         >
-          <h3 className="font-medium text-sm text-foreground dark:text-zinc-200">{tile.title}</h3>
-          <p className="text-xs text-muted-foreground dark:text-zinc-400 mt-1">{tile.description}</p>
-        </button>
+          {tile.title}
+        </Suggestion>
       ))}
-    </div>
+    </Suggestions>
   );
 }
