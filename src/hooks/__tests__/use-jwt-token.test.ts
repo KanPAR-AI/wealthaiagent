@@ -2,6 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { useJwtToken } from '../use-jwt-token';
 import { useAuthStore } from '@/store/chat';
 import { getApiUrl } from '@/config/environment';
+import { storeJwtToken, hasValidStoredToken } from '@/utils/jwt-storage';
 
 // Mock fetch globally
 const mockFetch = jest.fn();
@@ -12,12 +13,20 @@ jest.mock('@/store/chat', () => ({
   useAuthStore: jest.fn()
 }));
 
+// Mock the jwt-storage utilities
+jest.mock('@/utils/jwt-storage', () => ({
+  storeJwtToken: jest.fn(),
+  hasValidStoredToken: jest.fn(),
+}));
+
 const mockUseAuthStore = useAuthStore as jest.MockedFunction<typeof useAuthStore>;
 
 describe('useJwtToken', () => {
   const mockSetToken = jest.fn();
   const mockSetTokenError = jest.fn();
   const mockSetIsLoadingToken = jest.fn();
+  const mockStoreJwtToken = storeJwtToken as jest.MockedFunction<typeof storeJwtToken>;
+  const mockHasValidStoredToken = hasValidStoredToken as jest.MockedFunction<typeof hasValidStoredToken>;
 
   beforeEach(() => {
     // Reset all mocks
@@ -25,6 +34,8 @@ describe('useJwtToken', () => {
     mockSetToken.mockClear();
     mockSetTokenError.mockClear();
     mockSetIsLoadingToken.mockClear();
+    mockStoreJwtToken.mockClear();
+    mockHasValidStoredToken.mockClear();
 
     // Default mock implementation for useAuthStore
     mockUseAuthStore.mockReturnValue({
@@ -35,6 +46,9 @@ describe('useJwtToken', () => {
       setTokenError: mockSetTokenError,
       setIsLoadingToken: mockSetIsLoadingToken
     });
+
+    // Default mock for hasValidStoredToken
+    mockHasValidStoredToken.mockReturnValue(false);
   });
 
   describe('TC_001: Token Fetching - Success', () => {
@@ -81,6 +95,9 @@ describe('useJwtToken', () => {
       
       // Verify setToken was called (which should handle setting loading to false)
       expect(mockSetToken).toHaveBeenCalledWith('mock-jwt-token-12345');
+      
+      // Verify token was stored in localStorage
+      expect(mockStoreJwtToken).toHaveBeenCalledWith('mock-jwt-token-12345');
     });
 
     it('should not refetch token if already exists in store', () => {
@@ -106,6 +123,27 @@ describe('useJwtToken', () => {
       
       // setIsLoadingToken should not be called since token already exists
       expect(mockSetIsLoadingToken).not.toHaveBeenCalled();
+    });
+
+    it('should not fetch token if valid stored token exists', () => {
+      // Mock hasValidStoredToken to return true
+      mockHasValidStoredToken.mockReturnValue(true);
+
+      const { result } = renderHook(() => useJwtToken());
+
+      // Should not be loading since valid stored token exists
+      expect(result.current.isLoadingToken).toBe(true); // Still true from store initialization
+      expect(result.current.token).toBeNull();
+      expect(result.current.tokenError).toBeNull();
+      
+      // Fetch should not be called
+      expect(mockFetch).not.toHaveBeenCalled();
+      
+      // setIsLoadingToken should not be called since valid stored token exists
+      expect(mockSetIsLoadingToken).not.toHaveBeenCalled();
+      
+      // Verify hasValidStoredToken was called
+      expect(mockHasValidStoredToken).toHaveBeenCalled();
     });
   });
 

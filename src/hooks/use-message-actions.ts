@@ -76,7 +76,7 @@ export const useMessageActions = (chatId: string) => {
 
       // 2. Listen to the SSE stream for the new AI response
       let receivedText = '';
-      let streamingChunks: string[] = [];
+      const streamingChunks: string[] = [];
       // We don't need a new AbortController here for the regeneration stream
       // as it's typically managed by the main ChatWindow, but if you want to
       // control this stream independently, you could create one.

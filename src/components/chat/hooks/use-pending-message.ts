@@ -64,7 +64,7 @@ export function usePendingMessage({
       const startListening = async () => {
         try {
           let receivedText = '';
-          let streamingChunks: string[] = [];
+          const streamingChunks: string[] = [];
           setStreamingController(new AbortController());
 
           await listenToChatStream(

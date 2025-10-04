@@ -90,7 +90,7 @@ export function useMessageSending({
       await sendChatMessage(token, chatId, text, attachments);
 
       let receivedText = '';
-      let streamingChunks: string[] = [];
+      const streamingChunks: string[] = [];
       setStreamingController(new AbortController());
 
       await listenToChatStream(

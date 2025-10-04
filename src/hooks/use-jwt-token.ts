@@ -2,15 +2,15 @@
 import { useEffect } from 'react';
 import { useAuthStore } from '@/store/chat';
 import { getApiUrl } from '@/config/environment';
+import { storeJwtToken, hasValidStoredToken } from '@/utils/jwt-storage';
 
 export const useJwtToken = () => {
   const { token, tokenError, isLoadingToken, setToken, setTokenError, setIsLoadingToken } = useAuthStore();
   
   useEffect(() => {
-    // Only fetch the token if it's not already in the store
-    if (token || tokenError) {
-      // If we already have a token or an error, the loading is done.
-      // Your store methods already handle setting isLoadingToken to false
+    // Only fetch the token if it's not already in the store and no valid stored token exists
+    if (token || tokenError || hasValidStoredToken()) {
+      // If we already have a token, an error, or a valid stored token, we're done loading
       return;
     }
 
@@ -45,8 +45,8 @@ export const useJwtToken = () => {
           // Your setToken method automatically sets isLoadingToken to false and clears tokenError
           setToken(data.access_token);
           
-          // Optional: Store in sessionStorage for persistence across page reloads
-          sessionStorage.setItem('jwt_token', data.access_token);
+          // Store in localStorage with 30-day expiration for persistence across browser sessions
+          storeJwtToken(data.access_token);
         }
         
         return data;
