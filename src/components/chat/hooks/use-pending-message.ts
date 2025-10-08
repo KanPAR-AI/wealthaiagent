@@ -29,17 +29,35 @@ export function usePendingMessage({
 }: UsePendingMessageProps) {
   const pendingMessage = useChatStore(state => state.pendingMessage);
 
+  console.log('[usePendingMessage] Hook render:', {
+    chatId,
+    hasPendingMessage: !!pendingMessage,
+    pendingChatId: pendingMessage?.chatId,
+    isProcessing: isProcessingRef.current
+  });
+
   useEffect(() => {
+    console.log('[usePendingMessage] Effect running with:', {
+      hasToken: !!token,
+      hasChatId: !!chatId,
+      hasPendingMessage: !!pendingMessage,
+      pendingChatId: pendingMessage?.chatId,
+      chatIdMatches: pendingMessage?.chatId === chatId,
+      isProcessing: isProcessingRef.current
+    });
+    
     if (token && chatId && pendingMessage && pendingMessage.chatId === chatId && !isProcessingRef.current) {
       const { text, files } = pendingMessage;
 
       isProcessingRef.current = true;
       setIsProcessingPendingMessage(true);
-      console.log("Processing pending message for new chat:", pendingMessage);
+      console.log("[Pending Message] Processing pending message for new chat:", pendingMessage);
+      console.log("[Pending Message] Chat ID:", chatId);
 
       clearPendingMessage();
 
       const userMessageId = nanoid();
+      console.log("[Pending Message] Adding user message with ID:", userMessageId);
       addMessage({
         id: userMessageId,
         message: text,
@@ -51,6 +69,10 @@ export function usePendingMessage({
       setIsSending(true);
 
       const aiMessageId = nanoid();
+      console.log("[Pending Message] Adding bot placeholder message with ID:", aiMessageId);
+      console.log("[Pending Message] About to call addMessage for bot placeholder");
+      
+      // Add bot message
       addMessage({ 
         id: aiMessageId, 
         message: '', 
@@ -60,9 +82,28 @@ export function usePendingMessage({
         streamingContent: '',
         streamingChunks: [],
       });
+      
+      console.log("[Pending Message] Bot message addMessage() completed");
+      console.log("[Pending Message] Bot message ID that will be updated:", aiMessageId);
+      
+      // Verify it was added
+      setTimeout(() => {
+        const storeMessages = useChatStore.getState().chats[chatId]?.messages || [];
+        const botMessageInStore = storeMessages.find(m => m.id === aiMessageId);
+        console.log("[Pending Message] Verification - Bot message in store?", !!botMessageInStore);
+        console.log("[Pending Message] Total messages in store:", storeMessages.length);
+        if (!botMessageInStore) {
+          console.error("[Pending Message] ERROR: Bot message NOT found in store after adding!");
+          alert("DEBUG: Bot message not in store! Check console.");
+        }
+      }, 100);
 
       const startListening = async () => {
         try {
+          // CRITICAL: Wait for the message to be added to the store before starting stream
+          // This prevents race condition where we try to update a non-existent message
+          await new Promise(resolve => setTimeout(resolve, 50));
+          console.log("[Pending Message] Bot message should be in store now, opening SSE stream for chat:", chatId);
           let receivedText = '';
           const streamingChunks: string[] = [];
           setStreamingController(new AbortController());
@@ -74,6 +115,8 @@ export function usePendingMessage({
               if (type === 'text_chunk') {
                 receivedText += chunk;
                 streamingChunks.push(chunk);
+                console.log('[Pending Message] Streaming chunk received:', chunk);
+                console.log('[Pending Message] Total content so far:', receivedText);
                 updateMessage(aiMessageId, { 
                   message: receivedText, // Keep for backward compatibility
                   streamingContent: receivedText,
@@ -82,6 +125,7 @@ export function usePendingMessage({
               }
             },
             () => { // onComplete
+              console.log('[Pending Message] Stream complete. Final content:', receivedText);
               updateMessage(aiMessageId, { 
                 isStreaming: false,
                 message: receivedText, // Ensure final content is in message field

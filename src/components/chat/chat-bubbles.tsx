@@ -28,13 +28,14 @@ export function ChatBubble({
 
   // Debug logging for bot messages
   if (!isUser) {
-    console.log('ChatBubble bot message:', {
+    console.log('[ChatBubble] Rendering bot message:', {
       id: message.id,
-      message: message.message?.substring(0, 50) + '...',
-      streamingContent: message.streamingContent?.substring(0, 50) + '...',
+      message: message.message ? message.message.substring(0, 50) + '...' : 'empty',
+      streamingContent: message.streamingContent ? message.streamingContent.substring(0, 50) + '...' : 'empty',
       isStreaming: message.isStreaming,
       messageLength: message.message?.length || 0,
-      streamingContentLength: message.streamingContent?.length || 0
+      streamingContentLength: message.streamingContent?.length || 0,
+      timestamp: new Date().toISOString()
     });
   }
 

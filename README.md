@@ -364,6 +364,417 @@ ChatSidebar
 
 ---
 
+## SSE Streaming Flow
+
+### Overview
+
+The application uses Server-Sent Events (SSE) to stream AI responses in real-time, providing a smooth, progressive text display as the AI generates its response. This section details the complete flow from receiving SSE events to displaying streamed text in the UI.
+
+### Architecture Flow Diagram
+
+```
+User Types Message → handleSend()
+                        ↓
+                 POST /chats/{chatId}/messages → Backend processes request
+                        ↓
+                 GET /chats/{chatId}/stream ← Backend streams SSE events
+                        ↓
+              listenToChatStream() ← Parses SSE event chunks
+                        ↓
+                onMessageChunk() ← Accumulates text chunks
+                        ↓
+               updateMessage() → Updates Zustand store
+                        ↓
+             useChatMessages() ← Hook reacts to store change
+                        ↓
+            ChatMessageList ← Re-renders with new messages
+                        ↓
+               ChatBubble ← Displays individual message
+                        ↓
+            StreamingResponse ← Renders streaming content with animation
+                        ↓
+                   UI Updates! ✨
+```
+
+### Step-by-Step Flow
+
+#### Step 1: User Sends a Message
+**File**: `src/components/chat/hooks/use-message-sending.ts`
+
+```typescript
+// User message is immediately added to the store
+const userMessageId = nanoid();
+addMessage({
+  id: userMessageId,
+  message: text,
+  sender: "user",
+  files: attachments,
+  timestamp: new Date().toISOString(),
+});
+
+// Placeholder bot message created with streaming flag
+const aiMessageId = nanoid();
+addMessage({
+  id: aiMessageId,
+  message: '',
+  sender: 'bot',
+  timestamp: new Date().toISOString(),
+  isStreaming: true,
+  streamingContent: '',
+  streamingChunks: [],
+});
+```
+
+**Purpose**: Creates optimistic UI updates, showing the user message immediately and preparing a placeholder for the AI response.
+
+#### Step 2: HTTP POST + SSE Stream Initiated
+**File**: `src/components/chat/hooks/use-message-sending.ts`
+
+```typescript
+// Send message to backend
+await sendChatMessage(token, chatId, text, attachments);
+
+// Initialize streaming
+let receivedText = '';
+const streamingChunks: string[] = [];
+
+// Open SSE connection
+await listenToChatStream(
+  token,
+  chatId,
+  onMessageChunk,  // Callback for each chunk
+  onComplete,      // Callback when streaming completes
+  onError          // Callback for errors
+);
+```
+
+**Purpose**: Sends the user's message via HTTP POST, then opens an SSE connection to receive the AI's response in real-time.
+
+#### Step 3: SSE Stream Processing
+**File**: `src/services/chat-service.ts`
+
+```typescript
+export const listenToChatStream = async (
+  jwt: string,
+  chatId: string,
+  onMessageChunk: (chunk: string, type: string) => void,
+  onComplete: () => void,
+  onError: (error: Error) => void
+) => {
+  const response = await fetch(getApiUrl(`/chats/${chatId}/stream`), {
+    method: "GET",
+    headers: {
+      Accept: "text/event-stream",
+      Authorization: `Bearer ${jwt}`,
+    },
+  });
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      onComplete();
+      break;
+    }
+
+    // Decode and parse SSE events
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data:")) continue;
+      
+      const payload = line.replace(/^data:\s*/, "");
+      const parsedEvent = JSON.parse(payload);
+      
+      if (parsedEvent.type === 'message_delta') {
+        onMessageChunk(parsedEvent.delta, "text_chunk");
+        // Yield to browser to allow React to update UI
+        await new Promise(resolve => setTimeout(resolve, 0));
+      } else if (parsedEvent.type === 'message_complete') {
+        onComplete();
+        return;
+      }
+    }
+  }
+};
+```
+
+**Purpose**: 
+- Reads SSE stream chunks from the network
+- Parses JSON events (`message_delta`, `message_complete`, etc.)
+- Calls `onMessageChunk` callback for each text chunk
+- **Critical**: `setTimeout(..., 0)` yields control back to the browser, allowing React to flush state updates and re-render immediately rather than batching all updates together
+
+**SSE Event Types**:
+- `message_start`: Signals the start of a new message
+- `message_delta`: Contains a text chunk to append
+- `message_complete`: Signals the end of the message
+- `graph_data`: Contains structured graph data (for charts)
+- `table_data`: Contains structured table data
+
+#### Step 4: Update Message in Store
+**File**: `src/components/chat/hooks/use-message-sending.ts`
+
+```typescript
+// Callback invoked for each chunk
+(chunk: string, type: string) => {
+  if (type === 'text_chunk') {
+    // Accumulate text
+    receivedText += chunk;
+    streamingChunks.push(chunk);
+    
+    // Update message in store
+    updateMessage(aiMessageId, { 
+      message: receivedText,
+      streamingContent: receivedText,
+      streamingChunks: [...streamingChunks],
+    });
+  }
+}
+```
+
+**Purpose**: Each chunk appends to the accumulated text, and `updateMessage()` updates the message in the Zustand store, triggering React re-renders.
+
+#### Step 5: Zustand Store Update
+**File**: `src/store/chat.ts`
+
+```typescript
+updateMessage: (chatId, messageId, updates) =>
+  set((state) => ({
+    chats: {
+      ...state.chats,
+      [chatId]: {
+        messages: (state.chats[chatId]?.messages || []).map(msg =>
+          msg.id === messageId ? { ...msg, ...updates } : msg
+        ),
+      },
+    },
+  })),
+```
+
+**Purpose**: 
+- Store finds the message by ID and merges the updates
+- This triggers React re-renders for all components subscribed to this state
+- Each update is processed immediately due to the `setTimeout` yield in Step 3
+
+#### Step 6: Hook Receives Updated Messages
+**File**: `src/hooks/use-chat-messages.ts`
+
+```typescript
+const selector = useCallback(
+  (state: any) => {
+    const messages = state.chats[chatId]?.messages;
+    return messages || emptyArrayRef.current;
+  },
+  [chatId]
+);
+
+const messages = useChatStore(selector);
+```
+
+**Purpose**: 
+- `useChatMessages` hook subscribes to the Zustand store
+- Receives updated messages array on each chunk
+- Re-renders components that use this hook
+
+#### Step 7: Message List Renders
+**File**: `src/components/chat/message-list.tsx`
+
+```typescript
+{messages.map((message) => (
+  <motion.div
+    key={message.id}
+    initial={{ opacity: 0, y: 8 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.3 }}
+  >
+    <ChatBubble
+      message={message}
+      currentUser={currentUser}
+      onFileClick={onFileClick}
+      actionIcons={actionIcons}
+    />
+  </motion.div>
+))}
+```
+
+**Purpose**: 
+- `ChatMessageList` maps over messages array
+- Each message wrapped in Framer Motion for smooth animations
+- Re-renders on each store update with new content
+
+#### Step 8: Chat Bubble Renders Content
+**File**: `src/components/chat/chat-bubbles.tsx`
+
+```typescript
+{message.sender === 'bot' ? (
+  <StreamingResponse 
+    content={message.streamingContent || message.message}
+    isStreaming={message.isStreaming || false}
+    className="chat-bubble-content"
+  />
+) : (
+  <div className="break-all overflow-wrap-anywhere">
+    {message.message}
+  </div>
+)}
+```
+
+**Purpose**: 
+- `ChatBubble` checks if it's a bot message
+- Passes `streamingContent` to `StreamingResponse` component
+- `isStreaming` flag controls streaming animation/behavior
+- Bot messages use `StreamingResponse` for progressive rendering
+- User messages use simple div for static display
+
+#### Step 9: Stream Completion
+**File**: `src/components/chat/hooks/use-message-sending.ts`
+
+```typescript
+// Callback when streaming completes
+() => {
+  updateMessage(aiMessageId, { 
+    isStreaming: false,
+    message: receivedText,
+    streamingContent: receivedText,
+  });
+  setIsSending(false);
+}
+```
+
+**Purpose**: 
+- When backend sends `message_complete` event, `onComplete` callback fires
+- Sets `isStreaming: false` to finalize the message
+- Hides loading indicators and enables input controls
+- Final content stored in both `message` and `streamingContent` fields
+
+### Key Implementation Details
+
+#### 1. React 18 Automatic Batching
+**Problem**: React 18 batches multiple state updates within the same event loop, which would cause all SSE chunks to be batched together and displayed at once instead of progressively.
+
+**Solution**: Added `await new Promise(resolve => setTimeout(resolve, 0))` after each `onMessageChunk()` call to yield control back to the browser, allowing React to flush pending state updates and re-render the UI immediately.
+
+```typescript
+if (parsedEvent.type === 'message_delta') {
+  onMessageChunk(parsedEvent.delta, "text_chunk");
+  // Force React to update the UI by yielding to the browser
+  await new Promise(resolve => setTimeout(resolve, 0));
+}
+```
+
+#### 2. History Message Loading
+**File**: `src/components/chat/hooks/use-chat-history.ts`
+
+When loading messages from chat history, the system properly initializes streaming-related fields:
+
+```typescript
+return {
+  id: msg.id,
+  message: msg.content,
+  sender: msg.sender === 'assistant' ? 'bot' : 'user',
+  timestamp: msg.timestamp,
+  files: files.length > 0 ? files : undefined,
+  // For history messages, streaming is complete
+  isStreaming: false,
+  streamingContent: msg.content,
+};
+```
+
+**Purpose**: Ensures history messages are treated as complete, non-streaming messages.
+
+#### 3. Streaming Response Component
+**File**: `src/components/chat/streaming-response.tsx`
+
+```typescript
+export const StreamingResponse = ({ content, isStreaming, className }) => {
+  return (
+    <div className={cn("break-all overflow-wrap-anywhere", className)}>
+      {isStreaming ? (
+        <StreamingTextRenderer content={content} />
+      ) : (
+        <Response>{content}</Response>
+      )}
+      {isStreaming && <BlinkingCursor />}
+    </div>
+  );
+};
+```
+
+**Features**:
+- Displays blinking cursor during streaming
+- Uses `StreamingTextRenderer` for progressive text display
+- Switches to full markdown renderer (`Response`) when streaming completes
+- Applies basic formatting (bold, italic, code) during streaming
+
+#### 4. Error Handling
+
+```typescript
+// Error callback
+(error) => {
+  console.error("Error in SSE stream:", error);
+  updateMessage(aiMessageId, {
+    message: receivedText || "Error getting AI response",
+    streamingContent: receivedText || "Error getting AI response",
+    error: "Failed response",
+    isStreaming: false,
+  });
+  setIsSending(false);
+}
+```
+
+**Purpose**: Gracefully handles stream errors, displays partial content if any was received, and shows error state to the user.
+
+### Performance Optimizations
+
+1. **Incremental Updates**: Only the changed message is updated in the store, not the entire message list
+2. **Efficient Re-renders**: React only re-renders components affected by the store update
+3. **Blob URL Management**: Proper cleanup of file URLs prevents memory leaks
+4. **Debounced Rendering**: The `setTimeout(..., 0)` creates natural debouncing between chunks
+5. **Stable Selectors**: `useChatMessages` uses stable selectors to prevent unnecessary re-renders
+
+### Debugging Tips
+
+1. **Enable Console Logging**: Check browser console for streaming logs:
+   - `"Streaming chunk received:"` - Each chunk as it arrives
+   - `"ChatBubble bot message:"` - Component re-renders
+   - `"StreamingResponse render:"` - Streaming component updates
+
+2. **Network Tab**: Monitor SSE connection in browser DevTools:
+   - Look for `/stream` endpoint with `text/event-stream` content type
+   - Check for continuous data chunks
+   - Verify connection stays open during streaming
+
+3. **React DevTools**: Watch state updates in real-time:
+   - Monitor Zustand store changes
+   - Track component re-renders
+   - Verify `isStreaming` flag transitions
+
+### Common Issues and Solutions
+
+#### Issue: Text appears all at once instead of streaming
+**Cause**: React batching multiple updates together
+**Solution**: Ensure `setTimeout(..., 0)` is present after each `onMessageChunk` call
+
+#### Issue: Streaming stops midway
+**Cause**: Network connection interrupted or backend error
+**Solution**: Check error callback is invoked, verify network stability
+
+#### Issue: Multiple messages streaming simultaneously
+**Cause**: Race condition from sending messages too quickly
+**Solution**: Disable send button while `isSending` is true
+
+#### Issue: Memory leaks from file attachments
+**Cause**: Blob URLs not properly cleaned up
+**Solution**: Ensure `useEffect` cleanup in `ChatBubble` revokes URLs
+
+---
+
 ## Routing Structure
 
 ### Route Configuration

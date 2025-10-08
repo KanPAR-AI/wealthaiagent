@@ -22,6 +22,10 @@ export const useChatMessages = (chatId: string) => {
   );
   
   const messages = useChatStore(selector);
+  
+  // Debug logging for message updates
+  console.log('[useChatMessages] Current messages for chat', chatId, ':', messages.length, 'messages');
+  
   const addMessageToStore = useChatStore(state => state.addMessage);
   const updateMessageInStore = useChatStore(state => state.updateMessage);
   const clearChatInStore = useChatStore(state => state.clearChat);

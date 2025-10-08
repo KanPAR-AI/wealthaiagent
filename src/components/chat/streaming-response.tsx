@@ -40,7 +40,11 @@ const StreamingTextRenderer = ({ content }: { content: string }) => {
 
 export const StreamingResponse = ({ content, isStreaming, className }: StreamingResponseProps) => {
   // Debug logging
-  console.log('StreamingResponse render:', { content: content.substring(0, 50) + '...', isStreaming, contentLength: content.length });
+  console.log('StreamingResponse render:', { 
+    content: content ? content.substring(0, 50) + '...' : 'empty', 
+    isStreaming, 
+    contentLength: content?.length || 0 
+  });
   
   return (
     <div className={cn("break-all overflow-wrap-anywhere min-w-0 overflow-hidden", className)}>

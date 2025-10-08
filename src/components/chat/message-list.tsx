@@ -18,10 +18,14 @@ export const ChatMessageList = ({
   onFileClick,
   actionIcons,
   addMessageId = false,
-}: ChatMessageListProps) => (
-  <>
-    {/* Map through each message and render a ChatBubble */}
-    {messages.map((message) => (
+}: ChatMessageListProps) => {
+  console.log('[ChatMessageList] Rendering with', messages.length, 'messages');
+  console.log('[ChatMessageList] Messages:', messages.map(m => ({ id: m.id, sender: m.sender, hasContent: !!m.message })));
+  
+  return (
+    <>
+      {/* Map through each message and render a ChatBubble */}
+      {messages.map((message) => (
       <motion.div
         key={message.id}
         initial={{ opacity: 0, y: 8 }} // Initial animation state
@@ -42,4 +46,5 @@ export const ChatMessageList = ({
       </motion.div>
     ))}
   </>
-);
+  );
+};

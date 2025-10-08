@@ -35,7 +35,10 @@ export const Suggestion = ({
   ...props
 }: SuggestionProps) => {
   const handleClick = () => {
+    console.log('[Suggestion] Tile clicked:', suggestion);
+    console.log('[Suggestion] Calling onClick callback...');
     onClick?.(suggestion);
+    console.log('[Suggestion] onClick callback completed');
   };
 
   return (

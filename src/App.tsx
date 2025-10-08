@@ -12,18 +12,19 @@ const App = () => (
   <AppProviders>
     <BrowserRouter basename="/chataiagent">
       <Routes>
+        {/* Login page as the first screen */}
+        <Route path="/" element={<LoginPage />} />
+        
         {/* All routes inside AppLayout will have the persistent sidebar */}
         <Route element={<AppLayout />}>
-          <Route path="/" element={<New />} />
           <Route path="/new" element={<New />} />
           <Route path="/chat" element={<New />} />
           <Route path="/chat/:chatid" element={<Chat />} />
         </Route>
-          <Route path="/logs" element={<Logs />} />
+        <Route path="/logs" element={<Logs />} />
 
         {/* Routes outside the layout, like a 404 page, won't have the sidebar */}
         <Route path="*" element={<NotFound />} />
-        <Route path="/login" element={<LoginPage />} />
       </Routes>
       <PWAInstall />
     </BrowserRouter>

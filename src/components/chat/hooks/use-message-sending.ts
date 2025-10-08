@@ -38,22 +38,35 @@ export function useMessageSending({
   const setPendingMessage = useChatStore(state => state.setPendingMessage);
 
   const handleSend = async (text: string, attachments: MessageFile[]) => {
-    console.log("message:", text, attachments);
+    console.log("[handleSend] Called with:", { text, attachmentCount: attachments.length, chatId });
+    console.log("[handleSend] Current state:", { 
+      isSending, 
+      isRegenerating, 
+      isLoadingToken, 
+      hasToken: !!token, 
+      isNewChatInitiating 
+    });
+    
     if (!text.trim() && attachments.length === 0) {
-      console.warn("Send aborted: No text and no files to send.");
+      console.warn("[handleSend] Send aborted: No text and no files to send.");
       return;
     }
     if (isSending || isRegenerating || isLoadingToken || !token || isNewChatInitiating) {
-      console.warn("Send aborted: busy, loading, or no token, or new chat initiating.");
+      console.warn("[handleSend] Send aborted: busy, loading, or no token, or new chat initiating.");
       return;
     }
 
     if (!chatId) {
       // Logic for a NEW CHAT
+      console.log("[useMessageSending] Starting NEW CHAT creation");
       try {
         setIsNewChatInitiating(true);
+        console.log("[useMessageSending] Creating chat session...");
         const newChatId = await createChatSession(token, "New Chat", text, attachments);
+        console.log("[useMessageSending] Chat created with ID:", newChatId);
+        console.log("[useMessageSending] Setting pending message for chatId:", newChatId);
         setPendingMessage(text, attachments, newChatId);
+        console.log("[useMessageSending] Navigating to /chat/" + newChatId);
         navigate(`/chat/${newChatId}`);
       } catch (error) {
         console.error("Failed to create new chat session:", error);
@@ -63,9 +76,11 @@ export function useMessageSending({
     }
 
     // Logic for an EXISTING CHAT
+    console.log("[useMessageSending] Starting message send for EXISTING chat:", chatId);
     setIsSending(true);
 
     const userMessageId = nanoid();
+    console.log("[useMessageSending] Adding user message with ID:", userMessageId);
     addMessage({
       id: userMessageId,
       message: text,
@@ -76,6 +91,7 @@ export function useMessageSending({
     setLastUserMessageId(userMessageId);
 
     const aiMessageId = nanoid();
+    console.log("[useMessageSending] Adding bot placeholder message with ID:", aiMessageId, "to chat:", chatId);
     addMessage({
       id: aiMessageId,
       message: '',
@@ -85,6 +101,7 @@ export function useMessageSending({
       streamingContent: '',
       streamingChunks: [],
     });
+    console.log("[useMessageSending] Bot message addMessage() called, should be in store now");
 
     try {
       await sendChatMessage(token, chatId, text, attachments);

@@ -53,37 +53,78 @@ export const useChatStore = create<ChatState>((set, get) => ({
   pendingMessage: null,
 
   // Add a message to a specific chat
-  addMessage: (chatId, message) =>
-    set((state) => ({
-      chats: {
-        ...state.chats,
-        [chatId]: {
-          messages: [...(state.chats[chatId]?.messages || []), message], // Ensure messages array exists
+  addMessage: (chatId, message) => {
+    console.log('[Store] addMessage called:', { 
+      chatId, 
+      messageId: message.id, 
+      sender: message.sender,
+      isStreaming: message.isStreaming
+    });
+    set((state) => {
+      const currentMessages = state.chats[chatId]?.messages || [];
+      console.log('[Store] Current message count before add:', currentMessages.length);
+      const newMessages = [...currentMessages, message];
+      console.log('[Store] New message count after add:', newMessages.length);
+      
+      return {
+        chats: {
+          ...state.chats,
+          [chatId]: {
+            messages: newMessages,
+          },
         },
-      },
-    })),
+      };
+    });
+  },
 
   // Update a specific message in a chat
-  updateMessage: (chatId, messageId, updates) =>
-    set((state) => ({
-      chats: {
-        ...state.chats,
-        [chatId]: {
-          messages: (state.chats[chatId]?.messages || []).map(msg => // Ensure messages array exists
-            msg.id === messageId ? { ...msg, ...updates } : msg
-          ),
+  updateMessage: (chatId, messageId, updates) => {
+    console.log('[Store] updateMessage called:', { 
+      chatId, 
+      messageId, 
+      updates: {
+        ...updates,
+        streamingContent: updates.streamingContent?.substring(0, 50) + '...' || 'N/A'
+      }
+    });
+    set((state) => {
+      const messages = state.chats[chatId]?.messages || [];
+      const foundMessage = messages.find(m => m.id === messageId);
+      console.log('[Store] Message found in store:', !!foundMessage);
+      if (foundMessage) {
+        console.log('[Store] Current message length:', foundMessage.message?.length || 0);
+        console.log('[Store] New message length:', updates.message?.length || 0);
+      }
+      
+      const updatedMessages = messages.map(msg =>
+        msg.id === messageId ? { ...msg, ...updates } : msg
+      );
+      
+      console.log('[Store] Messages array reference changed:', updatedMessages !== messages);
+      console.log('[Store] Updated messages count:', updatedMessages.length);
+      
+      return {
+        chats: {
+          ...state.chats,
+          [chatId]: {
+            messages: updatedMessages,
+          },
         },
-      },
-    })),
+      };
+    });
+  },
 
   // Clear all messages from a specific chat
-  clearChat: (chatId) =>
+  clearChat: (chatId) => {
+    console.log('[Store] clearChat called for chatId:', chatId);
+    console.trace('[Store] clearChat stack trace');
     set((state) => ({
       chats: {
         ...state.chats,
         [chatId]: { messages: [] }, // Ensure messages array is empty
       },
-    })),
+    }));
+  },
 
   // Get messages for a specific chat
   getMessages: (chatId) => {
@@ -92,10 +133,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   // Set a pending message for a new chat
-  setPendingMessage: (text, files, targetChatId) =>
+  setPendingMessage: (text, files, targetChatId) => {
+    console.log('[Store] setPendingMessage called:', { 
+      chatId: targetChatId, 
+      text: text.substring(0, 50), 
+      fileCount: files.length 
+    });
     set({
       pendingMessage: { chatId: targetChatId, text, files },
-    }),
+    });
+    console.log('[Store] Pending message set in store');
+  },
 
   // Get the pending message for a given chat ID
   getPendingMessage: (chatId) => {
@@ -110,5 +158,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   // Clear any pending message
-  clearPendingMessage: () => set({ pendingMessage: null }),
+  clearPendingMessage: () => {
+    console.log('[Store] clearPendingMessage called');
+    set({ pendingMessage: null });
+  },
 }));

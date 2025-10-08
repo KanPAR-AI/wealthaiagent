@@ -172,6 +172,9 @@ export const listenToChatStream = async (
   onError: (error: Error) => void
 ) => {
   try {
+    console.log("[listenToChatStream] Opening SSE connection for chat:", chatId);
+    console.log("[listenToChatStream] URL:", getApiUrl(`/chats/${chatId}/stream`));
+    
     const response = await fetch(getApiUrl(`/chats/${chatId}/stream`), {
       method: "GET",
       headers: {
@@ -180,11 +183,17 @@ export const listenToChatStream = async (
       },
     });
 
+    console.log("[listenToChatStream] Response status:", response.status);
+    console.log("[listenToChatStream] Response ok:", response.ok);
+    console.log("[listenToChatStream] Has body:", !!response.body);
+
     if (!response.ok || !response.body) {
       throw new Error(
         `Failed to connect to SSE stream: ${response.statusText}`
       );
     }
+    
+    console.log("[listenToChatStream] SSE connection established, starting to read stream...");
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
@@ -220,6 +229,8 @@ export const listenToChatStream = async (
             
             if (parsedEvent.type === 'message_delta') {
                 onMessageChunk(parsedEvent.delta, "text_chunk");
+                // Force React to update the UI by yielding to the browser
+                await new Promise(resolve => setTimeout(resolve, 0));
             } else if (parsedEvent.type === 'message_complete') {
               // --- FIX: Act on the 'message_complete' signal ---
               // The backend has explicitly signaled the end of the message.
@@ -230,12 +241,14 @@ export const listenToChatStream = async (
             } else if (parsedEvent.type) {
               const content = parsedEvent.message?.content || parsedEvent.content || "";
               onMessageChunk(content, parsedEvent.type);
+              await new Promise(resolve => setTimeout(resolve, 0));
             }
           } catch (err) {
             console.warn("Could not parse a structured event from the stream:", payload, err);
           }
         } else {
           onMessageChunk(payload, "text_chunk");
+          await new Promise(resolve => setTimeout(resolve, 0));
         }
       }
     }

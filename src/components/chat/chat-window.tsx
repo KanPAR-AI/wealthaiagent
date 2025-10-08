@@ -26,10 +26,11 @@ import { usePendingMessage } from './hooks/use-pending-message';
 import { useMessageSending } from './hooks/use-message-sending';
 
 const suggestionTiles: SuggestionTileData[] = [
-  { id: 1, title: "What is a SIP?", description: "Learn about Systematic Investment Plans." },
-  { id: 2, title: "What is a mutual fund?", description: "Understand the basics of mutual funds." },
-  { id: 3, title: "What is a credit score?", description: "Find out what a credit score means." },
-  { id: 4, title: "What is compound interest?", description: "See how compound interest works." }
+  { id: 1, title: "hello!", description: "Learn about Systematic Investment Plans." },
+  { id: 2, title: "What is a SIP?", description: "Learn about Systematic Investment Plans." },
+  { id: 3, title: "What is a mutual fund?", description: "Understand the basics of mutual funds." },
+  { id: 4, title: "What is a credit score?", description: "Find out what a credit score means." },
+  { id: 5, title: "What is compound interest?", description: "See how compound interest works." }
 ];
 
 export default function ChatWindow({
@@ -83,6 +84,7 @@ export default function ChatWindow({
     setIsHistoryLoading,
     clearMessages,
     addMessage,
+    currentMessageCount: messages.length,
   });
 
   usePendingMessage({
@@ -208,6 +210,13 @@ export default function ChatWindow({
       </div>
     );
   }
+
+  console.log('[ChatWindow] Rendering with:', {
+    messageCount: messages.length,
+    isHistoryLoading,
+    chatId,
+    showEmptyState: messages.length === 0 && !isHistoryLoading
+  });
 
   return (
     <>
