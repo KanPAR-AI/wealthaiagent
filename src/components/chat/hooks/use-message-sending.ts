@@ -139,7 +139,8 @@ export function useMessageSending({
 
       let receivedText = '';
       const streamingChunks: string[] = [];
-      const widgets: any[] = [];
+      const contentBlocks: any[] = [];
+      let currentTextBlock = '';
       setStreamingController(new AbortController());
 
       await listenToChatStream(
@@ -155,26 +156,69 @@ export function useMessageSending({
           
           if (type === 'text_chunk') {
             receivedText += chunk;
+            currentTextBlock += chunk;
             streamingChunks.push(chunk);
             console.log('[useMessageSending] Text accumulated:', {
               totalLength: receivedText.length,
               firstChars: receivedText.substring(0, 20),
               chunkCount: streamingChunks.length,
             });
+            
+            // Update content blocks with current streaming text
+            const updatedBlocks = [...contentBlocks];
+            
+            // If we have a text block being accumulated, update or add it
+            if (updatedBlocks.length > 0 && updatedBlocks[updatedBlocks.length - 1].type === 'text') {
+              // Update existing last text block
+              updatedBlocks[updatedBlocks.length - 1] = {
+                type: 'text',
+                content: currentTextBlock
+              };
+            } else {
+              // Add new text block (happens after first widget or at start)
+              updatedBlocks.push({
+                type: 'text',
+                content: currentTextBlock
+              });
+            }
+            
             updateMessage(aiMessageId, { 
               message: receivedText, // Keep for backward compatibility
               streamingContent: receivedText,
               streamingChunks: [...streamingChunks],
+              contentBlocks: updatedBlocks,
             });
           } else if (type.startsWith('widget_')) {
             // Handle widget events from mock service
             console.log('[useMessageSending] Widget event received:', type, chunk);
             try {
+              // Finalize current text block before widget
+              if (currentTextBlock.trim()) {
+                // Update or add the last text block as finalized
+                const lastBlock = contentBlocks[contentBlocks.length - 1];
+                if (lastBlock && lastBlock.type === 'text') {
+                  // Already added during text streaming, just finalize it
+                  contentBlocks[contentBlocks.length - 1] = {
+                    type: 'text',
+                    content: currentTextBlock
+                  };
+                } else {
+                  // Add new text block
+                  contentBlocks.push({ type: 'text', content: currentTextBlock });
+                }
+                currentTextBlock = ''; // Reset for next text segment
+              }
+              
+              // Add widget block
               const widgetData = JSON.parse(chunk);
-              widgets.push({ ...widgetData, type });
-              console.log('[useMessageSending] Widget added. Total widgets:', widgets.length);
+              contentBlocks.push({ 
+                type: 'widget', 
+                widget: { ...widgetData, type } 
+              });
+              
+              console.log('[useMessageSending] Content blocks updated. Total blocks:', contentBlocks.length);
               updateMessage(aiMessageId, { 
-                widgets: [...widgets],
+                contentBlocks: [...contentBlocks],
               });
             } catch (error) {
               console.error('[useMessageSending] Failed to parse widget data:', error);
@@ -182,10 +226,16 @@ export function useMessageSending({
           }
         },
         () => { // onComplete
+          // Add any remaining text as final block
+          if (currentTextBlock.trim()) {
+            contentBlocks.push({ type: 'text', content: currentTextBlock });
+          }
+          
           updateMessage(aiMessageId, { 
             isStreaming: false,
             message: receivedText, // Ensure final content is in message field
             streamingContent: receivedText,
+            contentBlocks: [...contentBlocks],
           });
           setIsSending(false);
         },

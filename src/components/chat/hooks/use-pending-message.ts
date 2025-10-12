@@ -114,7 +114,8 @@ export function usePendingMessage({
           console.log("[Pending Message] Bot message should be in store now, opening SSE stream for chat:", chatId);
           let receivedText = '';
           const streamingChunks: string[] = [];
-          const widgets: any[] = [];
+          const contentBlocks: any[] = [];
+          let currentTextBlock = '';
           setStreamingController(new AbortController());
 
           await listenToChatStream(
@@ -129,23 +130,66 @@ export function usePendingMessage({
               
               if (type === 'text_chunk') {
                 receivedText += chunk;
+                currentTextBlock += chunk;
                 streamingChunks.push(chunk);
                 console.log('[Pending Message] Streaming chunk received:', chunk);
                 console.log('[Pending Message] Total content so far:', receivedText);
+                
+                // Update content blocks with current streaming text
+                const updatedBlocks = [...contentBlocks];
+                
+                // If we have a text block being accumulated, update or add it
+                if (updatedBlocks.length > 0 && updatedBlocks[updatedBlocks.length - 1].type === 'text') {
+                  // Update existing last text block
+                  updatedBlocks[updatedBlocks.length - 1] = {
+                    type: 'text',
+                    content: currentTextBlock
+                  };
+                } else {
+                  // Add new text block (happens after first widget or at start)
+                  updatedBlocks.push({
+                    type: 'text',
+                    content: currentTextBlock
+                  });
+                }
+                
                 updateMessage(aiMessageId, { 
                   message: receivedText, // Keep for backward compatibility
                   streamingContent: receivedText,
                   streamingChunks: [...streamingChunks],
+                  contentBlocks: updatedBlocks,
                 });
               } else if (type.startsWith('widget_')) {
                 // Handle widget events from mock service
                 console.log('[Pending Message] Widget event received:', type, chunk);
                 try {
+                  // Finalize current text block before widget
+                  if (currentTextBlock.trim()) {
+                    // Update or add the last text block as finalized
+                    const lastBlock = contentBlocks[contentBlocks.length - 1];
+                    if (lastBlock && lastBlock.type === 'text') {
+                      // Already added during text streaming, just finalize it
+                      contentBlocks[contentBlocks.length - 1] = {
+                        type: 'text',
+                        content: currentTextBlock
+                      };
+                    } else {
+                      // Add new text block
+                      contentBlocks.push({ type: 'text', content: currentTextBlock });
+                    }
+                    currentTextBlock = ''; // Reset for next text segment
+                  }
+                  
+                  // Add widget block
                   const widgetData = JSON.parse(chunk);
-                  widgets.push({ ...widgetData, type });
-                  console.log('[Pending Message] Widget added. Total widgets:', widgets.length);
+                  contentBlocks.push({ 
+                    type: 'widget', 
+                    widget: { ...widgetData, type } 
+                  });
+                  
+                  console.log('[Pending Message] Content blocks updated. Total blocks:', contentBlocks.length);
                   updateMessage(aiMessageId, { 
-                    widgets: [...widgets],
+                    contentBlocks: [...contentBlocks],
                   });
                 } catch (error) {
                   console.error('[Pending Message] Failed to parse widget data:', error);
@@ -154,10 +198,17 @@ export function usePendingMessage({
             },
             () => { // onComplete
               console.log('[Pending Message] Stream complete. Final content:', receivedText);
+              
+              // Add any remaining text as final block
+              if (currentTextBlock.trim()) {
+                contentBlocks.push({ type: 'text', content: currentTextBlock });
+              }
+              
               updateMessage(aiMessageId, { 
                 isStreaming: false,
                 message: receivedText, // Ensure final content is in message field
                 streamingContent: receivedText,
+                contentBlocks: [...contentBlocks],
               });
               setIsSending(false);
               isProcessingRef.current = false;

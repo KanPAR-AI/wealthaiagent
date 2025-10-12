@@ -1784,9 +1784,71 @@ The project has undergone significant code quality improvements to enhance maint
 
 ---
 
+## Mock SSE Service
+
+### Overview
+
+The application includes a comprehensive mock SSE service for testing widget-based chat responses without backend dependencies. This enables rapid frontend development, testing, and demonstrations.
+
+### Features
+
+- **Zero Backend Dependencies**: No API calls during mock mode
+- **6 Financial Scenarios**: Portfolio analysis, SIP explanations, compound interest, etc.
+- **4 Widget Types**: Pie charts, bar charts, line charts, data tables
+- **Realistic Streaming**: Word-by-word text streaming with widgets
+- **Ordered Content**: Text and widgets interleaved in stream order
+- **shadcn/ui Components**: Beautiful, interactive visualizations
+
+### Mock Service Architecture
+
+**Trigger Mechanism:**
+- Suggestion tiles have optional `useMockService: true` flag
+- Creates mock chat ID (`mock-{timestamp}`)
+- Routes to `listenToMockChatStream` instead of real backend
+- Generates contextual responses based on prompt keywords
+
+**Widget Integration:**
+- Widgets appear inline with text (not at the bottom)
+- Content blocks preserve SSE stream order
+- Text streams continuously before and after widgets
+- Each text segment gets its own bubble
+
+**File Location:** `src/services/mock-sse-service.ts`
+
+### Supported Scenarios
+
+1. **Portfolio Allocation** - Pie chart showing asset breakdown
+2. **Performance Analysis** - Bar chart with 6-month growth
+3. **Top Holdings** - Data table with stock positions
+4. **SIP Explanation** - Line chart showing systematic investment growth
+5. **Mutual Fund Comparison** - Bar chart comparing fund categories
+6. **Compound Interest** - Line chart showing exponential growth
+
+### Usage Example
+
+```typescript
+// Add to suggestion tiles
+const tiles = [
+  {
+    id: 1,
+    title: "Show my portfolio",
+    description: "View breakdown",
+    useMockService: true, // ← Enable mock service
+  }
+];
+```
+
+### Documentation
+
+- **Complete Guide**: See `MOCK_SERVICE_GUIDE.md`
+- **Widget Details**: See `ALL_WIDGETS_SUMMARY.md`
+- **Streaming Fix**: See `STREAMING_FIX.md`
+
+---
+
 ## Conclusion
 
-This PWA provides a comprehensive chat interface with AI integration, file handling, and real-time communication. The frontend architecture is designed for scalability, maintainability, and user experience. The component structure follows React best practices with clear separation of concerns, and the API integration is robust with comprehensive error handling. The file caching system provides instant previews through IndexedDB storage, while granular loading states ensure a smooth user experience during file operations.
+This PWA provides a comprehensive chat interface with AI integration, file handling, and real-time communication. The frontend architecture is designed for scalability, maintainability, and user experience. The component structure follows React best practices with clear separation of concerns, and the API integration is robust with comprehensive error handling. The file caching system provides instant previews through IndexedDB storage, while granular loading states ensure a smooth user experience during file operations. The mock SSE service enables rapid development and testing of widget-based responses without backend dependencies.
 
 ### Key Architecture Highlights
 

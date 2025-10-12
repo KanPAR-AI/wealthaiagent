@@ -2,6 +2,10 @@ import { PieChartWidget } from "./pie-chart-widget"
 import { BarChartWidget } from "./bar-chart-widget"
 import { TableWidget } from "./table-widget"
 import { LineChartWidget } from "./line-chart-widget"
+import { CompoundInterestCalculator } from "./compound-interest-calculator"
+import { SIPCalculator } from "./sip-calculator"
+import { MortgageCalculator } from "./mortgage-calculator"
+import { RetirementCalculator } from "./retirement-calculator"
 
 export interface Widget {
   id: string
@@ -32,16 +36,17 @@ export function WidgetRenderer({ widget }: WidgetRendererProps) {
     case 'widget_table':
       return <TableWidget {...widget} />
     
-    case 'widget_calculator':
-      // TODO: Implement calculator widget
-      return (
-        <div className="rounded-lg border border-border p-4 bg-muted/50">
-          <h3 className="font-semibold mb-2">{widget.title}</h3>
-          <p className="text-sm text-muted-foreground">
-            Calculator widget coming soon...
-          </p>
-        </div>
-      )
+    case 'widget_compound_interest_calculator':
+      return <CompoundInterestCalculator {...widget} />
+    
+    case 'widget_sip_calculator':
+      return <SIPCalculator {...widget} />
+    
+    case 'widget_mortgage_calculator':
+      return <MortgageCalculator {...widget} />
+    
+    case 'widget_retirement_calculator':
+      return <RetirementCalculator {...widget} />
     
     default:
       console.warn('[WidgetRenderer] Unknown widget type:', widget.type)

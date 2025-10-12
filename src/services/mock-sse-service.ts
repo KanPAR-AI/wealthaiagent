@@ -5,9 +5,12 @@ export type WidgetType =
   | 'bar_chart' 
   | 'pie_chart' 
   | 'table' 
-  | 'calculator'
   | 'line_chart'
-  | 'metric_card';
+  | 'metric_card'
+  | 'compound_interest_calculator'
+  | 'sip_calculator'
+  | 'mortgage_calculator'
+  | 'retirement_calculator';
 
 export interface WidgetEvent {
   type: `widget_${WidgetType}`;
@@ -75,10 +78,14 @@ async function* generateMockSSEStream(prompt: string): AsyncGenerator<MockSSEEve
     yield* streamText("Based on your portfolio, here's a comprehensive analysis:");
     await delay(200);
     yield generatePieChartWidget();
-    await delay(300);
+    await delay(200);
     yield* streamText("\n\nYour portfolio shows strong diversification across multiple asset classes. The allocation is well-balanced with 45% in equities for growth, 25% in bonds for stability, and diversified holdings in real estate, cash, and emerging assets.");
     await delay(100);
     yield* streamText("\n\n💡 **Key Insights:**\n- Your equity allocation aligns well with a moderate-aggressive risk profile\n- Consider rebalancing if any asset class drifts more than 5% from target\n- The 10% cash position provides good liquidity for opportunities");
+    await delay(200);
+    yield* streamText("\n\n**Project your wealth growth** with the calculator below:");
+    await delay(200);
+    yield generateCompoundInterestCalculatorWidget();
   }
   else if (lowerPrompt.includes('performance') || lowerPrompt.includes('analyze')) {
     // Scenario 2: Performance Analysis
@@ -89,6 +96,10 @@ async function* generateMockSSEStream(prompt: string): AsyncGenerator<MockSSEEve
     yield* streamText("\n\nYour portfolio has shown consistent growth with a 24% increase over the period. The upward trend is particularly strong in the last quarter.");
     await delay(100);
     yield* streamText("\n\n📊 **Performance Highlights:**\n- Average monthly return: 3.7%\n- Best month: June (+8.9%)\n- Lowest month: March (-2.1%)\n- Volatility: Moderate\n\nYour portfolio is outperforming the benchmark index by 4.2%!");
+    await delay(200);
+    yield* streamText("\n\n**Plan your retirement** with the calculator below:");
+    await delay(200);
+    yield generateRetirementCalculatorWidget();
   }
   else if (lowerPrompt.includes('holdings') || lowerPrompt.includes('top')) {
     // Scenario 3: Top Holdings
@@ -99,6 +110,10 @@ async function* generateMockSSEStream(prompt: string): AsyncGenerator<MockSSEEve
     yield* streamText("\n\nYour portfolio is well-diversified across tech, finance, and consumer sectors. The top 5 positions represent 43% of your total portfolio value.");
     await delay(100);
     yield* streamText("\n\n🎯 **Portfolio Notes:**\n- AAPL and MSFT provide strong tech exposure\n- Consider adding emerging market exposure\n- All positions showing positive returns\n- Average position size: $8,610");
+    await delay(200);
+    yield* streamText("\n\n**Start planning your SIP** with the calculator below:");
+    await delay(200);
+    yield generateSIPCalculatorWidget();
   }
   else if (lowerPrompt.includes('sip') || lowerPrompt.includes('systematic')) {
     // Scenario 4: SIP Explanation with Growth Chart
@@ -108,7 +123,11 @@ async function* generateMockSSEStream(prompt: string): AsyncGenerator<MockSSEEve
     await delay(300);
     yield* streamText("\n\nSIP is a disciplined investment approach where you invest a fixed amount regularly (monthly/quarterly). The chart above shows how investing ₹10,000 monthly grows over 5 years.");
     await delay(100);
-    yield* streamText("\n\n✨ **SIP Benefits:**\n- **Rupee Cost Averaging:** Buy more units when prices are low\n- **Discipline:** Automated investing builds wealth consistently\n- **Flexibility:** Start with as little as ₹500/month\n- **Compounding:** Returns generate returns over time\n\n💰 In this example, ₹6L invested becomes ₹7.8L+ (30% returns)!");
+    yield* streamText("\n\n✨ **SIP Benefits:**\n- **Rupee Cost Averaging:** Buy more units when prices are low\n- **Discipline:** Automated investing builds wealth consistently\n- **Flexibility:** Start with as little as ₹500/month\n- **Compounding:** Returns generate returns over time\n\n💰 In this example, ₹6L invested becomes ₹8.2L+ (30% returns)!");
+    await delay(200);
+    yield* streamText("\n\n**Calculate your own SIP** with the interactive calculator below:");
+    await delay(200);
+    yield generateSIPCalculatorWidget();
   }
   else if (lowerPrompt.includes('mutual fund') || lowerPrompt.includes('compare')) {
     // Scenario 5: Mutual Fund Comparison
@@ -119,6 +138,10 @@ async function* generateMockSSEStream(prompt: string): AsyncGenerator<MockSSEEve
     yield* streamText("\n\nEach fund category serves different investment goals and risk profiles.");
     await delay(100);
     yield* streamText("\n\n📈 **Category Guide:**\n- **Large Cap:** Stable, lower risk, 12-15% returns\n- **Mid Cap:** Moderate risk, 15-18% returns\n- **Small Cap:** Higher risk, 18-22% returns\n- **Debt Funds:** Low risk, 6-8% returns\n- **Hybrid:** Balanced, 10-14% returns\n\n💡 Diversify across categories based on your risk appetite and time horizon!");
+    await delay(200);
+    yield* streamText("\n\n**Calculate your SIP returns** for any fund category:");
+    await delay(200);
+    yield generateSIPCalculatorWidget();
   }
   else if (lowerPrompt.includes('compound') || lowerPrompt.includes('interest')) {
     // Scenario 6: Compound Interest Growth
@@ -129,6 +152,10 @@ async function* generateMockSSEStream(prompt: string): AsyncGenerator<MockSSEEve
     yield* streamText("\n\nCompound interest is often called the \"eighth wonder of the world.\" Your money doesn't just grow—it grows exponentially!");
     await delay(100);
     yield* streamText("\n\n🚀 **The Magic of Compounding:**\n- Year 1: ₹1,12,000 (+₹12,000)\n- Year 5: ₹1,76,234 (+₹76,234)\n- Year 10: ₹3,10,585 (+₹2,10,585)\n- Year 20: ₹9,64,629 (+₹8,64,629)\n\n⏰ Time is your biggest asset. The earlier you start, the more you benefit!");
+    await delay(200);
+    yield* streamText("\n\n**Try it yourself** with the interactive calculator below:");
+    await delay(200);
+    yield generateCompoundInterestCalculatorWidget();
   }
   else {
     // Default response
@@ -228,21 +255,77 @@ function generateTableWidget(): WidgetEvent {
   };
 }
 
-function generateCalculatorWidget(): WidgetEvent {
+function generateCompoundInterestCalculatorWidget(): WidgetEvent {
   return {
-    type: 'widget_calculator',
+    type: 'widget_compound_interest_calculator',
     widget: {
       id: crypto.randomUUID(),
-      title: 'Mortgage Calculator',
+      title: 'Compound Interest Calculator',
       config: {
-        type: 'mortgage',
-        fields: [
-          { name: 'loanAmount', label: 'Loan Amount', type: 'currency', default: 300000 },
-          { name: 'interestRate', label: 'Interest Rate (%)', type: 'percentage', default: 4.5 },
-          { name: 'loanTerm', label: 'Loan Term (years)', type: 'number', default: 30 },
-        ],
+        defaults: {
+          principal: 100000,
+          rate: 12,
+          time: 10,
+          frequency: 1,
+        },
       },
-      data: undefined
+      data: undefined,
+    },
+  };
+}
+
+function generateSIPCalculatorWidget(): WidgetEvent {
+  return {
+    type: 'widget_sip_calculator',
+    widget: {
+      id: crypto.randomUUID(),
+      title: 'SIP Calculator',
+      config: {
+        defaults: {
+          monthlyInvestment: 10000,
+          rate: 12,
+          time: 10,
+        },
+      },
+      data: undefined,
+    },
+  };
+}
+
+function generateMortgageCalculatorWidget(): WidgetEvent {
+  return {
+    type: 'widget_mortgage_calculator',
+    widget: {
+      id: crypto.randomUUID(),
+      title: 'Home Loan EMI Calculator',
+      config: {
+        defaults: {
+          loanAmount: 5000000,
+          interestRate: 8.5,
+          loanTerm: 20,
+        },
+      },
+      data: undefined,
+    },
+  };
+}
+
+function generateRetirementCalculatorWidget(): WidgetEvent {
+  return {
+    type: 'widget_retirement_calculator',
+    widget: {
+      id: crypto.randomUUID(),
+      title: 'Retirement Planning Calculator',
+      config: {
+        defaults: {
+          currentAge: 30,
+          retirementAge: 60,
+          monthlySavings: 15000,
+          currentSavings: 500000,
+          expectedReturn: 12,
+        },
+      },
+      data: undefined,
     },
   };
 }

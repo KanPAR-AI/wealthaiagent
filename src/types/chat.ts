@@ -79,6 +79,13 @@ export interface Widget {
 }
 
 /**
+ * Content block that can be either text or a widget
+ */
+export type ContentBlock = 
+  | { type: 'text'; content: string }
+  | { type: 'widget'; widget: Widget };
+
+/**
  * Represents a single message in the chat.
  */
 export interface Message {
@@ -93,7 +100,8 @@ export interface Message {
   streamingChunks?: string[]; // Individual chunks received (optional, for debugging)
   error?: string; // Error message if something went wrong
   structuredContent?: StructuredContent; // Structured data like graphs or tables
-  widgets?: Widget[]; // Array of widgets to render (charts, tables, etc.)
+  widgets?: Widget[]; // Array of widgets to render (charts, tables, etc.) - DEPRECATED, use contentBlocks
+  contentBlocks?: ContentBlock[]; // Ordered array of text and widgets as they were streamed
 }
 
 /**

@@ -91,70 +91,123 @@ export function ChatBubble({
 
   return (
     <div key={message.id} className={`flex gap-3 ${isUser ? 'justify-start sm:justify-end' : 'justify-start'} w-full min-w-0`}>
-      <div className={`flex flex-col ${isUser ? 'items-start sm:items-end' : 'items-start'} w-full min-w-0 max-w-full`}>
-        {/* Message Bubble (for text and structured content) */}
-        {/* Only render the bubble if there's text or structured content */}
-        {(message.message || message.streamingContent || message.structuredContent) && (
-          <motion.div
-            variants={bubbleVariants}
-            initial="hidden"
-            animate="visible"
-            className={`px-3 py-2 md:px-4 md:py-2 rounded-2xl text-sm md:text-base relative max-w-full min-w-0 overflow-hidden chat-bubble-content ${
-              isUser
-                ? 'bg-primary text-primary-foreground dark:text-zinc-100'
-                : 'bg-muted dark:bg-zinc-700 dark:text-zinc-200'
-            } break-all overflow-wrap-anywhere hyphens-auto`}
-          >
-            {message.error ? (
-              <div className="flex items-center gap-2">
-                <span className="text-red-500 text-xs">⚠</span>
-                <span className="italic text-red-500">{message.error}</span>
-              </div>
-            ) : (
-              <div className="px-0.5 whitespace-pre-wrap break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
-                {/* Render content using StreamingResponse for bot messages, plain text for user messages */}
-                {message.sender === 'bot' ? (
-                  <StreamingResponse 
-                    content={message.streamingContent || message.message}
-                    isStreaming={message.isStreaming || false}
-                    className="chat-bubble-content"
-                  />
+      <div className={`flex flex-col ${isUser ? 'items-start sm:items-end' : 'items-start'} w-full min-w-0 max-w-full gap-3`}>
+        {/* NEW: Render content blocks in order (text and widgets interleaved) */}
+        {message.contentBlocks && message.contentBlocks.length > 0 ? (
+          <>
+            {message.contentBlocks.map((block, index) => {
+              if (block.type === 'text') {
+                // Render text block
+                return (
+                  <motion.div
+                    key={`text-${index}`}
+                    variants={bubbleVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className={`px-3 py-2 md:px-4 md:py-2 rounded-2xl text-sm md:text-base relative max-w-full min-w-0 overflow-hidden chat-bubble-content ${
+                      isUser
+                        ? 'bg-primary text-primary-foreground dark:text-zinc-100'
+                        : 'bg-muted dark:bg-zinc-700 dark:text-zinc-200'
+                    } break-all overflow-wrap-anywhere hyphens-auto`}
+                  >
+                    <div className="px-0.5 whitespace-pre-wrap break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
+                      {message.sender === 'bot' ? (
+                        <StreamingResponse 
+                          content={block.content}
+                          isStreaming={Boolean(message.isStreaming && index === message.contentBlocks!.length - 1)}
+                          className="chat-bubble-content"
+                        />
+                      ) : (
+                        <div className="break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
+                          {block.content}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              } else if (block.type === 'widget') {
+                // Render widget block
+                return (
+                  <motion.div
+                    key={`widget-${block.widget.id || index}`}
+                    variants={fileVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="w-full"
+                  >
+                    <WidgetRenderer widget={block.widget} />
+                  </motion.div>
+                );
+              }
+              return null;
+            })}
+          </>
+        ) : (
+          /* LEGACY: Fallback for old messages without contentBlocks */
+          <>
+            {/* Message Bubble (for text and structured content) */}
+            {(message.message || message.streamingContent || message.structuredContent) && (
+              <motion.div
+                variants={bubbleVariants}
+                initial="hidden"
+                animate="visible"
+                className={`px-3 py-2 md:px-4 md:py-2 rounded-2xl text-sm md:text-base relative max-w-full min-w-0 overflow-hidden chat-bubble-content ${
+                  isUser
+                    ? 'bg-primary text-primary-foreground dark:text-zinc-100'
+                    : 'bg-muted dark:bg-zinc-700 dark:text-zinc-200'
+                } break-all overflow-wrap-anywhere hyphens-auto`}
+              >
+                {message.error ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-red-500 text-xs">⚠</span>
+                    <span className="italic text-red-500">{message.error}</span>
+                  </div>
                 ) : (
-                  <div className="break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
-                    {message.message}
+                  <div className="px-0.5 whitespace-pre-wrap break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
+                    {message.sender === 'bot' ? (
+                      <StreamingResponse 
+                        content={message.streamingContent || message.message}
+                        isStreaming={message.isStreaming || false}
+                        className="chat-bubble-content"
+                      />
+                    ) : (
+                      <div className="break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
+                        {message.message}
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
-            
-            {/* Structured content rendering */}
-            {message.structuredContent && (
-              <div className={`${message.message ? 'mt-3 pt-3 border-t border-border/30' : ''}`}>
-                <StructuredContentRenderer content={message.structuredContent} />
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* Widgets */}
-        {message.widgets && message.widgets.length > 0 && (
-          <motion.div
-            variants={fileVariants}
-            initial="hidden"
-            animate="visible"
-            className="mt-3 w-full flex flex-col gap-3"
-          >
-            {message.widgets.map((widget, index) => (
-              <motion.div
-                key={widget.id || index}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-              >
-                <WidgetRenderer widget={widget} />
+                
+                {/* Structured content rendering */}
+                {message.structuredContent && (
+                  <div className={`${message.message ? 'mt-3 pt-3 border-t border-border/30' : ''}`}>
+                    <StructuredContentRenderer content={message.structuredContent} />
+                  </div>
+                )}
               </motion.div>
-            ))}
-          </motion.div>
+            )}
+
+            {/* Legacy widgets rendering */}
+            {message.widgets && message.widgets.length > 0 && (
+              <motion.div
+                variants={fileVariants}
+                initial="hidden"
+                animate="visible"
+                className="w-full flex flex-col gap-3"
+              >
+                {message.widgets.map((widget, index) => (
+                  <motion.div
+                    key={widget.id || index}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                  >
+                    <WidgetRenderer widget={widget} />
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </>
         )}
 
         {/* File Attachments */}

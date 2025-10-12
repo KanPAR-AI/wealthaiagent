@@ -8,7 +8,10 @@ We've created **6 rich, interactive mock scenarios** with widgets for financial 
 
 ### 1. **Portfolio Allocation** 🥧
 **Tile:** "Show my portfolio allocation"  
-**Widget:** Pie Chart (Donut)  
+**Widgets:**
+1. Pie Chart (Donut) - Asset breakdown
+2. **Compound Interest Calculator** ✨ - Interactive wealth projection
+
 **Shows:**
 - Stocks: 45%
 - Bonds: 25%
@@ -21,12 +24,16 @@ We've created **6 rich, interactive mock scenarios** with widgets for financial 
 - Risk profile assessment
 - Rebalancing recommendations
 - Liquidity insights
+- **Interactive calculator** to project wealth growth
 
 ---
 
 ### 2. **Portfolio Performance** 📈
 **Tile:** "Analyze my portfolio performance"  
-**Widget:** Bar Chart  
+**Widgets:**
+1. Bar Chart - 6-month performance
+2. **Retirement Planning Calculator** ✨ - Interactive retirement planning
+
 **Shows:**
 - 6 months of portfolio value
 - Monthly growth from $45k to $55.8k
@@ -37,12 +44,16 @@ We've created **6 rich, interactive mock scenarios** with widgets for financial 
 - Best/worst months
 - Volatility assessment
 - Benchmark comparison (+4.2% outperformance)
+- **Interactive calculator** to plan retirement corpus
 
 ---
 
 ### 3. **Top Holdings** 📋
 **Tile:** "What are my top holdings?"  
-**Widget:** Data Table  
+**Widgets:**
+1. Data Table - Stock positions
+2. **SIP Calculator** ✨ - Interactive SIP planning
+
 **Shows:**
 - Top 5 stocks (AAPL, MSFT, GOOGL, TSLA, AMZN)
 - Shares, value, and change percentage
@@ -53,12 +64,16 @@ We've created **6 rich, interactive mock scenarios** with widgets for financial 
 - Position sizing insights
 - Performance summary
 - Exposure recommendations
+- **Interactive calculator** to start SIP planning
 
 ---
 
 ### 4. **SIP Explained** 💰
 **Tile:** "Explain SIP with examples"  
-**Widget:** Line Chart (Dual)  
+**Widgets:**
+1. Line Chart (Dual) - Growth visualization
+2. **SIP Calculator** ✨ - Interactive SIP calculator
+
 **Shows:**
 - Total Value vs Amount Invested
 - 5-year projection of ₹10,000/month
@@ -69,12 +84,16 @@ We've created **6 rich, interactive mock scenarios** with widgets for financial 
 - Rupee cost averaging
 - Benefits breakdown
 - Real returns calculation (₹6L → ₹8.2L+)
+- **Interactive calculator** for personalized SIP planning
 
 ---
 
 ### 5. **Mutual Fund Comparison** 📊
 **Tile:** "Compare mutual fund types"  
-**Widget:** Bar Chart  
+**Widgets:**
+1. Bar Chart - Fund category returns
+2. **SIP Calculator** ✨ - Calculate fund investments
+
 **Shows:**
 - 3-year returns by category
 - Large Cap: 14.2%
@@ -88,12 +107,16 @@ We've created **6 rich, interactive mock scenarios** with widgets for financial 
 - Risk-return profiles
 - Investment recommendations
 - Diversification strategy
+- **Interactive calculator** for fund SIP planning
 
 ---
 
 ### 6. **Compound Interest** 🚀
 **Tile:** "Show compound interest growth"  
-**Widget:** Line Chart (Exponential)  
+**Widgets:**
+1. Line Chart (Exponential) - Growth visualization
+2. **Compound Interest Calculator** ✨ - Interactive compounding tool
+
 **Shows:**
 - ₹1L growing at 12% p.a.
 - 20-year projection
@@ -104,6 +127,7 @@ We've created **6 rich, interactive mock scenarios** with widgets for financial 
 - Year-by-year breakdown
 - "Eighth wonder" concept
 - Time value emphasis
+- **Interactive calculator** to experiment with different values
 
 ---
 
