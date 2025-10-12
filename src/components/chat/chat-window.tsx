@@ -26,17 +26,42 @@ import { usePendingMessage } from './hooks/use-pending-message';
 import { useMessageSending } from './hooks/use-message-sending';
 
 const suggestionTiles: SuggestionTileData[] = [
-  { id: 1, title: "hello!", description: "Learn about Systematic Investment Plans." },
+  { 
+    id: 1, 
+    title: "Show my portfolio allocation", 
+    description: "View asset breakdown",
+    useMockService: true,
+  },
   {
     id: 2,
-    title: "Show my portfolio allocation",
-    description: "View breakdown",
-    useMockService: true, // 👈 Routes to mock!
+    title: "Analyze my portfolio performance",
+    description: "Monthly growth trends",
+    useMockService: true,
   },
-  { id: 3, title: "What is a SIP?", description: "Learn about Systematic Investment Plans." },
-  { id: 4, title: "What is a mutual fund?", description: "Understand the basics of mutual funds." },
-  { id: 5, title: "What is a credit score?", description: "Find out what a credit score means." },
-  { id: 6, title: "What is compound interest?", description: "See how compound interest works." }
+  { 
+    id: 3, 
+    title: "What are my top holdings?", 
+    description: "View stock positions",
+    useMockService: true,
+  },
+  { 
+    id: 4, 
+    title: "Explain SIP with examples", 
+    description: "Investment strategy visualization",
+    useMockService: true,
+  },
+  { 
+    id: 5, 
+    title: "Compare mutual fund types", 
+    description: "Performance comparison",
+    useMockService: true,
+  },
+  { 
+    id: 6, 
+    title: "Show compound interest growth", 
+    description: "Investment projection",
+    useMockService: true,
+  }
 ];
 
 export default function ChatWindow({

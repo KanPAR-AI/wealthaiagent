@@ -114,6 +114,7 @@ export function usePendingMessage({
           console.log("[Pending Message] Bot message should be in store now, opening SSE stream for chat:", chatId);
           let receivedText = '';
           const streamingChunks: string[] = [];
+          const widgets: any[] = [];
           setStreamingController(new AbortController());
 
           await listenToChatStream(
@@ -139,7 +140,16 @@ export function usePendingMessage({
               } else if (type.startsWith('widget_')) {
                 // Handle widget events from mock service
                 console.log('[Pending Message] Widget event received:', type, chunk);
-                // TODO: Add widget handling logic here
+                try {
+                  const widgetData = JSON.parse(chunk);
+                  widgets.push({ ...widgetData, type });
+                  console.log('[Pending Message] Widget added. Total widgets:', widgets.length);
+                  updateMessage(aiMessageId, { 
+                    widgets: [...widgets],
+                  });
+                } catch (error) {
+                  console.error('[Pending Message] Failed to parse widget data:', error);
+                }
               }
             },
             () => { // onComplete

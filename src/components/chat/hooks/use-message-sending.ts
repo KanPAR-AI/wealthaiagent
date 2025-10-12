@@ -139,6 +139,7 @@ export function useMessageSending({
 
       let receivedText = '';
       const streamingChunks: string[] = [];
+      const widgets: any[] = [];
       setStreamingController(new AbortController());
 
       await listenToChatStream(
@@ -168,7 +169,16 @@ export function useMessageSending({
           } else if (type.startsWith('widget_')) {
             // Handle widget events from mock service
             console.log('[useMessageSending] Widget event received:', type, chunk);
-            // TODO: Add widget handling logic here
+            try {
+              const widgetData = JSON.parse(chunk);
+              widgets.push({ ...widgetData, type });
+              console.log('[useMessageSending] Widget added. Total widgets:', widgets.length);
+              updateMessage(aiMessageId, { 
+                widgets: [...widgets],
+              });
+            } catch (error) {
+              console.error('[useMessageSending] Failed to parse widget data:', error);
+            }
           }
         },
         () => { // onComplete

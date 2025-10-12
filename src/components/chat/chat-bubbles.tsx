@@ -6,6 +6,7 @@ import { JSX, useEffect } from 'react';
 import StructuredContentRenderer from '../ui/structured-content-renderer'; // Assuming this component exists
 import { FileRenderer } from './file-renderer'; // Import the FileRenderer component
 import { StreamingResponse } from './streaming-response';
+import { WidgetRenderer } from '../widgets/widget-renderer'; // Import the WidgetRenderer component
 
 interface ChatBubbleProps {
   message: Message;
@@ -132,6 +133,27 @@ export function ChatBubble({
                 <StructuredContentRenderer content={message.structuredContent} />
               </div>
             )}
+          </motion.div>
+        )}
+
+        {/* Widgets */}
+        {message.widgets && message.widgets.length > 0 && (
+          <motion.div
+            variants={fileVariants}
+            initial="hidden"
+            animate="visible"
+            className="mt-3 w-full flex flex-col gap-3"
+          >
+            {message.widgets.map((widget, index) => (
+              <motion.div
+                key={widget.id || index}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+              >
+                <WidgetRenderer widget={widget} />
+              </motion.div>
+            ))}
           </motion.div>
         )}
 

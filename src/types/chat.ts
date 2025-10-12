@@ -67,6 +67,18 @@ export interface AiTableContent {
 export type StructuredContent = AiGraphContent | AiTableContent;
 
 /**
+ * Widget data for rendering interactive components
+ */
+export interface Widget {
+  id: string;
+  type: string;
+  title?: string;
+  data: any;
+  config?: any;
+  sourceUrl?: string;
+}
+
+/**
  * Represents a single message in the chat.
  */
 export interface Message {
@@ -81,6 +93,7 @@ export interface Message {
   streamingChunks?: string[]; // Individual chunks received (optional, for debugging)
   error?: string; // Error message if something went wrong
   structuredContent?: StructuredContent; // Structured data like graphs or tables
+  widgets?: Widget[]; // Array of widgets to render (charts, tables, etc.)
 }
 
 /**
