@@ -37,8 +37,8 @@ export function useMessageSending({
   const navigate = useNavigate();
   const setPendingMessage = useChatStore(state => state.setPendingMessage);
 
-  const handleSend = async (text: string, attachments: MessageFile[]) => {
-    console.log("[handleSend] Called with:", { text, attachmentCount: attachments.length, chatId });
+  const handleSend = async (text: string, attachments: MessageFile[], useMockService?: boolean) => {
+    console.log("[handleSend] Called with:", { text, attachmentCount: attachments.length, chatId, useMockService });
     console.log("[handleSend] Current state:", { 
       isSending, 
       isRegenerating, 
@@ -51,23 +51,43 @@ export function useMessageSending({
       console.warn("[handleSend] Send aborted: No text and no files to send.");
       return;
     }
-    if (isSending || isRegenerating || isLoadingToken || !token || isNewChatInitiating) {
-      console.warn("[handleSend] Send aborted: busy, loading, or no token, or new chat initiating.");
+    
+    // For mock service, we don't need a real token
+    if (isSending || isRegenerating || isNewChatInitiating) {
+      console.warn("[handleSend] Send aborted: busy or new chat initiating.");
+      return;
+    }
+    
+    // Only check for token if NOT using mock service
+    if (!useMockService && (isLoadingToken || !token)) {
+      console.warn("[handleSend] Send aborted: loading token or no token (real service requires token).");
       return;
     }
 
     if (!chatId) {
       // Logic for a NEW CHAT
-      console.log("[useMessageSending] Starting NEW CHAT creation");
+      console.log("[useMessageSending] Starting NEW CHAT creation", { useMockService });
       try {
         setIsNewChatInitiating(true);
-        console.log("[useMessageSending] Creating chat session...");
-        const newChatId = await createChatSession(token, "New Chat", text, attachments);
-        console.log("[useMessageSending] Chat created with ID:", newChatId);
-        console.log("[useMessageSending] Setting pending message for chatId:", newChatId);
-        setPendingMessage(text, attachments, newChatId);
-        console.log("[useMessageSending] Navigating to /chat/" + newChatId);
-        navigate(`/chat/${newChatId}`);
+        
+        // If using mock service, skip creating real chat session
+        if (useMockService) {
+          console.log("[useMessageSending] Using mock service - creating mock chat ID");
+          const mockChatId = `mock-${Date.now()}`;
+          console.log("[useMessageSending] Mock chat ID:", mockChatId);
+          console.log("[useMessageSending] Setting pending message with mock flag");
+          setPendingMessage(text, attachments, mockChatId, true);
+          console.log("[useMessageSending] Navigating to /chat/" + mockChatId);
+          navigate(`/chat/${mockChatId}`);
+        } else {
+          console.log("[useMessageSending] Creating real chat session...");
+          const newChatId = await createChatSession(token!, "New Chat", text, attachments); // Use non-null assertion since we checked token above
+          console.log("[useMessageSending] Chat created with ID:", newChatId);
+          console.log("[useMessageSending] Setting pending message for chatId:", newChatId);
+          setPendingMessage(text, attachments, newChatId, false);
+          console.log("[useMessageSending] Navigating to /chat/" + newChatId);
+          navigate(`/chat/${newChatId}`);
+        }
       } catch (error) {
         console.error("Failed to create new chat session:", error);
         setIsNewChatInitiating(false);
@@ -76,7 +96,12 @@ export function useMessageSending({
     }
 
     // Logic for an EXISTING CHAT
-    console.log("[useMessageSending] Starting message send for EXISTING chat:", chatId);
+    console.log("[useMessageSending] Starting message send for EXISTING chat:", chatId, { useMockService });
+    
+    // Check if this is a mock chat (chat ID starts with "mock-")
+    const isMockChat = chatId.startsWith('mock-');
+    console.log("[useMessageSending] Is mock chat:", isMockChat);
+    
     setIsSending(true);
 
     const userMessageId = nanoid();
@@ -104,26 +129,46 @@ export function useMessageSending({
     console.log("[useMessageSending] Bot message addMessage() called, should be in store now");
 
     try {
-      await sendChatMessage(token, chatId, text, attachments);
+      // Only send message to backend if NOT a mock chat
+      if (!isMockChat && !useMockService) {
+        console.log("[useMessageSending] Sending message to real backend API");
+        await sendChatMessage(token!, chatId, text, attachments); // Use non-null assertion since we checked token above
+      } else {
+        console.log("[useMessageSending] Skipping real API call for mock chat");
+      }
 
       let receivedText = '';
       const streamingChunks: string[] = [];
       setStreamingController(new AbortController());
 
       await listenToChatStream(
-        token,
+        token || 'mock-token', // Use dummy token for mock service
         chatId,
         (chunk: string, type: string) => {
+          console.log('[useMessageSending] Chunk received:', {
+            type,
+            chunk: JSON.stringify(chunk),
+            chunkLength: chunk.length,
+            receivedTextLengthBefore: receivedText.length,
+          });
+          
           if (type === 'text_chunk') {
             receivedText += chunk;
             streamingChunks.push(chunk);
-            console.log('Streaming chunk received:', chunk);
-            console.log('Total content so far:', receivedText);
+            console.log('[useMessageSending] Text accumulated:', {
+              totalLength: receivedText.length,
+              firstChars: receivedText.substring(0, 20),
+              chunkCount: streamingChunks.length,
+            });
             updateMessage(aiMessageId, { 
               message: receivedText, // Keep for backward compatibility
               streamingContent: receivedText,
               streamingChunks: [...streamingChunks],
             });
+          } else if (type.startsWith('widget_')) {
+            // Handle widget events from mock service
+            console.log('[useMessageSending] Widget event received:', type, chunk);
+            // TODO: Add widget handling logic here
           }
         },
         () => { // onComplete
@@ -143,7 +188,9 @@ export function useMessageSending({
             isStreaming: false,
           });
           setIsSending(false);
-        }
+        },
+        useMockService || isMockChat, // Pass mock service flag (true if explicitly set OR if chat ID is mock)
+        text // Pass prompt text for contextual mock responses
       );
     } catch (error) {
       console.error("Failed to send message:", error);

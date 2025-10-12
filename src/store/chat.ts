@@ -32,8 +32,8 @@ export const useAuthStore = create<AuthState>((set) => {
 // --- Chat State Management ---
 interface ChatState {
   chats: Record<string, { messages: Message[] }>;
-  // pendingMessage now correctly includes MessageFile[]
-  pendingMessage: { chatId: string; text: string; files: MessageFile[] } | null;
+  // pendingMessage now correctly includes MessageFile[] and useMockService flag
+  pendingMessage: { chatId: string; text: string; files: MessageFile[]; useMockService?: boolean } | null;
 
   // Message management
   addMessage: (chatId: string, message: Message) => void;
@@ -42,8 +42,8 @@ interface ChatState {
   getMessages: (chatId: string) => Message[];
 
   // Pending message management for new chats
-  setPendingMessage: (text: string, files: MessageFile[], targetChatId: string) => void;
-  getPendingMessage: (chatId: string) => { text: string; files: MessageFile[] } | null;
+  setPendingMessage: (text: string, files: MessageFile[], targetChatId: string, useMockService?: boolean) => void;
+  getPendingMessage: (chatId: string) => { text: string; files: MessageFile[]; useMockService?: boolean } | null;
   clearPendingMessage: () => void;
 }
 
@@ -133,14 +133,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   // Set a pending message for a new chat
-  setPendingMessage: (text, files, targetChatId) => {
+  setPendingMessage: (text, files, targetChatId, useMockService) => {
     console.log('[Store] setPendingMessage called:', { 
       chatId: targetChatId, 
       text: text.substring(0, 50), 
-      fileCount: files.length 
+      fileCount: files.length,
+      useMockService 
     });
     set({
-      pendingMessage: { chatId: targetChatId, text, files },
+      pendingMessage: { chatId: targetChatId, text, files, useMockService },
     });
     console.log('[Store] Pending message set in store');
   },

@@ -59,11 +59,12 @@ interface SuggestionTileData {
   id: number;
   title: string;
   description: string;
+  useMockService?: boolean; // Optional flag to use mock SSE service
 }
 
 interface SuggestionTilesProps {
   tiles: SuggestionTileData[];
-  onSuggestionClick: (title: string) => void;
+  onSuggestionClick: (title: string, useMockService?: boolean) => void;
   disabled?: boolean;
 }
 
@@ -74,7 +75,7 @@ export function SuggestionTiles({ tiles, onSuggestionClick, disabled = false }: 
         <Suggestion
           key={tile.id}
           suggestion={tile.title}
-          onClick={onSuggestionClick}
+          onClick={(title) => onSuggestionClick(title, tile.useMockService)}
           disabled={disabled}
         >
           {tile.title}

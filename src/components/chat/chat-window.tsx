@@ -14,7 +14,7 @@ import { ChatWindowProps, MessageFile, SuggestionTileData } from '@/types';
 
 import { AiLoadingIndicator } from './ai-loading-indicator';
 import { ChatEmptyState } from './chat-empty-state';
-import { PromptInputWithActions } from "./chat-input";
+import { PromptInputWithActions, PromptInputRef } from "./chat-input";
 import { SuggestionTiles } from './chat-suggestion-tiles';
 import { FilePreviewModal } from './file-preview-modal';
 import { ChatLoadingSkeleton } from './chat-loading-skeleton';
@@ -27,10 +27,16 @@ import { useMessageSending } from './hooks/use-message-sending';
 
 const suggestionTiles: SuggestionTileData[] = [
   { id: 1, title: "hello!", description: "Learn about Systematic Investment Plans." },
-  { id: 2, title: "What is a SIP?", description: "Learn about Systematic Investment Plans." },
-  { id: 3, title: "What is a mutual fund?", description: "Understand the basics of mutual funds." },
-  { id: 4, title: "What is a credit score?", description: "Find out what a credit score means." },
-  { id: 5, title: "What is compound interest?", description: "See how compound interest works." }
+  {
+    id: 2,
+    title: "Show my portfolio allocation",
+    description: "View breakdown",
+    useMockService: true, // 👈 Routes to mock!
+  },
+  { id: 3, title: "What is a SIP?", description: "Learn about Systematic Investment Plans." },
+  { id: 4, title: "What is a mutual fund?", description: "Understand the basics of mutual funds." },
+  { id: 5, title: "What is a credit score?", description: "Find out what a credit score means." },
+  { id: 6, title: "What is compound interest?", description: "See how compound interest works." }
 ];
 
 export default function ChatWindow({
@@ -247,7 +253,7 @@ export default function ChatWindow({
                   />
                   <SuggestionTiles
                     tiles={suggestionTiles}
-                    onSuggestionClick={(title) => handleSend(title, [])}
+                    onSuggestionClick={(title, useMockService) => handleSend(title, [], useMockService)}
                     // Disable suggestions if sending or regenerating OR if a new chat is initiating
                     disabled={isSending || isRegenerating || isNewChatInitiating}
                   />

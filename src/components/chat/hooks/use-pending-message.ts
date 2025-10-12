@@ -46,13 +46,21 @@ export function usePendingMessage({
       isProcessing: isProcessingRef.current
     });
     
-    if (token && chatId && pendingMessage && pendingMessage.chatId === chatId && !isProcessingRef.current) {
-      const { text, files } = pendingMessage;
+    // Check if this is a mock chat
+    const isMockChat = chatId?.startsWith('mock-');
+    
+    // For mock chats, we don't need a real token
+    const canProcess = (token || isMockChat) && chatId && pendingMessage && pendingMessage.chatId === chatId && !isProcessingRef.current;
+    
+    if (canProcess) {
+      const { text, files, useMockService } = pendingMessage;
 
       isProcessingRef.current = true;
       setIsProcessingPendingMessage(true);
       console.log("[Pending Message] Processing pending message for new chat:", pendingMessage);
       console.log("[Pending Message] Chat ID:", chatId);
+      console.log("[Pending Message] Is mock chat:", isMockChat);
+      console.log("[Pending Message] Using mock service:", useMockService);
 
       clearPendingMessage();
 
@@ -109,9 +117,15 @@ export function usePendingMessage({
           setStreamingController(new AbortController());
 
           await listenToChatStream(
-            token,
+            token || 'mock-token', // Use dummy token for mock service
             chatId,
             (chunk: string, type: string) => {
+              console.log('[Pending Message] Chunk received:', {
+                type,
+                chunk: JSON.stringify(chunk),
+                chunkLength: chunk.length,
+              });
+              
               if (type === 'text_chunk') {
                 receivedText += chunk;
                 streamingChunks.push(chunk);
@@ -122,6 +136,10 @@ export function usePendingMessage({
                   streamingContent: receivedText,
                   streamingChunks: [...streamingChunks],
                 });
+              } else if (type.startsWith('widget_')) {
+                // Handle widget events from mock service
+                console.log('[Pending Message] Widget event received:', type, chunk);
+                // TODO: Add widget handling logic here
               }
             },
             () => { // onComplete
@@ -146,7 +164,9 @@ export function usePendingMessage({
               setIsSending(false);
               isProcessingRef.current = false;
               setIsProcessingPendingMessage(false);
-            }
+            },
+            useMockService || isMockChat, // Pass mock service flag (true if explicitly set OR if chat ID is mock)
+            text // Pass prompt text for contextual mock responses
           );
         } catch (error) {
           console.error("Failed to listen to chat stream:", error);

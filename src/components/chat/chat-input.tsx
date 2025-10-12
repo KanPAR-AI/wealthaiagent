@@ -12,13 +12,18 @@ import { useJwtToken } from "@/hooks/use-jwt-token";
 import { useCachedFile } from "@/hooks/use-cached-file";
 import { MessageFile } from "@/types"; // Import MessageFile
 import { ArrowUp, Mic, MicOff, Paperclip, Square, X, Loader2, FileText } from "lucide-react";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 
 // Props for the PromptInputWithActions component
 interface PromptInputWithActionsProps {
-  onSubmit: (text: string, attachments: MessageFile[]) => void; // Changed to MessageFile[]
+  onSubmit: (text: string, attachments: MessageFile[], useMockService?: boolean) => void; // Added useMockService flag
   isLoading?: boolean;
   isInEmptyState?: boolean; // New prop to control border radius styling
+}
+
+// Ref methods exposed by the component
+export interface PromptInputRef {
+  setInputWithMockFlag: (text: string, useMockService: boolean) => void;
 }
 
 // Component to show file preview with loading state
@@ -83,22 +88,33 @@ function FilePreviewItem({ file, onRemove, isUploading }: { file: MessageFile; o
   );
 }
 
-export function PromptInputWithActions({
-  onSubmit,
-  isLoading = false,
-  isInEmptyState = false,
-}: PromptInputWithActionsProps) {
-  const [input, setInput] = useState<string>("");
-  const [uploadedFiles, setUploadedFiles] = useState<MessageFile[]>([]); // Use MessageFile[]
-  const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [isRecording, setIsRecording] = useState<boolean>(false);
-  const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
+export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWithActionsProps>(
+  function PromptInputWithActions({
+    onSubmit,
+    isLoading = false,
+    isInEmptyState = false,
+  }, ref) {
+    const [input, setInput] = useState<string>("");
+    const [uploadedFiles, setUploadedFiles] = useState<MessageFile[]>([]); // Use MessageFile[]
+    const [isUploading, setIsUploading] = useState<boolean>(false);
+    const [isRecording, setIsRecording] = useState<boolean>(false);
+    const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
+    const [useMockService, setUseMockService] = useState<boolean>(false); // Track mock service flag
 
-  const uploadInputRef = useRef<HTMLInputElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+    const uploadInputRef = useRef<HTMLInputElement>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
 
-  const { token } = useJwtToken();
+    const { token } = useJwtToken();
+
+    // Expose methods to parent component
+    useImperativeHandle(ref, () => ({
+      setInputWithMockFlag: (text: string, useMock: boolean) => {
+        console.log('[ChatInput] Setting input with mock flag:', { text, useMock });
+        setInput(text);
+        setUseMockService(useMock);
+      },
+    }));
 
   // Effect to clear input and uploaded files when not busy
   useEffect(() => {
@@ -106,6 +122,7 @@ export function PromptInputWithActions({
     if (!isLoading) {
       setInput("");
       setUploadedFiles([]);
+      setUseMockService(false); // Clear mock service flag
       if (uploadInputRef.current) {
         uploadInputRef.current.value = "";
       }
@@ -117,7 +134,7 @@ export function PromptInputWithActions({
   const handleSubmitInternal = (): void => {
     // Ensure there's either text or at least one file before submitting
     if (input.trim() || uploadedFiles.length > 0) {
-      onSubmit(input.trim(), uploadedFiles); // Pass uploadedFiles directly
+      onSubmit(input.trim(), uploadedFiles, useMockService); // Pass mock service flag
     }
   };
 
@@ -423,4 +440,4 @@ export function PromptInputWithActions({
       </PromptInput>
     </div>
   );
-}
+});

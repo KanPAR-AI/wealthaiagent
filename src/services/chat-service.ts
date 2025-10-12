@@ -1,6 +1,7 @@
 // services/api-service.ts
 import { MessageFile } from "@/types";
 import { getApiUrl } from "@/config/environment";
+import { listenToMockChatStream } from "./mock-sse-service";
 
 
 // TODO: Align the message types for chat history with the backend. Remove the interfaces below and use only those from @/types
@@ -160,6 +161,9 @@ export const deleteChatSession = async (
 /**
  * Listens to the Server-Sent Events (SSE) stream for AI responses.
  * Corresponds to Postman's "6. Test SSE Stream".
+ * 
+ * @param useMockService - If true, uses the mock SSE service instead of the real backend
+ * @param prompt - The user's prompt (only used for mock service to generate contextual responses)
  */
 export const listenToChatStream = async (
   jwt: string,
@@ -169,8 +173,15 @@ export const listenToChatStream = async (
     type: "text_chunk" | "graph_data" | "table_data" | string
   ) => void,
   onComplete: () => void,
-  onError: (error: Error) => void
+  onError: (error: Error) => void,
+  useMockService: boolean = false,
+  prompt: string = ""
 ) => {
+  // Route to mock service if requested
+  if (useMockService) {
+    console.log('[ChatService] Using mock SSE service');
+    return listenToMockChatStream(prompt, onMessageChunk, onComplete, onError);
+  }
   try {
     console.log("[listenToChatStream] Opening SSE connection for chat:", chatId);
     console.log("[listenToChatStream] URL:", getApiUrl(`/chats/${chatId}/stream`));

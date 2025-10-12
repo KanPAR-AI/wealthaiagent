@@ -117,6 +117,7 @@ export interface SuggestionTileData {
   id: number;
   title: string;
   description: string;
+  useMockService?: boolean;
 }
 
 /**
