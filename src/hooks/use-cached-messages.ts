@@ -15,7 +15,7 @@ interface UseCachedMessagesOptions {
 interface UseCachedMessagesResult {
   messages: Message[];
   isLoading: boolean;
-  isStale: boolean;
+  isStale: boolean; // Note: This is the return value, not the function
   hasMore: boolean;
   error: Error | null;
   loadMore: () => Promise<void>;
@@ -40,7 +40,7 @@ export function useCachedMessages(
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isStale, setIsStale] = useState(false);
+  const [hasStaleData, setHasStaleData] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [offset, setOffset] = useState(0);
@@ -76,7 +76,7 @@ export function useCachedMessages(
         const allFresh = cachedMessages.every(msg => isFresh(msg));
         const anyStale = cachedMessages.some(msg => isStale(msg));
 
-        setIsStale(anyStale);
+        setHasStaleData(anyStale);
 
         if (anyStale && enableBackgroundSync && onStaleData) {
           onStaleData();
@@ -188,7 +188,7 @@ export function useCachedMessages(
   return {
     messages,
     isLoading,
-    isStale,
+    isStale: hasStaleData,
     hasMore,
     error,
     loadMore,

@@ -256,10 +256,8 @@ class PortfolioRepository extends CachedRepository<CachedPortfolioData, 'id'> {
    */
   async getDirtyPortfolios(): Promise<CachedPortfolioData[]> {
     try {
-      return await this.table
-        .where('isDirty')
-        .equals(true)
-        .toArray();
+      const allPortfolios = await this.table.toArray();
+      return allPortfolios.filter(portfolio => portfolio.isDirty === true);
     } catch (error) {
       console.error('[PortfolioRepository] Error getting dirty portfolios:', error);
       return [];

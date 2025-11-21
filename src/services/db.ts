@@ -227,6 +227,3 @@ export const db = new WealthAIDatabase();
 // Log database initialization
 console.log('[Database] WealthAI Database initialized');
 
-// Export for type inference
-export type { WealthAIDatabase };
-

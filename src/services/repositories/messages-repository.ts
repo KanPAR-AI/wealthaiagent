@@ -30,7 +30,7 @@ class MessagesRepository extends CachedRepository<CachedMessage, 'id'> {
     try {
       const { limit, offset = 0, orderDirection = 'asc' } = options || {};
 
-      let collection = this.table
+      const collection = this.table
         .where('chatId')
         .equals(chatId)
         .sortBy('timestamp');
@@ -281,16 +281,15 @@ class MessagesRepository extends CachedRepository<CachedMessage, 'id'> {
   async getLocalOnlyMessages(chatId?: string): Promise<CachedMessage[]> {
     try {
       if (chatId) {
-        return await this.table
-          .where('[chatId+localOnly]')
-          .equals([chatId, true])
+        const messages = await this.table
+          .where('chatId')
+          .equals(chatId)
           .toArray();
+        return messages.filter(m => m.localOnly === true);
       }
       
-      return await this.table
-        .where('localOnly')
-        .equals(true)
-        .toArray();
+      const messages = await this.table.toArray();
+      return messages.filter(m => m.localOnly === true);
     } catch (error) {
       console.error('[MessagesRepository] Error getting local-only messages:', error);
       return [];
@@ -303,16 +302,15 @@ class MessagesRepository extends CachedRepository<CachedMessage, 'id'> {
   async getDirtyMessages(chatId?: string): Promise<CachedMessage[]> {
     try {
       if (chatId) {
-        return await this.table
-          .where('[chatId+isDirty]')
-          .equals([chatId, true])
+        const messages = await this.table
+          .where('chatId')
+          .equals(chatId)
           .toArray();
+        return messages.filter(m => m.isDirty === true);
       }
       
-      return await this.table
-        .where('isDirty')
-        .equals(true)
-        .toArray();
+      const messages = await this.table.toArray();
+      return messages.filter(m => m.isDirty === true);
     } catch (error) {
       console.error('[MessagesRepository] Error getting dirty messages:', error);
       return [];

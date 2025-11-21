@@ -36,11 +36,13 @@ class ChatsRepository extends CachedRepository<CachedChat, 'id'> {
    */
   async getFavoritesByUserId(userId: string): Promise<CachedChat[]> {
     try {
-      return await this.table
-        .where('[userId+isFavorite]')
-        .equals([userId, true])
-        .reverse()
-        .sortBy('updatedAt');
+      const chats = await this.table
+        .where('userId')
+        .equals(userId)
+        .toArray();
+      return chats
+        .filter(chat => chat.isFavorite === true)
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     } catch (error) {
       console.error('[ChatsRepository] Error getting favorite chats:', error);
       return [];
@@ -216,10 +218,8 @@ class ChatsRepository extends CachedRepository<CachedChat, 'id'> {
    */
   async getDirtyChats(): Promise<CachedChat[]> {
     try {
-      return await this.table
-        .where('isDirty')
-        .equals(true)
-        .toArray();
+      const allChats = await this.table.toArray();
+      return allChats.filter(chat => chat.isDirty === true);
     } catch (error) {
       console.error('[ChatsRepository] Error getting dirty chats:', error);
       return [];

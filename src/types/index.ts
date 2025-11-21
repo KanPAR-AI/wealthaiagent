@@ -1,5 +1,6 @@
 // Re-export types from chat.ts for backward compatibility
 export * from './chat';
+export * from './trade';
 
 export interface ChatResponse {
   chat: {

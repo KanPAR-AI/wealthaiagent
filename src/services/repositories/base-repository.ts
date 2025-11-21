@@ -1,16 +1,18 @@
 // services/repositories/base-repository.ts
 // Base repository class with common CRUD operations
 
-import { db } from '../db';
-import type { EntityTable } from 'dexie';
-import type { CacheMetadata, PaginationOptions, PaginatedResult } from '@/types/db';
+import type { CacheMetadata, PaginatedResult, PaginationOptions } from '@/types/db';
 import { checkFreshness, getCachedResult } from '@/utils/staleness-checker';
+import type { EntityTable, IDType } from 'dexie';
 
 /**
  * Base repository class with common operations
  * All specific repositories extend this class
  */
-export abstract class BaseRepository<T extends { id: string | number }, TKey extends keyof T = 'id'> {
+export abstract class BaseRepository<
+  T,
+  TKey extends keyof T
+> {
   protected abstract table: EntityTable<T, TKey>;
   protected abstract tableName: string;
 
@@ -19,7 +21,7 @@ export abstract class BaseRepository<T extends { id: string | number }, TKey ext
    */
   async get(id: T[TKey]): Promise<T | undefined> {
     try {
-      return await this.table.get(id);
+      return await this.table.get(id as IDType<T, TKey>);
     } catch (error) {
       console.error(`[${this.tableName}] Error getting item:`, error);
       return undefined;
@@ -31,7 +33,7 @@ export abstract class BaseRepository<T extends { id: string | number }, TKey ext
    */
   async getMany(ids: T[TKey][]): Promise<T[]> {
     try {
-      const items = await this.table.bulkGet(ids);
+      const items = await this.table.bulkGet(ids as IDType<T, TKey>[]);
       return items.filter((item): item is T => item !== undefined);
     } catch (error) {
       console.error(`[${this.tableName}] Error getting multiple items:`, error);
@@ -84,7 +86,7 @@ export abstract class BaseRepository<T extends { id: string | number }, TKey ext
    */
   async update(id: T[TKey], updates: Partial<T>): Promise<T[TKey]> {
     try {
-      await this.table.update(id, updates);
+      await this.table.update(id as IDType<T, TKey>, updates as any);
       console.log(`[${this.tableName}] Updated item:`, id);
       return id;
     } catch (error) {
@@ -126,7 +128,7 @@ export abstract class BaseRepository<T extends { id: string | number }, TKey ext
    */
   async delete(id: T[TKey]): Promise<void> {
     try {
-      await this.table.delete(id);
+      await this.table.delete(id as IDType<T, TKey>);
       console.log(`[${this.tableName}] Deleted item:`, id);
     } catch (error) {
       console.error(`[${this.tableName}] Error deleting item:`, error);
@@ -139,7 +141,7 @@ export abstract class BaseRepository<T extends { id: string | number }, TKey ext
    */
   async deleteMany(ids: T[TKey][]): Promise<void> {
     try {
-      await this.table.bulkDelete(ids);
+      await this.table.bulkDelete(ids as IDType<T, TKey>[]);
       console.log(`[${this.tableName}] Deleted ${ids.length} items`);
     } catch (error) {
       console.error(`[${this.tableName}] Error deleting multiple items:`, error);
@@ -177,7 +179,7 @@ export abstract class BaseRepository<T extends { id: string | number }, TKey ext
    */
   async exists(id: T[TKey]): Promise<boolean> {
     try {
-      const item = await this.table.get(id);
+      const item = await this.table.get(id as IDType<T, TKey>);
       return item !== undefined;
     } catch (error) {
       console.error(`[${this.tableName}] Error checking if item exists:`, error);
@@ -234,8 +236,8 @@ export abstract class BaseRepository<T extends { id: string | number }, TKey ext
  * Base repository for cached items with staleness checking
  */
 export abstract class CachedRepository<
-  T extends CacheMetadata & { id: string | number },
-  TKey extends keyof T = 'id'
+  T extends CacheMetadata,
+  TKey extends keyof T
 > extends BaseRepository<T, TKey> {
   
   /**
@@ -288,7 +290,6 @@ export abstract class CachedRepository<
   async deleteExpired(): Promise<number> {
     try {
       const now = Date.now();
-      // @ts-ignore - expiresAt exists on CacheMetadata
       const deleted = await this.table.where('expiresAt').below(now).delete();
       console.log(`[${this.tableName}] Deleted ${deleted} expired items`);
       return deleted;
