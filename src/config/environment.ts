@@ -26,6 +26,7 @@ interface EnvironmentConfig {
   // External Services
   sentryDsn?: string;
   gaTrackingId?: string;
+  massiveApiKey?: string;
 }
 
 // Helper function to get required environment variable
@@ -88,6 +89,8 @@ export const env: EnvironmentConfig = {
   // External Services
   sentryDsn: getOptionalEnv('VITE_SENTRY_DSN'),
   gaTrackingId: getOptionalEnv('VITE_GA_TRACKING_ID'),
+  // Note: In .env file, use VITE_MASSIVE_API_KEY (Vite requires VITE_ prefix for client-side env vars)
+  massiveApiKey: getOptionalEnv('VITE_MASSIVE_API_KEY'),
 };
 
 // Validate configuration in development

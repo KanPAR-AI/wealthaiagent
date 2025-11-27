@@ -15,13 +15,14 @@ class StocksRepository extends CachedRepository<CachedStockData, 'symbol'> {
   protected tableName = 'StocksRepository';
 
   /**
-   * Cache stock data
+   * Cache stock data with optional sparkline
    */
   async cacheStock(
     symbol: string,
     data: StockDataPoint,
     source: string = 'unknown',
-    staleTimeOverride?: number
+    staleTimeOverride?: number,
+    sparkline?: Array<{ t: number; v: number }>
   ): Promise<string> {
     try {
       const times = staleTimeOverride
@@ -32,20 +33,28 @@ class StocksRepository extends CachedRepository<CachedStockData, 'symbol'> {
           }
         : getCacheTimes('stockRealtime');
 
+      // Get existing data to preserve sparkline if not provided
+      const existing = await this.getStock(symbol);
+      
       const cachedStock: CachedStockData = {
         symbol: symbol.toUpperCase(),
         data,
+        sparkline: sparkline || existing?.sparkline,
         source,
         lastUpdated: Date.now(),
         ...times,
         metadata: {
+          ...existing?.metadata,
           lastRefreshAttempt: Date.now(),
+          sparklineTimeframe: sparkline ? '1min' : existing?.metadata?.sparklineTimeframe,
+          sparklineFrom: sparkline ? Math.min(...sparkline.map(p => p.t)) : existing?.metadata?.sparklineFrom,
+          sparklineTo: sparkline ? Math.max(...sparkline.map(p => p.t)) : existing?.metadata?.sparklineTo,
         },
       };
 
       await this.put(cachedStock);
       
-      console.log('[StocksRepository] Cached stock data:', symbol);
+      console.log('[StocksRepository] Cached stock data:', symbol, sparkline ? `with ${sparkline.length} sparkline points` : '');
       return symbol;
     } catch (error) {
       console.error('[StocksRepository] Error caching stock:', error);

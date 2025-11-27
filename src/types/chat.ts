@@ -148,4 +148,5 @@ export interface ChatWindowProps {
   chatId?: string;
   onNewChatCreated?: (newChatId: string) => void;
   className?: string;
+  contextPrompt?: string; // Optional context prompt to prepend to messages
 }

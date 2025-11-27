@@ -4,6 +4,10 @@ import { useState, useRef, useEffect } from 'react';
 import { useTradeStore } from '@/store/trade';
 import { cn } from '@/lib/utils';
 import { ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceDot, ReferenceLine } from 'recharts';
+import { useMassiveWebSocket } from '@/hooks/use-massive-websocket';
+import { MassiveAggregateMessage, MassiveMessage } from '@/services/massive-websocket';
+import { useStockData } from '@/hooks/use-stock-data';
+import { env } from '@/config/environment';
 
 // Custom Event Dot Component with hover tooltip
 const EventDot = ({ x, y, marker, onHoverChange }: any) => {
@@ -114,11 +118,192 @@ interface ChartCanvasProps {
 }
 
 export function ChartCanvas({ className }: ChartCanvasProps) {
-  const { recommendations, selectedTicker } = useTradeStore();
+  const { recommendations, selectedTicker, updateRecommendation } = useTradeStore();
   const [timeRange, setTimeRange] = useState<'3H' | '1D' | '5D' | '1M' | '3M' | '6M' | '1Y' | 'ALL'>('5D');
   const [hoveredEventDot, setHoveredEventDot] = useState<string | null>(null);
 
   const selected = recommendations.find(r => r.ticker === selectedTicker);
+
+  // Fetch real stock data using the new service (with REST fallback and caching)
+  const {
+    quote: realQuote,
+    sparkline: realSparkline,
+    isLoading: isLoadingRealData,
+    source: dataSource,
+    isCached: isDataCached,
+    refresh: refreshStockData,
+  } = useStockData({
+    symbol: selectedTicker,
+    preferWebSocket: false, // Start with REST since WebSocket is having issues
+    useCache: true,
+    sparklineTimeframe: '1min',
+    sparklineDays: 7,
+    autoRefresh: true,
+    refreshInterval: 60000, // Refresh every minute
+  });
+
+  // Update recommendation with real data when it arrives
+  useEffect(() => {
+    if (selectedTicker && realQuote && realSparkline.length > 0) {
+      console.log(`[ChartCanvas] Updating ${selectedTicker} with real data:`, {
+        price: realQuote.price,
+        sparklinePoints: realSparkline.length,
+        source: dataSource,
+      });
+      
+      // Merge real data with existing recommendation
+      updateRecommendation(selectedTicker, {
+        price: realQuote.price,
+        priceChangePercent: realQuote.changePercent,
+        sparkline: realSparkline,
+        lastUpdated: new Date().toISOString(),
+        // Update other fields from quote if available
+        prevClose: realQuote.previousClose || selected?.prevClose,
+        open: realQuote.open || selected?.open,
+        dayRange: {
+          low: realQuote.low || selected?.dayRange.low || 0,
+          high: realQuote.high || selected?.dayRange.high || 0,
+        },
+        volume: realQuote.volume || selected?.volume || 0,
+      });
+    } else if (selectedTicker && isLoadingRealData) {
+      console.log(`[ChartCanvas] Loading real data for ${selectedTicker}...`);
+    } else if (selectedTicker && !realQuote) {
+      console.log(`[ChartCanvas] No real data yet for ${selectedTicker}, using mock data`);
+    }
+  }, [selectedTicker, realQuote, realSparkline, dataSource, isLoadingRealData, selected, updateRecommendation]);
+
+  // WebSocket integration for real-time data
+  const handleWebSocketMessage = (message: MassiveMessage) => {
+    // Get fresh state from store to avoid stale closures
+    // Using getState() is safe here since this callback may be called outside React's render cycle
+    const storeState = useTradeStore.getState();
+    const currentTicker = storeState.selectedTicker;
+    const currentRecommendations = storeState.recommendations;
+    
+    if (!currentTicker) return;
+
+    // Handle array of messages
+    if (Array.isArray(message)) {
+      message.forEach(msg => handleWebSocketMessage(msg));
+      return;
+    }
+
+    // Handle aggregate minute (AM) messages
+    if (message.ev === 'AM' && message.sym === currentTicker.toUpperCase()) {
+      const amMessage = message as MassiveAggregateMessage;
+      
+      // Create a new sparkline point from the aggregate data
+      // Use the end timestamp and close price
+      const newPoint = {
+        t: amMessage.e, // End timestamp
+        v: amMessage.c, // Close price
+      };
+
+      // Update the recommendation with new sparkline data
+      const currentRecommendation = currentRecommendations.find(r => r.ticker === currentTicker);
+      if (currentRecommendation) {
+        const existingSparkline = currentRecommendation.sparkline || [];
+        
+        // Check if we already have a point for this timestamp (within 1 minute tolerance)
+        const existingIndex = existingSparkline.findIndex(
+          point => Math.abs(point.t - newPoint.t) < 60000 // 1 minute in ms
+        );
+
+        let updatedSparkline: typeof existingSparkline;
+        
+        if (existingIndex >= 0) {
+          // Update existing point
+          updatedSparkline = [...existingSparkline];
+          updatedSparkline[existingIndex] = newPoint;
+        } else {
+          // Add new point and sort by timestamp
+          updatedSparkline = [...existingSparkline, newPoint].sort((a, b) => a.t - b.t);
+        }
+
+        // Also update the current price if this is the latest data point
+        const latestTimestamp = Math.max(...updatedSparkline.map(p => p.t));
+        if (newPoint.t >= latestTimestamp) {
+          storeState.updateRecommendation(currentTicker, {
+            sparkline: updatedSparkline,
+            price: amMessage.c,
+            priceChangePercent: currentRecommendation.prevClose 
+              ? ((amMessage.c - currentRecommendation.prevClose) / currentRecommendation.prevClose) * 100
+              : 0,
+            lastUpdated: new Date().toISOString(),
+          });
+        } else {
+          storeState.updateRecommendation(currentTicker, {
+            sparkline: updatedSparkline,
+          });
+        }
+      }
+    }
+  };
+
+  // Try delayed endpoint if real-time fails (especially when market is closed)
+  // Start with delayed endpoint if it's likely a market holiday/weekend
+  const shouldStartWithDelayed = () => {
+    const now = new Date();
+    const day = now.getDay(); // 0 = Sunday, 6 = Saturday
+    const month = now.getMonth(); // 0 = January
+    const date = now.getDate();
+    
+    // Weekend
+    if (day === 0 || day === 6) return true;
+    
+    // Check for Thanksgiving (4th Thursday of November) - simplified check
+    if (month === 10) { // November
+      const year = now.getFullYear();
+      const nov1 = new Date(year, 10, 1);
+      const dayOfWeek = nov1.getDay();
+      let firstThursday = 1;
+      if (dayOfWeek <= 4) {
+        firstThursday = 4 - dayOfWeek + 1;
+      } else {
+        firstThursday = 4 - dayOfWeek + 8;
+      }
+      const thanksgiving = firstThursday + 21;
+      if (date === thanksgiving) return true;
+    }
+    
+    return false;
+  };
+
+  const [useRealtime, setUseRealtime] = useState(!shouldStartWithDelayed());
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [hasTriedDelayed, setHasTriedDelayed] = useState(shouldStartWithDelayed());
+
+  const { status: wsStatus, isConnected } = useMassiveWebSocket({
+    apiKey: env.massiveApiKey || '',
+    symbol: selectedTicker,
+    useRealtime: useRealtime,
+    autoConnect: !!env.massiveApiKey && !!selectedTicker,
+    onMessage: handleWebSocketMessage,
+    onStatusChange: (status) => {
+      console.log('[ChartCanvas] WebSocket status:', status);
+      if (status === 'error') {
+        setConnectionError('Connection failed');
+      } else {
+        setConnectionError(null);
+      }
+    },
+    onError: (error) => {
+      console.error('[ChartCanvas] WebSocket error:', error);
+      setConnectionError(error.message);
+      
+      // If real-time fails and we haven't tried delayed yet, switch to delayed
+      // Especially if error mentions market closed or connection failure
+      if (useRealtime && !hasTriedDelayed && 
+          (error.message.includes('connection') || error.message.includes('Market is closed'))) {
+        console.log('[ChartCanvas] Real-time connection failed, trying delayed endpoint...');
+        setHasTriedDelayed(true);
+        setTimeout(() => {
+          setUseRealtime(false);
+        }, 2000);
+      }
+    },
+  });
   
   // Calculate time range filter
   const getTimeRangeFilter = (range: string) => {
@@ -372,6 +557,59 @@ export function ChartCanvas({ className }: ChartCanvasProps) {
 
   return (
     <div className={cn("relative bg-[#121418] rounded-lg border border-white/4 p-4 sm:p-6", className)}>
+      {/* WebSocket Connection Status Indicator */}
+      {env.massiveApiKey && (
+        <div className="flex items-center justify-end gap-2 mb-2">
+          <div className="flex items-center gap-1.5">
+            <div
+              className={cn(
+                "w-2 h-2 rounded-full",
+                isConnected
+                  ? "bg-[#2ED573] animate-pulse"
+                  : wsStatus === 'connecting' || wsStatus === 'authenticating'
+                  ? "bg-yellow-500 animate-pulse"
+                  : "bg-red-500"
+              )}
+            />
+            <span className="text-[10px] text-white/50">
+              {isConnected
+                ? 'Live'
+                : wsStatus === 'connecting'
+                ? 'Connecting...'
+                : wsStatus === 'authenticating'
+                ? 'Authenticating...'
+                : wsStatus === 'error'
+                ? 'Connection Error'
+                : 'Offline'}
+            </span>
+            {!useRealtime && (
+              <span className="text-[10px] text-yellow-500/70">(Delayed)</span>
+            )}
+            {dataSource && (
+              <span className="text-[10px] text-white/40">
+                ({dataSource === 'rest' ? 'REST' : dataSource === 'cache' ? 'Cached' : 'WebSocket'})
+                {isDataCached && ' • Cached'}
+              </span>
+            )}
+          </div>
+          {isLoadingRealData && (
+            <div className="text-[10px] text-yellow-500/70">
+              Loading real-time data...
+            </div>
+          )}
+          {connectionError && wsStatus === 'error' && (
+            <div className="text-[10px] text-red-400/70 max-w-xs">
+              {connectionError.includes('Firefox') || navigator.userAgent.toLowerCase().includes('firefox') ? (
+                <span>Firefox: Check about:config for network.http.spdy.websockets</span>
+              ) : connectionError.includes('Market is closed') ? (
+                <span>Market closed - using REST API</span>
+              ) : (
+                <span>{connectionError}</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       {/* Time Range Buttons */}
       <div className="flex items-center justify-end gap-1.5 sm:gap-2 mb-3 sm:mb-4 flex-wrap">
         {(['3H', '1D', '5D', '1M', '3M', '6M', '1Y', 'ALL'] as const).map((range) => (

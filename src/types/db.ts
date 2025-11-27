@@ -160,8 +160,11 @@ export interface CachedStockData extends CacheMetadata {
   // Stock data
   data: StockDataPoint;
   
+  // Sparkline data (for charts)
+  sparkline?: Array<{ t: number; v: number }>; // timestamp, value
+  
   // Metadata
-  source: string;         // API source (e.g., 'yahoo', 'alpha_vantage')
+  source: string;         // API source (e.g., 'massive_websocket', 'massive_rest', 'yahoo')
   lastUpdated: number;    // Indexed
   
   // Additional info
@@ -169,6 +172,9 @@ export interface CachedStockData extends CacheMetadata {
     exchange?: string;
     currency?: string;
     lastRefreshAttempt?: number;
+    sparklineTimeframe?: string; // e.g., '1min', '5min', '1hour'
+    sparklineFrom?: number; // Start timestamp
+    sparklineTo?: number;   // End timestamp
   };
 }
 

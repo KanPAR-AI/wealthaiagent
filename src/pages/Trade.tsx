@@ -1,9 +1,13 @@
 // pages/Trade.tsx
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTradeStore } from '@/store/trade';
+import { useChatStore } from '@/store/chat';
+import { useJwtToken } from '@/hooks/use-jwt-token';
+import { createChatSession } from '@/services/chat-service';
 import { mockWebSocketService } from '@/lib/realtime';
 import { Recommendation } from '@/types/trade';
+import { MessageFile } from '@/types';
 import { TopChipsBar } from '@/components/trade/TopChipsBar';
 import { LeftRail } from '@/components/trade/LeftRail';
 import { HeroCard } from '@/components/trade/HeroCard';
@@ -11,8 +15,11 @@ import { ChartCanvas } from '@/components/trade/ChartCanvas';
 import { DetailDrawer } from '@/components/trade/DetailDrawer';
 import { LiveIndicator } from '@/components/trade/LiveIndicator';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Settings } from 'lucide-react';
+import { RefreshCw, Settings, X } from 'lucide-react';
 import Logo from '@/components/ui/logo';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizeable';
+import { PromptInputWithActions } from '@/components/chat/chat-input';
+import ChatWindow from '@/components/chat/chat-window';
 
 // Demo data generator with realistic stock data
 function generateMockRecommendations(): Recommendation[] {
@@ -220,6 +227,13 @@ export default function Trade() {
     setLastUpdated,
   } = useTradeStore();
 
+  // State for chat integration
+  const [hasActiveChat, setHasActiveChat] = useState(false);
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
+  const setPendingMessage = useChatStore(state => state.setPendingMessage);
+  const { token, isLoadingToken } = useJwtToken();
+
   // Initialize with demo data and auto-select first ticker
   useEffect(() => {
     const mockData = generateMockRecommendations();
@@ -288,6 +302,65 @@ export default function Trade() {
     setRecommendations(mockData);
   };
 
+  // Handle floating chat input submission
+  const handleFloatingInputSubmit = async (text: string, attachments: MessageFile[], useMockService?: boolean) => {
+    if (!text.trim() && attachments.length === 0) return;
+    
+    setIsCreatingChat(true);
+    
+    try {
+      // Generate context prompt based on selected ticker
+      const selected = recommendations.find(r => r.ticker === selectedTicker);
+      const contextPrompt = selected
+        ? `You are an expert stock analyst. The user is currently viewing the ${selected.ticker} (${selected.companyName}) stock page. Provide analysis and insights specific to ${selected.ticker} when relevant.`
+        : undefined;
+      
+      // Prepend context to message text for sending
+      const messageTextWithContext = contextPrompt 
+        ? `${contextPrompt}\n\n${text.trim()}`
+        : text.trim();
+      
+      let newChatId: string;
+      
+      // Generate chat ID (mock or real)
+      if (useMockService) {
+        // Generate mock chat ID
+        newChatId = `mock-${Date.now()}`;
+        console.log('[Trade] Generated mock chat ID:', newChatId);
+      } else {
+        // Create real chat session
+        if (!token || isLoadingToken) {
+          console.warn('[Trade] Cannot create chat: token not available');
+          setIsCreatingChat(false);
+          return;
+        }
+        
+        console.log('[Trade] Creating real chat session with context...');
+        newChatId = await createChatSession(token, 'Trade Chat', messageTextWithContext, attachments);
+        console.log('[Trade] Chat created with ID:', newChatId);
+      }
+      
+      // Store the chat ID
+      setChatId(newChatId);
+      
+      // Set pending message in chat store - ChatWindow will process it when it mounts
+      // Store original text (without context) for display
+      setPendingMessage(text, attachments, newChatId, useMockService);
+      
+      // Activate chat split view
+      setHasActiveChat(true);
+    } catch (error) {
+      console.error('[Trade] Failed to create chat session:', error);
+      // Still activate the split view with a mock ID as fallback
+      const fallbackChatId = `mock-${Date.now()}`;
+      setChatId(fallbackChatId);
+      setPendingMessage(text, attachments, fallbackChatId, true);
+      setHasActiveChat(true);
+    } finally {
+      setIsCreatingChat(false);
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-[#0D0F12] text-white overflow-hidden">
       {/* Top Sticky Header */}
@@ -325,31 +398,113 @@ export default function Trade() {
         <LeftRail />
 
         {/* Center Canvas */}
-        <div className="flex-1 flex flex-col overflow-y-auto p-4 sm:p-6 gap-4">
-          <HeroCard />
-          <ChartCanvas />
-          
-          {/* Summary Section */}
-          {(() => {
-            const selected = recommendations.find(r => r.ticker === selectedTicker);
-            if (!selected) return null;
-            
-            return (
-              <div className="bg-[#121418] rounded-lg border border-white/4 p-6">
-                <h3 className="text-sm font-semibold text-white/80 mb-3 uppercase tracking-wider">
-                  Key Signals
-                </h3>
-                <ul className="space-y-2">
-                  {selected.signals.map((signal, idx) => (
-                    <li key={idx} className="text-sm text-white/70 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#4EA8F5]" />
-                      <strong>{signal.name}:</strong> {signal.desc}
-                    </li>
-                  ))}
-                </ul>
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {hasActiveChat ? (
+            // Split view with ResizablePanelGroup
+            <ResizablePanelGroup direction="horizontal" className="h-full">
+              {/* Left Panel: Trade Content */}
+              <ResizablePanel defaultSize={65} minSize={40}>
+                <div className="p-4 sm:p-6 gap-4 flex flex-col h-full overflow-y-auto">
+                  <HeroCard />
+                  <ChartCanvas />
+                  
+                  {/* Summary Section */}
+                  {(() => {
+                    const selected = recommendations.find(r => r.ticker === selectedTicker);
+                    if (!selected) return null;
+                    
+                    return (
+                      <div className="bg-[#121418] rounded-lg border border-white/4 p-6">
+                        <h3 className="text-sm font-semibold text-white/80 mb-3 uppercase tracking-wider">
+                          Key Signals
+                        </h3>
+                        <ul className="space-y-2">
+                          {selected.signals.map((signal, idx) => (
+                            <li key={idx} className="text-sm text-white/70 flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#4EA8F5]" />
+                              <strong>{signal.name}:</strong> {signal.desc}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle />
+
+              {/* Right Panel: Chat Window */}
+              <ResizablePanel defaultSize={35} minSize={30} className="overflow-hidden">
+                <div className="h-full bg-[#0D0F12] relative">
+                  {/* Close button */}
+                  <button
+                    onClick={() => setHasActiveChat(false)}
+                    className="absolute top-2 right-2 z-50 p-1.5 rounded-full bg-[#121418]/90 hover:bg-[#121418] border border-white/10 hover:border-white/20 transition-colors"
+                    aria-label="Close chat"
+                  >
+                    <X className="w-4 h-4 text-white/70 hover:text-white" />
+                  </button>
+                  {chatId && (() => {
+                    // Generate context prompt based on selected ticker
+                    const selected = recommendations.find(r => r.ticker === selectedTicker);
+                    const contextPrompt = selected
+                      ? `You are an expert stock analyst. The user is currently viewing the ${selected.ticker} (${selected.companyName}) stock page. Provide analysis and insights specific to ${selected.ticker} when relevant.`
+                      : undefined;
+                    
+                    return (
+                      <ChatWindow 
+                        chatId={chatId} 
+                        className="h-full"
+                        contextPrompt={contextPrompt}
+                      />
+                    );
+                  })()}
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          ) : (
+            // Default view: Trade content with floating chat input
+            <>
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 gap-4 flex flex-col">
+                <HeroCard />
+                <ChartCanvas />
+                
+                {/* Summary Section */}
+                {(() => {
+                  const selected = recommendations.find(r => r.ticker === selectedTicker);
+                  if (!selected) return null;
+                  
+                  return (
+                    <div className="bg-[#121418] rounded-lg border border-white/4 p-6">
+                      <h3 className="text-sm font-semibold text-white/80 mb-3 uppercase tracking-wider">
+                        Key Signals
+                      </h3>
+                      <ul className="space-y-2">
+                        {selected.signals.map((signal, idx) => (
+                          <li key={idx} className="text-sm text-white/70 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#4EA8F5]" />
+                            <strong>{signal.name}:</strong> {signal.desc}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })()}
               </div>
-            );
-          })()}
+
+              {/* Floating Chat Input */}
+              <div className="sticky bottom-0 left-0 right-0 border-t border-white/5 p-0 z-10 ">
+                <div className="max-w-3xl mx-auto  ">
+                  <PromptInputWithActions
+                    onSubmit={handleFloatingInputSubmit}
+                    isLoading={isCreatingChat || isLoadingToken}
+                    isInEmptyState={false}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

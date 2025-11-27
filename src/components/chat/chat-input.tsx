@@ -35,7 +35,7 @@ function FilePreviewItem({ file, onRemove, isUploading }: { file: MessageFile; o
   const isPDF = file.type === 'application/pdf';
 
   return (
-    <div className="bg-secondary flex items-center gap-2 rounded-lg p-2 text-sm max-w-[200px]">
+    <div className="bg-transparent flex items-center gap-2 rounded-lg p-2 text-sm max-w-[200px]">
       {isLoading ? (
         <div className="flex items-center gap-2 flex-1">
           <Loader2 className="size-4 animate-spin text-muted-foreground" />

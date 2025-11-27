@@ -66,7 +66,8 @@ const suggestionTiles: SuggestionTileData[] = [
 
 export default function ChatWindow({
   chatId,
-  className = ''
+  className = '',
+  contextPrompt,
 }: ChatWindowProps) {
   const { token, isLoadingToken, tokenError } = useJwtToken();
   const { isFirstMessage } = useChatSession(chatId);
@@ -143,6 +144,7 @@ export default function ChatWindow({
     setStreamingController,
     addMessage,
     updateMessage,
+    contextPrompt,
   });
 
   // Handle first message clearing

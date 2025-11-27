@@ -41,6 +41,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
+    "react-resizable-panels": "^3.0.6",
     "react-router-dom": "^7.5.3",
     "recharts": "^2.15.3",
     "scroll-into-view-if-needed": "^3.1.0",

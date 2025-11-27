@@ -18,6 +18,7 @@ interface UseMessageSendingProps {
   setStreamingController: (controller: AbortController | null) => void;
   addMessage: (message: any) => void;
   updateMessage: (id: string, updates: any) => void;
+  contextPrompt?: string; // Optional context prompt to prepend to messages
 }
 
 export function useMessageSending({
@@ -33,6 +34,7 @@ export function useMessageSending({
   setStreamingController,
   addMessage,
   updateMessage,
+  contextPrompt,
 }: UseMessageSendingProps) {
   const navigate = useNavigate();
   const setPendingMessage = useChatStore(state => state.setPendingMessage);
@@ -51,6 +53,11 @@ export function useMessageSending({
       console.warn("[handleSend] Send aborted: No text and no files to send.");
       return;
     }
+
+    // Prepend context prompt if provided
+    const messageText = contextPrompt 
+      ? `${contextPrompt}\n\n${text.trim()}`
+      : text.trim();
     
     // For mock service, we don't need a real token
     if (isSending || isRegenerating || isNewChatInitiating) {
@@ -81,10 +88,10 @@ export function useMessageSending({
           navigate(`/chat/${mockChatId}`);
         } else {
           console.log("[useMessageSending] Creating real chat session...");
-          const newChatId = await createChatSession(token!, "New Chat", text, attachments); // Use non-null assertion since we checked token above
+          const newChatId = await createChatSession(token!, "New Chat", messageText, attachments); // Use messageText with context
           console.log("[useMessageSending] Chat created with ID:", newChatId);
           console.log("[useMessageSending] Setting pending message for chatId:", newChatId);
-          setPendingMessage(text, attachments, newChatId, false);
+          setPendingMessage(text, attachments, newChatId, false); // Store original text for display
           console.log("[useMessageSending] Navigating to /chat/" + newChatId);
           navigate(`/chat/${newChatId}`);
         }
@@ -132,7 +139,7 @@ export function useMessageSending({
       // Only send message to backend if NOT a mock chat
       if (!isMockChat && !useMockService) {
         console.log("[useMessageSending] Sending message to real backend API");
-        await sendChatMessage(token!, chatId, text, attachments); // Use non-null assertion since we checked token above
+        await sendChatMessage(token!, chatId, messageText, attachments); // Use messageText with context
       } else {
         console.log("[useMessageSending] Skipping real API call for mock chat");
       }
