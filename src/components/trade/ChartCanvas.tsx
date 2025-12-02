@@ -1,6 +1,6 @@
 // components/trade/ChartCanvas.tsx
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useTradeStore } from '@/store/trade';
 import { cn } from '@/lib/utils';
 import { ComposedChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceDot, ReferenceLine } from 'recharts';
@@ -123,8 +123,56 @@ export function ChartCanvas({ className }: ChartCanvasProps) {
   const [hoveredEventDot, setHoveredEventDot] = useState<string | null>(null);
 
   const selected = recommendations.find(r => r.ticker === selectedTicker);
+  
+  // Track last updated data to prevent duplicate updates
+  const lastUpdateRef = useRef<{
+    ticker: string | null;
+    sparklineLength: number;
+    price: number | null;
+    lastUpdated: string | null;
+  }>({
+    ticker: null,
+    sparklineLength: 0,
+    price: null,
+    lastUpdated: null,
+  });
+
+  // WebSocket message batching - accumulate messages and update in batches
+  const wsMessageQueueRef = useRef<MassiveAggregateMessage[]>([]);
+  const wsBatchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastWsUpdateRef = useRef<number>(0);
+
+  // Calculate time range filter for display and API calls
+  const getTimeRangeFilter = (range: string) => {
+    const ranges: Record<string, number> = {
+      '3H': 3 * 60 * 60 * 1000,       // 3 hours
+      '1D': 24 * 60 * 60 * 1000,      // 1 day
+      '5D': 5 * 24 * 60 * 60 * 1000,  // 5 days
+      '1M': 30 * 24 * 60 * 60 * 1000, // 1 month
+      '3M': 90 * 24 * 60 * 60 * 1000, // 3 months
+      '6M': 180 * 24 * 60 * 60 * 1000, // 6 months
+      '1Y': 365 * 24 * 60 * 60 * 1000, // 1 year
+      'ALL': Infinity,                 // All data
+    };
+    return ranges[range] || ranges['5D'];
+  };
+
+  // Calculate date range for API calls based on selected time range
+  // Memoize to prevent infinite re-renders
+  const { fromDate, toDate, daysForApi, cutoffTime } = useMemo(() => {
+    const timeRangeMs = getTimeRangeFilter(timeRange);
+    const cutoff = timeRangeMs === Infinity ? 0 : Date.now() - timeRangeMs;
+    const from = cutoff > 0 ? cutoff : Date.now() - (365 * 24 * 60 * 60 * 1000); // Default to 1 year if ALL
+    const to = Date.now();
+    const days = timeRangeMs === Infinity 
+      ? 365 // Max 1 year for API calls
+      : Math.ceil(timeRangeMs / (24 * 60 * 60 * 1000));
+    
+    return { fromDate: from, toDate: to, daysForApi: days, cutoffTime: cutoff };
+  }, [timeRange]); // Only recalculate when timeRange changes
 
   // Fetch real stock data using the new service (with REST fallback and caching)
+  // Use the selected time range to fetch appropriate historical data
   const {
     quote: realQuote,
     sparkline: realSparkline,
@@ -137,19 +185,49 @@ export function ChartCanvas({ className }: ChartCanvasProps) {
     preferWebSocket: false, // Start with REST since WebSocket is having issues
     useCache: true,
     sparklineTimeframe: '1min',
-    sparklineDays: 7,
+    sparklineDays: daysForApi,
+    fromDate: fromDate,
+    toDate: toDate,
     autoRefresh: true,
     refreshInterval: 60000, // Refresh every minute
   });
 
   // Update recommendation with real data when it arrives
+  // Use refs and deep comparison to prevent infinite loops
   useEffect(() => {
-    if (selectedTicker && realQuote && realSparkline.length > 0) {
+    if (!selectedTicker || !realQuote || realSparkline.length === 0) {
+      if (selectedTicker && isLoadingRealData) {
+        console.log(`[ChartCanvas] Loading real data for ${selectedTicker}...`);
+      }
+      return;
+    }
+
+    // Check if data has actually changed to prevent unnecessary updates
+    const currentUpdate = {
+      ticker: selectedTicker,
+      sparklineLength: realSparkline.length,
+      price: realQuote.price,
+      lastUpdated: realQuote.price ? realQuote.price.toString() : null,
+    };
+
+    const lastUpdate = lastUpdateRef.current;
+    
+    // Only update if ticker changed or data actually changed
+    if (
+      lastUpdate.ticker !== currentUpdate.ticker ||
+      lastUpdate.sparklineLength !== currentUpdate.sparklineLength ||
+      lastUpdate.price !== currentUpdate.price
+    ) {
       console.log(`[ChartCanvas] Updating ${selectedTicker} with real data:`, {
         price: realQuote.price,
         sparklinePoints: realSparkline.length,
         source: dataSource,
       });
+      
+      // Get current recommendation from store to avoid stale closure
+      const currentRecommendation = useTradeStore.getState().recommendations.find(
+        r => r.ticker === selectedTicker
+      );
       
       // Merge real data with existing recommendation
       updateRecommendation(selectedTicker, {
@@ -158,88 +236,141 @@ export function ChartCanvas({ className }: ChartCanvasProps) {
         sparkline: realSparkline,
         lastUpdated: new Date().toISOString(),
         // Update other fields from quote if available
-        prevClose: realQuote.previousClose || selected?.prevClose,
-        open: realQuote.open || selected?.open,
+        prevClose: realQuote.previousClose || currentRecommendation?.prevClose,
+        open: realQuote.open || currentRecommendation?.open,
         dayRange: {
-          low: realQuote.low || selected?.dayRange.low || 0,
-          high: realQuote.high || selected?.dayRange.high || 0,
+          low: realQuote.low || currentRecommendation?.dayRange.low || 0,
+          high: realQuote.high || currentRecommendation?.dayRange.high || 0,
         },
-        volume: realQuote.volume || selected?.volume || 0,
+        volume: realQuote.volume || currentRecommendation?.volume || 0,
       });
-    } else if (selectedTicker && isLoadingRealData) {
-      console.log(`[ChartCanvas] Loading real data for ${selectedTicker}...`);
-    } else if (selectedTicker && !realQuote) {
-      console.log(`[ChartCanvas] No real data yet for ${selectedTicker}, using mock data`);
-    }
-  }, [selectedTicker, realQuote, realSparkline, dataSource, isLoadingRealData, selected, updateRecommendation]);
 
-  // WebSocket integration for real-time data
-  const handleWebSocketMessage = (message: MassiveMessage) => {
-    // Get fresh state from store to avoid stale closures
-    // Using getState() is safe here since this callback may be called outside React's render cycle
+      // Update ref to track what we just updated
+      lastUpdateRef.current = currentUpdate;
+    }
+  }, [selectedTicker, realQuote?.price, realSparkline.length, dataSource, isLoadingRealData, updateRecommendation]); // Removed selected and realSparkline array reference
+
+  // Process batched WebSocket messages
+  const processBatchedMessages = useCallback(() => {
+    const messages = wsMessageQueueRef.current;
+    if (messages.length === 0) return;
+
     const storeState = useTradeStore.getState();
     const currentTicker = storeState.selectedTicker;
-    const currentRecommendations = storeState.recommendations;
-    
-    if (!currentTicker) return;
-
-    // Handle array of messages
-    if (Array.isArray(message)) {
-      message.forEach(msg => handleWebSocketMessage(msg));
+    if (!currentTicker) {
+      wsMessageQueueRef.current = [];
       return;
     }
 
-    // Handle aggregate minute (AM) messages
-    if (message.ev === 'AM' && message.sym === currentTicker.toUpperCase()) {
-      const amMessage = message as MassiveAggregateMessage;
-      
-      // Create a new sparkline point from the aggregate data
-      // Use the end timestamp and close price
+    const currentRecommendation = storeState.recommendations.find(r => r.ticker === currentTicker);
+    if (!currentRecommendation) {
+      wsMessageQueueRef.current = [];
+      return;
+    }
+
+    // Debounce: only update if at least 200ms since last update
+    const now = Date.now();
+    if (now - lastWsUpdateRef.current < 200 && messages.length < 5) {
+      // Too soon and not enough messages - wait a bit more
+      wsBatchTimerRef.current = setTimeout(() => {
+        processBatchedMessages();
+      }, 200 - (now - lastWsUpdateRef.current));
+      return;
+    }
+
+    let existingSparkline = currentRecommendation.sparkline || [];
+    
+    // Process all queued messages
+    messages.forEach((amMessage) => {
       const newPoint = {
         t: amMessage.e, // End timestamp
         v: amMessage.c, // Close price
       };
 
-      // Update the recommendation with new sparkline data
-      const currentRecommendation = currentRecommendations.find(r => r.ticker === currentTicker);
-      if (currentRecommendation) {
-        const existingSparkline = currentRecommendation.sparkline || [];
-        
-        // Check if we already have a point for this timestamp (within 1 minute tolerance)
-        const existingIndex = existingSparkline.findIndex(
-          point => Math.abs(point.t - newPoint.t) < 60000 // 1 minute in ms
-        );
+      // Check if we already have a point for this timestamp (within 1 minute tolerance)
+      const existingIndex = existingSparkline.findIndex(
+        point => Math.abs(point.t - newPoint.t) < 60000 // 1 minute in ms
+      );
 
-        let updatedSparkline: typeof existingSparkline;
-        
-        if (existingIndex >= 0) {
-          // Update existing point
-          updatedSparkline = [...existingSparkline];
-          updatedSparkline[existingIndex] = newPoint;
-        } else {
-          // Add new point and sort by timestamp
-          updatedSparkline = [...existingSparkline, newPoint].sort((a, b) => a.t - b.t);
-        }
+      if (existingIndex >= 0) {
+        // Update existing point
+        existingSparkline = [...existingSparkline];
+        existingSparkline[existingIndex] = newPoint;
+      } else {
+        // Add new point and sort by timestamp
+        existingSparkline = [...existingSparkline, newPoint].sort((a, b) => a.t - b.t);
+      }
+    });
 
-        // Also update the current price if this is the latest data point
-        const latestTimestamp = Math.max(...updatedSparkline.map(p => p.t));
-        if (newPoint.t >= latestTimestamp) {
-          storeState.updateRecommendation(currentTicker, {
-            sparkline: updatedSparkline,
-            price: amMessage.c,
-            priceChangePercent: currentRecommendation.prevClose 
-              ? ((amMessage.c - currentRecommendation.prevClose) / currentRecommendation.prevClose) * 100
-              : 0,
-            lastUpdated: new Date().toISOString(),
-          });
-        } else {
-          storeState.updateRecommendation(currentTicker, {
-            sparkline: updatedSparkline,
-          });
-        }
+    // Get the latest message for price update
+    const latestMessage = messages[messages.length - 1];
+    const latestPoint = { t: latestMessage.e, v: latestMessage.c };
+    const latestTimestamp = Math.max(...existingSparkline.map(p => p.t));
+
+    // Update store with batched changes
+    if (latestPoint.t >= latestTimestamp) {
+      storeState.updateRecommendation(currentTicker, {
+        sparkline: existingSparkline,
+        price: latestMessage.c,
+        priceChangePercent: currentRecommendation.prevClose 
+          ? ((latestMessage.c - currentRecommendation.prevClose) / currentRecommendation.prevClose) * 100
+          : 0,
+        lastUpdated: new Date().toISOString(),
+      });
+    } else {
+      storeState.updateRecommendation(currentTicker, {
+        sparkline: existingSparkline,
+      });
+    }
+
+    // Clear queue and update timestamp
+    wsMessageQueueRef.current = [];
+    lastWsUpdateRef.current = now;
+  }, []);
+
+  // WebSocket integration for real-time data - batched and debounced
+  const handleWebSocketMessage = useCallback((message: MassiveMessage) => {
+    // Get fresh state from store to avoid stale closures
+    const storeState = useTradeStore.getState();
+    const currentTicker = storeState.selectedTicker;
+    
+    if (!currentTicker) return;
+
+    // Handle aggregate minute (AM) messages
+    // Note: Arrays are already handled in the WebSocket service, so message is always a single MassiveMessage here
+    if (message.ev === 'AM' && message.sym === currentTicker.toUpperCase()) {
+      const amMessage = message as MassiveAggregateMessage;
+      
+      // Add to batch queue
+      wsMessageQueueRef.current.push(amMessage);
+
+      // Clear existing batch timer
+      if (wsBatchTimerRef.current) {
+        clearTimeout(wsBatchTimerRef.current);
+      }
+
+      // Process batch after short delay (debounce) or immediately if queue is large
+      if (wsMessageQueueRef.current.length >= 5) {
+        // Process immediately if we have many messages
+        processBatchedMessages();
+      } else {
+        // Otherwise debounce for 200ms
+        wsBatchTimerRef.current = setTimeout(() => {
+          processBatchedMessages();
+        }, 200);
       }
     }
-  };
+  }, [processBatchedMessages]);
+
+  // Cleanup WebSocket batching on unmount
+  useEffect(() => {
+    return () => {
+      if (wsBatchTimerRef.current) {
+        clearTimeout(wsBatchTimerRef.current);
+      }
+      wsMessageQueueRef.current = [];
+    };
+  }, []);
 
   // Try delayed endpoint if real-time fails (especially when market is closed)
   // Start with delayed endpoint if it's likely a market holiday/weekend
@@ -270,15 +401,17 @@ export function ChartCanvas({ className }: ChartCanvasProps) {
     return false;
   };
 
-  const [useRealtime, setUseRealtime] = useState(!shouldStartWithDelayed());
+  // Use delayed by default for now - simpler and more reliable
+  const [useRealtime, setUseRealtime] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [hasTriedDelayed, setHasTriedDelayed] = useState(shouldStartWithDelayed());
+  const [websocketDisabled, setWebsocketDisabled] = useState(false);
 
   const { status: wsStatus, isConnected } = useMassiveWebSocket({
     apiKey: env.massiveApiKey || '',
     symbol: selectedTicker,
     useRealtime: useRealtime,
-    autoConnect: !!env.massiveApiKey && !!selectedTicker,
+    autoConnect: !!env.massiveApiKey && !!selectedTicker && !websocketDisabled,
     onMessage: handleWebSocketMessage,
     onStatusChange: (status) => {
       console.log('[ChartCanvas] WebSocket status:', status);
@@ -292,6 +425,14 @@ export function ChartCanvas({ className }: ChartCanvasProps) {
       console.error('[ChartCanvas] WebSocket error:', error);
       setConnectionError(error.message);
       
+      // If we get a 404 error, the endpoint doesn't exist - disable WebSocket permanently
+      if (error.message.includes('404') || error.message.includes('endpoint not found') || error.message.includes('not found')) {
+        console.warn('[ChartCanvas] WebSocket endpoint not found (404). Disabling WebSocket and using REST API only.');
+        setWebsocketDisabled(true);
+        setConnectionError('WebSocket endpoint unavailable - using REST API');
+        return;
+      }
+      
       // If real-time fails and we haven't tried delayed yet, switch to delayed
       // Especially if error mentions market closed or connection failure
       if (useRealtime && !hasTriedDelayed && 
@@ -301,37 +442,25 @@ export function ChartCanvas({ className }: ChartCanvasProps) {
         setTimeout(() => {
           setUseRealtime(false);
         }, 2000);
+      } else if (!useRealtime && error.message.includes('404')) {
+        // If delayed endpoint also returns 404, disable WebSocket
+        console.warn('[ChartCanvas] Delayed endpoint also not found. Disabling WebSocket.');
+        setWebsocketDisabled(true);
+        setConnectionError('WebSocket endpoints unavailable - using REST API');
       }
     },
   });
   
-  // Calculate time range filter
-  const getTimeRangeFilter = (range: string) => {
-    const now = Date.now();
-    const ranges: Record<string, number> = {
-      '3H': 3 * 60 * 60 * 1000,       // 3 hours
-      '1D': 24 * 60 * 60 * 1000,      // 1 day
-      '5D': 5 * 24 * 60 * 60 * 1000,  // 5 days
-      '1M': 30 * 24 * 60 * 60 * 1000, // 1 month
-      '3M': 90 * 24 * 60 * 60 * 1000, // 3 months
-      '6M': 180 * 24 * 60 * 60 * 1000, // 6 months
-      '1Y': 365 * 24 * 60 * 60 * 1000, // 1 year
-      'ALL': Infinity,                 // All data
-    };
-    return ranges[range] || ranges['5D'];
-  };
+  // Memoize filtered points - only recalculate when sparkline or cutoffTime changes
+  const filteredPoints = useMemo(() => {
+    if (!selected?.sparkline || selected.sparkline.length === 0) return [];
+    return selected.sparkline
+      .filter((point) => point.t >= cutoffTime)
+      .sort((a, b) => a.t - b.t);
+  }, [selected?.sparkline, cutoffTime]);
 
-  const timeRangeMs = getTimeRangeFilter(timeRange);
-  const cutoffTime = timeRangeMs === Infinity ? 0 : Date.now() - timeRangeMs;
-  
-  // Convert sparkline data to Recharts format and filter by time range
-  const filteredPoints = selected?.sparkline
-    .filter((point) => point.t >= cutoffTime)
-    .sort((a, b) => a.t - b.t) || [];
-
-  // Remove outliers at the end that cause big jumps
-  // Check if the last point has an abnormal jump compared to the trend
-  const cleanedPoints = (() => {
+  // Memoize cleaned points - only recalculate when filteredPoints changes
+  const cleanedPoints = useMemo(() => {
     if (filteredPoints.length < 3) return filteredPoints;
     
     const points = [...filteredPoints];
@@ -369,9 +498,11 @@ export function ChartCanvas({ className }: ChartCanvasProps) {
     }
     
     return points;
-  })();
+  }, [filteredPoints]);
 
-  const chartData = cleanedPoints.map((point, idx) => {
+  // Memoize chartData transformation - only recalculate when cleanedPoints or timeRange changes
+  const chartData = useMemo(() => {
+    return cleanedPoints.map((point, idx) => {
     const date = new Date(point.t);
     let timeLabel: string;
     
@@ -404,14 +535,15 @@ export function ChartCanvas({ className }: ChartCanvasProps) {
       timeLabel = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
     }
     
-    return {
-      time: timeLabel,
-      value: Math.round(point.v * 100) / 100,
-      timestamp: point.t,
-      index: idx,
-      fullDate: date,
-    };
-  });
+      return {
+        time: timeLabel,
+        value: Math.round(point.v * 100) / 100,
+        timestamp: point.t,
+        index: idx,
+        fullDate: date,
+      };
+    });
+  }, [cleanedPoints, timeRange]);
   
   // Calculate X-axis interval based on time range to avoid crowding
   const dataLength = chartData.length;
@@ -527,8 +659,6 @@ export function ChartCanvas({ className }: ChartCanvasProps) {
           };
         })
     : [];
-  
-  console.log('Visible markers:', visibleMarkers.length, visibleMarkers);
 
   // Format functions for metrics
   const formatNumber = (value: number, decimals: number = 2): string => {
@@ -558,56 +688,28 @@ export function ChartCanvas({ className }: ChartCanvasProps) {
   return (
     <div className={cn("relative bg-[#121418] rounded-lg border border-white/4 p-4 sm:p-6", className)}>
       {/* WebSocket Connection Status Indicator */}
-      {env.massiveApiKey && (
+      {env.massiveApiKey && !websocketDisabled && (
         <div className="flex items-center justify-end gap-2 mb-2">
-          <div className="flex items-center gap-1.5">
-            <div
-              className={cn(
-                "w-2 h-2 rounded-full",
-                isConnected
-                  ? "bg-[#2ED573] animate-pulse"
-                  : wsStatus === 'connecting' || wsStatus === 'authenticating'
-                  ? "bg-yellow-500 animate-pulse"
-                  : "bg-red-500"
-              )}
-            />
-            <span className="text-[10px] text-white/50">
-              {isConnected
-                ? 'Live'
-                : wsStatus === 'connecting'
-                ? 'Connecting...'
-                : wsStatus === 'authenticating'
-                ? 'Authenticating...'
-                : wsStatus === 'error'
-                ? 'Connection Error'
-                : 'Offline'}
-            </span>
-            {!useRealtime && (
-              <span className="text-[10px] text-yellow-500/70">(Delayed)</span>
-            )}
-            {dataSource && (
-              <span className="text-[10px] text-white/40">
-                ({dataSource === 'rest' ? 'REST' : dataSource === 'cache' ? 'Cached' : 'WebSocket'})
-                {isDataCached && ' • Cached'}
-              </span>
-            )}
-          </div>
-          {isLoadingRealData && (
-            <div className="text-[10px] text-yellow-500/70">
-              Loading real-time data...
-            </div>
-          )}
           {connectionError && wsStatus === 'error' && (
             <div className="text-[10px] text-red-400/70 max-w-xs">
               {connectionError.includes('Firefox') || navigator.userAgent.toLowerCase().includes('firefox') ? (
                 <span>Firefox: Check about:config for network.http.spdy.websockets</span>
               ) : connectionError.includes('Market is closed') ? (
                 <span>Market closed - using REST API</span>
+              ) : connectionError.includes('404') || connectionError.includes('endpoint not found') ? (
+                <span>WebSocket unavailable - using REST API</span>
               ) : (
                 <span>{connectionError}</span>
               )}
             </div>
           )}
+        </div>
+      )}
+      {websocketDisabled && env.massiveApiKey && (
+        <div className="flex items-center justify-end gap-2 mb-2">
+          <div className="text-[10px] text-yellow-500/70">
+            WebSocket unavailable - using REST API for data
+          </div>
         </div>
       )}
       {/* Time Range Buttons */}
@@ -712,19 +814,8 @@ export function ChartCanvas({ className }: ChartCanvasProps) {
               // If not found by timestamp, try by time string
               const altIndex = dataIndex === -1 ? chartData.findIndex(d => d.time === marker.time) : dataIndex;
               
-              console.log(`Marker ${idx}:`, {
-                markerTime: marker.time,
-                markerTimestamp: marker.timestamp,
-                markerValue: marker.value,
-                dataIndex: altIndex,
-                chartDataLength: chartData.length,
-                foundInChart: altIndex !== -1,
-                chartDataSample: chartData.slice(0, 3).map(d => ({ time: d.time, timestamp: d.timestamp }))
-              });
-              
               // Only render if we found a matching data point
               if (altIndex === -1) {
-                console.warn(`Marker ${idx} not found in chartData. Time: ${marker.time}, Timestamp: ${marker.timestamp}`);
                 return null;
               }
               

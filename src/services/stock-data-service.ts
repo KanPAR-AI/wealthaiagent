@@ -15,7 +15,9 @@ export interface StockDataServiceOptions {
   preferWebSocket?: boolean;
   useCache?: boolean;
   sparklineTimeframe?: '1min' | '5min' | '15min' | '1hour' | '1day';
-  sparklineDays?: number; // Number of days of historical data
+  sparklineDays?: number; // Number of days of historical data (fallback if fromDate/toDate not provided)
+  fromDate?: number; // Timestamp in ms
+  toDate?: number; // Timestamp in ms
 }
 
 export interface StockDataResult {
@@ -49,6 +51,8 @@ export class StockDataService {
       useCache = true,
       sparklineTimeframe = '1min',
       sparklineDays = 7,
+      fromDate,
+      toDate,
     } = options;
 
     // 1. Check cache first
@@ -99,7 +103,7 @@ export class StockDataService {
       // 3. Fall back to REST API
       console.log(`[StockDataService] Fetching ${symbol} via REST API`);
       try {
-        const restResult = await this.fetchViaRest(symbol, sparklineTimeframe, sparklineDays);
+        const restResult = await this.fetchViaRest(symbol, sparklineTimeframe, sparklineDays, fromDate, toDate);
         await this.cacheStockData(symbol, restResult.quote, restResult.sparkline, 'massive_rest');
         return { ...restResult, source: 'rest', cached: false };
       } catch (restError) {
@@ -140,36 +144,65 @@ export class StockDataService {
 
   /**
    * Fetch data via REST API
+   * Optimized: Only make ONE API call - get historical bars and derive quote from it
    */
   private async fetchViaRest(
     symbol: string,
     timeframe: '1min' | '5min' | '15min' | '1hour' | '1day',
-    days: number
+    days: number,
+    fromDate?: number,
+    toDate?: number
   ): Promise<{ quote: StockDataPoint; sparkline: SparklinePoint[] }> {
-    const to = Date.now();
-    const from = to - (days * 24 * 60 * 60 * 1000);
+    // Use provided date range, or calculate from days
+    const to = toDate || Date.now();
+    const from = fromDate || (to - (days * 24 * 60 * 60 * 1000));
 
-    // Fetch quote and historical data in parallel
-    const [quote, historical] = await Promise.all([
-      this.restService.getQuote(symbol),
-      this.restService.getHistoricalBars(symbol, timeframe, from, to),
-    ]);
+    // Calculate appropriate limit based on timeframe and days
+    // For 1min: max ~1440 bars per day, so for 5 days = ~7200 bars
+    // For 1day: max 365 bars per year
+    const calculateLimit = (tf: string, numDays: number): number => {
+      if (tf === '1min') return Math.min(10000, Math.ceil(numDays * 1440)); // Max 10k for 1min
+      if (tf === '5min') return Math.min(5000, Math.ceil(numDays * 288)); // Max 5k for 5min
+      if (tf === '15min') return Math.min(3000, Math.ceil(numDays * 96)); // Max 3k for 15min
+      if (tf === '1hour') return Math.min(2000, Math.ceil(numDays * 24)); // Max 2k for hourly
+      if (tf === '1day') return Math.min(500, numDays); // Max 500 for daily
+      return 1000; // Default
+    };
+    
+    const limit = calculateLimit(timeframe, days);
+
+    // Only make ONE API call - get historical data and derive quote from it
+    const historical = await this.restService.getHistoricalBars(symbol, timeframe, from, to, limit);
+    
+    if (historical.bars.length === 0) {
+      throw new Error('No historical data available');
+    }
+    
+    // Derive quote from the latest bar
+    const latestBar = historical.bars[historical.bars.length - 1];
+    const previousBar = historical.bars.length > 1 ? historical.bars[historical.bars.length - 2] : null;
+    
+    // Calculate change from previous bar
+    const change = previousBar ? latestBar.c - previousBar.c : 0;
+    const changePercent = previousBar && previousBar.c > 0 
+      ? ((latestBar.c - previousBar.c) / previousBar.c) * 100 
+      : 0;
 
     // Convert historical bars to sparkline format
     const sparkline = RestApi.barsToSparkline(historical.bars);
 
-    // Convert quote to StockDataPoint format
+    // Convert latest bar to StockDataPoint format (quote)
     const stockDataPoint: StockDataPoint = {
-      price: quote.price,
-      change: quote.change,
-      changePercent: quote.changePercent,
-      volume: quote.volume,
-      high: quote.high,
-      low: quote.low,
-      open: quote.open,
-      close: quote.close,
-      previousClose: quote.previousClose,
-      marketCap: undefined, // Add if available from API
+      price: latestBar.c, // Close price
+      change: change,
+      changePercent: changePercent,
+      volume: latestBar.v,
+      high: latestBar.h,
+      low: latestBar.l,
+      open: latestBar.o,
+      close: latestBar.c,
+      previousClose: previousBar?.c || latestBar.c, // Use previous bar's close or current close
+      marketCap: undefined, // Not available from aggregates
     };
 
     return {

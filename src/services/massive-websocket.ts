@@ -7,13 +7,18 @@ export interface MassiveAggregateMessage {
   ev: 'AM'; // Event type
   sym: string; // Symbol (e.g., "AAPL")
   v: number; // Volume
+  av?: number; // Today's accumulated volume
+  op?: number; // Today's official opening price
+  vw?: number; // Volume weighted average price
   o: number; // Open price
   c: number; // Close price
   h: number; // High price
   l: number; // Low price
   a: number; // VWAP (Volume Weighted Average Price)
+  z?: number; // Average trade size
   s: number; // Start timestamp (Unix ms)
   e: number; // End timestamp (Unix ms)
+  otc?: boolean; // Whether this aggregate is for an OTC ticker
 }
 
 export interface MassiveTradeMessage {
@@ -24,7 +29,8 @@ export interface MassiveTradeMessage {
   t: number; // Timestamp (Unix ms)
 }
 
-export type MassiveMessage = MassiveAggregateMessage | MassiveTradeMessage | MassiveMessage[];
+// Message can be a single message or an array of messages
+export type MassiveMessage = MassiveAggregateMessage | MassiveTradeMessage;
 
 export type MassiveConnectionStatus = 'disconnected' | 'connecting' | 'authenticating' | 'connected' | 'error';
 
@@ -48,6 +54,7 @@ export class MassiveWebSocketService {
   private reconnectTimer: NodeJS.Timeout | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private connectionTimeout: NodeJS.Timeout | null = null;
+  private authenticationTimeout: NodeJS.Timeout | null = null;
   private isManualClose = false;
 
   /**
@@ -126,8 +133,10 @@ export class MassiveWebSocketService {
       throw new Error('Massive.com API key is required');
     }
     this.apiKey = apiKey.trim();
-    // Ensure no trailing slash - WebSocket URLs should not have trailing slashes
-    const baseUrl = useRealtime ? 'wss://realtime.massive.com' : 'wss://delayed.massive.com';
+    // Based on Massive.com documentation: https://massive.com/docs/websocket/quickstart
+    // Real-time: wss://socket.massive.com/stocks
+    // Delayed: wss://delayed.massive.com/stocks
+    const baseUrl = useRealtime ? 'wss://socket.massive.com/stocks' : 'wss://delayed.massive.com/stocks';
     this.url = baseUrl;
     this.callbacks = callbacks;
     
@@ -173,7 +182,7 @@ export class MassiveWebSocketService {
     // If market is closed and we should use delayed, suggest switching
     if (!marketStatus.isOpen && marketStatus.shouldUseDelayed && this.url.includes('realtime')) {
       console.warn('[MassiveWebSocket] Market is closed. Real-time endpoint may not be available.');
-      console.warn('[MassiveWebSocket] Recommendation: Use delayed endpoint (wss://delayed.massive.com) when market is closed.');
+      console.warn('[MassiveWebSocket] Recommendation: Use delayed endpoint (wss://delayed.massive.com/stocks) when market is closed.');
       console.warn('[MassiveWebSocket] The delayed endpoint should work even when market is closed.');
     }
 
@@ -255,10 +264,30 @@ export class MassiveWebSocketService {
           marketStatus: marketStatus.reason
         });
         
+        // Handle 404 errors specifically - endpoint might not exist or need different path
+        if (closeCode === 1006 || closeCode === 1002) {
+          // 1006 = Abnormal closure (often means 404 or connection refused)
+          // 1002 = Protocol error (can also indicate endpoint issues)
+          console.error('[MassiveWebSocket] Connection failed - endpoint may not exist or be incorrect');
+          console.error('[MassiveWebSocket] Current URL:', this.url);
+          console.error('[MassiveWebSocket] This might indicate:');
+          console.error('  1. The endpoint URL is incorrect');
+          console.error('  2. The endpoint requires a path (e.g., /ws, /v1/ws)');
+          console.error('  3. The endpoint requires authentication in the URL');
+          console.error('  4. The service is temporarily unavailable');
+          
+          // Don't attempt reconnect for 404-like errors - they won't resolve
+          if (!this.isManualClose) {
+            this.setStatus('error');
+            this.callbacks.onError?.(new Error(`WebSocket endpoint not found (404). URL: ${this.url}. Please verify the endpoint is correct.`));
+          }
+          return;
+        }
+        
         // If connection failed and market is closed, suggest using delayed endpoint
         if (!wasClean && !marketStatus.isOpen && this.url.includes('realtime') && closeCode === 1006) {
           console.warn('[MassiveWebSocket] Connection failed. Market is closed - real-time endpoint may not be available.');
-          console.warn('[MassiveWebSocket] Suggestion: Use delayed endpoint (wss://delayed.massive.com) when market is closed.');
+          console.warn('[MassiveWebSocket] Suggestion: Use delayed endpoint (wss://delayed.massive.com/stocks) when market is closed.');
         }
 
         // Log close code meanings for debugging
@@ -285,8 +314,9 @@ export class MassiveWebSocketService {
         this.cleanup();
         
         if (!this.isManualClose) {
-          // Only attempt reconnect if it wasn't a policy violation or authentication error
-          if (closeCode !== 1008 && closeCode !== 1003) {
+          // Only attempt reconnect if it wasn't a policy violation, authentication error, or 404-like error
+          // 1006 and 1002 often indicate endpoint issues (404) and won't resolve with retries
+          if (closeCode !== 1008 && closeCode !== 1003 && closeCode !== 1006 && closeCode !== 1002) {
             this.attemptReconnect();
           } else {
             console.error('[MassiveWebSocket] Not attempting reconnect due to close code:', closeCode);
@@ -306,6 +336,7 @@ export class MassiveWebSocketService {
 
   /**
    * Authenticate with the API key
+   * Based on Massive.com documentation: send { action: 'auth', params: API_KEY }
    */
   private authenticate(): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -322,10 +353,24 @@ export class MassiveWebSocketService {
 
     try {
       this.ws.send(JSON.stringify(authMessage));
-      console.log('[MassiveWebSocket] Authentication sent');
+      console.log('[MassiveWebSocket] Authentication sent:', { action: 'auth', params: '***' });
+      
+      // Set a timeout for authentication - if no response in 10 seconds, consider it failed
+      this.authenticationTimeout = setTimeout(() => {
+        if (this.status === 'authenticating') {
+          console.error('[MassiveWebSocket] Authentication timeout - no response received');
+          this.callbacks.onError?.(new Error('Authentication timeout - no response from server'));
+          this.setStatus('error');
+          this.disconnect();
+        }
+      }, 10000);
     } catch (error) {
       console.error('[MassiveWebSocket] Failed to send authentication:', error);
       this.callbacks.onError?.(error as Error);
+      if (this.authenticationTimeout) {
+        clearTimeout(this.authenticationTimeout);
+        this.authenticationTimeout = null;
+      }
     }
   }
 
@@ -336,20 +381,43 @@ export class MassiveWebSocketService {
     try {
       const message: any = JSON.parse(data);
 
+      // 🔍 DEBUG: always log raw message while testing
+      console.log('[MassiveWebSocket] raw message:', message);
+
       // Handle authentication response
-      // Authentication responses typically don't have 'ev' field and may have 'status' or be simple success messages
+      // Based on Massive.com documentation and client library examples:
+      // Authentication response is an array: [{ ev: 'status', status: 'auth_success' }]
       if (this.status === 'authenticating') {
-        // Check for various authentication response formats
-        if (
-          message.status === 'auth_success' ||
-          message.status === 'success' ||
-          message.status === 'ok' ||
-          (message.type === 'auth' && message.status !== 'error') ||
-          (!message.ev && !Array.isArray(message) && !message.sym)
-        ) {
-          // If it's not an error, consider it a success
-          if (message.status !== 'error' && message.status !== 'auth_failed') {
-            console.log('[MassiveWebSocket] Authentication successful');
+        // Clear authentication timeout
+        if (this.authenticationTimeout) {
+          clearTimeout(this.authenticationTimeout);
+          this.authenticationTimeout = null;
+        }
+        
+        // Check if message is an array (common format from Massive.com)
+        const authResponse = Array.isArray(message) ? message[0] : message;
+        
+        // Check if this is a status message
+        if (authResponse?.ev === 'status') {
+          const status = authResponse.status as string | undefined;
+          
+          // ✅ Treat any non-error status as a success
+          const isSuccess =
+            status &&
+            !['auth_failed', 'error'].includes(status.toLowerCase());
+          
+          const isExplicitSuccess =
+            ['auth_success', 'success', 'ok', 'connected'].includes(
+              status?.toLowerCase() || ''
+            );
+          
+          if (isSuccess) {
+            console.log(
+              '[MassiveWebSocket] Auth OK, status:',
+              status,
+              'message:',
+              authResponse.message
+            );
             this.setStatus('connected');
             this.startHeartbeat();
             
@@ -358,21 +426,44 @@ export class MassiveWebSocketService {
               this.resubscribe();
             }
             return;
-          } else {
-            console.error('[MassiveWebSocket] Authentication failed:', message);
-            this.callbacks.onError?.(new Error('Authentication failed'));
+          }
+          
+          // ❌ Explicit failure
+          if (!isSuccess) {
+            console.error(
+              '[MassiveWebSocket] Authentication failed:',
+              authResponse
+            );
+            this.callbacks.onError?.(new Error(
+              `Authentication failed: ${status ?? 'unknown error'}`
+            ));
             this.setStatus('error');
             this.disconnect();
             return;
           }
         }
+        
+        // If we're still authenticating and got a message that's not a status response, log it
+        console.warn(
+          '[MassiveWebSocket] Unexpected message during auth:',
+          message
+        );
+        // Fall through - but don't try to forward as data yet
+        return;
       }
 
-      // Handle data messages (only when connected)
-      // Data messages have 'ev' field (event type) or are arrays of such messages
+      // After we are connected, forward data messages
       if (this.status === 'connected') {
-        // Only forward messages that look like data (have 'ev' field or are arrays)
-        if (Array.isArray(message) || (typeof message === 'object' && 'ev' in message)) {
+        // Handle both single messages and arrays of messages
+        if (Array.isArray(message)) {
+          // Forward each message in the array
+          message.forEach((msg: any) => {
+            if (typeof msg === 'object' && 'ev' in msg) {
+              this.callbacks.onMessage?.(msg as MassiveMessage);
+            }
+          });
+        } else if (typeof message === 'object' && 'ev' in message) {
+          // Forward single message
           this.callbacks.onMessage?.(message as MassiveMessage);
         }
       }
@@ -556,6 +647,11 @@ export class MassiveWebSocketService {
     if (this.connectionTimeout) {
       clearTimeout(this.connectionTimeout);
       this.connectionTimeout = null;
+    }
+    
+    if (this.authenticationTimeout) {
+      clearTimeout(this.authenticationTimeout);
+      this.authenticationTimeout = null;
     }
   }
 

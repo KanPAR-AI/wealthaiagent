@@ -5,7 +5,7 @@ import { useTradeStore } from '@/store/trade';
 import { useChatStore } from '@/store/chat';
 import { useJwtToken } from '@/hooks/use-jwt-token';
 import { createChatSession } from '@/services/chat-service';
-import { mockWebSocketService } from '@/lib/realtime';
+// Removed mockWebSocketService - using real Massive.com WebSocket via useMassiveWebSocket hook
 import { Recommendation } from '@/types/trade';
 import { MessageFile } from '@/types';
 import { TopChipsBar } from '@/components/trade/TopChipsBar';
@@ -13,9 +13,8 @@ import { LeftRail } from '@/components/trade/LeftRail';
 import { HeroCard } from '@/components/trade/HeroCard';
 import { ChartCanvas } from '@/components/trade/ChartCanvas';
 import { DetailDrawer } from '@/components/trade/DetailDrawer';
-import { LiveIndicator } from '@/components/trade/LiveIndicator';
-import { Button } from '@/components/ui/button';
-import { RefreshCw, Settings, X } from 'lucide-react';
+import { MarketStatus } from '@/components/trade/MarketStatus';
+import { X } from 'lucide-react';
 import Logo from '@/components/ui/logo';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizeable';
 import { PromptInputWithActions } from '@/components/chat/chat-input';
@@ -234,73 +233,114 @@ export default function Trade() {
   const setPendingMessage = useChatStore(state => state.setPendingMessage);
   const { token, isLoadingToken } = useJwtToken();
 
-  // Initialize with demo data and auto-select first ticker
+  // Initialize with basic recommendations (NVDA, AAPL, MSFT)
+  // Price/sparkline data will be populated from REST/WebSocket
   useEffect(() => {
-    const mockData = generateMockRecommendations();
-    setRecommendations(mockData);
-    // Auto-select first ticker if none selected
-    if (!selectedTicker && mockData.length > 0) {
-      selectTicker(mockData[0].ticker);
-    }
-  }, [setRecommendations, selectTicker, selectedTicker]);
-
-  // Setup websocket connection (only once on mount)
-  useEffect(() => {
-    // Wait for recommendations to be loaded
-    if (recommendations.length === 0) return;
-
-    mockWebSocketService.connect();
-    setIsLive(true);
-
-    // Listen for ticker updates
-    const unsubscribeTicker = mockWebSocketService.on('ticker:update', (data) => {
-      // Get current recommendations from store to check if ticker exists
-      const currentRecs = useTradeStore.getState().recommendations;
-      const exists = currentRecs.some(r => r.ticker === data.ticker);
-      if (exists) {
-        updateRecommendation(data.ticker, {
-          score: data.score,
-          price: data.price,
-          priceChangePercent: data.priceChangePercent,
-          lastUpdated: data.lastUpdated,
-        });
-        setLastUpdated(data.lastUpdated);
-      }
-    });
-
-    // Listen for recommendation events
-    const unsubscribeEvent = mockWebSocketService.on('recommendation:event', (data) => {
-      // Get current recommendations from store
-      const currentRecs = useTradeStore.getState().recommendations;
-      const rec = currentRecs.find(r => r.ticker === data.ticker);
-      if (rec) {
-        updateRecommendation(data.ticker, {
-          recommendationEvents: [
-            ...(rec.recommendationEvents || []),
-            {
-              timestamp: data.timestamp,
-              score: data.score,
-              type: data.type,
-              note: data.note,
-            },
+    if (recommendations.length === 0) {
+      const initialRecommendations: Recommendation[] = [
+        {
+          ticker: 'NVDA',
+          companyName: 'NVIDIA Corporation',
+          exchange: 'NASDAQ',
+          rank: 1,
+          score: 85,
+          confidence: 0.92,
+          price: 0, // Will be populated from REST/WebSocket
+          priceChangePercent: 0,
+          lastUpdated: new Date().toISOString(),
+          sparkline: [], // Will be populated from REST/WebSocket
+          explainSummary: 'AI and data center growth driving strong fundamentals',
+          signals: [
+            { name: 'AI Growth', weight: 45, desc: 'Strong AI chip demand' },
+            { name: 'Earnings', weight: 35, desc: 'Consistent beat expectations' },
+            { name: 'Momentum', weight: 20, desc: 'Positive price trend' },
           ],
-        });
+          recommendationEvents: [],
+          prevClose: 0,
+          open: 0,
+          dayRange: { low: 0, high: 0 },
+          yearRange: { low: 0, high: 0 },
+          peRatio: 0,
+          volume: 0,
+          marketCap: 0,
+          dividendYield: 0,
+          eps: 0,
+        },
+        {
+          ticker: 'AAPL',
+          companyName: 'Apple Inc.',
+          exchange: 'NASDAQ',
+          rank: 2,
+          score: 78,
+          confidence: 0.88,
+          price: 0,
+          priceChangePercent: 0,
+          lastUpdated: new Date().toISOString(),
+          sparkline: [],
+          explainSummary: 'Strong ecosystem and services revenue growth',
+          signals: [
+            { name: 'Services', weight: 40, desc: 'Growing services revenue' },
+            { name: 'Innovation', weight: 35, desc: 'New product launches' },
+            { name: 'Stability', weight: 25, desc: 'Consistent performance' },
+          ],
+          recommendationEvents: [],
+          prevClose: 0,
+          open: 0,
+          dayRange: { low: 0, high: 0 },
+          yearRange: { low: 0, high: 0 },
+          peRatio: 0,
+          volume: 0,
+          marketCap: 0,
+          dividendYield: 0,
+          eps: 0,
+        },
+        {
+          ticker: 'MSFT',
+          companyName: 'Microsoft Corporation',
+          exchange: 'NASDAQ',
+          rank: 3,
+          score: 82,
+          confidence: 0.90,
+          price: 0,
+          priceChangePercent: 0,
+          lastUpdated: new Date().toISOString(),
+          sparkline: [],
+          explainSummary: 'Cloud and AI leadership with strong enterprise adoption',
+          signals: [
+            { name: 'Azure', weight: 42, desc: 'Cloud growth accelerating' },
+            { name: 'AI Integration', weight: 38, desc: 'AI features in products' },
+            { name: 'Enterprise', weight: 20, desc: 'Strong enterprise base' },
+          ],
+          recommendationEvents: [],
+          prevClose: 0,
+          open: 0,
+          dayRange: { low: 0, high: 0 },
+          yearRange: { low: 0, high: 0 },
+          peRatio: 0,
+          volume: 0,
+          marketCap: 0,
+          dividendYield: 0,
+          eps: 0,
+        },
+      ];
+      
+      setRecommendations(initialRecommendations);
+      
+      // Auto-select first ticker if none selected
+      if (!selectedTicker) {
+        selectTicker('NVDA');
       }
-    });
+    }
+  }, [recommendations.length, setRecommendations, selectedTicker, selectTicker]);
 
-    return () => {
-      unsubscribeTicker();
-      unsubscribeEvent();
-      mockWebSocketService.disconnect();
-    };
-    // Only run when recommendations are first loaded (length changes from 0 to >0)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recommendations.length, updateRecommendation, setIsLive, setLastUpdated]);
-
-  const handleRefresh = () => {
-    const mockData = generateMockRecommendations();
-    setRecommendations(mockData);
-  };
+  // Real-time data updates are handled by:
+  // 1. useStockData hook in ChartCanvas - fetches REST data and updates recommendations
+  // 2. useMassiveWebSocket hook in ChartCanvas - receives WebSocket updates and updates recommendations
+  // No mock WebSocket needed - all data comes from real sources (cache + REST + WebSocket)
+  useEffect(() => {
+    setIsLive(true);
+    // Real WebSocket connection is managed in ChartCanvas component
+  }, [setIsLive]);
 
   // Handle floating chat input submission
   const handleFloatingInputSubmit = async (text: string, attachments: MessageFile[], useMockService?: boolean) => {
@@ -320,51 +360,39 @@ export default function Trade() {
         ? `${contextPrompt}\n\n${text.trim()}`
         : text.trim();
       
-      let newChatId: string;
-      
-      // Generate chat ID (mock or real)
-      if (useMockService) {
-        // Generate mock chat ID
-        newChatId = `mock-${Date.now()}`;
-        console.log('[Trade] Generated mock chat ID:', newChatId);
-      } else {
-        // Create real chat session
-        if (!token || isLoadingToken) {
-          console.warn('[Trade] Cannot create chat: token not available');
-          setIsCreatingChat(false);
-          return;
-        }
-        
-        console.log('[Trade] Creating real chat session with context...');
-        newChatId = await createChatSession(token, 'Trade Chat', messageTextWithContext, attachments);
-        console.log('[Trade] Chat created with ID:', newChatId);
+      // Create real chat session - no mock IDs
+      if (!token || isLoadingToken) {
+        console.warn('[Trade] Cannot create chat: token not available');
+        setIsCreatingChat(false);
+        return;
       }
+      
+      console.log('[Trade] Creating real chat session with context...');
+      const newChatId = await createChatSession(token, 'Trade Chat', messageTextWithContext, attachments);
+      console.log('[Trade] Chat created with ID:', newChatId);
       
       // Store the chat ID
       setChatId(newChatId);
       
       // Set pending message in chat store - ChatWindow will process it when it mounts
       // Store original text (without context) for display
-      setPendingMessage(text, attachments, newChatId, useMockService);
+      setPendingMessage(text, attachments, newChatId, useMockService || false);
       
-      // Activate chat split view
+      // Activate chat split view only if chat was successfully created
       setHasActiveChat(true);
     } catch (error) {
       console.error('[Trade] Failed to create chat session:', error);
-      // Still activate the split view with a mock ID as fallback
-      const fallbackChatId = `mock-${Date.now()}`;
-      setChatId(fallbackChatId);
-      setPendingMessage(text, attachments, fallbackChatId, true);
-      setHasActiveChat(true);
+      // Don't activate chat view if creation failed - show error instead
+      // User can try again
     } finally {
       setIsCreatingChat(false);
     }
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#0D0F12] text-white overflow-hidden">
-      {/* Top Sticky Header */}
-      <header className="h-16 bg-[#121418] border-b border-white/4 sticky top-0 z-50 flex items-center px-4 gap-4">
+    <div className="h-screen fixed inset-0 flex flex-col bg-[#0D0F12] text-white overflow-hidden">
+      {/* Top Header */}
+      <header className="h-16 flex-shrink-0 bg-[#121418] border-b border-white/4 flex items-center px-4 gap-4">
         <div className="flex items-center gap-3">
           <Logo />
           <h1 className="text-xl font-semibold text-white">Trade</h1>
@@ -372,23 +400,8 @@ export default function Trade() {
         
         <TopChipsBar />
         
-        <div className="flex items-center gap-3">
-          <LiveIndicator />
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleRefresh}
-            className="text-white/60 hover:text-white hover:bg-white/5"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-white/60 hover:text-white hover:bg-white/5"
-          >
-            <Settings className="w-4 h-4" />
-          </Button>
+        <div className="flex items-center gap-3 ml-auto">
+          <MarketStatus />
         </div>
       </header>
 
@@ -397,14 +410,14 @@ export default function Trade() {
         {/* Left Rail */}
         <LeftRail />
 
-        {/* Center Canvas */}
-        <div className="flex-1 flex flex-col overflow-hidden relative">
-          {hasActiveChat ? (
-            // Split view with ResizablePanelGroup
-            <ResizablePanelGroup direction="horizontal" className="h-full">
+        {/* Center Canvas - takes remaining space, full width when no chat */}
+        {hasActiveChat ? (
+          // Split view with ResizablePanelGroup - only show when chat is active
+          <div className="flex-1 flex flex-col overflow-hidden relative min-h-0">
+            <ResizablePanelGroup direction="horizontal" className="h-full w-full">
               {/* Left Panel: Trade Content */}
               <ResizablePanel defaultSize={65} minSize={40}>
-                <div className="p-4 sm:p-6 gap-4 flex flex-col h-full overflow-y-auto">
+                <div className="p-4 sm:p-6 gap-4 flex flex-col h-full overflow-y-auto min-h-0">
                   <HeroCard />
                   <ChartCanvas />
                   
@@ -434,7 +447,7 @@ export default function Trade() {
 
               <ResizableHandle withHandle />
 
-              {/* Right Panel: Chat Window */}
+              {/* Right Panel: Chat Window - only visible when chat is active */}
               <ResizablePanel defaultSize={35} minSize={30} className="overflow-hidden">
                 <div className="h-full bg-[#0D0F12] relative">
                   {/* Close button */}
@@ -463,49 +476,49 @@ export default function Trade() {
                 </div>
               </ResizablePanel>
             </ResizablePanelGroup>
-          ) : (
-            // Default view: Trade content with floating chat input
-            <>
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 gap-4 flex flex-col">
-                <HeroCard />
-                <ChartCanvas />
+          </div>
+        ) : (
+          // Default view: Trade content with floating chat input - takes full width, NO chat panel
+          <div className="flex-1 flex flex-col overflow-hidden relative min-h-0">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 gap-4 flex flex-col">
+              <HeroCard />
+              <ChartCanvas />
+              
+              {/* Summary Section */}
+              {(() => {
+                const selected = recommendations.find(r => r.ticker === selectedTicker);
+                if (!selected) return null;
                 
-                {/* Summary Section */}
-                {(() => {
-                  const selected = recommendations.find(r => r.ticker === selectedTicker);
-                  if (!selected) return null;
-                  
-                  return (
-                    <div className="bg-[#121418] rounded-lg border border-white/4 p-6">
-                      <h3 className="text-sm font-semibold text-white/80 mb-3 uppercase tracking-wider">
-                        Key Signals
-                      </h3>
-                      <ul className="space-y-2">
-                        {selected.signals.map((signal, idx) => (
-                          <li key={idx} className="text-sm text-white/70 flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#4EA8F5]" />
-                            <strong>{signal.name}:</strong> {signal.desc}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                })()}
-              </div>
+                return (
+                  <div className="bg-[#121418] rounded-lg border border-white/4 p-6">
+                    <h3 className="text-sm font-semibold text-white/80 mb-3 uppercase tracking-wider">
+                      Key Signals
+                    </h3>
+                    <ul className="space-y-2">
+                      {selected.signals.map((signal, idx) => (
+                        <li key={idx} className="text-sm text-white/70 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#4EA8F5]" />
+                          <strong>{signal.name}:</strong> {signal.desc}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })()}
+            </div>
 
-              {/* Floating Chat Input */}
-              <div className="sticky bottom-0 left-0 right-0 border-t border-white/5 p-0 z-10 ">
-                <div className="max-w-3xl mx-auto  ">
-                  <PromptInputWithActions
-                    onSubmit={handleFloatingInputSubmit}
-                    isLoading={isCreatingChat || isLoadingToken}
-                    isInEmptyState={false}
-                  />
-                </div>
+            {/* Floating Chat Input */}
+            <div className="flex-shrink-0 border-t border-white/5 bg-[#0D0F12] p-4">
+              <div className="max-w-3xl mx-auto">
+                <PromptInputWithActions
+                  onSubmit={handleFloatingInputSubmit}
+                  isLoading={isCreatingChat || isLoadingToken}
+                  isInEmptyState={false}
+                />
               </div>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Right Drawer */}

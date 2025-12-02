@@ -66,7 +66,7 @@ export function LeftRail() {
   }
 
   return (
-    <div className="w-[340px] bg-[#121418] border-r border-white/4 flex flex-col">
+    <div className="w-[340px] bg-[#121418] border-r border-white/4 flex flex-col h-full overflow-hidden">
       <div className="flex items-center justify-between p-3 border-b border-white/4">
         <h2 className="text-sm font-semibold text-white uppercase tracking-wider">
           Recommendations
@@ -80,7 +80,7 @@ export function LeftRail() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {sortedRecs.map((rec) => {
           const isPinned = pinnedTickers.has(rec.ticker);
           const isSelected = selectedTicker === rec.ticker;
