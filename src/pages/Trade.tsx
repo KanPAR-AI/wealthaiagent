@@ -5,7 +5,6 @@ import { useTradeStore } from '@/store/trade';
 import { useChatStore } from '@/store/chat';
 import { useJwtToken } from '@/hooks/use-jwt-token';
 import { createChatSession } from '@/services/chat-service';
-// Removed mockWebSocketService - using real Massive.com WebSocket via useMassiveWebSocket hook
 import { Recommendation } from '@/types/trade';
 import { MessageFile } from '@/types';
 import { TopChipsBar } from '@/components/trade/TopChipsBar';
@@ -19,6 +18,7 @@ import Logo from '@/components/ui/logo';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizeable';
 import { PromptInputWithActions } from '@/components/chat/chat-input';
 import ChatWindow from '@/components/chat/chat-window';
+import { useTheme } from "@/components/theme/theme-provider";
 
 // Demo data generator with realistic stock data
 function generateMockRecommendations(): Recommendation[] {
@@ -232,6 +232,29 @@ export default function Trade() {
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const setPendingMessage = useChatStore(state => state.setPendingMessage);
   const { token, isLoadingToken } = useJwtToken();
+  const { theme, setTheme } = useTheme();
+
+  // Enforce dark mode on this page
+  useEffect(() => {
+    // Store the original theme before we change it
+    // We get this from the hook's current state which reflects what's loaded
+    const originalTheme = theme;
+    
+    // Set to dark without saving to localStorage
+    if (originalTheme !== 'dark') {
+      setTheme("dark", false);
+    }
+
+    // Cleanup: restore user's preferred theme
+    return () => {
+      if (originalTheme !== 'dark') {
+        // Restore without saving (though if we didn't save dark, 
+        // the localStorage should still match originalTheme, so safe either way)
+        setTheme(originalTheme, false);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only on mount/unmount
 
   // Initialize with basic recommendations (NVDA, AAPL, MSFT)
   // Price/sparkline data will be populated from REST/WebSocket

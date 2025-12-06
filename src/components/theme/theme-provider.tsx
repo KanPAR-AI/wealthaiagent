@@ -11,7 +11,7 @@ type ThemeProviderProps = {
 
 type ThemeProviderState = {
   theme: Theme
-  setTheme: (theme: Theme) => void
+  setTheme: (theme: Theme, save?: boolean) => void
 }
 
 const initialState: ThemeProviderState = {
@@ -51,8 +51,10 @@ export function ThemeProvider({
 
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
+    setTheme: (theme: Theme, save: boolean = true) => {
+      if (save) {
+        localStorage.setItem(storageKey, theme)
+      }
       setTheme(theme)
     },
   }
