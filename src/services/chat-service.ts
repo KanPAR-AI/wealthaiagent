@@ -222,7 +222,10 @@ export const listenToChatStream = async (
       const lines = buffer.split("\n");
       buffer = lines.pop() || "";
 
-      for (const line of lines) {
+      for (let line of lines) {
+        // Strip carriage return from SSE format (\r\n line endings)
+        line = line.replace(/\r$/, '');
+
         if (!line.startsWith("data:")) continue;
 
         const payload = line.replace(/^data:\s*/, "");
