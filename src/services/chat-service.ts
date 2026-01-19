@@ -209,7 +209,6 @@ export const listenToChatStream = async (
     const reader = response.body.getReader();
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
-    const APOSTROPHE_PLACEHOLDER = "___APOSTROPHE___";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -230,13 +229,8 @@ export const listenToChatStream = async (
 
         if (payload.startsWith("{")) {
           try {
-            // Robust JSON parsing logic...
-            const protectedPayload = payload.replace(/"([^"]*)"/g, (group) => {
-              return '"' + group.replace(/'/g, APOSTROPHE_PLACEHOLDER) + '"';
-            });
-            const jsonString = protectedPayload.replace(/'/g, '"');
-            const finalJson = jsonString.replace(new RegExp(APOSTROPHE_PLACEHOLDER, "g"), "'");
-            const parsedEvent = JSON.parse(finalJson);
+            // Parse JSON directly - backend sends proper JSON via json.dumps()
+            const parsedEvent = JSON.parse(payload);
             
             if (parsedEvent.type === 'message_delta') {
                 onMessageChunk(parsedEvent.delta, "text_chunk");
