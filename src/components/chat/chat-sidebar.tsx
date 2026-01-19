@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   History,
   MessageSquareText,
   MoreHorizontal,
@@ -305,6 +306,19 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
       <SidebarFooter className="mt-auto flex-shrink-0">
         <SidebarSeparator />
         <SidebarMenu>
+          <SidebarMenuItem>
+            <a
+              href="https://evals-dashboard-k5hhhgwp6a-uc.a.run.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full"
+            >
+              <SidebarMenuButton tooltip="Evals Dashboard">
+                <BarChart3 size={16} className="flex-shrink-0" />
+                <span className="truncate">Evals Dashboard</span>
+              </SidebarMenuButton>
+            </a>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <div className="flex items-center p-2 w-full">
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
