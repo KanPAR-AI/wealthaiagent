@@ -281,7 +281,7 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
   };
 
   return (
-    <Sidebar collapsible="offcanvas" variant="sidebar" className="border-r flex flex-col h-screen">
+    <Sidebar collapsible="offcanvas" variant="sidebar" className="border-r border-border/50 flex flex-col h-screen bg-sidebar">
       <SidebarHeader className="flex-shrink-0">
         <div className="p-2">
           <Button asChild className="w-full justify-start gap-2" size="sm">

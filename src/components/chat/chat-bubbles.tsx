@@ -104,11 +104,11 @@ export function ChatBubble({
                     variants={bubbleVariants}
                     initial="hidden"
                     animate="visible"
-                    className={`px-3 py-2 md:px-4 md:py-2 rounded-2xl text-sm md:text-base relative max-w-full min-w-0 overflow-hidden chat-bubble-content ${
+                    className={`px-3 py-2 md:px-4 md:py-2 rounded-2xl text-sm md:text-base relative max-w-full min-w-0 chat-bubble-content ${
                       isUser
                         ? 'bg-primary text-primary-foreground dark:text-zinc-100'
                         : 'bg-muted dark:bg-zinc-700 dark:text-zinc-200'
-                    } break-all overflow-wrap-anywhere hyphens-auto`}
+                    }`}
                   >
                     <div className="px-0.5 whitespace-pre-wrap break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
                       {message.sender === 'bot' ? (

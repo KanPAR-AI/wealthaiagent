@@ -8,7 +8,7 @@ import { LogProvider } from "../debug/log-provider";
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <LogProvider>
-      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
         <TooltipProvider>
           <SidebarProvider defaultOpen={false}>
             <Sonner /> {/* For toast notifications */}

@@ -5,7 +5,7 @@ function AppLayout() {
   const { chatid } = useParams<{ chatid?: string }>();
 
   return (
-    <div className="flex min-h-screen w-full overflow-hidden dark:bg-zinc-900">
+    <div className="flex min-h-screen w-full overflow-hidden bg-background">
       <Sidebar currentChatId={chatid} />
       <main className="flex-1 flex flex-col overflow-x-hidden relative">
         {/* The Outlet renders the active child route (Chat, New, etc.) */}

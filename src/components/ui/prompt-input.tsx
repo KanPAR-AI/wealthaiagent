@@ -81,12 +81,14 @@ function PromptInput({
       >
         <div
           className={cn(
-            "border-input bg-background sm:rounded-3xl sm:border border-t p-2 shadow-xs",
+            "border border-border/60 bg-card sm:rounded-2xl p-2 shadow-sm",
             // Conditional border radius based on empty state
-            isInEmptyState ? "rounded-3xl" : "rounded-b-none rounded-t-3xl",
+            isInEmptyState ? "rounded-2xl" : "rounded-b-none rounded-t-2xl",
             // Safari-specific container fixes
             "overflow-hidden", // Prevent content from expanding beyond container
             "max-w-full", // Ensure container doesn't exceed viewport
+            // Focus state enhancement
+            "focus-within:border-primary/40 focus-within:shadow-md transition-all duration-200",
             className
           )}
         >
@@ -150,7 +152,7 @@ function PromptInputTextarea({
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
       className={cn(
-        "text-black min-h-[44px] w-full resize-none border-none bg-transparent shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+        "text-foreground min-h-[44px] w-full resize-none border-none bg-transparent shadow-none outline-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/60",
         // Safari-specific fixes
         "overflow-hidden", // Prevent Safari from expanding beyond container
         "box-border", // Ensure proper box model
