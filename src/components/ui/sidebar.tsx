@@ -28,6 +28,8 @@ import {
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
+const SIDEBAR_WIDTH_MIN = 200
+const SIDEBAR_WIDTH_MAX = 400
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
@@ -40,6 +42,10 @@ type SidebarContextProps = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
+  sidebarWidth: number
+  setSidebarWidth: (width: number) => void
+  isResizing: boolean
+  setIsResizing: (resizing: boolean) => void
 }
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
@@ -51,6 +57,46 @@ function useSidebar() {
   }
 
   return context
+}
+
+// Custom hook for sidebar resize
+function useSidebarResize() {
+  const { sidebarWidth, setSidebarWidth, isResizing, setIsResizing } = useSidebar()
+
+  const startResizing = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+  }, [setIsResizing])
+
+  React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return
+      const newWidth = Math.min(Math.max(e.clientX, SIDEBAR_WIDTH_MIN), SIDEBAR_WIDTH_MAX)
+      setSidebarWidth(newWidth)
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      // Save to localStorage
+      localStorage.setItem('sidebar_width', String(sidebarWidth))
+    }
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [isResizing, setSidebarWidth, setIsResizing, sidebarWidth])
+
+  return { startResizing, isResizing }
 }
 
 function SidebarProvider({
@@ -68,6 +114,16 @@ function SidebarProvider({
 }) {
   const isMobile = useIsMobile()
   const [openMobile, setOpenMobile] = React.useState(false)
+
+  // Sidebar width state with localStorage persistence
+  const [sidebarWidth, setSidebarWidth] = React.useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sidebar_width')
+      return saved ? parseInt(saved, 10) : 256 // 16rem = 256px
+    }
+    return 256
+  })
+  const [isResizing, setIsResizing] = React.useState(false)
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
@@ -122,8 +178,12 @@ function SidebarProvider({
       openMobile,
       setOpenMobile,
       toggleSidebar,
+      sidebarWidth,
+      setSidebarWidth,
+      isResizing,
+      setIsResizing,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, sidebarWidth, isResizing]
   )
 
   return (
@@ -133,7 +193,7 @@ function SidebarProvider({
           data-slot="sidebar-wrapper"
           style={
             {
-              "--sidebar-width": SIDEBAR_WIDTH,
+              "--sidebar-width": `${sidebarWidth}px`,
               "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
               ...style,
             } as React.CSSProperties
@@ -248,7 +308,33 @@ function Sidebar({
         >
           {children}
         </div>
+        {/* Resize Handle */}
+        <SidebarResizeHandle side={side} />
       </div>
+    </div>
+  )
+}
+
+function SidebarResizeHandle({ side }: { side: "left" | "right" }) {
+  const { startResizing, isResizing } = useSidebarResize()
+
+  return (
+    <div
+      onMouseDown={startResizing}
+      className={cn(
+        "absolute top-0 bottom-0 w-1 cursor-col-resize z-50 group/resize",
+        "hover:bg-primary/20 active:bg-primary/30 transition-colors",
+        side === "left" ? "right-0" : "left-0",
+        isResizing && "bg-primary/30"
+      )}
+    >
+      {/* Visual indicator */}
+      <div
+        className={cn(
+          "absolute top-1/2 -translate-y-1/2 w-1 h-8 rounded-full bg-border opacity-0 group-hover/resize:opacity-100 transition-opacity",
+          side === "left" ? "right-0" : "left-0"
+        )}
+      />
     </div>
   )
 }
@@ -720,7 +806,9 @@ export {
   SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
+  SidebarResizeHandle,
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,
+  useSidebarResize,
 }
