@@ -74,8 +74,16 @@ React Router v7 with AppLayout wrapper:
 - `/` - Home/landing page
 - `/new` - Start new chat
 - `/chat/:chatid` - Existing chat session
-- `/logs` - Activity logs
+- `/logs` - Debug/activity logs
 - Base path: `/chataiagent/` for all routes
+
+### Header Components
+The `ChatHeader` (`src/components/chat/chat-header.tsx`) contains:
+- **Sidebar trigger** - Toggle navigation sidebar
+- **Logo** - Application branding
+- **Debug logs link** - Bug icon linking to `/logs` for viewing debug information
+- **Theme toggle** - Light/dark mode switcher
+- **New chat button** - Quick access to start new conversation
 
 ### Testing Approach
 - Coverage thresholds: 70% (branches, functions, lines, statements)
