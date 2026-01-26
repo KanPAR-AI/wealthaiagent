@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { MessageFile } from '@/types';
 import { fileCache } from '@/services/file-cache';
-import { fetchFileWithToken } from '@/services/chat-service';
 
 interface UseCachedFileResult {
   blobUrl: string | null;
@@ -17,10 +16,13 @@ export function useCachedFile(file: MessageFile | null, token: string | null): U
   const [error, setError] = useState(false);
 
   const fetchFile = useCallback(async () => {
-    if (!file || !token) {
+    if (!file) {
       setBlobUrl(null);
       return;
     }
+
+    // Use provided token or fallback to dummy token for local dev with SKIP_AUTH
+    const authToken = token || 'dev_token';
 
     // First, try to get from cache
     const cachedUrl = await fileCache.getBlobUrl(file.url);
@@ -37,22 +39,20 @@ export function useCachedFile(file: MessageFile | null, token: string | null): U
     setError(false);
 
     try {
-      const response = await fetchFileWithToken(file.url, token);
-      
-      // For fetchFileWithToken, we need to fetch the actual blob
-      const blobResponse = await fetch(response, {
-        headers: { Authorization: `Bearer ${token}` }
+      // Fetch file with authorization and get blob
+      const response = await fetch(file.url, {
+        headers: { Authorization: `Bearer ${authToken}` }
       });
-      
-      if (!blobResponse.ok) {
-        throw new Error(`Failed to fetch file: ${blobResponse.status}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file: ${response.status}`);
       }
 
       // Cache the file and get blob URL
-      const blob = await blobResponse.blob();
+      const blob = await response.blob();
       await fileCache.set(file.url, blob, file);
       const newBlobUrl = URL.createObjectURL(blob);
-      
+
       setBlobUrl(newBlobUrl);
       setError(false);
     } catch (err) {

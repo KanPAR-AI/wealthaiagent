@@ -230,10 +230,12 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
 
   // --- File Upload Handling ---
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
-    if (!event.target.files?.length || !token) {
-      if (!token) alert("Authentication error. Cannot upload files.");
+    if (!event.target.files?.length) {
       return;
     }
+
+    // Use provided token or fallback for local dev with SKIP_AUTH
+    const authToken = token || 'dev_token';
 
     const filesToUpload = Array.from(event.target.files);
     setIsUploading(true); // Set uploading state
@@ -246,7 +248,7 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
         const response = await fetch(getApiUrl('/files/upload'), {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
+            'Authorization': `Bearer ${authToken}`,
             'Accept': 'application/json',
           },
           body: formData,
