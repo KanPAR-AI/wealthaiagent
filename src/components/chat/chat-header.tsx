@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import Logo from '@/components/ui/logo';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Edit, Bug, Calculator } from 'lucide-react';
+import { Edit, Bug, Calculator, SlidersHorizontal } from 'lucide-react';
 import { JSX } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ModeToggle } from '../theme/mode-toggle';
@@ -22,17 +22,25 @@ export function ChatHeader(): JSX.Element {
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {chatid && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => setIsCalcModalOpen(true)}
-              title="Calculation Data"
-              aria-label="Calculation Data"
-            >
-              <Calculator className="h-[1.2rem] w-[1.2rem]" />
-              <span className="sr-only">Calculation Data</span>
-            </Button>
+            <>
+              <Link to={`/debug/${chatid}`} title="Slot Debug" aria-label="Slot Debug">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                  <SlidersHorizontal className="h-[1.2rem] w-[1.2rem]" />
+                  <span className="sr-only">Slot Debug</span>
+                </Button>
+              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setIsCalcModalOpen(true)}
+                title="Calculation Data"
+                aria-label="Calculation Data"
+              >
+                <Calculator className="h-[1.2rem] w-[1.2rem]" />
+                <span className="sr-only">Calculation Data</span>
+              </Button>
+            </>
           )}
           <Link
             to="/logs"

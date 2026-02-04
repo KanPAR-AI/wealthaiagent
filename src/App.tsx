@@ -6,6 +6,7 @@ import New from "./pages/New";
 import NotFound from "./pages/NotFound";
 import Logs from "./pages/Logs";
 import Trade from "./pages/Trade";
+import Debug from "./pages/Debug";
 import PWAInstall from "./components/PWAInstall";
 import LoginPage from "./pages/Login";
 
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/chat/:chatid" element={<Chat />} />
         </Route>
         <Route path="/trade" element={<Trade />} />
+        <Route path="/debug/:chatid" element={<Debug />} />
         <Route path="/logs" element={<Logs />} />
 
         {/* Routes outside the layout, like a 404 page, won't have the sidebar */}
