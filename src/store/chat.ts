@@ -54,9 +54,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   // Add a message to a specific chat
   addMessage: (chatId, message) => {
-    console.log('[Store] addMessage called:', { 
-      chatId, 
-      messageId: message.id, 
+    console.log('[Store] addMessage called:', {
+      chatId,
+      messageId: message.id,
       sender: message.sender,
       isStreaming: message.isStreaming
     });
@@ -64,8 +64,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const currentMessages = state.chats[chatId]?.messages || [];
       console.log('[Store] Current message count before add:', currentMessages.length);
       const newMessages = [...currentMessages, message];
+      // Sort by timestamp to ensure correct order regardless of insertion order
+      newMessages.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
       console.log('[Store] New message count after add:', newMessages.length);
-      
+
       return {
         chats: {
           ...state.chats,

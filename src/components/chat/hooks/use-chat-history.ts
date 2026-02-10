@@ -161,6 +161,27 @@ export function useChatHistory({
 
           console.log('Loaded message with files:', { messageId: msg.id, fileCount: files.length, files });
 
+          // Reconstruct contentBlocks from metadata.widgets_json (persisted during streaming)
+          let contentBlocks: any[] | undefined;
+          // Parse widgets from JSON string (avoids Firestore nesting limits)
+          let widgets: any[] | undefined;
+          if (msg.metadata?.widgets_json) {
+            try {
+              widgets = JSON.parse(msg.metadata.widgets_json);
+            } catch (e) {
+              console.warn('[useChatHistory] Failed to parse widgets_json:', e);
+            }
+          } else if (msg.metadata?.widgets) {
+            // Backward compat: old messages may have nested widgets
+            widgets = msg.metadata.widgets;
+          }
+          if (widgets && Array.isArray(widgets) && widgets.length > 0) {
+            contentBlocks = [
+              { type: 'text', content: msg.content },
+              ...widgets.map((w: any) => ({ type: 'widget', widget: w })),
+            ];
+          }
+
           return {
             id: msg.id,
             message: msg.content,
@@ -170,6 +191,7 @@ export function useChatHistory({
             // For history messages, streaming is complete
             isStreaming: false,
             streamingContent: msg.content,
+            contentBlocks,
           };
         });
   

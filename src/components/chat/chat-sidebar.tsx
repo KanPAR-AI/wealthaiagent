@@ -106,7 +106,7 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
     };
 
     fetchChats();
-  }, [token]);
+  }, [token, currentChatId]);
 
   // --- Filtering Logic ---
   const filteredChats = useMemo(() => {

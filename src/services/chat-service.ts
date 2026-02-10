@@ -85,7 +85,7 @@ export const sendChatMessage = async (
   content: string,
   files: MessageFile[]
 ): Promise<void> => {
-  const response = await fetch(getApiUrl(`/chats/${chatId}/messages`), {
+  const response = await fetch(getApiUrl(`/chats/${chatId}/messages?auto_reply=false`), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

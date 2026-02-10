@@ -6,11 +6,13 @@ import { CompoundInterestCalculator } from "./compound-interest-calculator"
 import { SIPCalculator } from "./sip-calculator"
 import { MortgageCalculator } from "./mortgage-calculator"
 import { RetirementCalculator } from "./retirement-calculator"
+import { FinancialSummaryChart } from "./financial-summary-chart"
 
 export interface Widget {
   id: string
   type: string
   title?: string
+  description?: string
   data: any
   config?: any
   sourceUrl?: string
@@ -47,7 +49,10 @@ export function WidgetRenderer({ widget }: WidgetRendererProps) {
     
     case 'widget_retirement_calculator':
       return <RetirementCalculator {...widget} />
-    
+
+    case 'widget_composed_chart':
+      return <FinancialSummaryChart {...widget} />
+
     default:
       console.warn('[WidgetRenderer] Unknown widget type:', widget.type)
       return (

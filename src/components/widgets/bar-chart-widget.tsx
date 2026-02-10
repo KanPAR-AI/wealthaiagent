@@ -5,15 +5,24 @@ import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
-  ChartTooltipContent,
 } from "@/components/ui/chart"
 import { Bar, BarChart as RechartsBarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { useMemo } from "react"
+
+function formatINR(value: number): string {
+  const abs = Math.abs(value)
+  const sign = value < 0 ? '-' : ''
+  if (abs >= 10000000) return `${sign}₹${(abs / 10000000).toFixed(2)} Cr`
+  if (abs >= 100000) return `${sign}₹${(abs / 100000).toFixed(1)} L`
+  if (abs >= 1000) return `${sign}₹${(abs / 1000).toFixed(0)}k`
+  return `${sign}₹${abs.toFixed(0)}`
+}
 
 interface BarChartWidgetDataset {
   label: string
   values: number[]
   color: string
+  stackId?: string
 }
 
 interface BarChartWidgetData {
@@ -24,15 +33,16 @@ interface BarChartWidgetData {
 interface BarChartWidgetProps {
   id: string
   title?: string
+  description?: string
   data: BarChartWidgetData
   sourceUrl?: string
 }
 
-export function BarChartWidget({ title, data }: BarChartWidgetProps) {
+export function BarChartWidget({ title, description, data }: BarChartWidgetProps) {
   // Transform data for Recharts
   const chartData = useMemo(() => {
     return data.labels.map((label, index) => {
-      const dataPoint: any = { month: label }
+      const dataPoint: any = { label }
       data.datasets.forEach((dataset) => {
         dataPoint[dataset.label] = dataset.values[index]
       })
@@ -56,28 +66,49 @@ export function BarChartWidget({ title, data }: BarChartWidgetProps) {
     <Card className="w-full">
       <CardHeader>
         <CardTitle>{title || 'Performance'}</CardTitle>
-        <CardDescription>Monthly trends and growth</CardDescription>
+        {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
           <RechartsBarChart accessibilityLayer data={chartData}>
             <CartesianGrid vertical={false} />
             <XAxis
-              dataKey="month"
+              dataKey="label"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
             />
             <YAxis
               tickLine={false}
               axisLine={false}
               tickMargin={10}
-              tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+              tickFormatter={(value) => {
+                if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`
+                if (value >= 100000) return `₹${(value / 100000).toFixed(0)}L`
+                return `₹${(value / 1000).toFixed(0)}k`
+              }}
             />
             <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent indicator="dashed" />}
+              content={({ active, payload, label }) => {
+                if (!active || !payload?.length) return null
+                return (
+                  <div className="rounded-lg border bg-background px-3 py-2 shadow-xl text-foreground">
+                    <p className="font-medium text-sm mb-1.5">{label}</p>
+                    <div className="grid gap-1">
+                      {payload.map((entry: any, idx: number) => {
+                        if (entry.value === 0) return null
+                        return (
+                          <div key={idx} className="flex items-center gap-2 text-xs">
+                            <div className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: entry.color || entry.fill }} />
+                            <span className="text-muted-foreground">{entry.name}</span>
+                            <span className="ml-auto font-mono font-medium tabular-nums">{formatINR(entry.value)}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              }}
             />
             {data.datasets.map((dataset) => {
               const key = dataset.label.toLowerCase().replace(/\s+/g, '_')
@@ -86,7 +117,8 @@ export function BarChartWidget({ title, data }: BarChartWidgetProps) {
                   key={key}
                   dataKey={dataset.label}
                   fill={`var(--color-${key})`}
-                  radius={4}
+                  stackId={dataset.stackId}
+                  radius={dataset.stackId ? 0 : 4}
                 />
               )
             })}
@@ -96,4 +128,3 @@ export function BarChartWidget({ title, data }: BarChartWidgetProps) {
     </Card>
   )
 }
-
