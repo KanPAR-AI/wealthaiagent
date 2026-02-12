@@ -159,6 +159,16 @@ export default function ChatWindow({
     }
   }, [isFirstMessage, chatId, clearMessages, isProcessingPendingMessage]);
 
+  // Listen for quick-reply events from action tile widgets (e.g., "Confirm & Calculate" button)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const text = (e as CustomEvent).detail?.text;
+      if (text) handleSend(text, []);
+    };
+    window.addEventListener('chat-quick-reply', handler);
+    return () => window.removeEventListener('chat-quick-reply', handler);
+  }, [handleSend]);
+
   // Scroll to bottom function
   const scrollToBottom = () => {
     const scrollViewport = scrollViewportRef.current || document.querySelector('[data-radix-scroll-area-viewport]');

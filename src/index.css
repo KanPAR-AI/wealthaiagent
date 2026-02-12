@@ -173,6 +173,17 @@
   max-width: 100%;
 }
 
+/* Tighten list spacing inside chat bubbles (prose defaults add paragraph gaps) */
+.chat-bubble-content li {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.chat-bubble-content ul,
+.chat-bubble-content ol {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+
 /* Allow code blocks to scroll horizontally */
 .chat-bubble-content pre,
 .chat-bubble-content code {
