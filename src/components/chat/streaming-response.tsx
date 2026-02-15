@@ -47,7 +47,7 @@ export const StreamingResponse = ({ content, isStreaming, className }: Streaming
   });
   
   return (
-    <div className={cn("break-all overflow-wrap-anywhere min-w-0 overflow-hidden", className)}>
+    <div className={cn("break-words overflow-wrap-anywhere min-w-0 overflow-x-auto", className)}>
       {isStreaming ? (
         <StreamingTextRenderer content={content} />
       ) : (

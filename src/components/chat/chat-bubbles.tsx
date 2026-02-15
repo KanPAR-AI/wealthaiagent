@@ -110,15 +110,15 @@ export function ChatBubble({
                         : 'bg-muted dark:bg-zinc-700 dark:text-zinc-200'
                     }`}
                   >
-                    <div className="px-0.5 whitespace-pre-wrap break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
+                    <div className="px-0.5 whitespace-pre-wrap break-words overflow-wrap-anywhere min-w-0 overflow-x-auto chat-bubble-content">
                       {message.sender === 'bot' ? (
-                        <StreamingResponse 
+                        <StreamingResponse
                           content={block.content}
                           isStreaming={Boolean(message.isStreaming && index === message.contentBlocks!.length - 1)}
                           className="chat-bubble-content"
                         />
                       ) : (
-                        <div className="break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
+                        <div className="break-words overflow-wrap-anywhere min-w-0 overflow-x-auto chat-bubble-content">
                           {block.content}
                         </div>
                       )}
@@ -151,11 +151,11 @@ export function ChatBubble({
                 variants={bubbleVariants}
                 initial="hidden"
                 animate="visible"
-                className={`px-3 py-2 md:px-4 md:py-2 rounded-2xl text-sm md:text-base relative max-w-full min-w-0 overflow-hidden chat-bubble-content ${
+                className={`px-3 py-2 md:px-4 md:py-2 rounded-2xl text-sm md:text-base relative max-w-full min-w-0 overflow-x-auto chat-bubble-content ${
                   isUser
                     ? 'bg-primary text-primary-foreground dark:text-zinc-100'
                     : 'bg-muted dark:bg-zinc-700 dark:text-zinc-200'
-                } break-all overflow-wrap-anywhere hyphens-auto`}
+                } break-words overflow-wrap-anywhere hyphens-auto`}
               >
                 {message.error ? (
                   <div className="flex items-center gap-2">
@@ -163,15 +163,15 @@ export function ChatBubble({
                     <span className="italic text-red-500">{message.error}</span>
                   </div>
                 ) : (
-                  <div className="px-0.5 whitespace-pre-wrap break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
+                  <div className="px-0.5 whitespace-pre-wrap break-words overflow-wrap-anywhere min-w-0 overflow-x-auto chat-bubble-content">
                     {message.sender === 'bot' ? (
-                      <StreamingResponse 
+                      <StreamingResponse
                         content={message.streamingContent || message.message}
                         isStreaming={message.isStreaming || false}
                         className="chat-bubble-content"
                       />
                     ) : (
-                      <div className="break-all overflow-wrap-anywhere min-w-0 overflow-hidden chat-bubble-content">
+                      <div className="break-words overflow-wrap-anywhere min-w-0 overflow-x-auto chat-bubble-content">
                         {message.message}
                       </div>
                     )}

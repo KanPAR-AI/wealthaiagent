@@ -23,8 +23,8 @@ export function TableWidget({ title, data }: TableWidgetProps) {
         <CardDescription>Detailed breakdown</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="rounded-md border">
-          <table className="w-full">
+        <div className="rounded-md border overflow-x-auto">
+          <table className="w-full min-w-max">
             <thead>
               <tr className="border-b bg-muted/50">
                 {data.headers.map((header, index) => (
