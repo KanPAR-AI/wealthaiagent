@@ -161,14 +161,15 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
     setChats(prev => prev.map(c => c.id === chatId ? { ...c, title: newTitle.trim() } : c));
 
     try {
-      // TODO: Replace with your actual rename endpoint
-      // const response = await fetch(getApiUrl(`/chats/${chatId}/rename`), {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      //   body: JSON.stringify({ title: newTitle.trim() }),
-      // });
-      // if (!response.ok) throw new Error("Failed to rename chat.");
-      console.log(`Simulating API call to rename chat ${chatId} to "${newTitle.trim()}"`);
+      const response = await fetch(getApiUrl(`/chats/${chatId}`), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ title: newTitle.trim() }),
+      });
+      if (!response.ok) throw new Error("Failed to rename chat.");
     } catch(err) {
       console.error(err);
       setChats(originalChats);
