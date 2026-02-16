@@ -302,8 +302,8 @@ export default function ChatWindow({
           <>
             <div className="h-full overflow-hidden pb-4 mt-12 sm:mt-0 chat-content relative">
               <ScrollArea ref={scrollAreaRef} className="h-[80vh]" type="scroll">
-                <div className="p-4 md:p-6 space-y-6 min-w-0">
-                  <div className="max-w-3xl mx-auto w-full space-y-8 min-w-0">
+                <div className="p-2 sm:p-4 md:p-6 space-y-4 sm:space-y-6 min-w-0">
+                  <div className="max-w-3xl mx-auto w-full space-y-4 sm:space-y-8 min-w-0">
                     {isHistoryLoading ? (
                       <ChatLoadingSkeleton />
                     ) : (

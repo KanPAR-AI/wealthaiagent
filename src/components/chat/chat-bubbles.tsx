@@ -91,12 +91,15 @@ export function ChatBubble({
 
   return (
     <div key={message.id} className={`flex gap-3 ${isUser ? 'justify-start sm:justify-end' : 'justify-start'} w-full min-w-0`}>
-      <div className={`flex flex-col ${isUser ? 'items-start sm:items-end' : 'items-start'} w-full min-w-0 max-w-full gap-3`}>
+      <div className={`flex flex-col ${isUser ? 'items-start sm:items-end' : 'items-start'} w-full min-w-0 max-w-full gap-2 sm:gap-3`}>
         {/* NEW: Render content blocks in order (text and widgets interleaved) */}
         {message.contentBlocks && message.contentBlocks.length > 0 ? (
           <>
             {message.contentBlocks.map((block, index) => {
               if (block.type === 'text') {
+                // Skip empty/whitespace-only text blocks
+                const trimmed = block.content?.trimEnd() || '';
+                if (!trimmed) return null;
                 // Render text block
                 return (
                   <motion.div
@@ -113,13 +116,13 @@ export function ChatBubble({
                     <div className="px-0.5 whitespace-pre-wrap break-words overflow-wrap-anywhere min-w-0 overflow-x-auto chat-bubble-content">
                       {message.sender === 'bot' ? (
                         <StreamingResponse
-                          content={block.content}
+                          content={trimmed}
                           isStreaming={Boolean(message.isStreaming && index === message.contentBlocks!.length - 1)}
                           className="chat-bubble-content"
                         />
                       ) : (
                         <div className="break-words overflow-wrap-anywhere min-w-0 overflow-x-auto chat-bubble-content">
-                          {block.content}
+                          {trimmed}
                         </div>
                       )}
                     </div>
