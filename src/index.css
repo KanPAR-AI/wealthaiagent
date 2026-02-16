@@ -172,17 +172,24 @@
   overflow-wrap: break-word;
 }
 
-/* Allow tables to exceed container width and scroll horizontally */
+/* Tables: compact on mobile, expand on desktop */
 .chat-bubble-content table {
   word-break: normal;
   overflow-wrap: normal;
-  min-width: max-content;
 }
 .chat-bubble-content table td,
 .chat-bubble-content table th {
-  white-space: nowrap;
   word-break: normal;
   overflow-wrap: normal;
+}
+@media (min-width: 640px) {
+  .chat-bubble-content table {
+    min-width: max-content;
+  }
+  .chat-bubble-content table td,
+  .chat-bubble-content table th {
+    white-space: nowrap;
+  }
 }
 
 /* Tighten list spacing inside chat bubbles (prose defaults add paragraph gaps) */

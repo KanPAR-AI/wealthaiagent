@@ -15,27 +15,32 @@ interface TableWidgetProps {
   sourceUrl?: string
 }
 
+/** Shorten long headers so the table fits on mobile without horizontal scroll */
+const MOBILE_HEADER_MAP: Record<string, string> = {
+  'House Value': 'Value',
+  'Total Invested': 'Invested',
+  'Net Sale Proceeds': 'Net Sale',
+}
+
 export function TableWidget({ title, data }: TableWidgetProps) {
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle>{title || 'Data Table'}</CardTitle>
-        <CardDescription>Detailed breakdown</CardDescription>
+      <CardHeader className="px-3 py-2 sm:px-6 sm:py-4">
+        <CardTitle className="text-sm sm:text-base">{title || 'Data Table'}</CardTitle>
+        <CardDescription className="text-xs sm:text-sm">Detailed breakdown</CardDescription>
       </CardHeader>
-      <CardContent className="px-2 sm:px-6">
-        <div
-          className="rounded-md border overflow-x-auto overscroll-x-contain"
-          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}
-        >
-          <table className="w-full min-w-max text-xs sm:text-sm">
+      <CardContent className="px-1.5 sm:px-6">
+        <div className="rounded-md border overflow-x-auto">
+          <table className="w-full text-[11px] sm:text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
                 {data.headers.map((header, index) => (
                   <th
                     key={index}
-                    className="h-8 sm:h-10 px-2 sm:px-4 text-left align-middle font-medium text-muted-foreground whitespace-nowrap"
+                    className="h-7 sm:h-10 px-1 sm:px-4 text-left align-middle font-medium text-muted-foreground"
                   >
-                    {header}
+                    <span className="hidden sm:inline">{header}</span>
+                    <span className="sm:hidden">{MOBILE_HEADER_MAP[header] || header}</span>
                   </th>
                 ))}
               </tr>
@@ -50,7 +55,7 @@ export function TableWidget({ title, data }: TableWidgetProps) {
                     <td
                       key={cellIndex}
                       className={cn(
-                        "px-2 sm:px-4 py-2 sm:py-4 align-middle whitespace-nowrap",
+                        "px-1 sm:px-4 py-1.5 sm:py-4 align-middle whitespace-nowrap",
                         cellIndex === row.length - 1 && (
                           cell.startsWith('+') ? 'text-green-600 font-medium' :
                           cell.startsWith('-') ? 'text-red-600 font-medium' :
