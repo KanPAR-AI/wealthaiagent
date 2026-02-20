@@ -117,7 +117,7 @@ const categoryIcons = {
 };
 
 const categoryColors = {
-  charts: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30',
+  charts: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30',
   data: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/30',
   code: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30',
   general: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30'

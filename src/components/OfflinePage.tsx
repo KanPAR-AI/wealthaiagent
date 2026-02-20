@@ -22,7 +22,7 @@ const OfflinePage: React.FC = () => {
         <div className="space-y-4">
           <button
             onClick={handleRefresh}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors"
           >
             <RefreshCw className="h-4 w-4" />
             <span>Try Again</span>

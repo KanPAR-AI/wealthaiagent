@@ -338,8 +338,8 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
               <span>Recording...</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-blue-500">
-              <div className="size-4 border-2 border-background border-t-blue-500 rounded-full animate-spin" />
+            <div className="flex items-center gap-2 text-emerald-500">
+              <div className="size-4 border-2 border-background border-t-emerald-500 rounded-full animate-spin" />
               <span>Transcribing...</span>
             </div>
           )}

@@ -34,9 +34,9 @@ export function TopChipsBar() {
             className={cn(
               "px-3 py-1.5 rounded backdrop-blur-md border transition-all duration-180",
               "flex items-center gap-2 whitespace-nowrap",
-              "focus:outline-none focus:ring-2 focus:ring-[#4EA8F5]/50 focus:ring-offset-2 focus:ring-offset-[#0D0F12]",
+              "focus:outline-none focus:ring-2 focus:ring-[#25D366]/50 focus:ring-offset-2 focus:ring-offset-[#0D0F12]",
               selectedTicker === rec.ticker
-                ? "bg-white/10 border-white/20 shadow-[0_6px_20px_rgba(78,168,245,0.12)]"
+                ? "bg-white/10 border-white/20 shadow-[0_6px_20px_rgba(37,211,102,0.12)]"
                 : "bg-white/5 border-white/6 hover:bg-white/8 hover:border-white/10"
             )}
             style={{
@@ -45,7 +45,7 @@ export function TopChipsBar() {
           >
             <span className="text-sm font-semibold text-white">{rec.ticker}</span>
             <span className="text-white/40">•</span>
-            <span className="text-xs font-medium text-[#4EA8F5]">{rec.score.toFixed(1)}</span>
+            <span className="text-xs font-medium text-[#25D366]">{rec.score.toFixed(1)}</span>
             {rec.confidence > 85 && (
               <>
                 <span className="text-white/40">•</span>
