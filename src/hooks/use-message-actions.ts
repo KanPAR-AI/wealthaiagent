@@ -3,7 +3,72 @@ import { listenToChatStream, sendChatMessage } from '@/services/chat-service';
 import { useState } from 'react';
 import { useChatMessages } from './use-chat-messages';
 import { useJwtToken } from './use-jwt-token';
-import html2pdf from 'html2pdf.js';
+// html2pdf.js is CJS/UMD — dynamic import avoids ESM interop issues with Vite
+const loadHtml2Pdf = async () => {
+  const mod = await import('html2pdf.js');
+  return mod.default || mod;
+};
+
+// html2canvas can't parse oklch() colors (Tailwind CSS 4 default).
+// Tailwind 4 defines colors as CSS variables: --color-background: oklch(1 0 0);
+// html2canvas reads raw stylesheets and chokes on oklch().
+// Fix: temporarily inject a <style> that overrides all oklch CSS vars with
+// their browser-computed rgb equivalents. html2canvas clones the document
+// including this override, so it never sees oklch.
+const OKLCH_FIX_ID = 'pdf-oklch-fix';
+
+function injectOklchOverrides(): HTMLStyleElement | null {
+  const rootComputed = getComputedStyle(document.documentElement);
+  const overrides: string[] = [];
+
+  for (const sheet of document.styleSheets) {
+    try {
+      collectOklchVars(sheet.cssRules, rootComputed, overrides);
+    } catch (_e) { /* cross-origin stylesheet, skip */ }
+  }
+
+  if (overrides.length === 0) return null;
+
+  const style = document.createElement('style');
+  style.id = OKLCH_FIX_ID;
+  style.textContent = `:root { ${overrides.join(' ')} }`;
+  document.head.appendChild(style);
+  return style;
+}
+
+function collectOklchVars(
+  rules: CSSRuleList,
+  rootComputed: CSSStyleDeclaration,
+  overrides: string[],
+) {
+  for (let r = 0; r < rules.length; r++) {
+    const rule = rules[r];
+    if (rule instanceof CSSStyleRule) {
+      for (let i = 0; i < rule.style.length; i++) {
+        const prop = rule.style[i];
+        if (prop.startsWith('--')) {
+          const raw = rule.style.getPropertyValue(prop);
+          if (raw.includes('oklch')) {
+            const resolved = rootComputed.getPropertyValue(prop).trim();
+            if (resolved) {
+              overrides.push(`${prop}: ${resolved} !important;`);
+            }
+          }
+        }
+      }
+    }
+    // Recurse into @media, @supports, etc.
+    if ('cssRules' in rule) {
+      collectOklchVars((rule as CSSGroupingRule).cssRules, rootComputed, overrides);
+    }
+  }
+}
+
+function removeOklchOverrides(style: HTMLStyleElement | null) {
+  if (style && style.parentNode) {
+    style.parentNode.removeChild(style);
+  }
+}
 
 export const useMessageActions = (chatId: string) => {
   // Destructure `updateMessage` as well from useChatMessages
@@ -135,8 +200,13 @@ export const useMessageActions = (chatId: string) => {
   };
 
   const handleSharePdf = async (_messageId: string) => {
+    console.log('[PDF] Starting PDF export...');
     const chatContent = document.querySelector('[data-radix-scroll-area-viewport]');
-    if (!chatContent) return;
+    if (!chatContent) {
+      console.error('[PDF] Could not find scroll area viewport');
+      return;
+    }
+    console.log('[PDF] Found chat content, cloning...');
 
     // Clone content for clean PDF capture
     const clone = chatContent.cloneNode(true) as HTMLElement;
@@ -173,7 +243,11 @@ export const useMessageActions = (chatId: string) => {
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
     };
 
+    // Inject rgb overrides for oklch CSS variables (html2canvas can't parse oklch)
+    const oklchFix = injectOklchOverrides();
+
     try {
+      const html2pdf = await loadHtml2Pdf();
       const blob: Blob = await html2pdf().set(opt).from(clone).outputPdf('blob');
       const file = new File([blob], opt.filename, { type: 'application/pdf' });
 
@@ -186,12 +260,15 @@ export const useMessageActions = (chatId: string) => {
         const a = document.createElement('a');
         a.href = url;
         a.download = opt.filename;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }
     } catch (err) {
-      console.error('PDF export failed:', err);
+      console.error('[PDF] Export failed:', err);
     } finally {
+      removeOklchOverrides(oklchFix);
       document.body.removeChild(wrapper);
     }
   };
