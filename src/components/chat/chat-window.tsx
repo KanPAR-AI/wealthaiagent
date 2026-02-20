@@ -1,7 +1,7 @@
 // components/chat/chat-window.tsx
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, RefreshCcw, ThumbsDown, ThumbsUp, ChevronDown } from "lucide-react";
+import { Copy, RefreshCcw, ThumbsDown, ThumbsUp, ChevronDown, Download } from "lucide-react";
 
 import { ChatMessageList } from '@/components/chat/message-list';
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -86,6 +86,7 @@ export default function ChatWindow({
     handleLike,
     handleDislike,
     handleRegenerate,
+    handleSharePdf,
     isRegenerating
   } = useMessageActions(chatId || '');
 
@@ -233,6 +234,7 @@ export default function ChatWindow({
 
   const actionIcons = [
     { icon: Copy as React.FC<React.SVGProps<SVGSVGElement>>, type: "Copy", action: handleCopy },
+    { icon: Download as React.FC<React.SVGProps<SVGSVGElement>>, type: "Share PDF", action: handleSharePdf },
     { icon: RefreshCcw as React.FC<React.SVGProps<SVGSVGElement>>, type: "Regenerate", action: handleRegenerate },
     { icon: ThumbsUp as React.FC<React.SVGProps<SVGSVGElement>>, type: "Like", action: handleLike },
     { icon: ThumbsDown as React.FC<React.SVGProps<SVGSVGElement>>, type: "Dislike", action: handleDislike },
