@@ -40,13 +40,13 @@ export function LeftRail() {
                     className={cn(
                       "w-full p-2 rounded-lg transition-all",
                       selectedTicker === rec.ticker
-                        ? "bg-white/10 ring-2 ring-[#4EA8F5]/50"
+                        ? "bg-white/10 ring-2 ring-[#25D366]/50"
                         : "hover:bg-white/5"
                     )}
                   >
                     <div className="flex flex-col items-center gap-1">
                       <span className="text-xs font-semibold text-white">{rec.ticker}</span>
-                      <span className="text-[10px] text-[#4EA8F5]">{rec.score.toFixed(0)}</span>
+                      <span className="text-[10px] text-[#25D366]">{rec.score.toFixed(0)}</span>
                     </div>
                   </button>
                 </TooltipTrigger>
@@ -54,7 +54,7 @@ export function LeftRail() {
                     <div className="text-xs">
                     <div className="font-semibold text-white">{rec.ticker}</div>
                     <div className="text-white">{rec.companyName}</div>
-                    <div className="text-[#4EA8F5] mt-1">Score: {rec.score.toFixed(1)}</div>
+                    <div className="text-[#25D366] mt-1">Score: {rec.score.toFixed(1)}</div>
                   </div>
                 </TooltipContent>
               </Tooltip>
@@ -93,8 +93,8 @@ export function LeftRail() {
                     onClick={() => selectTicker(rec.ticker)}
                     className={cn(
                       "w-full p-3 border-b border-white/4 transition-all text-left",
-                      "hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-[#4EA8F5]/50",
-                      isSelected && "bg-white/8 ring-2 ring-[#4EA8F5]/30"
+                      "hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-[#25D366]/50",
+                      isSelected && "bg-white/8 ring-2 ring-[#25D366]/30"
                     )}
                     style={{
                       transition: 'all 180ms cubic-bezier(0.18, 0.9, 0.32, 1.3)',
@@ -111,7 +111,7 @@ export function LeftRail() {
                             {rec.exchange}
                           </span>
                           {isPinned && (
-                            <Pin className="w-3 h-3 text-[#4EA8F5]" fill="currentColor" />
+                            <Pin className="w-3 h-3 text-[#25D366]" fill="currentColor" />
                           )}
                         </div>
                         <div className="flex items-center gap-2 mb-2">

@@ -102,7 +102,7 @@ const NetworkLogger: React.FC = () => {
         <header className="text-center mb-8 flex items-center justify-between">
             <div className='flex gap-4 justify-center items-center'>
           <Button variant={"outline"} onClick={()=>navigate(-1)}>Back</Button>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent mb-2">
             Network Logger
           </h1>
           </div>
@@ -138,7 +138,7 @@ const NetworkLogger: React.FC = () => {
           <button onClick={clearLogs} className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-medium transition-colors">
             <Trash2 size={16} /> Clear
           </button>
-          <button onClick={exportLogs} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors">
+          <button onClick={exportLogs} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-medium transition-colors">
             <Download size={16} /> Export
           </button>
           <div className="flex-grow flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2">
@@ -250,7 +250,7 @@ const DetailSection: React.FC<{title: string, content: string, onCopy?: () => vo
         <div className="flex justify-between items-center mb-1">
             <h5 className="text-sm font-medium text-gray-400">{title}</h5>
             {onCopy && (
-                 <button onClick={(e) => { e.stopPropagation(); onCopy(); }} className="text-blue-400 hover:text-blue-300">
+                 <button onClick={(e) => { e.stopPropagation(); onCopy(); }} className="text-emerald-400 hover:text-emerald-300">
                     <Copy size={14} />
                 </button>
             )}

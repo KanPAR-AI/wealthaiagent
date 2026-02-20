@@ -93,7 +93,7 @@ const CalcDebugModal: React.FC<CalcDebugModalProps> = ({ chatId, isOpen, onClose
         <div className="flex-1 overflow-auto p-4">
           {loading && (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="animate-spin text-blue-400" size={32} />
+              <Loader2 className="animate-spin text-emerald-400" size={32} />
               <span className="ml-2 text-gray-400">Fetching debug data...</span>
             </div>
           )}

@@ -30,8 +30,8 @@ const createSVGIcon = (size) => {
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#128C7E;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#075E54;stop-opacity:1" />
     </linearGradient>
   </defs>
   <rect width="${size}" height="${size}" fill="url(#grad)" rx="${size * 0.1}"/>

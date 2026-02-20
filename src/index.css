@@ -65,87 +65,87 @@
 
 :root {
   --radius: 0.625rem;
-  /* Elegant white background with subtle warmth */
-  --background: oklch(0.995 0.002 250);
-  --foreground: oklch(0.25 0.015 250);
+  /* WhatsApp-style light background */
+  --background: oklch(0.97 0.008 155);
+  --foreground: oklch(0.2 0.02 165);
   /* Clean white cards */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.25 0.015 250);
+  --card-foreground: oklch(0.2 0.02 165);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.25 0.015 250);
-  /* Elegant blue primary */
-  --primary: oklch(0.55 0.18 250);
-  --primary-foreground: oklch(0.99 0.005 250);
-  /* Light gray secondary */
-  --secondary: oklch(0.97 0.005 250);
-  --secondary-foreground: oklch(0.35 0.02 250);
-  /* Muted gray tones */
-  --muted: oklch(0.96 0.005 250);
-  --muted-foreground: oklch(0.5 0.015 250);
-  /* Subtle blue accent */
-  --accent: oklch(0.96 0.02 250);
-  --accent-foreground: oklch(0.35 0.02 250);
+  --popover-foreground: oklch(0.2 0.02 165);
+  /* WhatsApp teal-green primary */
+  --primary: oklch(0.52 0.14 170);
+  --primary-foreground: oklch(0.99 0.005 165);
+  /* Light green-gray secondary */
+  --secondary: oklch(0.96 0.012 160);
+  --secondary-foreground: oklch(0.35 0.03 165);
+  /* Muted green-gray tones */
+  --muted: oklch(0.95 0.01 160);
+  --muted-foreground: oklch(0.5 0.02 165);
+  /* Subtle green accent */
+  --accent: oklch(0.95 0.025 160);
+  --accent-foreground: oklch(0.35 0.03 165);
   --destructive: oklch(0.55 0.22 25);
   /* Very subtle borders */
-  --border: oklch(0.92 0.008 250);
-  --input: oklch(0.94 0.008 250);
-  --ring: oklch(0.55 0.18 250);
-  /* Chart colors with blue theme */
-  --chart-1: oklch(0.55 0.18 250);
-  --chart-2: oklch(0.6 0.15 200);
-  --chart-3: oklch(0.5 0.12 280);
-  --chart-4: oklch(0.65 0.14 220);
-  --chart-5: oklch(0.7 0.1 240);
-  /* Clean white sidebar with subtle blue tint */
-  --sidebar: oklch(0.99 0.005 250);
-  --sidebar-foreground: oklch(0.3 0.015 250);
-  --sidebar-primary: oklch(0.55 0.18 250);
-  --sidebar-primary-foreground: oklch(0.99 0.005 250);
-  --sidebar-accent: oklch(0.95 0.02 250);
-  --sidebar-accent-foreground: oklch(0.35 0.02 250);
-  --sidebar-border: oklch(0.93 0.01 250);
-  --sidebar-ring: oklch(0.55 0.18 250);
+  --border: oklch(0.91 0.015 160);
+  --input: oklch(0.93 0.012 160);
+  --ring: oklch(0.52 0.14 170);
+  /* Chart colors with green theme */
+  --chart-1: oklch(0.52 0.14 170);
+  --chart-2: oklch(0.6 0.15 155);
+  --chart-3: oklch(0.5 0.12 140);
+  --chart-4: oklch(0.65 0.12 180);
+  --chart-5: oklch(0.7 0.1 165);
+  /* Clean sidebar with subtle green tint */
+  --sidebar: oklch(0.99 0.008 160);
+  --sidebar-foreground: oklch(0.25 0.02 165);
+  --sidebar-primary: oklch(0.52 0.14 170);
+  --sidebar-primary-foreground: oklch(0.99 0.005 165);
+  --sidebar-accent: oklch(0.94 0.025 160);
+  --sidebar-accent-foreground: oklch(0.35 0.03 165);
+  --sidebar-border: oklch(0.92 0.015 160);
+  --sidebar-ring: oklch(0.52 0.14 170);
 }
 
 .dark {
-  /* Deep blue-gray background */
-  --background: oklch(0.16 0.02 250);
-  --foreground: oklch(0.95 0.005 250);
+  /* Deep dark background (WhatsApp dark) */
+  --background: oklch(0.16 0.02 170);
+  --foreground: oklch(0.93 0.005 165);
   /* Slightly lighter cards */
-  --card: oklch(0.2 0.02 250);
-  --card-foreground: oklch(0.95 0.005 250);
-  --popover: oklch(0.2 0.02 250);
-  --popover-foreground: oklch(0.95 0.005 250);
-  /* Brighter blue for dark mode */
-  --primary: oklch(0.65 0.2 250);
-  --primary-foreground: oklch(0.15 0.02 250);
+  --card: oklch(0.2 0.025 170);
+  --card-foreground: oklch(0.93 0.005 165);
+  --popover: oklch(0.2 0.025 170);
+  --popover-foreground: oklch(0.93 0.005 165);
+  /* Brighter green for dark mode */
+  --primary: oklch(0.65 0.18 160);
+  --primary-foreground: oklch(0.15 0.02 170);
   /* Muted dark secondary */
-  --secondary: oklch(0.25 0.02 250);
-  --secondary-foreground: oklch(0.9 0.005 250);
-  --muted: oklch(0.25 0.02 250);
-  --muted-foreground: oklch(0.65 0.015 250);
-  --accent: oklch(0.28 0.03 250);
-  --accent-foreground: oklch(0.9 0.005 250);
+  --secondary: oklch(0.25 0.025 170);
+  --secondary-foreground: oklch(0.9 0.005 165);
+  --muted: oklch(0.25 0.025 170);
+  --muted-foreground: oklch(0.65 0.02 165);
+  --accent: oklch(0.28 0.035 170);
+  --accent-foreground: oklch(0.9 0.005 165);
   --destructive: oklch(0.6 0.2 25);
   /* Subtle borders */
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.6 0.2 250);
-  /* Chart colors */
-  --chart-1: oklch(0.65 0.2 250);
-  --chart-2: oklch(0.65 0.15 200);
-  --chart-3: oklch(0.6 0.12 280);
-  --chart-4: oklch(0.7 0.14 220);
-  --chart-5: oklch(0.75 0.1 240);
+  --ring: oklch(0.6 0.18 160);
+  /* Chart colors with green theme */
+  --chart-1: oklch(0.65 0.18 160);
+  --chart-2: oklch(0.65 0.15 155);
+  --chart-3: oklch(0.6 0.12 140);
+  --chart-4: oklch(0.7 0.12 180);
+  --chart-5: oklch(0.75 0.1 165);
   /* Dark sidebar */
-  --sidebar: oklch(0.18 0.02 250);
-  --sidebar-foreground: oklch(0.9 0.005 250);
-  --sidebar-primary: oklch(0.65 0.2 250);
-  --sidebar-primary-foreground: oklch(0.15 0.02 250);
-  --sidebar-accent: oklch(0.25 0.025 250);
-  --sidebar-accent-foreground: oklch(0.9 0.005 250);
+  --sidebar: oklch(0.18 0.025 170);
+  --sidebar-foreground: oklch(0.9 0.005 165);
+  --sidebar-primary: oklch(0.65 0.18 160);
+  --sidebar-primary-foreground: oklch(0.15 0.02 170);
+  --sidebar-accent: oklch(0.25 0.03 170);
+  --sidebar-accent-foreground: oklch(0.9 0.005 165);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.6 0.2 250);
+  --sidebar-ring: oklch(0.6 0.18 160);
 }
 
 @layer base {
@@ -289,7 +289,7 @@
 
   /* Glow effect */
   .glow-blue {
-    box-shadow: 0 6px 20px rgba(78, 168, 245, 0.12);
+    box-shadow: 0 6px 20px rgba(18, 140, 126, 0.15);
   }
 
   .glow-green {
@@ -298,7 +298,7 @@
 
   /* Gradient text */
   .gradient-score {
-    background: linear-gradient(90deg, #4EA8F5, #7F70F8);
+    background: linear-gradient(90deg, #25D366, #128C7E);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
