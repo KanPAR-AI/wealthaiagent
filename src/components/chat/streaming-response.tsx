@@ -19,9 +19,11 @@ const BlinkingCursor = () => (
   />
 );
 
-/** Collapse 3+ consecutive newlines to max 2 */
+/** Collapse excessive blank lines (including lines with only whitespace) to max one blank line */
 function cleanContent(text: string): string {
-  return text.replace(/\n{3,}/g, '\n\n');
+  return text
+    .replace(/(\n[ \t]*){3,}/g, '\n\n')  // 3+ newlines (with optional whitespace) → 2
+    .replace(/^\n+/, '');                  // strip leading newlines
 }
 
 /**
