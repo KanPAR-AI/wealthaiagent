@@ -304,3 +304,55 @@
     color: transparent;
   }
 }
+
+/* Print styles — "Save as PDF" from browser print dialog */
+@media print {
+  /* Hide everything except chat content */
+  header, nav, aside,
+  [data-sidebar], [data-sidebar-trigger],
+  .ios-input-container,
+  [role="toolbar"],
+  [aria-label="AI is thinking"],
+  button:not(.print-keep) {
+    display: none !important;
+  }
+
+  /* Make chat content fill the page */
+  body, html, #root {
+    background: white !important;
+    color: black !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .chat-content, [data-radix-scroll-area-viewport] {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Remove fixed positioning and height constraints */
+  .ios-keyboard-fix, .h-\\[80vh\\] {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Remove bottom spacers */
+  .h-40, .md\:h-32 {
+    display: none !important;
+  }
+
+  /* Ensure charts and tables print well */
+  svg, canvas, table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Print header */
+  .print-header {
+    display: block !important;
+    padding: 12px 0;
+    margin-bottom: 16px;
+    border-bottom: 2px solid #e5e7eb;
+  }
+}
