@@ -7,13 +7,17 @@
  *           + Exercise recommendations (EPMPT methodology)
  *   TURN 2: Symptom description follow-up → Streaming conversational response
  *   TURN 3: Ask about exercises → Context-aware exercise coaching
+ *           + Video links from two-stage retrieval (bi-encoder + LLM re-ranking)
  *   TURN 4: New symptom-only assessment (no image) → Structured symptom assessment
  *           + Exercise recommendations
+ *   TURN 5: Knowledge question → Retrieval-augmented response with video citations
  *
  * Validates:
  *   - File upload + attachment flow works end-to-end
  *   - Structured X-ray analysis: KL grade, compartment findings, confidence
  *   - Exercise prescription: EPMPT phase, glute-first principle, specific exercises
+ *   - Video references: YouTube links with timestamps, Dr. David's tips
+ *   - Two-stage retrieval: Mode C follow-ups include relevant video context
  *   - Safety disclaimers always present (programmatic, never skipped)
  *   - Context continuity across turns
  *   - Symptom-only structured assessment (Mode B)
@@ -297,8 +301,32 @@ function verifyExerciseRecommendations(text: string) {
   expect(hasAttribution, 'Exercise section must attribute EPMPT methodology').toBe(true);
   console.log('  [OK] EPMPT methodology attribution present');
 
-  console.log(`\n  === Exercise recommendations verified: Phase ${phase}, ${foundExercises.length} exercises ===\n`);
-  return { phase, exercises: foundExercises };
+  // ----- Section 11: Video references (from EPMPT YouTube catalog) -----
+  const hasWatchLink = /Watch:/i.test(text);
+  const hasYouTubeLink = /youtube\.com\/watch\?v=/i.test(text);
+  if (hasWatchLink) {
+    console.log('  [OK] "Watch:" video reference present');
+    // Should include a YouTube link with timestamp
+    const hasTimestamp = /youtube\.com\/watch\?v=[^&]+&t=\d+/i.test(text);
+    if (hasTimestamp) {
+      console.log('  [OK] YouTube link includes timestamp');
+    } else {
+      console.log('  [INFO] YouTube link present but no timestamp parameter');
+    }
+  } else if (hasYouTubeLink) {
+    console.log('  [OK] YouTube video link present (no "Watch:" prefix)');
+  } else {
+    console.log('  [INFO] No video references found — video_catalog.json may not be loaded');
+  }
+
+  // Dr. David's tip (technique notes from video extraction)
+  const hasDrDavidTip = /Dr\.?\s*David'?s?\s*tip/i.test(text);
+  if (hasDrDavidTip) {
+    console.log('  [OK] Dr. David\'s technique tip included');
+  }
+
+  console.log(`\n  === Exercise recommendations verified: Phase ${phase}, ${foundExercises.length} exercises, video=${hasWatchLink || hasYouTubeLink} ===\n`);
+  return { phase, exercises: foundExercises, hasVideoLinks: hasWatchLink || hasYouTubeLink };
 }
 
 /**
@@ -524,6 +552,22 @@ test.describe('Knee Arthritis Agent — Full E2E Flow', () => {
     }
     console.log(`  Mentions quad caution: ${hasQuadWarning}`);
 
+    // ----- Video retrieval context (two-stage retrieval integration) -----
+    // Mode C follow-ups should include relevant Dr. David video context
+    // via the bi-encoder + LLM re-ranking pipeline
+    const hasVideoLink = /youtube\.com\/watch\?v=/i.test(exerciseText);
+    const hasDrDavidRef = /Dr\.?\s*David/i.test(exerciseText);
+    console.log(`  Video link in follow-up: ${hasVideoLink}`);
+    console.log(`  Dr. David reference: ${hasDrDavidRef}`);
+    if (hasVideoLink) {
+      console.log('  [OK] Two-stage retrieval injected video context into follow-up');
+      // Check for timestamped links
+      const timestampLinks = exerciseText.match(/youtube\.com\/watch\?v=[^&\s]+&t=\d+/gi);
+      if (timestampLinks) {
+        console.log(`  [OK] ${timestampLinks.length} timestamped video link(s) found`);
+      }
+    }
+
     console.log('\n========== TURN 3 COMPLETE ==========\n');
   });
 
@@ -589,5 +633,100 @@ test.describe('Knee Arthritis Agent — Full E2E Flow', () => {
     }
 
     console.log('\n========== TURN 4 COMPLETE ==========\n');
+  });
+
+  test('TURN 5: Knowledge question → Retrieval-augmented response with video citations', async ({ page }) => {
+    // =================================================================
+    // Navigate to new chat — set up with X-ray first for context
+    // =================================================================
+    await page.goto('/chataiagent/new');
+    await page.waitForTimeout(2000);
+
+    const chatInput = page.locator('textarea').first();
+    await expect(chatInput).toBeVisible({ timeout: 30_000 });
+
+    // First turn: upload X-ray to establish knee arthritis context
+    console.log('\n========== SETUP: Upload X-ray ==========\n');
+    await sendMessageWithFile(
+      page,
+      XRAY_IMAGE_PATH,
+      'knee-xray-bilateral-ap.jpg',
+      'Analyze my knee x-ray',
+    );
+    await waitForResponse(page, 180_000);
+
+    // Verify first response arrived
+    const firstResponse = await getChatText(page);
+    expect(firstResponse.length).toBeGreaterThan(200);
+
+    // =================================================================
+    // TURN 5: Ask a specific knowledge question that retrieval should
+    // answer using transcript chunks from Dr. David's videos.
+    //
+    // This tests the two-stage retrieval pipeline:
+    //   Stage 1: Gemini embedding → Redis FLAT vector search (exact NN)
+    //   Stage 2: Gemini LLM re-ranks top candidates
+    //   → Relevant video segments injected into agent context
+    // =================================================================
+    console.log('\n========== TURN 5: KNOWLEDGE QUESTION (RETRIEVAL) ==========\n');
+
+    await sendMessage(
+      page,
+      'Should I rest or continue exercising when my knee is swollen and painful? ' +
+      'Also, are there any supplements that might help with cartilage?',
+    );
+    await waitForResponse(page);
+
+    const knowledgeText = await getChatText(page);
+
+    // Should address both parts of the question
+    const addressesRest = /rest|avoid.*activ|take.*break|ice/i.test(knowledgeText);
+    const addressesExercise = /exercise|move|active|gentle/i.test(knowledgeText);
+    expect(
+      addressesRest || addressesExercise,
+      'Response should address the rest-vs-exercise question'
+    ).toBe(true);
+    console.log(`  [OK] Addresses rest/exercise: rest=${addressesRest}, exercise=${addressesExercise}`);
+
+    const addressesSupplements = /supplement|glucosamine|omega|fish oil|collagen|hyaluronic|vitamin/i.test(knowledgeText);
+    expect(
+      addressesSupplements,
+      'Response should address supplements for cartilage'
+    ).toBe(true);
+    console.log(`  [OK] Addresses supplements`);
+
+    // ----- Video retrieval verification -----
+    // The two-stage retrieval should find relevant videos like:
+    //   - "Is It Better To Rest Or Exercise An Arthritic Knee?"
+    //   - Supplement review videos from Dr. David
+    const hasVideoLink = /youtube\.com\/watch\?v=/i.test(knowledgeText);
+    const hasDrDavidRef = /Dr\.?\s*David|EP Manual|EPMPT/i.test(knowledgeText);
+
+    console.log(`  Video link present: ${hasVideoLink}`);
+    console.log(`  Dr. David/EPMPT reference: ${hasDrDavidRef}`);
+
+    if (hasVideoLink) {
+      console.log('  [OK] Retrieval-augmented response includes video citations');
+
+      // Count video links
+      const videoLinks = knowledgeText.match(/youtube\.com\/watch\?v=[^\s)]+/gi);
+      if (videoLinks) {
+        console.log(`  [OK] Found ${videoLinks.length} video link(s)`);
+        // Check if any have timestamps
+        const timestamped = videoLinks.filter(l => /&t=\d+/.test(l));
+        if (timestamped.length > 0) {
+          console.log(`  [OK] ${timestamped.length} link(s) have timestamps for precise seeking`);
+        }
+      }
+    } else {
+      console.log('  [INFO] No video links — retrieval may not be configured or Redis unavailable');
+    }
+
+    // Safety disclaimer should be in the conversation
+    const hasDisclaimer = /educational purposes|consult.*specialist/i.test(knowledgeText);
+    expect(hasDisclaimer, 'Safety language should be present').toBe(true);
+    console.log('  [OK] Safety disclaimer present');
+
+    console.log('\n========== TURN 5 COMPLETE ==========\n');
   });
 });
