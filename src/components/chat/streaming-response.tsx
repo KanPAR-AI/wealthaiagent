@@ -98,8 +98,36 @@ function formatStreamingContent(text: string): string {
   return result.join('');
 }
 
-/** Format inline markdown: bold, italic, code */
+/**
+ * Convert a YouTube markdown link to an embedded iframe.
+ * Matches: [title](https://www.youtube.com/watch?v=ID&t=SS)
+ */
+function youtubeMarkdownToEmbed(text: string): string {
+  return text.replace(
+    /\[([^\]]*)\]\((https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s)]*v=([a-zA-Z0-9_-]+)[^\s)]*|youtu\.be\/([a-zA-Z0-9_-]+)[^\s)]*))\)/g,
+    (_match, title, fullUrl, vidId1, vidId2) => {
+      const videoId = vidId1 || vidId2;
+      if (!videoId) return _match;
+      // Extract ?t= or &t= parameter for start time
+      const timeMatch = fullUrl.match(/[?&]t=(\d+)/);
+      const start = timeMatch ? timeMatch[1] : '0';
+      const embedUrl = `https://www.youtube.com/embed/${videoId}?start=${start}&rel=0`;
+      return (
+        `<div class="youtube-embed my-3">` +
+        `<iframe src="${embedUrl}" title="${title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` +
+        `<div class="youtube-embed-caption"><a href="${fullUrl}" target="_blank" rel="noopener noreferrer">${title}</a></div>` +
+        `</div>`
+      );
+    }
+  );
+}
+
+/** Format inline markdown: bold, italic, code, YouTube embeds */
 function formatInline(text: string): string {
+  // First handle YouTube markdown links before other formatting
+  const withEmbeds = youtubeMarkdownToEmbed(text);
+  // If we replaced a YouTube link, don't apply further inline formatting to that chunk
+  if (withEmbeds !== text) return withEmbeds;
   return text
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')

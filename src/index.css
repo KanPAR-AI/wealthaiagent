@@ -212,6 +212,36 @@
   white-space: pre;
 }
 
+/* YouTube video embeds */
+.youtube-embed {
+  max-width: 480px;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.youtube-embed iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: block;
+  border: none;
+}
+.youtube-embed-caption {
+  padding: 0.375rem 0.625rem;
+  font-size: 0.75rem;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.youtube-embed-caption a {
+  color: var(--primary);
+  text-decoration: none;
+}
+.youtube-embed-caption a:hover {
+  text-decoration: underline;
+}
+
 /* Trade page styles */
 @layer utilities {
   /* Glass effect utility */
