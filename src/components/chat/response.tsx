@@ -1,9 +1,10 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { memo, type ReactNode } from 'react';
+import { memo } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 interface ResponseProps {
   children?: string;
@@ -18,26 +19,34 @@ function cleanContent(text: string): string {
 }
 
 /**
- * Extract YouTube video ID and start time from a URL.
- * Returns null if the URL is not a YouTube video link.
+ * Pre-process markdown to convert YouTube links to embedded iframe HTML.
+ *
+ * Converts patterns like:
+ *   **Watch:** [Title](https://www.youtube.com/watch?v=ID&t=36)
+ *   [Title](https://youtube.com/watch?v=ID)
+ *
+ * Into raw HTML <div> blocks that rehype-raw will render as block elements
+ * (avoiding the invalid div-inside-p nesting problem).
  */
-function parseYouTubeUrl(href: string): { videoId: string; start: number } | null {
-  try {
-    const url = new URL(href);
-    // youtube.com/watch?v=ID or youtu.be/ID
-    let videoId: string | null = null;
-    if (url.hostname.includes('youtube.com') && url.pathname === '/watch') {
-      videoId = url.searchParams.get('v');
-    } else if (url.hostname === 'youtu.be') {
-      videoId = url.pathname.slice(1);
+function embedYouTubeLinks(text: string): string {
+  return text.replace(
+    /^(.*?)\[([^\]]+)\]\((https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s)]*v=([a-zA-Z0-9_-]+)[^\s)]*|youtu\.be\/([a-zA-Z0-9_-]+)[^\s)]*?))\)(.*)$/gm,
+    (_match, before, title, fullUrl, vidId1, vidId2, after) => {
+      const videoId = vidId1 || vidId2;
+      if (!videoId) return _match;
+      const timeMatch = fullUrl.match(/[?&]t=(\d+)/);
+      const start = timeMatch ? timeMatch[1] : '0';
+      const embedUrl = `https://www.youtube.com/embed/${videoId}?start=${start}&rel=0`;
+      const prefix = before.trim() ? before.trim() + '\n\n' : '';
+      const suffix = after.trim() ? '\n\n' + after.trim() : '';
+      return (
+        `${prefix}<div class="youtube-embed my-3">` +
+        `<iframe src="${embedUrl}" title="${title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` +
+        `<div class="youtube-embed-caption"><a href="${fullUrl}" target="_blank" rel="noopener noreferrer">${title}</a></div>` +
+        `</div>${suffix}`
+      );
     }
-    if (!videoId) return null;
-
-    const start = parseInt(url.searchParams.get('t') || '0', 10) || 0;
-    return { videoId, start };
-  } catch {
-    return null;
-  }
+  );
 }
 
 /** Custom components for styled markdown rendering */
@@ -63,37 +72,25 @@ const mdComponents: Components = {
   p: ({ children, ...props }) => (
     <p className="my-1" {...props}>{children}</p>
   ),
-  // YouTube links → embedded iframe player
-  a: ({ href, children, ...props }) => {
-    if (!href) return <a {...props}>{children}</a>;
-    const yt = parseYouTubeUrl(href);
-    if (yt) {
-      const embedUrl = `https://www.youtube.com/embed/${yt.videoId}?start=${yt.start}&rel=0`;
-      return (
-        <div className="youtube-embed my-3">
-          <iframe
-            src={embedUrl}
-            title={typeof children === 'string' ? children : 'YouTube video'}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-          <div className="youtube-embed-caption">
-            <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
-          </div>
-        </div>
-      );
-    }
-    return <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
-  },
+  // Non-YouTube links open in new tab
+  a: ({ href, children, ...props }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
+  ),
 };
 
 export const Response = memo(
   ({ className, children }: ResponseProps) => {
-    const cleaned = typeof children === 'string' ? cleanContent(children) : (children ?? '');
+    const raw = typeof children === 'string' ? children : (children ?? '');
+    const cleaned = cleanContent(raw);
+    const withEmbeds = embedYouTubeLinks(cleaned);
     return (
       <div className={cn('size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0', className)}>
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-          {cleaned}
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
+          components={mdComponents}
+        >
+          {withEmbeds}
         </ReactMarkdown>
       </div>
     );
