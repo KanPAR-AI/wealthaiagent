@@ -5,6 +5,7 @@ import {
   MoreHorizontal,
   Plus,
   Search,
+  Settings,
   Star,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -307,6 +308,14 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
       <SidebarFooter className="mt-auto flex-shrink-0">
         <SidebarSeparator />
         <SidebarMenu>
+          <SidebarMenuItem>
+            <Link to="/admin" className="w-full">
+              <SidebarMenuButton tooltip="Admin Portal">
+                <Settings size={16} className="flex-shrink-0" />
+                <span className="truncate">Admin Portal</span>
+              </SidebarMenuButton>
+            </Link>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <a
               href="https://evals-dashboard-k5hhhgwp6a-uc.a.run.app"

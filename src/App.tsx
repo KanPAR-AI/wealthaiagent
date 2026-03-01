@@ -9,6 +9,7 @@ import Trade from "./pages/Trade";
 import Debug from "./pages/Debug";
 import PWAInstall from "./components/PWAInstall";
 import LoginPage from "./pages/Login";
+import Admin from "./pages/Admin";
 
 const App = () => (
   <AppProviders>
@@ -26,6 +27,7 @@ const App = () => (
         <Route path="/trade" element={<Trade />} />
         <Route path="/debug/:chatid" element={<Debug />} />
         <Route path="/logs" element={<Logs />} />
+        <Route path="/admin" element={<Admin />} />
 
         {/* Routes outside the layout, like a 404 page, won't have the sidebar */}
         <Route path="*" element={<NotFound />} />
