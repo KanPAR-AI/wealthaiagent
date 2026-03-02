@@ -8,7 +8,9 @@ import {
   PromptInputTextarea,
 } from "@/components/ui/prompt-input";
 import { getApiUrl } from "@/config/environment";
-import { useJwtToken } from "@/hooks/use-jwt-token";
+import { useAuth } from "@/hooks/use-auth";
+import { useAuthStore } from "@/store/auth";
+import { SignInWall } from "@/components/auth/sign-in-wall";
 import { useCachedFile } from "@/hooks/use-cached-file";
 import { MessageFile } from "@/types"; // Import MessageFile
 import { ArrowUp, Mic, MicOff, Paperclip, Square, X, Loader2, FileText } from "lucide-react";
@@ -28,7 +30,7 @@ export interface PromptInputRef {
 
 // Component to show file preview with loading state
 function FilePreviewItem({ file, onRemove, isUploading }: { file: MessageFile; onRemove: () => void; isUploading: boolean }) {
-  const { token } = useJwtToken();
+  const { idToken: token } = useAuth();
   const { blobUrl, isLoading, error } = useCachedFile(file, token);
 
   const isImage = file.type?.startsWith('image/');
@@ -105,7 +107,9 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
 
-    const { token } = useJwtToken();
+    const { idToken: token, isAnonymous } = useAuth();
+    const incrementAnonymousMessageCount = useAuthStore(s => s.incrementAnonymousMessageCount);
+    const [showSignInWall, setShowSignInWall] = useState(false);
 
     // Expose methods to parent component
     useImperativeHandle(ref, () => ({
@@ -134,6 +138,14 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
   const handleSubmitInternal = (): void => {
     // Ensure there's either text or at least one file before submitting
     if (input.trim() || uploadedFiles.length > 0) {
+      // Anonymous users get 3 free messages, then must sign in
+      if (isAnonymous) {
+        const count = incrementAnonymousMessageCount();
+        if (count > 3) {
+          setShowSignInWall(true);
+          return;
+        }
+      }
       onSubmit(input.trim(), uploadedFiles, useMockService); // Pass mock service flag
     }
   };
@@ -309,6 +321,7 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
 
   return (
     <div className="w-full max-w-full overflow-hidden">
+      <SignInWall open={showSignInWall} onOpenChange={setShowSignInWall} />
       <PromptInput
         value={input}
         onValueChange={setInput}

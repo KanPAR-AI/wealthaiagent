@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { RefreshCw, ArrowLeft, Loader2, Copy, Check, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getApiUrl } from '@/config/environment';
-import { getStoredJwtToken } from '@/utils/jwt-storage';
+import { auth } from '@/config/firebase';
 
 interface SlotSchema {
   label: string;
@@ -42,7 +42,7 @@ const Debug: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const token = getStoredJwtToken();
+      const token = await auth.currentUser?.getIdToken();
       const response = await fetch(
         getApiUrl(`/chats/${chatid}/slots?domain=real_estate`),
         { headers: { Authorization: `Bearer ${token}` } }
@@ -75,7 +75,7 @@ const Debug: React.FC = () => {
     if (!chatid || !confirm('Clear all slots for this chat? This resets to defaults.')) return;
     setClearing(true);
     try {
-      const token = getStoredJwtToken();
+      const token = await auth.currentUser?.getIdToken();
       const response = await fetch(
         getApiUrl(`/chats/${chatid}/slots?domain=real_estate`),
         { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }

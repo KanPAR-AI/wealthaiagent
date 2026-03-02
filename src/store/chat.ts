@@ -2,32 +2,6 @@
 
 import { create } from 'zustand';
 import { Message, MessageFile } from '@/types'; // Import from local types
-import { getStoredJwtToken } from '@/utils/jwt-storage';
-
-// --- Auth State Management ---
-interface AuthState {
-  token: string | null;
-  tokenError: string | null;
-  isLoadingToken: boolean;
-  setToken: (token: string | null) => void;
-  setTokenError: (error: string | null) => void;
-  setIsLoadingToken: (loading: boolean) => void;
-}
-
-
-export const useAuthStore = create<AuthState>((set) => {
-  // Initialize with stored token if available
-  const storedToken = getStoredJwtToken();
-  
-  return {
-    token: storedToken, // Initialize with stored token or null
-    tokenError: null,
-    isLoadingToken: !storedToken, // Only loading if no stored token
-    setToken: (token) => set({ token, tokenError: null, isLoadingToken: false }),
-    setTokenError: (error) => set({ tokenError: error, token: null, isLoadingToken: false }),
-    setIsLoadingToken: (loading) => set({ isLoadingToken: loading }),
-  };
-});
 
 // --- Chat State Management ---
 interface ChatState {

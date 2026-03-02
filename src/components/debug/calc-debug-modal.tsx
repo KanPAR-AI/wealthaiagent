@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Copy, Check, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { getApiUrl } from '@/config/environment';
-import { getStoredJwtToken } from '@/utils/jwt-storage';
+import { auth } from '@/config/firebase';
 
 interface CalcDebugModalProps {
   chatId: string | null;
@@ -29,7 +29,7 @@ const CalcDebugModal: React.FC<CalcDebugModalProps> = ({ chatId, isOpen, onClose
     setError(null);
 
     try {
-      const token = getStoredJwtToken();
+      const token = await auth.currentUser?.getIdToken();
       const response = await fetch(getApiUrl(`/chats/${chatId}/debug`), {
         headers: {
           'Authorization': `Bearer ${token}`,

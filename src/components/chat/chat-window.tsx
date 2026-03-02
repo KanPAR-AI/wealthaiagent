@@ -7,7 +7,7 @@ import { ChatMessageList } from '@/components/chat/message-list';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChatMessages } from '@/hooks/use-chat-messages';
 import { useChatSession } from '@/hooks/use-chat-session';
-import { useJwtToken } from '@/hooks/use-jwt-token';
+import { useAuth } from '@/hooks/use-auth';
 import { useMessageActions } from '@/hooks/use-message-actions';
 import { useChatStore } from '@/store/chat';
 import { ChatWindowProps, MessageFile, SuggestionTileData } from '@/types';
@@ -69,7 +69,7 @@ export default function ChatWindow({
   className = '',
   contextPrompt,
 }: ChatWindowProps) {
-  const { token, isLoadingToken, tokenError } = useJwtToken();
+  const { idToken: token, isAuthLoading: isLoadingToken } = useAuth();
   const { isFirstMessage } = useChatSession(chatId);
   const { messages, addMessage, updateMessage, clearMessages } = useChatMessages(chatId || '');
   const _navigate = useNavigate();
@@ -239,14 +239,6 @@ export default function ChatWindow({
     { icon: ThumbsUp as React.FC<React.SVGProps<SVGSVGElement>>, type: "Like", action: handleLike },
     { icon: ThumbsDown as React.FC<React.SVGProps<SVGSVGElement>>, type: "Dislike", action: handleDislike },
   ];
-
-  if (tokenError) {
-    return (
-      <div className="flex items-center justify-center h-full text-red-500">
-        Authentication Error: {tokenError}. Please refresh or try again later.
-      </div>
-    );
-  }
 
   if (isLoadingToken) {
     return (

@@ -1,5 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
-import { useChatStore, useAuthStore } from '../chat';
+import { useChatStore } from '../chat';
 import { Message } from '@/types/chat';
 
 describe('Chat Store', () => {
@@ -8,54 +8,6 @@ describe('Chat Store', () => {
     useChatStore.setState({
       chats: {},
       pendingMessage: null
-    });
-    
-    useAuthStore.setState({
-      token: null,
-      tokenError: null,
-      isLoadingToken: true
-    });
-  });
-
-  describe('Auth Store', () => {
-    it('should set token correctly', () => {
-      const { result } = renderHook(() => useAuthStore());
-
-      act(() => {
-        result.current.setToken('test-token-123');
-      });
-
-      expect(result.current.token).toBe('test-token-123');
-      expect(result.current.tokenError).toBeNull();
-      expect(result.current.isLoadingToken).toBe(false);
-    });
-
-    it('should set token error correctly', () => {
-      const { result } = renderHook(() => useAuthStore());
-
-      act(() => {
-        result.current.setTokenError('Authentication failed');
-      });
-
-      expect(result.current.token).toBeNull();
-      expect(result.current.tokenError).toBe('Authentication failed');
-      expect(result.current.isLoadingToken).toBe(false);
-    });
-
-    it('should set loading state correctly', () => {
-      const { result } = renderHook(() => useAuthStore());
-
-      act(() => {
-        result.current.setIsLoadingToken(true);
-      });
-
-      expect(result.current.isLoadingToken).toBe(true);
-
-      act(() => {
-        result.current.setIsLoadingToken(false);
-      });
-
-      expect(result.current.isLoadingToken).toBe(false);
     });
   });
 

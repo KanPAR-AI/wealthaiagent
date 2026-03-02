@@ -51,8 +51,8 @@ npm run deploy:gcp         # Deploy to Google Cloud Platform
 ### Key Directories
 - `src/components/chat/` - Chat interface components (message list, input, actions)
 - `src/components/ui/` - Reusable UI primitives (shadcn-style with Radix UI)
-- `src/store/` - Zustand stores (chat.ts for messages/sessions, auth.ts for JWT)
-- `src/hooks/` - Custom React hooks for shared logic
+- `src/store/` - Zustand stores (chat.ts for messages/sessions, auth.ts for Firebase auth state)
+- `src/hooks/` - Custom React hooks for shared logic (use-auth.ts is the primary auth hook)
 - `src/services/` - API service layer and business logic
 - `src/types/` - TypeScript type definitions
 - `src/test/` - Test utilities and MSW handlers
@@ -66,14 +66,18 @@ The application uses Zustand with two main stores:
    - File attachments with cleanup
 
 2. **useAuthStore** (`src/store/auth.ts`):
-   - JWT token management
-   - Authentication state
+   - Firebase auth state (firebaseUser, AppUser, idToken)
+   - Anonymous message counter (backed by localStorage)
+   - Admin status tracking
 
 ### Routing Structure
 React Router v7 with AppLayout wrapper:
-- `/` - Home/landing page
+- `/` - Login page (Google / Email+Password / "Continue without signing in")
 - `/new` - Start new chat
-- `/chat/:chatid` - Existing chat session
+- `/chat` or `/chat/:chatid` - Chat interface
+- `/admin` - Admin portal (`<ProtectedRoute requireAdmin>` — 403 for non-admins)
+- `/trade` - Trade page
+- `/debug/:chatid` - Slot debug page
 - `/logs` - Debug/activity logs
 - Base path: `/chataiagent/` for all routes
 
@@ -123,11 +127,138 @@ The `ChatHeader` (`src/components/chat/chat-header.tsx`) contains:
 3. **Attachments**: Stored as `MessageFile[]` with `{name, type, url, size}`
 
 ### Key Implementation Details
-- **Authentication**: All API calls include JWT in Authorization header
+- **Authentication**: All API calls include Firebase ID token in `Authorization: Bearer <token>` header
 - **Optimistic Updates**: UI updates immediately for favorites, then syncs with backend
 - **Memory Management**: Blob URLs cleaned up via `URL.revokeObjectURL()`
 - **Error Handling**: SSE streams handle reconnection and error states
 - **Pending Messages**: Stored in Zustand for new chat creation flow
+
+## Authentication & Authorization
+
+### Architecture Overview
+
+```
+Browser                              Backend (FastAPI)
+──────                              ────────────────
+Firebase Auth SDK                    firebase-admin SDK
+  ↓ signInAnonymously() on first visit
+  ↓ or signInWithPopup(Google) / signInWithEmail
+  ↓ getIdToken() → Firebase JWT
+  ↓
+Authorization: Bearer <firebase-id-token>
+  ──────────────────────────────────→  auth.verify_id_token()
+                                       ↓ extract uid, email, provider
+                                       ↓ check admin_config/admin_users
+                                       ↓ upsert users/{uid} in Firestore
+                                       ↓ return User(is_admin, is_anonymous)
+  ←──────────────────────────────────  response
+```
+
+### User Tiers
+
+| Tier | How | Limits | Admin Link | /admin Access |
+|------|-----|--------|------------|---------------|
+| **Anonymous** | Auto sign-in on first visit | 3 messages, then sign-in wall | Hidden | 403 |
+| **Signed-in** | Google or Email/Password | Unlimited | Hidden | 403 |
+| **Admin** | Email in Firestore allowlist | Unlimited | Visible in sidebar | Full access |
+
+### Key Auth Files
+
+**Frontend:**
+| File | Role |
+|------|------|
+| `src/config/firebase.ts` | Firebase SDK init (API key, project ID from env vars) |
+| `src/store/auth.ts` | Zustand store: `AppUser`, `idToken`, `isAuthLoading`, `anonymousMessageCount` |
+| `src/components/providers/auth-provider.tsx` | `onAuthStateChanged` listener → auto anonymous → fetch `/auth/me` |
+| `src/hooks/use-auth.ts` | Primary auth hook: `idToken`, `isSignedIn`, `isAdmin`, `getToken()`, sign-in/out actions |
+| `src/components/auth/protected-route.tsx` | Route guard: 403 page if `requireAdmin && !isAdmin` |
+| `src/components/auth/sign-in-wall.tsx` | Dialog shown after 3 anonymous messages |
+| `src/pages/Login.tsx` | Login page: Google button, Email/Password form, "Continue without signing in" |
+
+**Backend (chatservice):**
+| File | Role |
+|------|------|
+| `core/firebase.py` | Firebase Admin SDK init + `verify_firebase_token()` |
+| `security/auth.py` | `get_current_user()`: Firebase verify → legacy JWT fallback → `get_admin_user()` |
+| `services/admin_allowlist.py` | Email allowlist check (5-min cache) from Firestore `admin_config/admin_users` |
+| `services/user_profile_service.py` | Upsert `users/{uid}` on login |
+| `models/user.py` | `User` model: `is_anonymous`, `is_admin`, `provider`, `photo_url` |
+
+### Admin Allowlist (Firestore)
+
+Admin emails are stored in Firestore document `admin_config/admin_users`:
+```json
+{ "emails": ["ravi@yourfinadvisor.com", "ravipradeep@gmail.com"] }
+```
+
+To add a new admin: add their email to this array in Firestore Console.
+
+### Environment Variables
+
+```bash
+# .env.local (frontend)
+VITE_FIREBASE_API_KEY=AIzaSyBaV0-...
+VITE_FIREBASE_AUTH_DOMAIN=aiagentapi.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=aiagentapi
+VITE_FIREBASE_STORAGE_BUCKET=aiagentapi.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=388592327571
+VITE_FIREBASE_APP_ID=1:388592327571:web:9b928ed2deb914ca35e666
+```
+
+### Firebase Console Setup (One-time)
+
+1. Go to [Firebase Console](https://console.firebase.google.com/project/aiagentapi/authentication/providers)
+2. Enable sign-in methods: **Google**, **Email/Password**, **Anonymous**
+3. Add authorized domains: `localhost`, `chat.yourfinadvisor.com`
+
+### Local Dev Testing
+
+**With SKIP_AUTH=true (no Firebase needed):**
+The backend `security/auth.py` has a `SKIP_AUTH` escape hatch. When `SKIP_AUTH=true` in the chatservice environment, all requests are authenticated as a test admin user. This is the default for Docker development.
+
+```bash
+# Backend already runs with SKIP_AUTH=true in docker-compose
+docker compose up --build
+
+# Frontend will auto-sign-in anonymously via Firebase (requires Firebase Console setup)
+# OR: if Firebase Auth isn't enabled yet, the frontend falls back gracefully
+npm run dev
+```
+
+**With Firebase Auth (full flow):**
+1. Enable auth methods in Firebase Console (see above)
+2. Start backend: `cd chatservice && docker compose up --build`
+3. Start frontend: `cd wealthaiagent && npm run dev`
+4. Visit `http://localhost:5173/chataiagent/`
+5. Test flows:
+   - **Anonymous**: Click "Continue without signing in" → send 3 messages → sign-in wall appears
+   - **Google**: Click "Continue with Google" → Google popup → redirected to /chat
+   - **Email**: Enter email/password → "Create Account" or "Sign In"
+   - **Admin**: Sign in with admin email → Admin Portal link visible in sidebar → /admin loads
+
+### Production Testing
+
+```bash
+# Verify backend auth endpoint
+TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=test_username" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+# Check user info
+curl http://localhost:8080/api/v1/auth/me -H "Authorization: Bearer $TOKEN"
+
+# Verify admin endpoints require admin
+curl http://localhost:8080/api/v1/admin/agents -H "Authorization: Bearer $TOKEN"
+```
+
+### Legacy Compatibility
+
+The backend supports **both** Firebase ID tokens and legacy JWT tokens:
+1. First tries Firebase `auth.verify_id_token()`
+2. Falls back to legacy `jose.jwt.decode()` with `JWT_SECRET_KEY`
+3. `SKIP_AUTH=true` bypasses all verification (dev/CI only)
+
+This ensures existing test tokens work during migration.
 
 ## Important Notes
 

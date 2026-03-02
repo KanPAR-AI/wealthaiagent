@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTradeStore } from '@/store/trade';
 import { useChatStore } from '@/store/chat';
-import { useJwtToken } from '@/hooks/use-jwt-token';
+import { useAuth } from '@/hooks/use-auth';
 import { createChatSession } from '@/services/chat-service';
 import { Recommendation } from '@/types/trade';
 import { MessageFile } from '@/types';
@@ -231,7 +231,7 @@ export default function Trade() {
   const [chatId, setChatId] = useState<string | null>(null);
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const setPendingMessage = useChatStore(state => state.setPendingMessage);
-  const { token, isLoadingToken } = useJwtToken();
+  const { idToken: token, isAuthLoading: isLoadingToken } = useAuth();
   const { theme, setTheme } = useTheme();
 
   // Enforce dark mode on this page

@@ -1,5 +1,5 @@
 // components/chat/file-preview-modal.tsx
-import { useJwtToken } from '@/hooks/use-jwt-token';
+import { useAuth } from '@/hooks/use-auth';
 import { useCachedFile } from '@/hooks/use-cached-file';
 import { MessageFile } from '@/types';
 import { X, Loader2 } from 'lucide-react';
@@ -16,7 +16,7 @@ export function FilePreviewModal({
   onClose,
   file,
 }: FilePreviewModalProps): JSX.Element | null {
-  const { token } = useJwtToken();
+  const { idToken: token } = useAuth();
   const { blobUrl, isLoading, error } = useCachedFile(file, token);
 
   if (!isOpen || !file || !token) return null;

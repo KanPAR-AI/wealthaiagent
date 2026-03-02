@@ -2,11 +2,11 @@
 import { listenToChatStream, sendChatMessage } from '@/services/chat-service';
 import { useState } from 'react';
 import { useChatMessages } from './use-chat-messages';
-import { useJwtToken } from './use-jwt-token';
+import { useAuth } from './use-auth';
 
 export const useMessageActions = (chatId: string) => {
   const { messages, updateMessage } = useChatMessages(chatId);
-  const { token } = useJwtToken();
+  const { idToken: token } = useAuth();
   const [isRegenerating, setIsRegenerating] = useState(false);
 
   const handleCopy = (messageId: string) => {

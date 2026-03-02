@@ -2,9 +2,10 @@
 // API service for admin portal endpoints
 
 import { getApiUrl } from "@/config/environment";
+import { auth } from "@/config/firebase";
 
 async function adminFetch(endpoint: string, options: RequestInit = {}) {
-  const token = localStorage.getItem("jwt_token");
+  const token = await auth.currentUser?.getIdToken();
   const url = getApiUrl(`/admin${endpoint}`);
 
   const res = await fetch(url, {

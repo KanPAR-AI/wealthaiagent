@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useJwtToken } from "@/hooks/use-jwt-token";
+import { useAuth } from "@/hooks/use-auth";
 import { getApiUrl } from "@/config/environment"; // Assuming the function is in 'lib/utils'
 import { Button } from "@/components/ui/button";
 import {
@@ -75,7 +75,7 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
   const [error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
-  const { token } = useJwtToken();
+  const { idToken: token, user, isAdmin, isSignedIn, signOut } = useAuth();
 
   // --- Data Fetching ---
   useEffect(() => {
@@ -308,35 +308,70 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
       <SidebarFooter className="mt-auto flex-shrink-0">
         <SidebarSeparator />
         <SidebarMenu>
+          {isAdmin && (
+            <>
+              <SidebarMenuItem>
+                <Link to="/admin" className="w-full">
+                  <SidebarMenuButton tooltip="Admin Portal">
+                    <Settings size={16} className="flex-shrink-0" />
+                    <span className="truncate">Admin Portal</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <a
+                  href="https://evals-dashboard-k5hhhgwp6a-uc.a.run.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full"
+                >
+                  <SidebarMenuButton tooltip="Evals Dashboard">
+                    <BarChart3 size={16} className="flex-shrink-0" />
+                    <span className="truncate">Evals Dashboard</span>
+                  </SidebarMenuButton>
+                </a>
+              </SidebarMenuItem>
+            </>
+          )}
           <SidebarMenuItem>
-            <Link to="/admin" className="w-full">
-              <SidebarMenuButton tooltip="Admin Portal">
-                <Settings size={16} className="flex-shrink-0" />
-                <span className="truncate">Admin Portal</span>
-              </SidebarMenuButton>
-            </Link>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <a
-              href="https://evals-dashboard-k5hhhgwp6a-uc.a.run.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full"
-            >
-              <SidebarMenuButton tooltip="Evals Dashboard">
-                <BarChart3 size={16} className="flex-shrink-0" />
-                <span className="truncate">Evals Dashboard</span>
-              </SidebarMenuButton>
-            </a>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <div className="flex items-center p-2 w-full">
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <span className="text-xs font-medium">U</span>
+            <div className="flex items-center justify-between p-2 w-full">
+              <div className="flex items-center min-w-0">
+                {user?.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName || "User"}
+                    className="w-8 h-8 rounded-full flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-medium">
+                      {user?.displayName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "?"}
+                    </span>
+                  </div>
+                )}
+                <span className="text-sm ml-2 truncate group-data-[collapsible=icon]:hidden">
+                  {user?.displayName || user?.email || (user?.isAnonymous ? "Guest" : "User")}
+                </span>
               </div>
-              <span className="text-sm ml-2 truncate group-data-[collapsible=icon]:hidden">
-                User
-              </span>
+              {isSignedIn ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs group-data-[collapsible=icon]:hidden flex-shrink-0"
+                  onClick={() => { signOut(); navigate("/"); }}
+                >
+                  Sign out
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs group-data-[collapsible=icon]:hidden flex-shrink-0"
+                  onClick={() => navigate("/")}
+                >
+                  Sign in
+                </Button>
+              )}
             </div>
           </SidebarMenuItem>
         </SidebarMenu>

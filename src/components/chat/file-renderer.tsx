@@ -5,7 +5,7 @@ import { Download, FileText, Maximize, TriangleAlert } from 'lucide-react';
 import React, { JSX, useEffect, useState } from 'react';
 import { fetchFileWithToken } from '@/services/chat-service';
 import { Loader2 } from 'lucide-react';
-import { useJwtToken } from '@/hooks/use-jwt-token';
+import { useAuth } from '@/hooks/use-auth';
 import { useCachedFile } from '@/hooks/use-cached-file';
 
 interface FileRendererProps {
@@ -15,7 +15,7 @@ interface FileRendererProps {
 
 // --- Image Preview ---
 function ImagePreview({ file, onFileClick }: FileRendererProps) {
-    const { token } = useJwtToken();
+    const { idToken: token } = useAuth();
     const { blobUrl, isLoading, error } = useCachedFile(file, token);
   
     if (error || !blobUrl) {
@@ -56,7 +56,7 @@ function ImagePreview({ file, onFileClick }: FileRendererProps) {
 
 // --- PDF Preview ---
 function PdfPreview({ file }: { file: MessageFile }) {
-  const { token } = useJwtToken();
+  const { idToken: token } = useAuth();
   const { blobUrl, isLoading, error } = useCachedFile(file, token);
 
   if (error || !blobUrl) {
@@ -89,7 +89,7 @@ function PdfPreview({ file }: { file: MessageFile }) {
 
 // --- Fallback for other files ---
 function GenericFile({ file }: { file: MessageFile }) {
-  const { token } = useJwtToken();
+  const { idToken: token } = useAuth();
 
   const secureUrl = token
     ? `${file.url}?token=${encodeURIComponent(token)}`
@@ -272,7 +272,7 @@ async function detectFileTypeFromBlob(blob: Blob): Promise<string> {
 function DynamicFileRenderer({ file, onFileClick }: FileRendererProps) {
   const [detectedType, setDetectedType] = useState<string>(file.type);
   const [isDetecting, setIsDetecting] = useState(false);
-  const { token } = useJwtToken();
+  const { idToken: token } = useAuth();
   const { blobUrl, isLoading, error } = useCachedFile(file, token);
 
   useEffect(() => {
