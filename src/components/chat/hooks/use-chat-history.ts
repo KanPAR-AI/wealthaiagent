@@ -75,64 +75,62 @@ export function useChatHistory({
       // Don't load history if we already have messages (from pending message or previous load)
       if (storeMessageCount > 0) {
         console.log("[useChatHistory] Skipping - already have", storeMessageCount, "messages in store");
-        // Mark as loaded so we don't try again
         loadedChatsRef.current.add(chatId);
+        setIsHistoryLoading(false);
         return;
       }
-      
+
       // Don't reload history for a chat we've already loaded
       if (loadedChatsRef.current.has(chatId)) {
         console.log("[useChatHistory] Skipping - history already loaded for chatId:", chatId);
+        setIsHistoryLoading(false);
         return;
       }
       
       console.log("[useChatHistory] Starting to load chat history for chatId:", chatId);
-  
+
       try {
-        // First, try to load from IndexedDB cache
-        const cachedMessages = await messagesRepository.getByChatId(chatId, {
-          orderDirection: 'asc',
-        });
-        
-        console.log(`[useChatHistory] Found ${cachedMessages.length} messages in IndexedDB cache`);
-        
-        // Check if cached messages are fresh
-        const hasCachedMessages = cachedMessages.length > 0;
-        const allFresh = hasCachedMessages && cachedMessages.every(msg => isFresh(msg));
-        const anyStale = hasCachedMessages && cachedMessages.some(msg => isStale(msg));
-        
-        if (hasCachedMessages && allFresh) {
-          // Use cached messages immediately (instant load!)
-          console.log("[useChatHistory] Using fresh cached messages from IndexedDB");
-          setIsHistoryLoading(true);
-          clearMessages();
-          
-          // Convert to UI format and add to store
-          const uiMessages = messagesRepository.toUIMessageTypes(cachedMessages);
-          uiMessages.forEach((m) => addMessage(m));
-          
-          loadedChatsRef.current.add(chatId);
-          setIsHistoryLoading(false);
-          return; // Don't fetch from backend
+        // Start backend fetch immediately (don't wait for IndexedDB)
+        const backendPromise = fetchChatHistory(token, chatId);
+
+        // Try IndexedDB cache in parallel
+        let anyStale = false;
+        try {
+          const cachedMessages = await messagesRepository.getByChatId(chatId, {
+            orderDirection: 'asc',
+          });
+
+          console.log(`[useChatHistory] Found ${cachedMessages.length} messages in IndexedDB cache`);
+
+          const hasCachedMessages = cachedMessages.length > 0;
+          const allFresh = hasCachedMessages && cachedMessages.every(msg => isFresh(msg));
+          anyStale = hasCachedMessages && cachedMessages.some(msg => isStale(msg));
+
+          if (hasCachedMessages && allFresh) {
+            console.log("[useChatHistory] Using fresh cached messages from IndexedDB");
+            clearMessages();
+            const uiMessages = messagesRepository.toUIMessageTypes(cachedMessages);
+            uiMessages.forEach((m) => addMessage(m));
+            loadedChatsRef.current.add(chatId);
+            setIsHistoryLoading(false);
+            return; // Don't wait for backend
+          }
+
+          if (hasCachedMessages && anyStale) {
+            console.log("[useChatHistory] Using stale cached messages, backend fetch in progress");
+            clearMessages();
+            const uiMessages = messagesRepository.toUIMessageTypes(cachedMessages);
+            uiMessages.forEach((m) => addMessage(m));
+            setIsHistoryLoading(false);
+            // Continue to await backend below
+          }
+        } catch (cacheErr) {
+          console.warn("[useChatHistory] IndexedDB cache failed, waiting for backend:", cacheErr);
         }
-        
-        if (hasCachedMessages && anyStale) {
-          // Use cached messages but refetch in background
-          console.log("[useChatHistory] Using stale cached messages, will refetch in background");
-          setIsHistoryLoading(true);
-          clearMessages();
-          
-          // Show cached messages immediately
-          const uiMessages = messagesRepository.toUIMessageTypes(cachedMessages);
-          uiMessages.forEach((m) => addMessage(m));
-          
-          setIsHistoryLoading(false);
-          // Continue to fetch from backend below to update cache
-        }
-        
-        // Fetch from backend (cache miss or stale data)
-        console.log("[useChatHistory] Fetching chat history from backend");
-        const chatResponse = await fetchChatHistory(token, chatId);
+
+        // Await backend (already started above)
+        console.log("[useChatHistory] Waiting for backend response");
+        const chatResponse = await backendPromise;
   
         const loadedMessages: Message[] = chatResponse.messages.map((msg) => {
           const files: MessageFile[] = (msg.attachments || []).map((att: any) => {
