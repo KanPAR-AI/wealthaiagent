@@ -30,8 +30,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: data.email,
               displayName: data.displayName,
               photoURL: data.photoURL,
-              isAnonymous: data.isAnonymous,
-              isAdmin: data.isAdmin,
+              // Trust Firebase's isAnonymous (backend SKIP_AUTH returns false for all)
+              isAnonymous: firebaseUser.isAnonymous || data.isAnonymous,
+              isAdmin: firebaseUser.isAnonymous ? false : data.isAdmin,
             });
           } else {
             // Backend rejected — set basic user from Firebase
