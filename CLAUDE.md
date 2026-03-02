@@ -72,7 +72,7 @@ The application uses Zustand with two main stores:
 
 ### Routing Structure
 React Router v7 with AppLayout wrapper:
-- `/` - Login page (Google / Email+Password / "Continue without signing in")
+- `/` - Login page (Google / Phone OTP / Email+Password / "Continue without signing in")
 - `/new` - Start new chat
 - `/chat` or `/chat/:chatid` - Chat interface
 - `/admin` - Admin portal (`<ProtectedRoute requireAdmin>` — 403 for non-admins)
@@ -142,7 +142,7 @@ Browser                              Backend (FastAPI)
 ──────                              ────────────────
 Firebase Auth SDK                    firebase-admin SDK
   ↓ signInAnonymously() on first visit
-  ↓ or signInWithPopup(Google) / signInWithEmail
+  ↓ or signInWithPopup(Google) / signInWithEmail / signInWithPhoneNumber(OTP)
   ↓ getIdToken() → Firebase JWT
   ↓
 Authorization: Bearer <firebase-id-token>
@@ -159,7 +159,7 @@ Authorization: Bearer <firebase-id-token>
 | Tier | How | Limits | Admin Link | /admin Access |
 |------|-----|--------|------------|---------------|
 | **Anonymous** | Auto sign-in on first visit | 3 messages, then sign-in wall | Hidden | 403 |
-| **Signed-in** | Google or Email/Password | Unlimited | Hidden | 403 |
+| **Signed-in** | Google / Email+Password / Phone OTP | Unlimited | Hidden | 403 |
 | **Admin** | Email in Firestore allowlist | Unlimited | Visible in sidebar | Full access |
 
 ### Key Auth Files
@@ -173,7 +173,7 @@ Authorization: Bearer <firebase-id-token>
 | `src/hooks/use-auth.ts` | Primary auth hook: `idToken`, `isSignedIn`, `isAdmin`, `getToken()`, sign-in/out actions |
 | `src/components/auth/protected-route.tsx` | Route guard: 403 page if `requireAdmin && !isAdmin` |
 | `src/components/auth/sign-in-wall.tsx` | Dialog shown after 3 anonymous messages |
-| `src/pages/Login.tsx` | Login page: Google button, Email/Password form, "Continue without signing in" |
+| `src/pages/Login.tsx` | Login page: Google / Phone OTP / Email+Password, centered card UI |
 
 **Backend (chatservice):**
 | File | Role |
@@ -208,8 +208,9 @@ VITE_FIREBASE_APP_ID=1:388592327571:web:9b928ed2deb914ca35e666
 ### Firebase Console Setup (One-time)
 
 1. Go to [Firebase Console](https://console.firebase.google.com/project/aiagentapi/authentication/providers)
-2. Enable sign-in methods: **Google**, **Email/Password**, **Anonymous**
+2. Enable sign-in methods: **Google**, **Email/Password**, **Phone**, **Anonymous**
 3. Add authorized domains: `localhost`, `chat.yourfinadvisor.com`
+4. (Optional) Add test phone numbers: Phone → "Phone numbers for testing" (sends no real SMS)
 
 ### Local Dev Testing
 
@@ -259,6 +260,54 @@ The backend supports **both** Firebase ID tokens and legacy JWT tokens:
 3. `SKIP_AUTH=true` bypasses all verification (dev/CI only)
 
 This ensures existing test tokens work during migration.
+
+### Auth Debugging Guide
+
+**Blank page in production:**
+- Missing Firebase env vars in `.env.production` — Vite bakes them at build time
+- Check: `VITE_FIREBASE_API_KEY` must be set in `.env.production`
+- Verify build includes Firebase: `npm run build` should not error on `firebase/auth`
+
+**Login page not showing (auto-redirects to chat):**
+- `SKIP_AUTH=true` backend returns `isAnonymous: false` for anonymous users
+- AuthProvider trusts Firebase SDK's `isAnonymous` over backend (fixed in `auth-provider.tsx`)
+- Check: `firebaseUser.isAnonymous || data.isAnonymous` in AuthProvider
+
+**Google sign-in fails:**
+- Firebase Console → Authorized domains must include your domain
+- Check: `curl "https://identitytoolkit.googleapis.com/admin/v2/projects/aiagentapi/defaultSupportedIdpConfigs" -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "x-goog-user-project: aiagentapi"` → should show `google.com: ENABLED`
+
+**Phone OTP not sending:**
+- Requires Firebase Blaze plan (pay-as-you-go) for real SMS (~$0.01/SMS)
+- Use test phone numbers in Firebase Console for development (no SMS sent)
+- Check for `auth/too-many-requests` in console — Firebase rate-limits SMS
+- reCAPTCHA must initialize: check `<div id="recaptcha-container">` exists in DOM
+
+**Anonymous message limit not working:**
+- Counter stored in `localStorage` key `anonymous-message-count`
+- `useAuthStore.incrementAnonymousMessageCount()` returns new count
+- SignInWall shows when count > 3 (checked in `chat-input.tsx`)
+
+**Chat loads slowly (10+ seconds):**
+- Auth token must resolve before chat history loads (`use-chat-history.ts` waits for `token`)
+- IndexedDB cache check + backend fetch now run in parallel (not sequential)
+- Check Network tab: `/auth/me` should be <1s, `/chats/{id}` should be <3s
+
+**Check Firebase auth providers via API:**
+```bash
+# Anonymous sign-in test
+curl "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=YOUR_FIREBASE_API_KEY" \
+  -H "Content-Type: application/json" -d '{"returnSecureToken":true}'
+
+# Email/password sign-in test
+curl "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=YOUR_FIREBASE_API_KEY" \
+  -H "Content-Type: application/json" -d '{"email":"test@test.com","password":"TestPass123!","returnSecureToken":true}'
+
+# Check all enabled providers
+curl "https://identitytoolkit.googleapis.com/admin/v2/projects/aiagentapi/config" \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "x-goog-user-project: aiagentapi"
+```
 
 ## Important Notes
 
