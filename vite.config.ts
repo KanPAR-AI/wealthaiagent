@@ -5,12 +5,15 @@ import tailwindcss from '@tailwindcss/vite'
 import path from "path"
 import { VitePWA } from 'vite-plugin-pwa'
 
+const isCapacitor = process.env.VITE_CAPACITOR === 'true';
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    VitePWA({
+    // Skip PWA plugin for native Capacitor builds — service workers don't apply
+    ...(!isCapacitor ? [VitePWA({
       registerType: 'autoUpdate',
       workbox: {
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB — main bundle exceeds default 2 MB limit
@@ -61,9 +64,10 @@ export default defineConfig({
           }
         ]
       }
-    })
+    })] : []),
   ],
-  base: '/chataiagent/', // Ensures assets are pathed correctly for the subfolder
+  // Capacitor serves from '/', web deploys to '/chataiagent/' subfolder
+  base: isCapacitor ? '/' : '/chataiagent/',
   server:{
     allowedHosts: ["e597ac4441c7.ngrok-free.app"] // Remove or comment out for production builds
   },

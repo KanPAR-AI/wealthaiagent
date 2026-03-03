@@ -11,14 +11,17 @@ import PWAInstall from "./components/PWAInstall";
 import LoginPage from "./pages/Login";
 import Admin from "./pages/Admin";
 import { ProtectedRoute } from "@/components/auth/protected-route";
+import { isNativePlatform } from "@/lib/capacitor";
+
+const basename = isNativePlatform ? '/' : '/chataiagent';
 
 const App = () => (
   <AppProviders>
-    <BrowserRouter basename="/chataiagent">
+    <BrowserRouter basename={basename}>
       <Routes>
         {/* Login page as the first screen */}
         <Route path="/" element={<LoginPage />} />
-        
+
         {/* All routes inside AppLayout will have the persistent sidebar */}
         <Route element={<AppLayout />}>
           <Route path="/new" element={<New />} />
@@ -33,7 +36,7 @@ const App = () => (
         {/* Routes outside the layout, like a 404 page, won't have the sidebar */}
         <Route path="*" element={<NotFound />} />
       </Routes>
-      <PWAInstall />
+      {!isNativePlatform && <PWAInstall />}
     </BrowserRouter>
   </AppProviders>
 );

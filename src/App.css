@@ -2,6 +2,9 @@
   width: 100%;
   height: 100vh;
   height: 100dvh;
+  /* iOS safe areas: push content below notch/Dynamic Island and above home indicator */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @layer utilities {

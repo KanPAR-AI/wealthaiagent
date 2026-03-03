@@ -21,9 +21,19 @@
     "test:e2e": "npx playwright test",
     "test:e2e:headed": "npx playwright test --headed",
     "test:e2e:ui": "npx playwright test --ui",
-    "test:e2e:debug": "npx playwright test --debug"
+    "test:e2e:debug": "npx playwright test --debug",
+    "build:ios": "VITE_CAPACITOR=true VITE_API_BASE_URL=https://chatbackend.yourfinadvisor.com tsc -b && VITE_CAPACITOR=true VITE_API_BASE_URL=https://chatbackend.yourfinadvisor.com vite build",
+    "cap:sync": "npx cap sync ios",
+    "cap:open": "npx cap open ios",
+    "ios": "npm run build:ios && npm run cap:sync && npm run cap:open"
   },
   "dependencies": {
+    "@capacitor/app": "^8.0.1",
+    "@capacitor/core": "^8.1.0",
+    "@capacitor/ios": "^8.1.0",
+    "@capacitor/keyboard": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.1",
     "@radix-ui/react-avatar": "^1.1.7",
     "@radix-ui/react-dialog": "^1.1.11",
     "@radix-ui/react-dropdown-menu": "^2.1.12",
@@ -59,6 +69,7 @@
     "zustand": "^5.0.4"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.1.0",
     "@eslint/js": "^9.22.0",
     "@playwright/test": "^1.58.2",
     "@testing-library/dom": "^10.4.0",

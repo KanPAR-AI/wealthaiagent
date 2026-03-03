@@ -10,7 +10,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useAuthStore();
 
   useEffect(() => {
+    // Safety timeout: if auth doesn't resolve in 5s, stop loading
+    const timeout = setTimeout(() => {
+      setIsAuthLoading(false);
+    }, 5000);
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      clearTimeout(timeout);
       if (firebaseUser) {
         setFirebaseUser(firebaseUser);
 

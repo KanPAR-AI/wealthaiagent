@@ -1,6 +1,7 @@
 // config/firebase.ts
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, initializeAuth, browserLocalPersistence } from "firebase/auth";
+import { isNativePlatform } from "@/lib/capacitor";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,5 +13,12 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+
+// Capacitor WKWebView: use initializeAuth with localStorage persistence
+// to avoid IndexedDB issues that cause auth/internal-error.
+// Web: use getAuth which picks optimal defaults.
+export const auth = isNativePlatform
+  ? initializeAuth(app, { persistence: browserLocalPersistence })
+  : getAuth(app);
+
 export default app;
