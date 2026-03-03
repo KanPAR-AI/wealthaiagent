@@ -20,9 +20,9 @@ export function ChatHeader(): JSX.Element {
         <div className="flex items-center gap-2 overflow-hidden flex-1">
           <Logo />
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {chatid && (
-            <>
+            <div className="hidden sm:flex items-center gap-1">
               <Link to={`/debug/${chatid}`} title="Slot Debug" aria-label="Slot Debug">
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                   <SlidersHorizontal className="h-[1.2rem] w-[1.2rem]" />
@@ -40,18 +40,18 @@ export function ChatHeader(): JSX.Element {
                 <Calculator className="h-[1.2rem] w-[1.2rem]" />
                 <span className="sr-only">Calculation Data</span>
               </Button>
-            </>
+              <Link
+                to="/logs"
+                title="Debug Logs"
+                aria-label="Debug Logs"
+              >
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                  <Bug className="h-[1.2rem] w-[1.2rem]" />
+                  <span className="sr-only">Debug Logs</span>
+                </Button>
+              </Link>
+            </div>
           )}
-          <Link
-            to="/logs"
-            title="Debug Logs"
-            aria-label="Debug Logs"
-          >
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-              <Bug className="h-[1.2rem] w-[1.2rem]" />
-              <span className="sr-only">Debug Logs</span>
-            </Button>
-          </Link>
           <ModeToggle />
           <Link
             to="/new"

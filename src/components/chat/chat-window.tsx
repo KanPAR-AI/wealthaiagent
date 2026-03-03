@@ -262,18 +262,15 @@ export default function ChatWindow({
         onClose={() => setSelectedFile(null)}
         file={selectedFile}
       />
-      <div className={`flex flex-col ios-keyboard-fix bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
+      <div className={`flex flex-col h-full bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
         {messages.length === 0 && !isHistoryLoading ? (
           // Empty state with centered input
-          <div className="flex flex-col items-center justify-center h-full min-h-[80vh] px-4 md:px-6 space-y-8">
+          <div className="flex flex-col items-center justify-center flex-1 px-4 md:px-6 space-y-8">
             <div className="max-w-3xl mx-auto w-full space-y-8 min-w-0">
               <div className="flex flex-col items-center justify-center space-y-4 md:space-y-6">
                 <ChatEmptyState />
-                <div className="w-full max-w-md md:max-w-none">
-
-                </div>
               </div>
-              
+
                 {/* Centered input bar for empty state */}
                 <div className="w-full max-w-3xl mx-auto flex flex-col gap-4">
                   <PromptInputWithActions
@@ -292,10 +289,10 @@ export default function ChatWindow({
             </div>
           </div>
         ) : (
-          // Chat with messages - original layout
+          // Chat with messages - flex layout
           <>
-            <div className="h-full overflow-hidden pb-4 chat-content relative">
-              <ScrollArea ref={scrollAreaRef} className="h-[80vh]" type="scroll">
+            <div className="flex-1 min-h-0 overflow-hidden chat-content relative">
+              <ScrollArea ref={scrollAreaRef} className="h-full" type="scroll">
                 <div className="p-2 sm:p-4 md:p-6 space-y-4 sm:space-y-6 min-w-0">
                   <div className="max-w-3xl mx-auto w-full space-y-4 sm:space-y-8 min-w-0">
                     {isHistoryLoading ? (
@@ -314,16 +311,16 @@ export default function ChatWindow({
                     )}
                     {/* Conditionally render AiLoadingIndicator based on isSending AND NOT isNewChatInitiating */}
                     {(isSending || isRegenerating) && !isNewChatInitiating && <AiLoadingIndicator />}
-                    <div className="h-40 md:h-32" />
+                    <div className="h-8" />
                   </div>
                 </div>
               </ScrollArea>
-              
+
               {/* Scroll to Bottom Button */}
               {showScrollToBottom && (
                 <button
                   onClick={scrollToBottom}
-                  className="absolute bottom-20 left-1/2 transform -translate-x-1/2 bg-primary/70 text-primary-foreground hover:bg-primary/90 rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-105 z-10"
+                  className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-primary/70 text-primary-foreground hover:bg-primary/90 rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-105 z-10"
                   aria-label="Scroll to bottom"
                 >
                   <ChevronDown className="h-4 w-4" />
@@ -331,8 +328,8 @@ export default function ChatWindow({
               )}
             </div>
 
-            <div className="fixed sm:sticky bottom-0 left-0 right-0 bg-background dark:bg-zinc-800 border-t border-border/5 backdrop-blur-sm ios-input-container">
-              <div className="w-full sm:px-4 sm:pb-4">
+            <div className="flex-shrink-0 bg-background dark:bg-zinc-800 border-t border-border/5 ios-input-container">
+              <div className="w-full px-2 py-2 sm:px-4 sm:pb-4">
                 <div className="max-w-3xl mx-auto">
                   <PromptInputWithActions
                     onSubmit={handleSend}

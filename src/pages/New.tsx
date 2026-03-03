@@ -4,7 +4,7 @@ import ChatWindow from '@/components/chat/chat-window';
 
 function New() {
   return (
-    <div className="flex h-screen w-full overflow-hidden dark:bg-zinc-800">
+    <div className="flex h-full w-full overflow-hidden dark:bg-zinc-800">
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden w-full"> 
         <div className="flex-shrink-0 z-10 bg-background dark:bg-zinc-800 border-b border-border w-full">
           <ChatHeader />
