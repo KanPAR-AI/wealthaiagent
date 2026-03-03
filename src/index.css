@@ -157,6 +157,12 @@
   }
 }
 
+/* iOS: Contain scroll within chat area — prevent body scroll leak */
+.chat-content {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Chat bubble overflow prevention */
 .chat-bubble-content {
   word-break: break-word;

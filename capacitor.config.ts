@@ -7,19 +7,23 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'automatic',
     allowsLinkPreview: false,
+    scrollEnabled: false, // Prevent WKWebView from scrolling the entire page
   },
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
       showSpinner: false,
       backgroundColor: '#ffffff',
+      launchFadeOutDuration: 300,
     },
     StatusBar: {
       style: 'light',
+      overlaysWebView: false, // Prevent status bar from overlapping content
     },
     Keyboard: {
-      resize: 'ionic',
+      resize: 'native', // Use native resizing — 'ionic' only works with Ionic Framework
       resizeOnFullScreen: true,
+      style: 'light',
     },
   },
   // Uncomment for live reload during development:

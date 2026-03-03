@@ -1,5 +1,5 @@
 // components/chat/chat-window.tsx
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Copy, RefreshCcw, ThumbsDown, ThumbsUp, ChevronDown, Download } from "lucide-react";
 
@@ -24,6 +24,7 @@ import { useChatWindowState } from './hooks/use-chat-window-state';
 import { useChatHistory } from './hooks/use-chat-history';
 import { usePendingMessage } from './hooks/use-pending-message';
 import { useMessageSending } from './hooks/use-message-sending';
+import { useIOSKeyboard } from '@/hooks/use-ios-keyboard';
 
 const suggestionTiles: SuggestionTileData[] = [
   { 
@@ -73,6 +74,7 @@ export default function ChatWindow({
   const { isFirstMessage } = useChatSession(chatId);
   const { messages, addMessage, updateMessage, clearMessages } = useChatMessages(chatId || '');
   const _navigate = useNavigate();
+  const { isKeyboardOpen, keyboardHeight } = useIOSKeyboard();
 
   // Scroll to bottom functionality
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -216,6 +218,14 @@ export default function ChatWindow({
     }
   }, [lastUserMessageId, setLastUserMessageId]);
 
+  // When iOS keyboard opens, scroll to bottom so user can see latest messages
+  useEffect(() => {
+    if (isKeyboardOpen && messages.length > 0) {
+      const timeout = setTimeout(scrollToBottom, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [isKeyboardOpen, messages.length]);
+
   // Add scroll event listener
   useEffect(() => {
     const scrollViewport = document.querySelector('[data-radix-scroll-area-viewport]');
@@ -328,7 +338,16 @@ export default function ChatWindow({
               )}
             </div>
 
-            <div className="flex-shrink-0 bg-background dark:bg-zinc-800 border-t border-border/5 ios-input-container">
+            <div
+              className="flex-shrink-0 bg-background dark:bg-zinc-800 border-t border-border/5 ios-input-container"
+              style={{
+                // When the iOS keyboard is open, add bottom padding to keep the
+                // input bar above the keyboard. This works in conjunction with
+                // the Visual Viewport API in useIOSKeyboard.
+                paddingBottom: isKeyboardOpen ? `${keyboardHeight}px` : undefined,
+                transition: 'padding-bottom 0.1s ease-out',
+              }}
+            >
               <div className="w-full px-2 py-2 sm:px-4 sm:pb-4">
                 <div className="max-w-3xl mx-auto">
                   <PromptInputWithActions
