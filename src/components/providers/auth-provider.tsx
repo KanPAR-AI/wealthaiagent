@@ -26,10 +26,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (res.ok) {
             const data = await res.json();
             setUser({
-              uid: data.uid,
-              email: data.email,
-              displayName: data.displayName,
-              photoURL: data.photoURL,
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || data.email,
+              // Prefer Firebase's profile (has real Google name/photo)
+              displayName: firebaseUser.displayName || data.displayName,
+              photoURL: firebaseUser.photoURL || data.photoURL,
               // Trust Firebase's isAnonymous (backend SKIP_AUTH returns false for all)
               isAnonymous: firebaseUser.isAnonymous || data.isAnonymous,
               isAdmin: firebaseUser.isAnonymous ? false : data.isAdmin,
