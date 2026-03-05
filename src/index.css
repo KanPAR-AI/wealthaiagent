@@ -341,6 +341,15 @@
   }
 }
 
+/* Fix Radix ScrollArea internal wrapper causing horizontal overflow.
+   Radix renders: <viewport> → <div style="display:table; min-width:100%"> → content.
+   The display:table allows content to push wider than the viewport. */
+[data-radix-scroll-area-viewport] > div {
+  display: block !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
 /* Print styles — "Save as PDF" from browser print dialog */
 @media print {
   /* Hide everything except chat content */

@@ -303,7 +303,7 @@ export default function ChatWindow({
           <>
             <div className="flex-1 min-h-0 overflow-hidden chat-content relative">
               <ScrollArea ref={scrollAreaRef} className="h-full" type="scroll">
-                <div className="p-2 sm:p-4 md:p-6 space-y-4 sm:space-y-6 min-w-0">
+                <div className="p-3 pr-4 sm:p-4 md:p-6 space-y-4 sm:space-y-6 min-w-0 overflow-x-hidden">
                   <div className="max-w-3xl mx-auto w-full space-y-4 sm:space-y-8 min-w-0">
                     {isHistoryLoading ? (
                       <ChatLoadingSkeleton />
@@ -340,13 +340,6 @@ export default function ChatWindow({
 
             <div
               className="flex-shrink-0 bg-background dark:bg-zinc-800 border-t border-border/5 ios-input-container"
-              style={{
-                // When the iOS keyboard is open, add bottom padding to keep the
-                // input bar above the keyboard. This works in conjunction with
-                // the Visual Viewport API in useIOSKeyboard.
-                paddingBottom: isKeyboardOpen ? `${keyboardHeight}px` : undefined,
-                transition: 'padding-bottom 0.1s ease-out',
-              }}
             >
               <div className="w-full px-2 py-2 sm:px-4 sm:pb-4">
                 <div className="max-w-3xl mx-auto">

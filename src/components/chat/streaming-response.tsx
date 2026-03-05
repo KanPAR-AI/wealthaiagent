@@ -99,16 +99,35 @@ function formatStreamingContent(text: string): string {
 }
 
 /**
- * Convert a YouTube markdown link to an embedded iframe.
+ * Convert a YouTube markdown link to an embedded iframe (web) or
+ * a clickable thumbnail (native — iframes don't work in WKWebView).
  * Matches: [title](https://www.youtube.com/watch?v=ID&t=SS)
  */
 function youtubeMarkdownToEmbed(text: string): string {
+  const native = typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.();
   return text.replace(
     /\[([^\]]*)\]\((https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s)]*v=([a-zA-Z0-9_-]+)[^\s)]*|youtu\.be\/([a-zA-Z0-9_-]+)[^\s)]*))\)/g,
     (_match, title, fullUrl, vidId1, vidId2) => {
       const videoId = vidId1 || vidId2;
       if (!videoId) return _match;
-      // Extract ?t= or &t= parameter for start time
+
+      if (native) {
+        // Native: show thumbnail that opens YouTube app / Safari
+        const thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        return (
+          `<div class="youtube-embed my-3">` +
+          `<a href="${fullUrl}" target="_blank" rel="noopener noreferrer" style="display:block;position:relative;">` +
+          `<img src="${thumbUrl}" alt="${title}" style="width:100%;border-radius:8px;" />` +
+          `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64px;height:64px;background:rgba(0,0,0,0.7);border-radius:50%;display:flex;align-items:center;justify-content:center;">` +
+          `<svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>` +
+          `</div>` +
+          `</a>` +
+          `<div class="youtube-embed-caption"><a href="${fullUrl}" target="_blank" rel="noopener noreferrer">${title}</a></div>` +
+          `</div>`
+        );
+      }
+
+      // Web: use iframe embed
       const timeMatch = fullUrl.match(/[?&]t=(\d+)/);
       const start = timeMatch ? timeMatch[1] : '0';
       const embedUrl = `https://www.youtube.com/embed/${videoId}?start=${start}&rel=0`;
