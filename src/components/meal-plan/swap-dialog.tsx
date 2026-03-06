@@ -344,16 +344,29 @@ export function SwapDialog({
 
               {/* Compensation info */}
               {changeSummary.compensations.length > 0 && (
-                <div className="rounded-xl bg-muted/50 border border-border p-4">
-                  <p className="text-sm font-medium text-foreground mb-1">
-                    Plan Adjusted
+                <div className="rounded-xl bg-muted/50 border border-border p-4 space-y-2.5">
+                  <p className="text-sm font-medium text-foreground">
+                    Menu Adjusted
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    {changeSummary.compensations.length} meal{changeSummary.compensations.length > 1 ? "s" : ""} adjusted
-                    {" "}to keep your week on track.
-                    Portions {changeSummary.compensations[0].scale_factor < 1 ? "reduced" : "increased"} by{" "}
-                    {Math.abs(Math.round((1 - changeSummary.compensations[0].scale_factor) * 100))}%.
-                  </p>
+                  {changeSummary.compensations.map((comp, i) => (
+                    <div key={i} className="text-sm">
+                      <span className="text-xs font-medium text-primary uppercase tracking-wider">
+                        {comp.day_name}
+                      </span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-muted-foreground line-through text-xs">
+                          {comp.original_meal_name}
+                        </span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground flex-shrink-0"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        <span className="font-medium text-foreground text-xs">
+                          {comp.new_meal_name}
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {comp.original_calories} → {comp.new_calories} cal
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
 

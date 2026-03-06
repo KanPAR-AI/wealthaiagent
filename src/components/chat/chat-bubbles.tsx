@@ -2,7 +2,8 @@
 
 import { ActionIconDefinition, Message, MessageFile, UserInfo } from '@/types';
 import { motion } from 'framer-motion';
-import { JSX, useEffect } from 'react';
+import { JSX, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import StructuredContentRenderer from '../ui/structured-content-renderer'; // Assuming this component exists
 import { FileRenderer } from './file-renderer'; // Import the FileRenderer component
 import { StreamingResponse } from './streaming-response';
@@ -23,6 +24,8 @@ export function ChatBubble({
   actionIcons,
   onFileClick,
 }: ChatBubbleProps): JSX.Element {
+  const navigate = useNavigate();
+  const handleNavigate = useCallback((path: string) => navigate(path), [navigate]);
   const isUser = message.sender === 'user';
   // A message has content if it has text OR structured content OR files
   const _hasContent = message.message || message.structuredContent || (message.files && message.files.length > 0);
@@ -119,6 +122,7 @@ export function ChatBubble({
                           content={trimmed}
                           isStreaming={Boolean(message.isStreaming && index === message.contentBlocks!.length - 1)}
                           className="chat-bubble-content"
+                          onNavigate={handleNavigate}
                         />
                       ) : (
                         <div className="break-words overflow-wrap-anywhere min-w-0 overflow-x-auto chat-bubble-content">
@@ -172,6 +176,7 @@ export function ChatBubble({
                         content={message.streamingContent || message.message}
                         isStreaming={message.isStreaming || false}
                         className="chat-bubble-content"
+                        onNavigate={handleNavigate}
                       />
                     ) : (
                       <div className="break-words overflow-wrap-anywhere min-w-0 overflow-x-auto chat-bubble-content">

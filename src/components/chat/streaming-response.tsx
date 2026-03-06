@@ -8,6 +8,7 @@ interface StreamingResponseProps {
   content: string;
   isStreaming: boolean;
   className?: string;
+  onNavigate?: (path: string) => void;
 }
 
 // Blinking cursor during streaming
@@ -161,13 +162,13 @@ const StreamingTextRenderer = ({ content }: { content: string }) => (
   />
 );
 
-export const StreamingResponse = ({ content, isStreaming, className }: StreamingResponseProps) => {
+export const StreamingResponse = ({ content, isStreaming, className, onNavigate }: StreamingResponseProps) => {
   return (
     <div className={cn("break-words overflow-wrap-anywhere min-w-0 overflow-x-auto", className)}>
       {isStreaming ? (
         <StreamingTextRenderer content={content} />
       ) : (
-        <Response>
+        <Response onNavigate={onNavigate}>
           {content}
         </Response>
       )}

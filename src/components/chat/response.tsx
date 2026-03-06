@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import { memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -9,6 +10,7 @@ import rehypeRaw from 'rehype-raw';
 interface ResponseProps {
   children?: string;
   className?: string;
+  onNavigate?: (path: string) => void;
 }
 
 /** Collapse excessive blank lines to max one blank line */
@@ -49,40 +51,63 @@ function embedYouTubeLinks(text: string): string {
   );
 }
 
-/** Custom components for styled markdown rendering */
-const mdComponents: Components = {
-  table: ({ children, ...props }) => (
-    <div className="rounded-md border overflow-x-auto my-3">
-      <table className="w-full text-[11px] sm:text-sm" {...props}>{children}</table>
-    </div>
-  ),
-  thead: ({ children, ...props }) => (
-    <thead className="bg-muted/50" {...props}>{children}</thead>
-  ),
-  th: ({ children, ...props }) => (
-    <th className="h-7 sm:h-10 px-1.5 sm:px-3 text-left align-middle font-medium text-muted-foreground whitespace-nowrap" {...props}>{children}</th>
-  ),
-  td: ({ children, ...props }) => (
-    <td className="px-1.5 sm:px-3 py-1 sm:py-2 align-middle border-b whitespace-nowrap" {...props}>{children}</td>
-  ),
-  tr: ({ children, ...props }) => (
-    <tr className="border-b transition-colors hover:bg-muted/50" {...props}>{children}</tr>
-  ),
-  // Tighten paragraph spacing
-  p: ({ children, ...props }) => (
-    <p className="my-1" {...props}>{children}</p>
-  ),
-  // Non-YouTube links open in new tab
-  a: ({ href, children, ...props }) => (
-    <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
-  ),
-};
+/** Check if a URL is an internal app link (starts with / and matches known routes) */
+function isInternalLink(href: string | undefined): boolean {
+  if (!href) return false;
+  return /^\/(?:mealplan|chat|admin|trade|debug|logs)(?:\/|$)/.test(href);
+}
+
+/** Build markdown components, injecting an optional navigate handler for internal links */
+function buildMdComponents(onNavigate?: (path: string) => void): Components {
+  return {
+    table: ({ children, ...props }) => (
+      <div className="rounded-md border overflow-x-auto my-3">
+        <table className="w-full text-[11px] sm:text-sm" {...props}>{children}</table>
+      </div>
+    ),
+    thead: ({ children, ...props }) => (
+      <thead className="bg-muted/50" {...props}>{children}</thead>
+    ),
+    th: ({ children, ...props }) => (
+      <th className="h-7 sm:h-10 px-1.5 sm:px-3 text-left align-middle font-medium text-muted-foreground whitespace-nowrap" {...props}>{children}</th>
+    ),
+    td: ({ children, ...props }) => (
+      <td className="px-1.5 sm:px-3 py-1 sm:py-2 align-middle border-b whitespace-nowrap" {...props}>{children}</td>
+    ),
+    tr: ({ children, ...props }) => (
+      <tr className="border-b transition-colors hover:bg-muted/50" {...props}>{children}</tr>
+    ),
+    // Tighten paragraph spacing
+    p: ({ children, ...props }) => (
+      <p className="my-1" {...props}>{children}</p>
+    ),
+    // Internal links use client-side navigation; external links open in new tab
+    a: ({ href, children, ...props }) => {
+      if (isInternalLink(href) && onNavigate) {
+        return (
+          <a
+            href={href}
+            onClick={(e) => { e.preventDefault(); onNavigate(href!); }}
+            className="text-primary underline underline-offset-2 hover:text-primary/80 cursor-pointer"
+            {...props}
+          >
+            {children}
+          </a>
+        );
+      }
+      return (
+        <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
+      );
+    },
+  };
+}
 
 export const Response = memo(
-  ({ className, children }: ResponseProps) => {
+  ({ className, children, onNavigate }: ResponseProps) => {
     const raw = typeof children === 'string' ? children : (children ?? '');
     const cleaned = cleanContent(raw);
     const withEmbeds = embedYouTubeLinks(cleaned);
+    const mdComponents = buildMdComponents(onNavigate);
     return (
       <div className={cn('size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0', className)}>
         <ReactMarkdown
@@ -95,7 +120,7 @@ export const Response = memo(
       </div>
     );
   },
-  (prevProps, nextProps) => prevProps.children === nextProps.children,
+  (prevProps, nextProps) => prevProps.children === nextProps.children && prevProps.onNavigate === nextProps.onNavigate,
 );
 
 Response.displayName = 'Response';
