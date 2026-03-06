@@ -34,35 +34,28 @@ import { test, expect, Page } from '@playwright/test';
 // Helpers (same pattern as mother-test.spec.ts and knee-arthritis-xray.spec.ts)
 // ---------------------------------------------------------------------------
 
-/** Dismiss the sign-in wall dialog if it appears. */
-async function dismissSignInWall(page: Page) {
-  try {
-    const closeButton = page.locator('button').filter({ hasText: '×' }).first();
-    if (await closeButton.isVisible({ timeout: 1000 })) {
-      await closeButton.click();
-      await page.waitForTimeout(500);
-    }
-  } catch {
-    // Dialog not present, continue
-  }
-  // Also try the X button in the dialog (Radix UI close button)
-  try {
-    const dialogClose = page.locator('[role="dialog"] button[aria-label="Close"]').first();
-    if (await dialogClose.isVisible({ timeout: 500 })) {
-      await dialogClose.click();
-      await page.waitForTimeout(500);
-    }
-  } catch {
-    // Not present
-  }
+/** Sign in with email/password via the Login page. */
+async function signInWithEmail(page: Page, email: string, password: string) {
+  // Click "Continue with Email" to switch to email form
+  const emailButton = page.getByText('Continue with Email');
+  await emailButton.waitFor({ state: 'visible', timeout: 10_000 });
+  await emailButton.click();
+  await page.waitForTimeout(500);
+
+  // Fill email and password
+  await page.locator('input[type="email"]').fill(email);
+  await page.locator('input[type="password"]').fill(password);
+
+  // Click "Sign In" submit button
+  await page.locator('button[type="submit"]').filter({ hasText: /Sign In/i }).click();
+
+  // Wait for redirect to /chat (login success)
+  await page.waitForURL('**/chat**', { timeout: 15_000 });
+  await page.waitForTimeout(1000);
 }
 
 /** Send a chat message by typing into the input and pressing Enter. */
 async function sendMessage(page: Page, text: string) {
-  // Reset anonymous counter and dismiss any sign-in walls
-  await page.evaluate(() => localStorage.setItem('anon_message_count', '0'));
-  await dismissSignInWall(page);
-
   const input = page.locator('textarea').first();
   await input.waitFor({ state: 'visible', timeout: 10_000 });
   await expect(input).toBeEnabled({ timeout: 30_000 });
@@ -138,34 +131,12 @@ function verifyPostpartumAgent(text: string, turnLabel: string) {
 // ---------------------------------------------------------------------------
 
 test('Postpartum nutritionist — full 5-turn flow', async ({ page }) => {
-  // Intercept localStorage BEFORE the app JS runs.
-  // This ensures the Zustand auth store initializes with count=0 on every page load.
-  // Also override the increment function to keep it at 0 for the entire session.
-  await page.addInitScript(() => {
-    // Always return "0" for the anonymous message counter
-    const origGetItem = localStorage.getItem.bind(localStorage);
-    localStorage.getItem = (key: string) => {
-      if (key === 'anon_message_count') return '0';
-      return origGetItem(key);
-    };
-    // No-op the setItem for this key so counter never increments
-    const origSetItem = localStorage.setItem.bind(localStorage);
-    localStorage.setItem = (key: string, value: string) => {
-      if (key === 'anon_message_count') return;
-      origSetItem(key, value);
-    };
-  });
-
-  // Navigate to app
+  // Navigate to login page and sign in with test account
   await page.goto('/chataiagent/');
   await page.waitForTimeout(2000);
 
-  // Handle login — click "Continue without signing in" if on login page
-  const continueButton = page.getByText('Continue without signing in');
-  if (await continueButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await continueButton.click();
-    await page.waitForTimeout(2000);
-  }
+  // Sign in with email/password (avoids anonymous 3-message limit)
+  await signInWithEmail(page, 'ravipradeep89@gmail.com', 'papa1210');
 
   // Start a new chat
   await page.goto('/chataiagent/new');
