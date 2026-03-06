@@ -7,6 +7,7 @@ import NotFound from "./pages/NotFound";
 import Logs from "./pages/Logs";
 import Trade from "./pages/Trade";
 import Debug from "./pages/Debug";
+import MealPlan from "./pages/MealPlan";
 import PWAInstall from "./components/PWAInstall";
 import LoginPage from "./pages/Login";
 import Admin from "./pages/Admin";
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/new" element={<New />} />
           <Route path="/chat" element={<New />} />
           <Route path="/chat/:chatid" element={<Chat />} />
+          <Route path="/mealplan/:chatid" element={<MealPlan />} />
         </Route>
         <Route path="/trade" element={<Trade />} />
         <Route path="/debug/:chatid" element={<Debug />} />
