@@ -42,6 +42,8 @@ export function MealCard({ meal, dayIndex, mealIndex, onSwapClick }: MealCardPro
               <th className="pb-1 font-medium text-right">g</th>
               <th className="pb-1 font-medium text-right">Cal</th>
               <th className="pb-1 font-medium text-right">P</th>
+              <th className="pb-1 font-medium text-right">C</th>
+              <th className="pb-1 font-medium text-right">F</th>
             </tr>
           </thead>
           <tbody>
@@ -54,6 +56,8 @@ export function MealCard({ meal, dayIndex, mealIndex, onSwapClick }: MealCardPro
                 <td className="py-1 text-right text-muted-foreground">{Math.round(item.grams)}</td>
                 <td className="py-1 text-right">{item.calories}</td>
                 <td className="py-1 text-right">{item.protein_g.toFixed(1)}</td>
+                <td className="py-1 text-right">{item.carbs_g.toFixed(1)}</td>
+                <td className="py-1 text-right">{item.fat_g.toFixed(1)}</td>
               </tr>
             ))}
           </tbody>
@@ -63,6 +67,8 @@ export function MealCard({ meal, dayIndex, mealIndex, onSwapClick }: MealCardPro
               <td className="pt-1 text-right"></td>
               <td className="pt-1 text-right">{meal.total_calories}</td>
               <td className="pt-1 text-right">{meal.total_protein_g.toFixed(1)}g</td>
+              <td className="pt-1 text-right">{meal.total_carbs_g.toFixed(1)}g</td>
+              <td className="pt-1 text-right">{meal.total_fat_g.toFixed(1)}g</td>
             </tr>
           </tfoot>
         </table>
