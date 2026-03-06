@@ -119,7 +119,7 @@ export default function MealPlan() {
 
   // Build context prompt so the AI knows about the current meal plan
   const contextPrompt = plan
-    ? `[CONTEXT: The user is viewing their 7-day meal plan dashboard. Current targets: ${plan.targets.calories} kcal, ${plan.targets.protein_g}g protein, ${plan.targets.carbs_g}g carbs, ${plan.targets.fat_g}g fat. Weekly averages: ${plan.weekly_averages.calories} kcal, ${plan.weekly_averages.protein_g}g protein. The user can ask to adjust targets (e.g. "increase protein to 120g"), ask about their vitamin/supplement needs, or ask questions about their diet. Respond as their personal dietician.]\n\nUser message:`
+    ? `[CONTEXT: The user is viewing their 7-day meal plan dashboard. Current targets: ${plan.targets.calories} kcal, ${plan.targets.protein_g}g protein, ${plan.targets.carbs_g}g carbs, ${plan.targets.fat_g}g fat. Weekly averages: ${plan.weekly_averages.calories} kcal, ${plan.weekly_averages.protein_g}g protein. The user can ask to adjust targets (e.g. "increase protein to 120g"), ask about their vitamin/supplement needs, or ask questions about their diet. Your name is Barbie. Respond as their personal nutrition advisor Barbie.]\n\nUser message:`
     : undefined;
 
   if (isAuthLoading) {
@@ -260,7 +260,7 @@ export default function MealPlan() {
       <Sheet open={chatOpen} onOpenChange={setChatOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
           <SheetHeader className="px-4 py-3 border-b flex-shrink-0">
-            <SheetTitle className="text-base">Chat with your Dietician</SheetTitle>
+            <SheetTitle className="text-base">Chat with Barbie</SheetTitle>
           </SheetHeader>
           <div className="flex-1 min-h-0">
             <ChatWindow chatId={chatid} contextPrompt={contextPrompt} className="h-full" />
