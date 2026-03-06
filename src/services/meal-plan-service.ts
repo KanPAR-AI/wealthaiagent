@@ -1,5 +1,13 @@
 import { getApiUrl } from "@/config/environment";
-import type { StructuredMealPlan, SwapMealRequest, SmartSwapRequest, SmartSwapResponse, FixPlanResponse } from "@/types/meal-plan";
+import type {
+  StructuredMealPlan,
+  SwapMealRequest,
+  SmartSwapRequest,
+  SmartSwapResponse,
+  FixPlanResponse,
+  MealPreferences,
+  SetPreferencesRequest,
+} from "@/types/meal-plan";
 
 export async function fetchMealPlan(
   token: string,
@@ -88,6 +96,40 @@ export async function fixMealPlan(
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.detail || `Failed to fix meal plan: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function getMealPreferences(
+  token: string,
+  chatId: string
+): Promise<MealPreferences> {
+  const response = await fetch(getApiUrl(`/chats/${chatId}/mealplan/preferences`), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    if (response.status === 404) return { ratings: {} };
+    throw new Error(`Failed to fetch preferences: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function setMealPreferences(
+  token: string,
+  chatId: string,
+  ratings: Record<string, number>
+): Promise<MealPreferences> {
+  const response = await fetch(getApiUrl(`/chats/${chatId}/mealplan/preferences`), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ ratings } satisfies SetPreferencesRequest),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail || `Failed to set preferences: ${response.statusText}`);
   }
   return response.json();
 }

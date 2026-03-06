@@ -1,9 +1,9 @@
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { MessageSquare } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMealPlanStore } from "@/store/meal-plan";
-import { fetchMealPlan, generateMealPlan } from "@/services/meal-plan-service";
+import { fetchMealPlan, generateMealPlan, getMealPreferences, setMealPreferences } from "@/services/meal-plan-service";
 import { DayTabs } from "@/components/meal-plan/day-tabs";
 import { MealCard } from "@/components/meal-plan/meal-card";
 import { DailyTotals } from "@/components/meal-plan/daily-totals";
@@ -11,7 +11,7 @@ import { WeeklySummary } from "@/components/meal-plan/weekly-summary";
 import { SwapDialog } from "@/components/meal-plan/swap-dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import ChatWindow from "@/components/chat/chat-window";
-import type { SmartSwapResponse, StructuredMealPlan } from "@/types/meal-plan";
+import type { SmartSwapResponse, StructuredMealPlan, MealRatingValue } from "@/types/meal-plan";
 import { formatWeekRange } from "@/components/meal-plan/date-utils";
 
 export default function MealPlan() {
@@ -35,16 +35,31 @@ export default function MealPlan() {
   // Chat sheet state
   const [chatOpen, setChatOpen] = useState(false);
 
-  // Load meal plan on mount
+  // Meal preferences (likeability ratings)
+  const [preferences, setPreferences] = useState<Record<string, number>>({});
+  const prefsLoaded = useRef(false);
+
+  // Load meal plan + preferences on mount
   useEffect(() => {
     if (!chatid || !idToken) return;
 
     let cancelled = false;
     setLoading(true);
 
-    fetchMealPlan(idToken, chatid)
-      .then((data) => {
-        if (!cancelled) setPlan(data);
+    // Load plan and preferences in parallel
+    Promise.all([
+      fetchMealPlan(idToken, chatid),
+      prefsLoaded.current
+        ? Promise.resolve(null)
+        : getMealPreferences(idToken, chatid).catch(() => ({ ratings: {} })),
+    ])
+      .then(([planData, prefsData]) => {
+        if (cancelled) return;
+        setPlan(planData);
+        if (prefsData) {
+          setPreferences(prefsData.ratings || {});
+          prefsLoaded.current = true;
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(err.message);
@@ -86,6 +101,21 @@ export default function MealPlan() {
   const handleFixComplete = useCallback((updatedPlan: unknown) => {
     setPlan(updatedPlan as StructuredMealPlan);
   }, [setPlan]);
+
+  const handleRate = useCallback((mealName: string, value: MealRatingValue) => {
+    if (!chatid || !idToken) return;
+    // Optimistic update
+    setPreferences((prev) => ({ ...prev, [mealName]: value }));
+    // Fire and forget — persist to backend
+    setMealPreferences(idToken, chatid, { [mealName]: value }).catch(() => {
+      // Revert on error
+      setPreferences((prev) => {
+        const next = { ...prev };
+        delete next[mealName];
+        return next;
+      });
+    });
+  }, [chatid, idToken]);
 
   // Build context prompt so the AI knows about the current meal plan
   const contextPrompt = plan
@@ -174,15 +204,24 @@ export default function MealPlan() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Meals column (2/3) */}
                 <div className="lg:col-span-2 space-y-3">
-                  {currentDay?.meals.map((meal, mealIdx) => (
-                    <MealCard
-                      key={`${selectedDay}-${mealIdx}`}
-                      meal={meal}
-                      dayIndex={selectedDay}
-                      mealIndex={mealIdx}
-                      onSwapClick={handleSwapClick}
-                    />
-                  ))}
+                  {currentDay?.meals.map((meal, mealIdx) => {
+                    // Derive template key from meal name for preference lookup
+                    const mealKey = meal.name
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, "_")
+                      .replace(/^_|_$/g, "");
+                    return (
+                      <MealCard
+                        key={`${selectedDay}-${mealIdx}`}
+                        meal={meal}
+                        dayIndex={selectedDay}
+                        mealIndex={mealIdx}
+                        onSwapClick={handleSwapClick}
+                        rating={preferences[mealKey] as MealRatingValue | undefined}
+                        onRate={(value) => handleRate(mealKey, value)}
+                      />
+                    );
+                  })}
                 </div>
 
                 {/* Sidebar (1/3) */}

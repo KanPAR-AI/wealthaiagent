@@ -119,3 +119,15 @@ export interface FixPlanResponse {
   plan: StructuredMealPlan;
   fix_summary: FixPlanSummary;
 }
+
+// Meal Preferences (Likeability)
+
+export type MealRatingValue = 1 | 2 | 3 | 4 | 5;
+
+export interface MealPreferences {
+  ratings: Record<string, MealRatingValue>;
+}
+
+export interface SetPreferencesRequest {
+  ratings: Record<string, number>;
+}

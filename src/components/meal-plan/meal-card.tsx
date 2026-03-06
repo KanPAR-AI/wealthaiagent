@@ -1,4 +1,5 @@
-import type { MealPlanMeal } from "@/types/meal-plan";
+import type { MealPlanMeal, MealRatingValue } from "@/types/meal-plan";
+import { MealRating } from "./meal-rating";
 
 const MEAL_TYPE_LABELS: Record<string, string> = {
   early_morning: "Early Morning",
@@ -14,9 +15,13 @@ interface MealCardProps {
   dayIndex: number;
   mealIndex: number;
   onSwapClick: (dayIndex: number, mealIndex: number) => void;
+  /** Current likeability rating for this meal template */
+  rating?: MealRatingValue;
+  /** Called when user rates this meal */
+  onRate?: (value: MealRatingValue) => void;
 }
 
-export function MealCard({ meal, dayIndex, mealIndex, onSwapClick }: MealCardProps) {
+export function MealCard({ meal, dayIndex, mealIndex, onSwapClick, rating, onRate }: MealCardProps) {
   const label = MEAL_TYPE_LABELS[meal.meal_type] || meal.meal_type;
 
   return (
@@ -76,6 +81,10 @@ export function MealCard({ meal, dayIndex, mealIndex, onSwapClick }: MealCardPro
 
       {meal.prep_notes && (
         <p className="mt-2 text-xs text-muted-foreground italic">{meal.prep_notes}</p>
+      )}
+
+      {onRate && (
+        <MealRating rating={rating} onRate={onRate} />
       )}
     </div>
   );
