@@ -8,6 +8,7 @@ import { MortgageCalculator } from "./mortgage-calculator"
 import { RetirementCalculator } from "./retirement-calculator"
 import { FinancialSummaryChart } from "./financial-summary-chart"
 import { ActionTilesWidget } from "./action-tiles-widget"
+import { MultiSelectWidget } from "./multi-select-widget"
 
 export interface Widget {
   id: string
@@ -56,6 +57,9 @@ export function WidgetRenderer({ widget }: WidgetRendererProps) {
 
     case 'widget_action_tiles':
       return <ActionTilesWidget {...widget} />
+
+    case 'widget_multi_select':
+      return <MultiSelectWidget {...widget} />
 
     default:
       console.warn('[WidgetRenderer] Unknown widget type:', widget.type)
