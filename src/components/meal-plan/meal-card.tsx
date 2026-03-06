@@ -1,5 +1,4 @@
 import type { MealPlanMeal } from "@/types/meal-plan";
-import { useMealPlanStore } from "@/store/meal-plan";
 
 const MEAL_TYPE_LABELS: Record<string, string> = {
   early_morning: "Early Morning",
@@ -14,12 +13,10 @@ interface MealCardProps {
   meal: MealPlanMeal;
   dayIndex: number;
   mealIndex: number;
-  onSwap: (dayIndex: number, mealIndex: number) => void;
+  onSwapClick: (dayIndex: number, mealIndex: number) => void;
 }
 
-export function MealCard({ meal, dayIndex, mealIndex, onSwap }: MealCardProps) {
-  const { swappingMeal } = useMealPlanStore();
-  const isSwapping = swappingMeal?.day === dayIndex && swappingMeal?.meal === mealIndex;
+export function MealCard({ meal, dayIndex, mealIndex, onSwapClick }: MealCardProps) {
   const label = MEAL_TYPE_LABELS[meal.meal_type] || meal.meal_type;
 
   return (
@@ -30,11 +27,10 @@ export function MealCard({ meal, dayIndex, mealIndex, onSwap }: MealCardProps) {
           <h4 className="font-semibold text-foreground mt-0.5">{meal.name}</h4>
         </div>
         <button
-          onClick={() => onSwap(dayIndex, mealIndex)}
-          disabled={isSwapping}
-          className="text-xs px-2 py-1 rounded border border-border hover:bg-accent transition-colors disabled:opacity-50"
+          onClick={() => onSwapClick(dayIndex, mealIndex)}
+          className="text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-accent hover:border-primary/30 transition-all font-medium text-muted-foreground hover:text-primary"
         >
-          {isSwapping ? "..." : "Swap"}
+          Swap
         </button>
       </div>
 

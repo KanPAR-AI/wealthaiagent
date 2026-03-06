@@ -1,12 +1,14 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useMealPlanStore } from "@/store/meal-plan";
-import { fetchMealPlan, generateMealPlan, swapMeal } from "@/services/meal-plan-service";
+import { fetchMealPlan, generateMealPlan } from "@/services/meal-plan-service";
 import { DayTabs } from "@/components/meal-plan/day-tabs";
 import { MealCard } from "@/components/meal-plan/meal-card";
 import { DailyTotals } from "@/components/meal-plan/daily-totals";
 import { WeeklySummary } from "@/components/meal-plan/weekly-summary";
+import { SwapDialog } from "@/components/meal-plan/swap-dialog";
+import type { SmartSwapResponse } from "@/types/meal-plan";
 
 export default function MealPlan() {
   const { chatid } = useParams<{ chatid: string }>();
@@ -20,9 +22,11 @@ export default function MealPlan() {
     setPlan,
     setLoading,
     setError,
-    setSwappingMeal,
     reset,
   } = useMealPlanStore();
+
+  // Swap dialog state
+  const [swapTarget, setSwapTarget] = useState<{ day: number; meal: number } | null>(null);
 
   // Load meal plan on mount
   useEffect(() => {
@@ -64,25 +68,13 @@ export default function MealPlan() {
     }
   }, [chatid, idToken, setPlan, setLoading, setError]);
 
-  const handleSwap = useCallback(
-    async (dayIndex: number, mealIndex: number) => {
-      if (!chatid || !idToken || !plan) return;
-      setSwappingMeal({ day: dayIndex, meal: mealIndex });
-      try {
-        const updated = await swapMeal(idToken, chatid, {
-          plan_id: plan.id,
-          day_index: dayIndex,
-          meal_index: mealIndex,
-        });
-        setPlan(updated);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Failed to swap meal");
-      } finally {
-        setSwappingMeal(null);
-      }
-    },
-    [chatid, idToken, plan, setPlan, setError, setSwappingMeal]
-  );
+  const handleSwapClick = useCallback((dayIndex: number, mealIndex: number) => {
+    setSwapTarget({ day: dayIndex, meal: mealIndex });
+  }, []);
+
+  const handleSwapComplete = useCallback((response: SmartSwapResponse) => {
+    setPlan(response.plan);
+  }, [setPlan]);
 
   if (isAuthLoading) {
     return (
@@ -165,7 +157,7 @@ export default function MealPlan() {
                       meal={meal}
                       dayIndex={selectedDay}
                       mealIndex={mealIdx}
-                      onSwap={handleSwap}
+                      onSwapClick={handleSwapClick}
                     />
                   ))}
                 </div>
@@ -197,6 +189,21 @@ export default function MealPlan() {
       >
         Chat with AI
       </button>
+
+      {/* Swap Dialog */}
+      {swapTarget && plan && currentDay && (
+        <SwapDialog
+          open={!!swapTarget}
+          onOpenChange={(open) => { if (!open) setSwapTarget(null); }}
+          meal={currentDay.meals[swapTarget.meal]}
+          dayIndex={swapTarget.day}
+          mealIndex={swapTarget.meal}
+          dayName={currentDay.day}
+          planId={plan.id}
+          chatId={chatid!}
+          onSwapComplete={handleSwapComplete}
+        />
+      )}
     </div>
   );
 }
