@@ -76,10 +76,10 @@ export interface CompensationAdjustment {
   day_index: number;
   day_name: string;
   meal_index: number;
-  meal_name: string;
+  original_meal_name: string;
+  new_meal_name: string;
   original_calories: number;
-  adjusted_calories: number;
-  scale_factor: number;
+  new_calories: number;
 }
 
 export interface SwapChangeSummary {
@@ -98,4 +98,24 @@ export interface SwapChangeSummary {
 export interface SmartSwapResponse {
   plan: StructuredMealPlan;
   changes: SwapChangeSummary;
+}
+
+// Fix Plan types
+
+export interface NutrientGapInfo {
+  before_pct: number;
+  after_pct: number;
+  status: "fixed" | "improved" | "unchanged";
+}
+
+export interface FixPlanSummary {
+  nutrient_gaps: Record<string, NutrientGapInfo>;
+  days_fixed: number[];
+  supplements_suggested: string[];
+  medical_notes: string[];
+}
+
+export interface FixPlanResponse {
+  plan: StructuredMealPlan;
+  fix_summary: FixPlanSummary;
 }

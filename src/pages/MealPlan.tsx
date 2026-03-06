@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { MessageSquare } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMealPlanStore } from "@/store/meal-plan";
 import { fetchMealPlan, generateMealPlan } from "@/services/meal-plan-service";
@@ -8,7 +9,10 @@ import { MealCard } from "@/components/meal-plan/meal-card";
 import { DailyTotals } from "@/components/meal-plan/daily-totals";
 import { WeeklySummary } from "@/components/meal-plan/weekly-summary";
 import { SwapDialog } from "@/components/meal-plan/swap-dialog";
-import type { SmartSwapResponse } from "@/types/meal-plan";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import ChatWindow from "@/components/chat/chat-window";
+import type { SmartSwapResponse, StructuredMealPlan } from "@/types/meal-plan";
+import { formatWeekRange } from "@/components/meal-plan/date-utils";
 
 export default function MealPlan() {
   const { chatid } = useParams<{ chatid: string }>();
@@ -27,6 +31,9 @@ export default function MealPlan() {
 
   // Swap dialog state
   const [swapTarget, setSwapTarget] = useState<{ day: number; meal: number } | null>(null);
+
+  // Chat sheet state
+  const [chatOpen, setChatOpen] = useState(false);
 
   // Load meal plan on mount
   useEffect(() => {
@@ -75,6 +82,15 @@ export default function MealPlan() {
   const handleSwapComplete = useCallback((response: SmartSwapResponse) => {
     setPlan(response.plan);
   }, [setPlan]);
+
+  const handleFixComplete = useCallback((updatedPlan: unknown) => {
+    setPlan(updatedPlan as StructuredMealPlan);
+  }, [setPlan]);
+
+  // Build context prompt so the AI knows about the current meal plan
+  const contextPrompt = plan
+    ? `[CONTEXT: The user is viewing their 7-day meal plan dashboard. Current targets: ${plan.targets.calories} kcal, ${plan.targets.protein_g}g protein, ${plan.targets.carbs_g}g carbs, ${plan.targets.fat_g}g fat. Weekly averages: ${plan.weekly_averages.calories} kcal, ${plan.weekly_averages.protein_g}g protein. The user can ask to adjust targets (e.g. "increase protein to 120g"), ask about their vitamin/supplement needs, or ask questions about their diet. Respond as their personal dietician.]\n\nUser message:`
+    : undefined;
 
   if (isAuthLoading) {
     return (
@@ -144,8 +160,15 @@ export default function MealPlan() {
           {/* Plan content */}
           {plan && (
             <>
-              {/* Day tabs */}
-              <DayTabs />
+              {/* Day navigation */}
+              <div className="space-y-1.5">
+                {plan.created_at && (
+                  <p className="text-xs font-medium text-muted-foreground px-1">
+                    {formatWeekRange(plan.created_at)}
+                  </p>
+                )}
+                <DayTabs />
+              </div>
 
               {/* Main layout: meals + sidebar */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -174,6 +197,9 @@ export default function MealPlan() {
                   <WeeklySummary
                     averages={plan.weekly_averages}
                     targets={plan.targets}
+                    chatId={chatid}
+                    planId={plan.id}
+                    onFixComplete={handleFixComplete}
                   />
                 </div>
               </div>
@@ -184,11 +210,24 @@ export default function MealPlan() {
 
       {/* Chat FAB */}
       <button
-        onClick={() => navigate(`/chat/${chatid}`)}
-        className="fixed bottom-6 right-6 bg-primary text-primary-foreground px-4 py-3 rounded-full shadow-lg hover:bg-primary/90 transition-colors text-sm font-medium z-50"
+        onClick={() => setChatOpen(true)}
+        className="fixed bottom-6 right-6 bg-primary text-primary-foreground p-3.5 rounded-full shadow-lg hover:bg-primary/90 transition-colors z-50"
+        aria-label="Chat with AI"
       >
-        Chat with AI
+        <MessageSquare className="h-5 w-5" />
       </button>
+
+      {/* Chat Sheet */}
+      <Sheet open={chatOpen} onOpenChange={setChatOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+          <SheetHeader className="px-4 py-3 border-b flex-shrink-0">
+            <SheetTitle className="text-base">Chat with your Dietician</SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 min-h-0">
+            <ChatWindow chatId={chatid} contextPrompt={contextPrompt} className="h-full" />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Swap Dialog */}
       {swapTarget && plan && currentDay && (

@@ -1,5 +1,5 @@
 import { getApiUrl } from "@/config/environment";
-import type { StructuredMealPlan, SwapMealRequest, SmartSwapRequest, SmartSwapResponse } from "@/types/meal-plan";
+import type { StructuredMealPlan, SwapMealRequest, SmartSwapRequest, SmartSwapResponse, FixPlanResponse } from "@/types/meal-plan";
 
 export async function fetchMealPlan(
   token: string,
@@ -68,6 +68,26 @@ export async function smartSwapMeal(
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.detail || `Failed to swap meal: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function fixMealPlan(
+  token: string,
+  chatId: string,
+  planId: string,
+): Promise<FixPlanResponse> {
+  const response = await fetch(getApiUrl(`/chats/${chatId}/mealplan/fix`), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ plan_id: planId }),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail || `Failed to fix meal plan: ${response.statusText}`);
   }
   return response.json();
 }
