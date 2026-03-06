@@ -1,18 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+
+interface ActionItem {
+  label: string;
+  message: string;
+}
 
 interface ActionTilesWidgetProps {
   id: string;
   title?: string;
   data: {
-    actions: Array<{ label: string; message: string }>;
+    /** Legacy format */
+    actions?: Array<{ label: string; message: string }>;
+    /** Dietician format: tiles + message_prefix */
+    tiles?: Array<{ id: string; label: string; icon?: string }>;
+    message_prefix?: string;
   };
 }
 
 export function ActionTilesWidget({ data }: ActionTilesWidgetProps) {
   const [clicked, setClicked] = useState(false);
+
+  // Normalize: support both {actions} and {tiles + message_prefix} formats
+  const actions: ActionItem[] = useMemo(() => {
+    if (data.actions?.length) return data.actions;
+    if (data.tiles?.length) {
+      const prefix = data.message_prefix ?? '';
+      return data.tiles.map((t) => ({ label: t.label, message: `${prefix}${t.id}` }));
+    }
+    return [];
+  }, [data]);
 
   const handleClick = (message: string) => {
     if (clicked) return;
@@ -35,9 +54,11 @@ export function ActionTilesWidget({ data }: ActionTilesWidgetProps) {
     );
   }
 
+  if (!actions.length) return null;
+
   return (
     <div className="flex flex-wrap gap-2 mt-1">
-      {data.actions.map((action, i) => (
+      {actions.map((action, i) => (
         <button
           key={i}
           onClick={() => handleClick(action.message)}
