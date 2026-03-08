@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { fixMealPlan } from "@/services/meal-plan-service";
-import type { NutrientTotals, FixPlanSummary } from "@/types/meal-plan";
+import { fixMealPlan, getPlanVersions, restoreVersion } from "@/services/meal-plan-service";
+import type { NutrientTotals, FixPlanSummary, PlanVersion } from "@/types/meal-plan";
 
 interface WeeklySummaryProps {
   averages: NutrientTotals;
@@ -40,6 +40,13 @@ export function WeeklySummary({ averages, targets, chatId, planId, onFixComplete
   const [fixing, setFixing] = useState(false);
   const [fixError, setFixError] = useState<string | null>(null);
   const [lastSummary, setLastSummary] = useState<FixPlanSummary | null>(null);
+  const [targetWeight, setTargetWeight] = useState("");
+
+  // Version history
+  const [versions, setVersions] = useState<PlanVersion[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [loadingVersions, setLoadingVersions] = useState(false);
+  const [restoringVersion, setRestoringVersion] = useState<string | null>(null);
 
   const issues = needsFix(averages, targets);
   const showFixButton = issues.length > 0 && chatId && planId && onFixComplete;
@@ -50,7 +57,8 @@ export function WeeklySummary({ averages, targets, chatId, planId, onFixComplete
     setFixError(null);
     setLastSummary(null);
     try {
-      const result = await fixMealPlan(idToken, chatId, planId);
+      const tw = targetWeight ? parseFloat(targetWeight) : undefined;
+      const result = await fixMealPlan(idToken, chatId, planId, tw);
       setLastSummary(result.fix_summary);
       onFixComplete(result.plan, result.fix_summary);
     } catch (err) {
@@ -108,6 +116,23 @@ export function WeeklySummary({ averages, targets, chatId, planId, onFixComplete
               <p key={i}>{issue}</p>
             ))}
           </div>
+          <div className="mb-2">
+            <label className="text-xs text-muted-foreground block mb-1">
+              New target weight (optional)
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                value={targetWeight}
+                onChange={(e) => setTargetWeight(e.target.value)}
+                placeholder="e.g. 65"
+                min={30}
+                max={200}
+                className="w-full text-sm px-3 py-1.5 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">kg</span>
+            </div>
+          </div>
           <button
             onClick={handleFix}
             disabled={fixing}
@@ -157,6 +182,71 @@ export function WeeklySummary({ averages, targets, chatId, planId, onFixComplete
                 <p key={i} className="text-muted-foreground italic">{n}</p>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Version History */}
+      {chatId && planId && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <button
+            onClick={async () => {
+              if (showHistory) {
+                setShowHistory(false);
+                return;
+              }
+              if (!idToken || !chatId || !planId) return;
+              setLoadingVersions(true);
+              try {
+                const res = await getPlanVersions(idToken, chatId, planId);
+                setVersions(res.versions || []);
+                setShowHistory(true);
+              } catch {
+                // silently ignore
+              } finally {
+                setLoadingVersions(false);
+              }
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {loadingVersions ? "Loading..." : showHistory ? "Hide history" : "Show history"}
+          </button>
+
+          {showHistory && versions.length > 0 && (
+            <div className="mt-2 space-y-1.5">
+              {versions.map((v) => (
+                <div key={v.id} className="flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-medium text-foreground capitalize">{v.action.replace("_", " ")}</span>
+                    <span className="text-muted-foreground ml-1.5">
+                      {new Date(v.created_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!idToken || !chatId || !planId || !onFixComplete) return;
+                      setRestoringVersion(v.id);
+                      try {
+                        const res = await restoreVersion(idToken, chatId, planId, v.id);
+                        onFixComplete(res.plan, {} as FixPlanSummary);
+                      } catch {
+                        // silently ignore
+                      } finally {
+                        setRestoringVersion(null);
+                      }
+                    }}
+                    disabled={restoringVersion === v.id}
+                    className="text-xs text-primary hover:underline disabled:opacity-50"
+                  >
+                    {restoringVersion === v.id ? "Restoring..." : "Undo"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showHistory && versions.length === 0 && (
+            <p className="mt-2 text-xs text-muted-foreground">No history yet</p>
           )}
         </div>
       )}

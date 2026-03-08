@@ -25,26 +25,32 @@ export const ChatMessageList = ({
   return (
     <>
       {/* Map through each message and render a ChatBubble */}
-      {messages.map((message) => (
-      <motion.div
-        key={message.id}
-        initial={{ opacity: 0, y: 8 }} // Initial animation state
-        animate={{ opacity: 1, y: 0 }} // Animate to visible state
-        transition={{ duration: 0.3 }} // Animation duration
-        // Add data-message-id for user messages to facilitate scrolling
-        {...(addMessageId && message.sender === 'user' && {
-          'data-message-id': message.id,
-        })}
-      >
-        <ChatBubble
-          message={message}
-          currentUser={currentUser}
-          botAvatarSrc="/logo.svg" // Path to your bot's avatar
-          onFileClick={onFileClick} // Pass the file click handler
-          actionIcons={actionIcons} // Pass action icons for bot messages
-        />
-      </motion.div>
-    ))}
+      {messages.map((message, idx) => {
+        // A bot message's widgets are "history" if there's a user message after it
+        // (meaning the user already interacted with the widget)
+        const isHistory = message.sender === 'bot' && !message.isStreaming &&
+          messages.slice(idx + 1).some(m => m.sender === 'user');
+        return (
+          <motion.div
+            key={message.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            {...(addMessageId && message.sender === 'user' && {
+              'data-message-id': message.id,
+            })}
+          >
+            <ChatBubble
+              message={message}
+              currentUser={currentUser}
+              botAvatarSrc="/logo.svg"
+              onFileClick={onFileClick}
+              actionIcons={actionIcons}
+              isHistory={isHistory}
+            />
+          </motion.div>
+        );
+      })}
   </>
   );
 };

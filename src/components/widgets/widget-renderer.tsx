@@ -9,6 +9,7 @@ import { RetirementCalculator } from "./retirement-calculator"
 import { FinancialSummaryChart } from "./financial-summary-chart"
 import { ActionTilesWidget } from "./action-tiles-widget"
 import { MultiSelectWidget } from "./multi-select-widget"
+import { OnboardingFormWidget } from "./onboarding-form-widget"
 
 export interface Widget {
   id: string
@@ -22,9 +23,10 @@ export interface Widget {
 
 interface WidgetRendererProps {
   widget: Widget
+  isHistory?: boolean
 }
 
-export function WidgetRenderer({ widget }: WidgetRendererProps) {
+export function WidgetRenderer({ widget, isHistory }: WidgetRendererProps) {
   console.log('[WidgetRenderer] Rendering widget:', widget.type, widget)
 
   switch (widget.type) {
@@ -56,10 +58,13 @@ export function WidgetRenderer({ widget }: WidgetRendererProps) {
       return <FinancialSummaryChart {...widget} />
 
     case 'widget_action_tiles':
-      return <ActionTilesWidget {...widget} />
+      return <ActionTilesWidget {...widget} isHistory={isHistory} />
 
     case 'widget_multi_select':
-      return <MultiSelectWidget {...widget} />
+      return <MultiSelectWidget {...widget} isHistory={isHistory} />
+
+    case 'widget_onboarding_form':
+      return <OnboardingFormWidget {...widget} isHistory={isHistory} />
 
     default:
       console.warn('[WidgetRenderer] Unknown widget type:', widget.type)

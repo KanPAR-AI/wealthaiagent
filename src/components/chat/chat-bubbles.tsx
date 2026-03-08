@@ -16,6 +16,7 @@ interface ChatBubbleProps {
   botAvatarFallback?: string; // Optional fallback for bot avatar
   actionIcons: ActionIconDefinition[];
   onFileClick: (file: MessageFile) => void; // Handler for when a file is clicked
+  isHistory?: boolean; // True if user has already responded to this message's widgets
 }
 
 
@@ -23,6 +24,7 @@ export function ChatBubble({
   message,
   actionIcons,
   onFileClick,
+  isHistory = false,
 }: ChatBubbleProps): JSX.Element {
   const navigate = useNavigate();
   const handleNavigate = useCallback((path: string) => navigate(path), [navigate]);
@@ -142,7 +144,7 @@ export function ChatBubble({
                     animate="visible"
                     className="w-full"
                   >
-                    <WidgetRenderer widget={block.widget} />
+                    <WidgetRenderer widget={block.widget} isHistory={isHistory} />
                   </motion.div>
                 );
               }

@@ -1,9 +1,9 @@
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMealPlanStore } from "@/store/meal-plan";
-import { fetchMealPlan, generateMealPlan, getMealPreferences, setMealPreferences } from "@/services/meal-plan-service";
+import { fetchMealPlan, generateMealPlan, getMealPreferences, setMealPreferences, addMeal } from "@/services/meal-plan-service";
 import { DayTabs } from "@/components/meal-plan/day-tabs";
 import { MealCard } from "@/components/meal-plan/meal-card";
 import { DailyTotals } from "@/components/meal-plan/daily-totals";
@@ -23,9 +23,13 @@ export default function MealPlan() {
     selectedDay,
     loading,
     error,
+    planStale,
+    staleMeals,
     setPlan,
     setLoading,
     setError,
+    setPlanStale,
+    clearStale,
     reset,
   } = useMealPlanStore();
 
@@ -34,6 +38,11 @@ export default function MealPlan() {
 
   // Chat sheet state
   const [chatOpen, setChatOpen] = useState(false);
+
+  // Add meal state
+  const [addMealOpen, setAddMealOpen] = useState(false);
+  const [addMealText, setAddMealText] = useState("");
+  const [addingMeal, setAddingMeal] = useState(false);
 
   // Meal preferences (likeability ratings)
   const [preferences, setPreferences] = useState<Record<string, number>>({});
@@ -80,6 +89,7 @@ export default function MealPlan() {
     if (!chatid || !idToken) return;
     setLoading(true);
     setError(null);
+    clearStale();
     try {
       const data = await generateMealPlan(idToken, chatid);
       setPlan(data);
@@ -88,7 +98,7 @@ export default function MealPlan() {
     } finally {
       setLoading(false);
     }
-  }, [chatid, idToken, setPlan, setLoading, setError]);
+  }, [chatid, idToken, setPlan, setLoading, setError, clearStale]);
 
   const handleSwapClick = useCallback((dayIndex: number, mealIndex: number) => {
     setSwapTarget({ day: dayIndex, meal: mealIndex });
@@ -106,16 +116,41 @@ export default function MealPlan() {
     if (!chatid || !idToken) return;
     // Optimistic update
     setPreferences((prev) => ({ ...prev, [mealName]: value }));
-    // Fire and forget — persist to backend
-    setMealPreferences(idToken, chatid, { [mealName]: value }).catch(() => {
-      // Revert on error
-      setPreferences((prev) => {
-        const next = { ...prev };
-        delete next[mealName];
-        return next;
+    // Persist to backend and check staleness
+    setMealPreferences(idToken, chatid, { [mealName]: value })
+      .then((res) => {
+        if (res.plan_stale) {
+          setPlanStale(true, res.stale_meals || []);
+        }
+      })
+      .catch(() => {
+        // Revert on error
+        setPreferences((prev) => {
+          const next = { ...prev };
+          delete next[mealName];
+          return next;
+        });
       });
-    });
-  }, [chatid, idToken]);
+  }, [chatid, idToken, setPlanStale]);
+
+  const handleAddMeal = useCallback(async () => {
+    if (!chatid || !idToken || !plan || !addMealText.trim()) return;
+    setAddingMeal(true);
+    try {
+      const result = await addMeal(idToken, chatid, {
+        plan_id: plan.id,
+        day_index: selectedDay,
+        food_text: addMealText.trim(),
+      });
+      setPlan(result.plan);
+      setAddMealText("");
+      setAddMealOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add meal");
+    } finally {
+      setAddingMeal(false);
+    }
+  }, [chatid, idToken, plan, selectedDay, addMealText, setPlan, setError]);
 
   // Build context prompt so the AI knows about the current meal plan
   const contextPrompt = plan
@@ -149,9 +184,9 @@ export default function MealPlan() {
           <button
             onClick={handleRefresh}
             disabled={loading}
-            className="text-sm px-3 py-1.5 rounded-lg border border-border hover:bg-accent transition-colors disabled:opacity-50"
+            className={`text-sm px-3 py-1.5 rounded-lg border border-border hover:bg-accent transition-colors disabled:opacity-50 ${planStale ? "animate-pulse bg-yellow-100 dark:bg-yellow-900/30 border-yellow-400" : ""}`}
           >
-            {loading ? "Generating..." : "Refresh Plan"}
+            {loading ? "Generating..." : planStale ? "Regenerate Plan" : "Refresh Plan"}
           </button>
         </div>
       </div>
@@ -171,6 +206,25 @@ export default function MealPlan() {
                   Generate one now
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Staleness banner */}
+          {planStale && staleMeals.length > 0 && (
+            <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 px-4 py-3 text-sm">
+              <p className="font-medium text-yellow-800 dark:text-yellow-200">
+                Your preferences changed — {staleMeals.length} meal{staleMeals.length > 1 ? "s" : ""} affected.
+              </p>
+              <p className="text-yellow-700 dark:text-yellow-300 mt-1">
+                {staleMeals.map(m => m.meal_name).join(", ")} — {staleMeals[0]?.reason}
+              </p>
+              <button
+                onClick={handleRefresh}
+                disabled={loading}
+                className="mt-2 text-sm px-3 py-1.5 rounded-lg bg-yellow-600 text-white hover:bg-yellow-700 transition-colors disabled:opacity-50"
+              >
+                Regenerate Plan
+              </button>
             </div>
           )}
 
@@ -205,11 +259,9 @@ export default function MealPlan() {
                 {/* Meals column (2/3) */}
                 <div className="lg:col-span-2 space-y-3">
                   {currentDay?.meals.map((meal, mealIdx) => {
-                    // Derive template key from meal name for preference lookup
-                    const mealKey = meal.name
-                      .toLowerCase()
-                      .replace(/[^a-z0-9]+/g, "_")
-                      .replace(/^_|_$/g, "");
+                    // Use template_id for preference key (matches planner lookup)
+                    const mealKey = meal.template_id
+                      ?? meal.name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
                     return (
                       <MealCard
                         key={`${selectedDay}-${mealIdx}`}
@@ -222,6 +274,43 @@ export default function MealPlan() {
                       />
                     );
                   })}
+
+                  {/* Add Meal */}
+                  {!addMealOpen ? (
+                    <button
+                      onClick={() => setAddMealOpen(true)}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors text-sm"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add a meal
+                    </button>
+                  ) : (
+                    <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-3">
+                      <p className="text-sm font-medium text-foreground">Add a meal to {currentDay?.day}</p>
+                      <textarea
+                        value={addMealText}
+                        onChange={(e) => setAddMealText(e.target.value)}
+                        placeholder="Describe what you ate, e.g. '2 rotis with dal and salad'"
+                        rows={2}
+                        className="w-full text-sm px-3 py-2 rounded-lg border border-border bg-background text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleAddMeal}
+                          disabled={addingMeal || !addMealText.trim()}
+                          className="text-sm px-4 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                        >
+                          {addingMeal ? "Adding..." : "Add"}
+                        </button>
+                        <button
+                          onClick={() => { setAddMealOpen(false); setAddMealText(""); }}
+                          className="text-sm px-3 py-1.5 rounded-lg border border-border hover:bg-accent transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Sidebar (1/3) */}

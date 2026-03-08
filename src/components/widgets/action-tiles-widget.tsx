@@ -11,6 +11,7 @@ interface ActionItem {
 interface ActionTilesWidgetProps {
   id: string;
   title?: string;
+  isHistory?: boolean;
   data: {
     /** Legacy format */
     actions?: Array<{ label: string; message: string }>;
@@ -20,7 +21,7 @@ interface ActionTilesWidgetProps {
   };
 }
 
-export function ActionTilesWidget({ data }: ActionTilesWidgetProps) {
+export function ActionTilesWidget({ data, isHistory }: ActionTilesWidgetProps) {
   const [clicked, setClicked] = useState(false);
 
   // Normalize: support both {actions} and {tiles + message_prefix} formats
@@ -51,6 +52,22 @@ export function ActionTilesWidget({ data }: ActionTilesWidgetProps) {
       >
         <span className="text-xs text-muted-foreground">Confirmed</span>
       </motion.div>
+    );
+  }
+
+  // Historical widgets: render as disabled (already used)
+  if (isHistory) {
+    return (
+      <div className="flex flex-wrap gap-2 mt-1 opacity-40 pointer-events-none">
+        {actions.map((action, i) => (
+          <span
+            key={i}
+            className="px-4 py-2 rounded-full bg-muted text-muted-foreground text-sm font-medium"
+          >
+            {action.label}
+          </span>
+        ))}
+      </div>
     );
   }
 

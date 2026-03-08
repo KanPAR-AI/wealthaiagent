@@ -13,6 +13,7 @@ interface MultiSelectOption {
 interface MultiSelectWidgetProps {
   id: string;
   title?: string;
+  isHistory?: boolean;
   data: {
     options: MultiSelectOption[];
     min_select?: number;
@@ -22,7 +23,7 @@ interface MultiSelectWidgetProps {
   };
 }
 
-export function MultiSelectWidget({ data }: MultiSelectWidgetProps) {
+export function MultiSelectWidget({ data, isHistory }: MultiSelectWidgetProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = useState(false);
 
@@ -69,6 +70,25 @@ export function MultiSelectWidget({ data }: MultiSelectWidgetProps) {
           Selected {selected.size} option{selected.size !== 1 ? 's' : ''}
         </span>
       </motion.div>
+    );
+  }
+
+  // Historical widgets: render as disabled (already used)
+  if (isHistory) {
+    return (
+      <div className="mt-2 opacity-40 pointer-events-none">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {data.options.map((option) => (
+            <span
+              key={option.id}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-muted text-muted-foreground text-sm font-medium"
+            >
+              {option.emoji && <span className="text-base">{option.emoji}</span>}
+              <span className="truncate">{option.label}</span>
+            </span>
+          ))}
+        </div>
+      </div>
     );
   }
 

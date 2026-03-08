@@ -22,6 +22,7 @@ export interface NutrientTotals {
 export interface MealPlanMeal {
   meal_type: string;
   name: string;
+  template_id?: string;
   items: MealPlanItem[];
   total_calories: number;
   total_protein_g: number;
@@ -124,10 +125,51 @@ export interface FixPlanResponse {
 
 export type MealRatingValue = 1 | 2 | 3 | 4 | 5;
 
+export interface StaleMealInfo {
+  day_index: number;
+  meal_index: number;
+  day_name: string;
+  meal_name: string;
+  template_id: string;
+  reason: string;
+}
+
 export interface MealPreferences {
   ratings: Record<string, MealRatingValue>;
 }
 
+export interface MealPreferencesResponse {
+  ratings: Record<string, number>;
+  plan_stale: boolean;
+  stale_meals: StaleMealInfo[];
+}
+
 export interface SetPreferencesRequest {
   ratings: Record<string, number>;
+}
+
+// Add Meal types
+
+export interface AddMealRequest {
+  plan_id: string;
+  day_index: number;
+  food_text?: string;
+  file_url?: string;
+}
+
+export interface AddMealResponse {
+  plan: StructuredMealPlan;
+  added_meal: MealPlanMeal;
+}
+
+// Plan Versioning types
+
+export interface PlanVersion {
+  id: string;
+  action: string;
+  created_at: string;
+}
+
+export interface PlanVersionsResponse {
+  versions: PlanVersion[];
 }
