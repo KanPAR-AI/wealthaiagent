@@ -10,6 +10,7 @@ import { FinancialSummaryChart } from "./financial-summary-chart"
 import { ActionTilesWidget } from "./action-tiles-widget"
 import { MultiSelectWidget } from "./multi-select-widget"
 import { OnboardingFormWidget } from "./onboarding-form-widget"
+import { CuisineProportionWidget } from "./cuisine-proportion-widget"
 
 export interface Widget {
   id: string
@@ -65,6 +66,9 @@ export function WidgetRenderer({ widget, isHistory }: WidgetRendererProps) {
 
     case 'widget_onboarding_form':
       return <OnboardingFormWidget {...widget} isHistory={isHistory} />
+
+    case 'widget_cuisine_proportions':
+      return <CuisineProportionWidget {...widget} isHistory={isHistory} />
 
     default:
       console.warn('[WidgetRenderer] Unknown widget type:', widget.type)

@@ -11,13 +11,19 @@ import type {
   AddMealRequest,
   AddMealResponse,
   PlanVersionsResponse,
+  CuisinePreferences,
+  WeeksMeta,
 } from "@/types/meal-plan";
 
 export async function fetchMealPlan(
   token: string,
-  chatId: string
+  chatId: string,
+  week?: number
 ): Promise<StructuredMealPlan> {
-  const response = await fetch(getApiUrl(`/chats/${chatId}/mealplan`), {
+  const url = week
+    ? getApiUrl(`/chats/${chatId}/mealplan?week=${week}`)
+    : getApiUrl(`/chats/${chatId}/mealplan`);
+  const response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!response.ok) {
@@ -29,9 +35,13 @@ export async function fetchMealPlan(
 
 export async function generateMealPlan(
   token: string,
-  chatId: string
+  chatId: string,
+  week?: number
 ): Promise<StructuredMealPlan> {
-  const response = await fetch(getApiUrl(`/chats/${chatId}/mealplan`), {
+  const url = week
+    ? getApiUrl(`/chats/${chatId}/mealplan?week=${week}`)
+    : getApiUrl(`/chats/${chatId}/mealplan`);
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -41,6 +51,22 @@ export async function generateMealPlan(
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.detail || `Failed to generate meal plan: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+export async function fetchWeeksMeta(
+  token: string,
+  chatId: string
+): Promise<WeeksMeta> {
+  const response = await fetch(getApiUrl(`/chats/${chatId}/mealplan/weeks`), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    if (response.status === 404) {
+      return { plan_group_id: "", generated_weeks: [], total_weeks: 52 };
+    }
+    throw new Error(`Failed to fetch weeks metadata: ${response.statusText}`);
   }
   return response.json();
 }
@@ -208,6 +234,27 @@ export async function getPlanVersions(
   return response.json();
 }
 
+export async function updateCuisinePreferences(
+  token: string,
+  chatId: string,
+  preferences: CuisinePreferences
+): Promise<void> {
+  const response = await fetch(getApiUrl(`/chats/${chatId}/slots`), {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      domain: "dietician",
+      slots: { cultural_cuisine: preferences },
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to update cuisine preferences: ${response.statusText}`);
+  }
+}
+
 export async function restoreVersion(
   token: string,
   chatId: string,
@@ -224,6 +271,57 @@ export async function restoreVersion(
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.detail || `Failed to restore version: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+// ── Recommendations ──
+
+export interface MealRecommendation {
+  template_id: string;
+  name: string;
+  cuisine: string[];
+  calories: number;
+  protein_g: number;
+  category: string;
+  popularity: number;
+  reason: string;
+  score: number;
+}
+
+export async function getRecommendations(
+  token: string,
+  chatId: string
+): Promise<{ recommendations: MealRecommendation[] }> {
+  const response = await fetch(
+    getApiUrl(`/chats/${chatId}/mealplan/recommendations`),
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!response.ok) return { recommendations: [] };
+  return response.json();
+}
+
+export async function acceptRecommendation(
+  token: string,
+  chatId: string,
+  templateId: string,
+  dayIndex: number,
+  mealIndex: number
+): Promise<{ plan: StructuredMealPlan }> {
+  const response = await fetch(
+    getApiUrl(`/chats/${chatId}/mealplan/recommendations/${templateId}/accept`),
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ day_index: dayIndex, meal_index: mealIndex }),
+    }
+  );
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail || "Failed to accept recommendation");
   }
   return response.json();
 }

@@ -175,3 +175,58 @@ export async function fetchCosts(
 ): Promise<CostResponse> {
   return adminFetch(`/agents/${agentId}/costs?period=${period}`);
 }
+
+// --- Dish Library ---
+
+export interface PendingDish {
+  id: string;
+  food_id: string;
+  name: string;
+  calories_per_100g: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fiber_g: number;
+  serving_g: number;
+  serving_desc: string;
+  category: string;
+  source: string;
+  warnings: string[];
+}
+
+export async function generateDishBatch(
+  agentId: string,
+  cuisine: string,
+  count: number = 25
+) {
+  return adminFetch(`/agents/${agentId}/dishes/generate`, {
+    method: "POST",
+    body: JSON.stringify({ cuisine, count }),
+  });
+}
+
+export async function fetchPendingDishes(
+  agentId: string,
+  cuisine?: string
+): Promise<{ dishes: PendingDish[]; count: number }> {
+  const params = cuisine ? `?cuisine=${encodeURIComponent(cuisine)}` : "";
+  return adminFetch(`/agents/${agentId}/dishes/pending${params}`);
+}
+
+export async function approveDishes(
+  agentId: string,
+  dishIds: string[],
+  edits?: Record<string, Record<string, number>>
+) {
+  return adminFetch(`/agents/${agentId}/dishes/approve`, {
+    method: "POST",
+    body: JSON.stringify({ dish_ids: dishIds, edits }),
+  });
+}
+
+export async function rejectDishes(agentId: string, dishIds: string[]) {
+  return adminFetch(`/agents/${agentId}/dishes/reject`, {
+    method: "POST",
+    body: JSON.stringify({ dish_ids: dishIds }),
+  });
+}

@@ -80,6 +80,27 @@ export function buildDayTabInfos(createdAt: string): DayTabInfo[] {
 }
 
 /**
+ * Build display info for 7 day tabs using week-offset dates.
+ * Uses week 1's created_at as base, offset by (weekNumber - 1) * 7 days.
+ */
+export function buildWeekDayTabInfos(
+  planGroupCreatedAt: string,
+  weekNumber: number
+): DayTabInfo[] {
+  const dates = getWeekDates(planGroupCreatedAt, weekNumber);
+  const todayIdx = getTodayIndex(dates);
+
+  return dates.map((d, i) => ({
+    index: i,
+    dayAbbr: DAY_ABBR[d.getDay()],
+    dateNum: d.getDate(),
+    monthAbbr: MONTH_ABBR[d.getMonth()],
+    isToday: i === todayIdx,
+    fullDate: d,
+  }));
+}
+
+/**
  * Format the week range label, e.g. "Mar 2 – 8" or "Feb 27 – Mar 5".
  */
 export function formatWeekRange(createdAt: string): string {
@@ -94,4 +115,43 @@ export function formatWeekRange(createdAt: string): string {
     return `${firstMonth} ${first.getDate()} – ${last.getDate()}`;
   }
   return `${firstMonth} ${first.getDate()} – ${lastMonth} ${last.getDate()}`;
+}
+
+/**
+ * Get the Sun–Sat date range for a given week number, offset from
+ * week 1's creation date.
+ */
+export function getWeekDates(planGroupCreatedAt: string, weekNumber: number): Date[] {
+  const week1Dates = getPlanDayDates(planGroupCreatedAt);
+  const week1Sunday = week1Dates[0];
+  const offsetDays = (weekNumber - 1) * 7;
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(week1Sunday);
+    d.setDate(week1Sunday.getDate() + offsetDays + i);
+    return d;
+  });
+}
+
+/**
+ * Format a week label like "Week 3 of 52 · Mar 16 – 22".
+ */
+export function formatWeekLabel(
+  createdAt: string,
+  weekNumber: number,
+  totalWeeks: number
+): string {
+  const dates = getWeekDates(createdAt, weekNumber);
+  const first = dates[0];
+  const last = dates[6];
+
+  const firstMonth = MONTH_ABBR[first.getMonth()];
+  const lastMonth = MONTH_ABBR[last.getMonth()];
+
+  const range =
+    firstMonth === lastMonth
+      ? `${firstMonth} ${first.getDate()} – ${last.getDate()}`
+      : `${firstMonth} ${first.getDate()} – ${lastMonth} ${last.getDate()}`;
+
+  return `Week ${weekNumber} of ${totalWeeks} · ${range}`;
 }

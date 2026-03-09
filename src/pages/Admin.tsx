@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react";
-import { Film, Cpu, DollarSign } from "lucide-react";
+import { Film, Cpu, DollarSign, UtensilsCrossed } from "lucide-react";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { VideoPanel } from "@/components/admin/video-management/video-panel";
 import { ModelConfigPanel } from "@/components/admin/model-config/model-config-panel";
 import { CostPanel } from "@/components/admin/cost-dashboard/cost-panel";
+import { DishPanel } from "@/components/admin/dish-library/dish-panel";
 import { useAdminStore } from "@/store/admin";
 import { fetchAgents } from "@/services/admin-service";
 
-type Tab = "videos" | "model_config" | "cost_dashboard";
+type Tab = "videos" | "model_config" | "cost_dashboard" | "dish_library";
 
 const TAB_META: Record<Tab, { label: string; icon: React.ReactNode }> = {
   videos: { label: "Videos", icon: <Film size={14} /> },
   model_config: { label: "Models", icon: <Cpu size={14} /> },
   cost_dashboard: { label: "Costs", icon: <DollarSign size={14} /> },
+  dish_library: { label: "Dishes", icon: <UtensilsCrossed size={14} /> },
 };
 
 export default function Admin() {
@@ -100,6 +102,9 @@ export default function Admin() {
           )}
           {activeTab === "cost_dashboard" && capabilities.includes("cost_dashboard") && (
             <CostPanel agentId={selectedAgentId!} />
+          )}
+          {activeTab === "dish_library" && capabilities.includes("dish_library") && (
+            <DishPanel agentId={selectedAgentId!} />
           )}
         </div>
       ) : (

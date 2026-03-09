@@ -42,9 +42,17 @@ export interface StructuredMealPlan {
   id: string;
   chat_id: string;
   created_at: string;
+  week_number: number;
+  plan_group_id?: string;
   days: MealPlanDay[];
   weekly_averages: NutrientTotals;
   targets: NutrientTotals;
+}
+
+export interface WeeksMeta {
+  plan_group_id: string;
+  generated_weeks: number[];
+  total_weeks: number;
 }
 
 export interface SwapMealRequest {
@@ -161,6 +169,10 @@ export interface AddMealResponse {
   plan: StructuredMealPlan;
   added_meal: MealPlanMeal;
 }
+
+// Cuisine Preferences
+
+export type CuisinePreferences = Record<string, number>; // {cuisine_id: 1-10 rating}
 
 // Plan Versioning types
 

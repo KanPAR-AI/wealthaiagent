@@ -3,16 +3,18 @@ import { useParams, useNavigate } from "react-router-dom";
 import { MessageSquare, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMealPlanStore } from "@/store/meal-plan";
-import { fetchMealPlan, generateMealPlan, getMealPreferences, setMealPreferences, addMeal } from "@/services/meal-plan-service";
+import { fetchMealPlan, generateMealPlan, getMealPreferences, setMealPreferences, addMeal, fetchWeeksMeta } from "@/services/meal-plan-service";
 import { DayTabs } from "@/components/meal-plan/day-tabs";
 import { MealCard } from "@/components/meal-plan/meal-card";
 import { DailyTotals } from "@/components/meal-plan/daily-totals";
 import { WeeklySummary } from "@/components/meal-plan/weekly-summary";
+import { CuisineSettings } from "@/components/meal-plan/cuisine-settings";
+import { Recommendations } from "@/components/meal-plan/recommendations";
+import { WeekNav } from "@/components/meal-plan/week-nav";
 import { SwapDialog } from "@/components/meal-plan/swap-dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import ChatWindow from "@/components/chat/chat-window";
 import type { SmartSwapResponse, StructuredMealPlan, MealRatingValue } from "@/types/meal-plan";
-import { formatWeekRange } from "@/components/meal-plan/date-utils";
 
 export default function MealPlan() {
   const { chatid } = useParams<{ chatid: string }>();
@@ -25,11 +27,18 @@ export default function MealPlan() {
     error,
     planStale,
     staleMeals,
+    currentWeek,
+    generatedWeeks,
+    weekLoading,
     setPlan,
     setLoading,
     setError,
     setPlanStale,
     clearStale,
+    setCurrentWeek,
+    setWeekLoading,
+    setGeneratedWeeks,
+    setPlanGroupId,
     reset,
   } = useMealPlanStore();
 
@@ -48,26 +57,31 @@ export default function MealPlan() {
   const [preferences, setPreferences] = useState<Record<string, number>>({});
   const prefsLoaded = useRef(false);
 
-  // Load meal plan + preferences on mount
+  // Load meal plan + preferences + weeks meta on mount
   useEffect(() => {
     if (!chatid || !idToken) return;
 
     let cancelled = false;
     setLoading(true);
 
-    // Load plan and preferences in parallel
+    // Load plan, preferences, and weeks meta in parallel
     Promise.all([
       fetchMealPlan(idToken, chatid),
       prefsLoaded.current
         ? Promise.resolve(null)
         : getMealPreferences(idToken, chatid).catch(() => ({ ratings: {} })),
+      fetchWeeksMeta(idToken, chatid).catch(() => null),
     ])
-      .then(([planData, prefsData]) => {
+      .then(([planData, prefsData, weeksMeta]) => {
         if (cancelled) return;
         setPlan(planData);
         if (prefsData) {
           setPreferences(prefsData.ratings || {});
           prefsLoaded.current = true;
+        }
+        if (weeksMeta) {
+          setGeneratedWeeks(weeksMeta.generated_weeks);
+          setPlanGroupId(weeksMeta.plan_group_id);
         }
       })
       .catch((err) => {
@@ -80,7 +94,7 @@ export default function MealPlan() {
     return () => {
       cancelled = true;
     };
-  }, [chatid, idToken, setPlan, setLoading, setError]);
+  }, [chatid, idToken, setPlan, setLoading, setError, setGeneratedWeeks, setPlanGroupId]);
 
   // Cleanup on unmount
   useEffect(() => () => reset(), [reset]);
@@ -93,12 +107,41 @@ export default function MealPlan() {
     try {
       const data = await generateMealPlan(idToken, chatid);
       setPlan(data);
+      // Refresh weeks metadata
+      const weeksMeta = await fetchWeeksMeta(idToken, chatid).catch(() => null);
+      if (weeksMeta) {
+        setGeneratedWeeks(weeksMeta.generated_weeks);
+        setPlanGroupId(weeksMeta.plan_group_id);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to generate plan");
     } finally {
       setLoading(false);
     }
-  }, [chatid, idToken, setPlan, setLoading, setError, clearStale]);
+  }, [chatid, idToken, setPlan, setLoading, setError, clearStale, setGeneratedWeeks, setPlanGroupId]);
+
+  const handleWeekChange = useCallback(async (newWeek: number) => {
+    if (!chatid || !idToken) return;
+    setCurrentWeek(newWeek);
+    setWeekLoading(true);
+    setError(null);
+    try {
+      const data = await fetchMealPlan(idToken, chatid, newWeek);
+      setPlan(data);
+    } catch {
+      // Week not generated yet — generate on demand
+      try {
+        const data = await generateMealPlan(idToken, chatid, newWeek);
+        setPlan(data);
+        // Update generated weeks list
+        setGeneratedWeeks([...new Set([...generatedWeeks, newWeek])].sort((a, b) => a - b));
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to generate week");
+      }
+    } finally {
+      setWeekLoading(false);
+    }
+  }, [chatid, idToken, generatedWeeks, setPlan, setCurrentWeek, setWeekLoading, setError, setGeneratedWeeks]);
 
   const handleSwapClick = useCallback((dayIndex: number, mealIndex: number) => {
     setSwapTarget({ day: dayIndex, meal: mealIndex });
@@ -179,7 +222,7 @@ export default function MealPlan() {
             >
               &larr; Back to Chat
             </button>
-            <h1 className="text-lg font-semibold text-foreground">Your 7-Day Meal Plan</h1>
+            <h1 className="text-lg font-semibold text-foreground">Your Meal Plan</h1>
           </div>
           <button
             onClick={handleRefresh}
@@ -244,13 +287,11 @@ export default function MealPlan() {
           {/* Plan content */}
           {plan && (
             <>
+              {/* Week navigation */}
+              <WeekNav totalWeeks={52} onWeekChange={handleWeekChange} />
+
               {/* Day navigation */}
               <div className="space-y-1.5">
-                {plan.created_at && (
-                  <p className="text-xs font-medium text-muted-foreground px-1">
-                    {formatWeekRange(plan.created_at)}
-                  </p>
-                )}
                 <DayTabs />
               </div>
 
@@ -329,6 +370,21 @@ export default function MealPlan() {
                     planId={plan.id}
                     onFixComplete={handleFixComplete}
                   />
+                  {chatid && idToken && (
+                    <CuisineSettings
+                      chatId={chatid}
+                      token={idToken}
+                      onPreferencesChanged={() => setPlanStale(true, [])}
+                    />
+                  )}
+                  {chatid && idToken && (
+                    <Recommendations
+                      chatId={chatid}
+                      token={idToken}
+                      selectedDay={selectedDay}
+                      onAccept={(updatedPlan) => setPlan(updatedPlan)}
+                    />
+                  )}
                 </div>
               </div>
             </>

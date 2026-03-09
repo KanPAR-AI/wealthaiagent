@@ -6,7 +6,7 @@ import { useAuthStore } from "@/store/auth";
 import { getApiUrl } from "@/config/environment";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { setFirebaseUser, setUser, setIdToken, setIsAuthLoading } =
+  const { setFirebaseUser, setUser, setIdToken, setIsAuthLoading, resetAnonymousMessageCount } =
     useAuthStore();
 
   useEffect(() => {
@@ -19,6 +19,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(timeout);
       if (firebaseUser) {
         setFirebaseUser(firebaseUser);
+
+        // Reset anonymous message counter when user signs in (non-anonymous)
+        if (!firebaseUser.isAnonymous) {
+          resetAnonymousMessageCount();
+        }
 
         // Get ID token
         const token = await firebaseUser.getIdToken();

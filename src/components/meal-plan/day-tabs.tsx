@@ -1,15 +1,19 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useMealPlanStore } from "@/store/meal-plan";
-import { buildDayTabInfos, type DayTabInfo } from "./date-utils";
+import { buildDayTabInfos, buildWeekDayTabInfos, type DayTabInfo } from "./date-utils";
 
 export function DayTabs() {
-  const { plan, selectedDay, setSelectedDay } = useMealPlanStore();
+  const { plan, selectedDay, setSelectedDay, planGroupCreatedAt, currentWeek } = useMealPlanStore();
 
   const dayInfos = useMemo(() => {
     if (!plan?.created_at) return null;
+    // Use week-aware dates when we have a plan group base date
+    if (planGroupCreatedAt && currentWeek > 0) {
+      return buildWeekDayTabInfos(planGroupCreatedAt, currentWeek);
+    }
     return buildDayTabInfos(plan.created_at);
-  }, [plan?.created_at]);
+  }, [plan?.created_at, planGroupCreatedAt, currentWeek]);
 
   if (!plan || !dayInfos) return null;
 
