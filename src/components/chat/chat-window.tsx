@@ -57,12 +57,22 @@ const suggestionTiles: SuggestionTileData[] = [
     description: "Performance comparison",
     useMockService: true,
   },
-  { 
-    id: 6, 
-    title: "Show compound interest growth", 
+  {
+    id: 6,
+    title: "Show compound interest growth",
     description: "Investment projection",
     useMockService: true,
-  }
+  },
+  {
+    id: 7,
+    title: "I want to talk to Barbie about my diet",
+    description: "General nutrition advisor",
+  },
+  {
+    id: 8,
+    title: "I need help with weight loss strategy",
+    description: "Weight management specialist",
+  },
 ];
 
 export default function ChatWindow({
