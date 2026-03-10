@@ -8,6 +8,8 @@ import { DayTabs } from "@/components/meal-plan/day-tabs";
 import { MealCard } from "@/components/meal-plan/meal-card";
 import { DailyTotals } from "@/components/meal-plan/daily-totals";
 import { WeeklySummary } from "@/components/meal-plan/weekly-summary";
+import { VarietyScoreCard } from "@/components/meal-plan/variety-score";
+import { StalenessNudges } from "@/components/meal-plan/staleness-nudges";
 import { CuisineSettings } from "@/components/meal-plan/cuisine-settings";
 import { Recommendations } from "@/components/meal-plan/recommendations";
 import { WeekNav } from "@/components/meal-plan/week-nav";
@@ -105,9 +107,9 @@ export default function MealPlan() {
     setError(null);
     clearStale();
     try {
-      const data = await generateMealPlan(idToken, chatid);
+      const data = await generateMealPlan(idToken, chatid, undefined, 12);
       setPlan(data);
-      // Refresh weeks metadata
+      // Refresh weeks metadata (batch generation stores all 12 weeks)
       const weeksMeta = await fetchWeeksMeta(idToken, chatid).catch(() => null);
       if (weeksMeta) {
         setGeneratedWeeks(weeksMeta.generated_weeks);
@@ -362,6 +364,12 @@ export default function MealPlan() {
                       targets={plan.targets}
                       dayName={currentDay.day}
                     />
+                  )}
+                  {plan.variety_score && (
+                    <VarietyScoreCard varietyScore={plan.variety_score} />
+                  )}
+                  {plan.staleness_nudges && plan.staleness_nudges.length > 0 && (
+                    <StalenessNudges nudges={plan.staleness_nudges} />
                   )}
                   <WeeklySummary
                     averages={plan.weekly_averages}

@@ -30,12 +30,34 @@ export interface MealPlanMeal {
   total_fat_g: number;
   total_fiber_g: number;
   prep_notes?: string;
+  cuisine?: string[];
+  protein_source?: string;
 }
 
 export interface MealPlanDay {
   day: string;
   meals: MealPlanMeal[];
   daily_totals: NutrientTotals;
+}
+
+export interface VarietyBreakdown {
+  template_uniqueness: number;
+  cuisine_spread: number;
+  protein_diversity: number;
+  ingredient_coverage: number;
+}
+
+export interface VarietyScore {
+  score: number;
+  breakdown: VarietyBreakdown;
+  cuisine_skipped: boolean;
+}
+
+export interface StalenessNudge {
+  template_id: string;
+  meal_name: string;
+  consecutive_weeks: number;
+  message: string;
 }
 
 export interface StructuredMealPlan {
@@ -47,6 +69,8 @@ export interface StructuredMealPlan {
   days: MealPlanDay[];
   weekly_averages: NutrientTotals;
   targets: NutrientTotals;
+  variety_score?: VarietyScore;
+  staleness_nudges?: StalenessNudge[];
 }
 
 export interface WeeksMeta {

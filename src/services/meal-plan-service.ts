@@ -36,11 +36,14 @@ export async function fetchMealPlan(
 export async function generateMealPlan(
   token: string,
   chatId: string,
-  week?: number
+  week?: number,
+  weeks?: number
 ): Promise<StructuredMealPlan> {
-  const url = week
-    ? getApiUrl(`/chats/${chatId}/mealplan?week=${week}`)
-    : getApiUrl(`/chats/${chatId}/mealplan`);
+  const params = new URLSearchParams();
+  if (week) params.set("week", String(week));
+  if (weeks) params.set("weeks", String(weeks));
+  const qs = params.toString();
+  const url = getApiUrl(`/chats/${chatId}/mealplan${qs ? `?${qs}` : ""}`);
   const response = await fetch(url, {
     method: "POST",
     headers: {
