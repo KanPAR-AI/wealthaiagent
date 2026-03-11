@@ -1,5 +1,4 @@
-import { useChatStore } from "@/store/chat"
-import { useAuth } from "@/hooks/use-auth"
+import { useCallback } from "react"
 
 interface SpecialistOption {
   id: string
@@ -69,19 +68,15 @@ export function SpecialistPickerWidget({
   data,
   isHistory,
 }: SpecialistPickerWidgetProps) {
-  const { sendMessage } = useChatStore()
-  const { getToken } = useAuth()
-
-  const handleSelect = async (specialist: SpecialistOption) => {
+  const handleSelect = useCallback((specialist: SpecialistOption) => {
     if (isHistory) return
 
     const message = `I'd like to work with the ${specialist.name} specialist. ${specialist.id === "general_nutrition" ? "Help me with a general diet plan." : ""}`
 
-    const token = await getToken()
-    if (token) {
-      sendMessage(message, token)
-    }
-  }
+    window.dispatchEvent(
+      new CustomEvent('chat-quick-reply', { detail: { text: message } })
+    )
+  }, [isHistory])
 
   return (
     <div className="w-full max-w-2xl mx-auto">
