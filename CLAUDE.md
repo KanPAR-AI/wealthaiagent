@@ -51,10 +51,13 @@ npm run deploy:gcp         # Deploy to Google Cloud Platform
 ### Key Directories
 - `src/components/chat/` - Chat interface components (message list, input, actions)
 - `src/components/ui/` - Reusable UI primitives (shadcn-style with Radix UI)
-- `src/store/` - Zustand stores (chat.ts for messages/sessions, auth.ts for Firebase auth state)
+- `src/components/widgets/` - Domain-specific interactive widgets (onboarding form, specialist picker, cuisine selector, action tiles, multi-select)
+- `src/components/meal-plan/` - Meal plan components (variety score, staleness nudges)
+- `src/pages/MealPlan.tsx` - Full meal plan dashboard (week navigation, meal cards, swap, generate)
+- `src/store/` - Zustand stores (chat.ts, auth.ts, meal-plan.ts)
 - `src/hooks/` - Custom React hooks for shared logic (use-auth.ts is the primary auth hook)
-- `src/services/` - API service layer and business logic
-- `src/types/` - TypeScript type definitions
+- `src/services/` - API service layer (chat-service.ts, meal-plan-service.ts)
+- `src/types/` - TypeScript type definitions (meal-plan.ts for plan/day/meal types)
 - `src/test/` - Test utilities and MSW handlers
 
 ### State Management
@@ -77,6 +80,7 @@ React Router v7 with AppLayout wrapper:
 - `/chat` or `/chat/:chatid` - Chat interface
 - `/admin` - Admin portal (`<ProtectedRoute requireAdmin>` — 403 for non-admins)
 - `/trade` - Trade page
+- `/mealplan/:chatid` - Meal plan dashboard (week nav, generate, swap, preferences)
 - `/debug/:chatid` - Slot debug page
 - `/logs` - Debug/activity logs
 - Base path: `/chataiagent/` for all routes
@@ -101,6 +105,21 @@ The `ChatHeader` (`src/components/chat/chat-header.tsx`) contains:
 - **Compound components** for complex UI (e.g., ChatMessage with sub-components)
 - **UI primitives** in `src/components/ui/` using Radix UI + CVA for variants
 - **Custom hooks** for reusable logic (useChat, useAuth, useFileUpload, etc.)
+
+### Widget System (`src/components/widgets/`)
+Interactive widgets rendered inline in chat responses. Backend sends widget data via SSE; frontend renders appropriate component.
+
+| Widget | File | Field Types |
+|--------|------|-------------|
+| **Onboarding Form** | `onboarding-form-widget.tsx` | `number`, `select` (pill buttons), `dropdown` (native select), `slider` (range input with colored fill), `height` (dual-mode ft/in or cm) |
+| **Specialist Picker** | `specialist-picker-widget.tsx` | Grid of specialist cards (Medical, Pregnancy, Kids, Sports, Fitness, General nutrition) |
+| **Multi-Select** | `multi-select-widget.tsx` | Multi-choice with custom "Other" input |
+| **Cuisine Proportion** | `cuisine-proportion-widget.tsx` | Slider-based cuisine preference weights |
+| **Action Tiles** | `action-tiles-widget.tsx` | Quick-reply suggestion buttons |
+
+**Mobile-first design**: 24px slider thumbs with `touch-none` (prevents scroll hijack), `active:scale` press feedback, `max-w-sm rounded-2xl` card layout. All widgets dispatch `chat-quick-reply` CustomEvent instead of direct store calls.
+
+**Rate hint** (onboarding form): Live-computes weekly weight change rate from sliders. Warns (amber) above 1.5 kg/week for loss, 0.5 kg/week for gain. Non-blocking — does not prevent submission.
 
 ### Build Configuration
 - **Vite config** includes PWA plugin and Tailwind CSS

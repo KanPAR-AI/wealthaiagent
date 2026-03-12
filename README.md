@@ -48,16 +48,19 @@ src/
 │   ├── theme/           # Theme components
 │   ├── charts/          # Chart components
 │   ├── table/           # Table components
+│   ├── widgets/         # Interactive chat widgets (onboarding, specialist picker, etc.)
+│   ├── meal-plan/       # Meal plan components (variety score, staleness nudges)
 │   └── debug/           # Debug components
 ├── hooks/               # Global custom React hooks
 │   └── use-cached-file.ts  # File caching hook
 ├── services/            # API services and business logic
-│   └── file-cache.ts    # IndexedDB file caching service
-├── store/               # Zustand state stores
-├── types/               # TypeScript type definitions
+│   ├── file-cache.ts    # IndexedDB file caching service
+│   └── meal-plan-service.ts  # Meal plan API client (generate, swap, fix, preferences)
+├── store/               # Zustand state stores (chat.ts, auth.ts, meal-plan.ts)
+├── types/               # TypeScript type definitions (meal-plan.ts for plan types)
 ├── utils/               # Utility functions
 ├── config/              # Configuration files
-├── pages/               # Page components
+├── pages/               # Page components (MealPlan.tsx for meal plan dashboard)
 ├── assets/              # Static assets
 └── test/                # Test utilities and mocks
 ```
@@ -781,10 +784,14 @@ export const StreamingResponse = ({ content, isStreaming, className }) => {
 
 ```typescript
 // Main routes
-/ → New (New chat page)
+/ → Login (Authentication page)
 /new → New (New chat page)
 /chat → New (New chat page)
 /chat/:chatid → Chat (Existing chat page)
+/admin → Admin (Admin portal, requires admin role)
+/trade → Trade (Trading page)
+/mealplan/:chatid → MealPlan (Meal plan dashboard)
+/debug/:chatid → Debug (Slot debug page)
 /logs → Logs (Debug page)
 /* → NotFound (404 page)
 ```
@@ -809,11 +816,52 @@ export const StreamingResponse = ({ content, isStreaming, className }) => {
 - Provides debug information
 - Handles log filtering
 
-#### 4. **NotFound** (`src/pages/NotFound.tsx`)
+#### 4. **MealPlan** (`src/pages/MealPlan.tsx`)
+**Responsibility**: Meal plan dashboard
+- Displays 7-day meal plan with daily meal cards
+- Week navigation (prev/next) across stored plans
+- Generate/refresh meal plans (batch 12-week via `?weeks=12`)
+- Meal swap interface with cross-day compensation
+- Variety score display and staleness nudges
+- Meal preferences (like/dislike ratings)
+
+**Key Dependencies**: `meal-plan-service.ts` for API calls, `meal-plan.ts` store
+
+#### 5. **NotFound** (`src/pages/NotFound.tsx`)
 **Responsibility**: 404 error page
 - Handles unknown routes
 - Provides navigation back
 - Shows helpful error message
+
+### Interactive Widgets (`src/components/widgets/`)
+
+Widgets are rendered inline within chat messages. The backend sends widget data via SSE events; the frontend matches the widget `type` and renders the appropriate component.
+
+#### 1. **OnboardingFormWidget** (`onboarding-form-widget.tsx`)
+**Responsibility**: Mobile-first profile collection form (no keyboard typing)
+- **Field types**: `number` (fallback input), `select` (pill buttons for sex), `dropdown` (native select for age), `slider` (range input for weight/target/timeline), `height` (dual-mode ft/in or cm)
+- 24px slider thumbs with colored fill track, `touch-none` to prevent scroll hijack
+- Live rate hint: computes weekly weight change, warns (amber) above 1.5 kg/week
+- Dispatches `chat-quick-reply` CustomEvent on submit
+
+#### 2. **SpecialistPickerWidget** (`specialist-picker-widget.tsx`)
+**Responsibility**: Specialist nutrition agent selector
+- 2×3 grid of colored cards (Medical, Pregnancy, Kids, Sports, Fitness, General)
+- Each card has icon, name, description
+- Dispatches `chat-quick-reply` on selection
+
+#### 3. **MultiSelectWidget** (`multi-select-widget.tsx`)
+**Responsibility**: Multi-choice selection (dietary prefs, allergies, medical conditions)
+- Checkbox-style selection with custom "Other" text input
+- Dispatches `chat-quick-reply` with comma-separated selections
+
+#### 4. **CuisineProportionWidget** (`cuisine-proportion-widget.tsx`)
+**Responsibility**: Cuisine preference weight allocation
+- Slider-based proportional allocation across selected cuisines
+
+#### 5. **ActionTilesWidget** (`action-tiles-widget.tsx`)
+**Responsibility**: Quick-reply suggestion buttons
+- Grid of actionable tiles that dispatch `chat-quick-reply`
 
 ---
 
@@ -899,6 +947,15 @@ interface ChatState {
 | POST | `/api/v1/chats/{chatId}/favorite` | Toggle favorite status | `ChatSidebar` component |
 | POST | `/api/v1/files/upload` | Upload files | `ChatInput` component |
 | POST | `/api/v1/audio/transcribe` | Transcribe audio | `ChatInput` component |
+| GET | `/api/v1/chats/{chatId}/mealplan/weeks` | Get week count | `MealPlan` page |
+| GET | `/api/v1/chats/{chatId}/mealplan` | Get current plan | `MealPlan` page |
+| POST | `/api/v1/chats/{chatId}/mealplan?weeks=N` | Generate plan (batch) | `MealPlan` page |
+| POST | `/api/v1/chats/{chatId}/mealplan/swap` | Smart swap meal | `MealPlan` page |
+| POST | `/api/v1/chats/{chatId}/mealplan/fix` | Rebalance plan | `MealPlan` page |
+| GET | `/api/v1/chats/{chatId}/mealplan/preferences` | Get meal ratings | `MealPlan` page |
+| POST | `/api/v1/chats/{chatId}/mealplan/preferences` | Set meal ratings | `MealPlan` page |
+| GET | `/api/v1/chats/{chatId}/mealplan/custom-meals` | List custom meals | `MealPlan` page |
+| POST | `/api/v1/chats/{chatId}/mealplan/add-meal` | Add custom meal | `MealPlan` page |
 
 ### Component-wise API Breakdown
 
