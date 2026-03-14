@@ -230,3 +230,120 @@ export async function rejectDishes(agentId: string, dishIds: string[]) {
     body: JSON.stringify({ dish_ids: dishIds }),
   });
 }
+
+// --- RAG Corpus ---
+
+export interface CorpusItem {
+  source_id: string;
+  title: string;
+  source_type: string;
+  language: string;
+  original_language: string;
+  chunk_count: number;
+}
+
+export interface CorpusListResponse {
+  items: CorpusItem[];
+  total_chunks: number;
+}
+
+export interface CorpusStats {
+  total_chunks: number;
+  by_source_type: Record<string, number>;
+  by_language: Record<string, number>;
+  unique_sources: number;
+}
+
+export interface CorpusJob {
+  job_id: string;
+  agent_id?: string;
+  source_type: string;
+  source_ref: string;
+  status: "pending" | "running" | "complete" | "failed";
+  chunks_created: number;
+  error: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export async function fetchCorpus(agentId: string): Promise<CorpusListResponse> {
+  return adminFetch(`/agents/${agentId}/corpus`);
+}
+
+export async function fetchCorpusStats(agentId: string): Promise<CorpusStats> {
+  return adminFetch(`/agents/${agentId}/corpus/stats`);
+}
+
+export async function addCorpusYouTube(
+  agentId: string,
+  youtubeUrl: string
+): Promise<{ job_id: string; status: string; poll_url: string }> {
+  return adminFetch(`/agents/${agentId}/corpus/youtube`, {
+    method: "POST",
+    body: JSON.stringify({ youtube_url: youtubeUrl }),
+  });
+}
+
+export async function pollCorpusJob(
+  agentId: string,
+  jobId: string
+): Promise<CorpusJob> {
+  return adminFetch(`/agents/${agentId}/corpus/jobs/${jobId}`);
+}
+
+export async function listCorpusJobs(
+  agentId: string
+): Promise<{ jobs: CorpusJob[] }> {
+  return adminFetch(`/agents/${agentId}/corpus/jobs`);
+}
+
+export async function deleteCorpusItem(
+  agentId: string,
+  sourceId: string
+): Promise<{ source_id: string; chunks_removed: number; remaining_chunks: number }> {
+  return adminFetch(`/agents/${agentId}/corpus/${sourceId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function reloadCorpusVectors(
+  agentId: string
+): Promise<{ status: string; chunks_loaded: number }> {
+  return adminFetch(`/agents/${agentId}/corpus/vectors/reload`, {
+    method: "POST",
+  });
+}
+
+// --- User Memory ---
+
+export interface UserMemoryFact {
+  key: string;
+  value: string;
+  category: string;
+  confidence: number;
+  weight: number;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface UserMemoryResponse {
+  user_id: string;
+  facts: UserMemoryFact[];
+  total_facts: number;
+}
+
+export async function fetchUserMemory(
+  agentId: string,
+  userId: string
+): Promise<UserMemoryResponse> {
+  return adminFetch(`/agents/${agentId}/users/${userId}/memory`);
+}
+
+export async function clearUserMemory(
+  agentId: string,
+  userId: string
+): Promise<{ user_id: string; facts_cleared: number }> {
+  return adminFetch(`/agents/${agentId}/users/${userId}/memory`, {
+    method: "DELETE",
+  });
+}

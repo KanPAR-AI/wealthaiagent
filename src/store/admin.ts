@@ -8,6 +8,9 @@ import type {
   ModelConfigResponse,
   CostResponse,
   VideoJob,
+  CorpusListResponse,
+  CorpusStats,
+  UserMemoryResponse,
 } from "@/services/admin-service";
 
 interface AdminState {
@@ -33,6 +36,16 @@ interface AdminState {
   setCostData: (data: CostResponse | null) => void;
   setCostPeriod: (period: "1d" | "7d" | "30d") => void;
 
+  // RAG Corpus
+  corpusData: CorpusListResponse | null;
+  corpusStats: CorpusStats | null;
+  setCorpusData: (data: CorpusListResponse | null) => void;
+  setCorpusStats: (stats: CorpusStats | null) => void;
+
+  // User Memory
+  userMemoryData: UserMemoryResponse | null;
+  setUserMemoryData: (data: UserMemoryResponse | null) => void;
+
   // Loading
   loading: Record<string, boolean>;
   setLoading: (key: string, val: boolean) => void;
@@ -43,7 +56,15 @@ export const useAdminStore = create<AdminState>((set) => ({
   selectedAgentId: null,
   setAgents: (agents) => set({ agents }),
   setSelectedAgentId: (id) =>
-    set({ selectedAgentId: id, videoData: null, modelConfig: null, costData: null }),
+    set({
+      selectedAgentId: id,
+      videoData: null,
+      modelConfig: null,
+      costData: null,
+      corpusData: null,
+      corpusStats: null,
+      userMemoryData: null,
+    }),
 
   videoData: null,
   setVideoData: (data) => set({ videoData: data }),
@@ -57,6 +78,14 @@ export const useAdminStore = create<AdminState>((set) => ({
   costPeriod: "7d",
   setCostData: (data) => set({ costData: data }),
   setCostPeriod: (period) => set({ costPeriod: period }),
+
+  corpusData: null,
+  corpusStats: null,
+  setCorpusData: (data) => set({ corpusData: data }),
+  setCorpusStats: (stats) => set({ corpusStats: stats }),
+
+  userMemoryData: null,
+  setUserMemoryData: (data) => set({ userMemoryData: data }),
 
   loading: {},
   setLoading: (key, val) =>
