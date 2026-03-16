@@ -32,6 +32,8 @@ export interface AgentInfo {
   name: string;
   description: string;
   capabilities: string[];
+  is_dynamic?: boolean;
+  status?: "draft" | "active" | "archived";
 }
 
 export async function fetchAgents(): Promise<{ agents: AgentInfo[] }> {

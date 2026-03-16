@@ -12,6 +12,10 @@ import type {
   CorpusStats,
   UserMemoryResponse,
 } from "@/services/admin-service";
+import type {
+  DynamicAgentConfig,
+  PromptVersion,
+} from "@/services/agent-builder-service";
 
 interface AdminState {
   // Agent selection
@@ -45,6 +49,14 @@ interface AdminState {
   // User Memory
   userMemoryData: UserMemoryResponse | null;
   setUserMemoryData: (data: UserMemoryResponse | null) => void;
+
+  // Agent Builder
+  agentConfig: DynamicAgentConfig | null;
+  setAgentConfig: (config: DynamicAgentConfig | null) => void;
+  promptVersions: PromptVersion[];
+  setPromptVersions: (versions: PromptVersion[]) => void;
+  showCreateWizard: boolean;
+  setShowCreateWizard: (show: boolean) => void;
 
   // Loading
   loading: Record<string, boolean>;
@@ -86,6 +98,13 @@ export const useAdminStore = create<AdminState>((set) => ({
 
   userMemoryData: null,
   setUserMemoryData: (data) => set({ userMemoryData: data }),
+
+  agentConfig: null,
+  setAgentConfig: (config) => set({ agentConfig: config }),
+  promptVersions: [],
+  setPromptVersions: (versions) => set({ promptVersions: versions }),
+  showCreateWizard: false,
+  setShowCreateWizard: (show) => set({ showCreateWizard: show }),
 
   loading: {},
   setLoading: (key, val) =>

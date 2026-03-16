@@ -1,10 +1,18 @@
-import { ArrowLeft, MessageSquare, Settings } from "lucide-react";
+import { ArrowLeft, MessageSquare, Settings, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAdminStore } from "@/store/admin";
+import { AgentStatusBadge } from "@/components/admin/agent-builder/agent-status-badge";
 
 export function AdminHeader() {
-  const { agents, selectedAgentId, setSelectedAgentId } = useAdminStore();
+  const {
+    agents,
+    selectedAgentId,
+    setSelectedAgentId,
+    setShowCreateWizard,
+  } = useAdminStore();
+
+  const selectedAgent = agents.find((a) => a.id === selectedAgentId);
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -26,21 +34,35 @@ export function AdminHeader() {
 
         <div className="flex items-center gap-3">
           {agents.length > 0 && (
-            <select
-              value={selectedAgentId || ""}
-              onChange={(e) => setSelectedAgentId(e.target.value)}
-              className="h-8 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="" disabled>
-                Select Agent
-              </option>
-              {agents.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedAgentId || ""}
+                onChange={(e) => setSelectedAgentId(e.target.value)}
+                className="h-8 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="" disabled>
+                  Select Agent
                 </option>
-              ))}
-            </select>
+                {agents.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                    {a.is_dynamic && a.status ? ` (${a.status})` : ""}
+                  </option>
+                ))}
+              </select>
+              {selectedAgent?.is_dynamic && selectedAgent.status && (
+                <AgentStatusBadge status={selectedAgent.status} />
+              )}
+            </div>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowCreateWizard(true)}
+          >
+            <Plus size={14} className="mr-1" />
+            Create Agent
+          </Button>
           {selectedAgentId && (
             <Link to={`/admin/test/${selectedAgentId}`}>
               <Button size="sm" variant="outline">
