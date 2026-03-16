@@ -1,5 +1,6 @@
-import { ArrowLeft, Settings } from "lucide-react";
+import { ArrowLeft, MessageSquare, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { useAdminStore } from "@/store/admin";
 
 export function AdminHeader() {
@@ -23,22 +24,32 @@ export function AdminHeader() {
           </div>
         </div>
 
-        {agents.length > 0 && (
-          <select
-            value={selectedAgentId || ""}
-            onChange={(e) => setSelectedAgentId(e.target.value)}
-            className="h-8 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="" disabled>
-              Select Agent
-            </option>
-            {agents.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
+        <div className="flex items-center gap-3">
+          {agents.length > 0 && (
+            <select
+              value={selectedAgentId || ""}
+              onChange={(e) => setSelectedAgentId(e.target.value)}
+              className="h-8 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="" disabled>
+                Select Agent
               </option>
-            ))}
-          </select>
-        )}
+              {agents.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {selectedAgentId && (
+            <Link to={`/admin/test/${selectedAgentId}`}>
+              <Button size="sm" variant="outline">
+                <MessageSquare size={14} className="mr-1" />
+                Test Chat
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
     </header>
   );

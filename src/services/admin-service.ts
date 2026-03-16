@@ -314,6 +314,97 @@ export async function reloadCorpusVectors(
   });
 }
 
+// --- Corpus Upload Helpers ---
+
+async function adminUpload(endpoint: string, formData: FormData) {
+  const token = await auth.currentUser?.getIdToken();
+  const url = getApiUrl(`/admin${endpoint}`);
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(body.detail || `Upload error: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function addCorpusPdf(
+  agentId: string,
+  file: File
+): Promise<{ job_id: string; poll_url: string }> {
+  const fd = new FormData();
+  fd.append("file", file);
+  return adminUpload(`/agents/${agentId}/corpus/pdf`, fd);
+}
+
+export async function addCorpusAudio(
+  agentId: string,
+  file: File
+): Promise<{ job_id: string; poll_url: string }> {
+  const fd = new FormData();
+  fd.append("file", file);
+  return adminUpload(`/agents/${agentId}/corpus/audio`, fd);
+}
+
+export async function addCorpusVideoFile(
+  agentId: string,
+  file: File
+): Promise<{ job_id: string; poll_url: string }> {
+  const fd = new FormData();
+  fd.append("file", file);
+  return adminUpload(`/agents/${agentId}/corpus/video_file`, fd);
+}
+
+export async function addCorpusDocument(
+  agentId: string,
+  file: File
+): Promise<{ job_id: string; poll_url: string }> {
+  const fd = new FormData();
+  fd.append("file", file);
+  return adminUpload(`/agents/${agentId}/corpus/document`, fd);
+}
+
+export async function addCorpusText(
+  agentId: string,
+  text: string,
+  title: string
+): Promise<{ job_id: string; poll_url: string }> {
+  return adminFetch(`/agents/${agentId}/corpus/text`, {
+    method: "POST",
+    body: JSON.stringify({ text, title }),
+  });
+}
+
+export async function addCorpusBatch(
+  agentId: string,
+  files: File[]
+): Promise<{ jobs: Array<{ job_id: string; filename: string }> }> {
+  const fd = new FormData();
+  files.forEach((f) => fd.append("files", f));
+  return adminUpload(`/agents/${agentId}/corpus/batch`, fd);
+}
+
+export interface RetrievalTestResult {
+  recall_at_5: number;
+  mrr_at_5: number;
+  per_query_results: Array<{
+    query: string;
+    expected: string[];
+    retrieved: string[];
+    recall: number;
+    mrr: number;
+  }>;
+}
+
+export async function runCorpusTest(
+  agentId: string
+): Promise<RetrievalTestResult> {
+  return adminFetch(`/agents/${agentId}/corpus/test`, { method: "POST" });
+}
+
 // --- User Memory ---
 
 export interface UserMemoryFact {

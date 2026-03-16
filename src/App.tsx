@@ -11,6 +11,7 @@ import MealPlan from "./pages/MealPlan";
 import PWAInstall from "./components/PWAInstall";
 import LoginPage from "./pages/Login";
 import Admin from "./pages/Admin";
+import TestChat from "./pages/TestChat";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { isNativePlatform } from "@/lib/capacitor";
 
@@ -34,6 +35,7 @@ const App = () => (
         <Route path="/debug/:chatid" element={<Debug />} />
         <Route path="/logs" element={<Logs />} />
         <Route path="/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
+        <Route path="/admin/test/:agentId" element={<ProtectedRoute requireAdmin><TestChat /></ProtectedRoute>} />
 
         {/* Routes outside the layout, like a 404 page, won't have the sidebar */}
         <Route path="*" element={<NotFound />} />
