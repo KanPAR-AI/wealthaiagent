@@ -38,6 +38,7 @@ export function useMessageSending({
 }: UseMessageSendingProps) {
   const navigate = useNavigate();
   const setPendingMessage = useChatStore(state => state.setPendingMessage);
+  const selectedAgent = useChatStore(state => state.selectedAgent);
 
   const handleSend = async (text: string, attachments: MessageFile[], useMockService?: boolean) => {
     console.log("[handleSend] Called with:", { text, attachmentCount: attachments.length, chatId, useMockService });
@@ -257,7 +258,8 @@ export function useMessageSending({
           setIsSending(false);
         },
         useMockService || isMockChat, // Pass mock service flag (true if explicitly set OR if chat ID is mock)
-        text // Pass prompt text for contextual mock responses
+        text, // Pass prompt text for contextual mock responses
+        selectedAgent, // Force specific agent if user selected one
       );
     } catch (error) {
       console.error("Failed to send message:", error);

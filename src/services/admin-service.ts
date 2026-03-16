@@ -278,11 +278,14 @@ export async function fetchCorpusStats(agentId: string): Promise<CorpusStats> {
 
 export async function addCorpusYouTube(
   agentId: string,
-  youtubeUrl: string
+  youtubeUrl: string,
+  transcript?: string
 ): Promise<{ job_id: string; status: string; poll_url: string }> {
+  const payload: Record<string, string> = { youtube_url: youtubeUrl };
+  if (transcript) payload.transcript = transcript;
   return adminFetch(`/agents/${agentId}/corpus/youtube`, {
     method: "POST",
-    body: JSON.stringify({ youtube_url: youtubeUrl }),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -394,17 +397,25 @@ export interface RetrievalTestResult {
   mrr_at_5: number;
   per_query_results: Array<{
     query: string;
-    expected: string[];
-    retrieved: string[];
+    text?: string;
+    title?: string;
+    source_id?: string;
+    score?: number;
+    expected?: string[];
+    retrieved?: string[];
     recall: number;
     mrr: number;
   }>;
 }
 
 export async function runCorpusTest(
-  agentId: string
+  agentId: string,
+  query?: string
 ): Promise<RetrievalTestResult> {
-  return adminFetch(`/agents/${agentId}/corpus/test`, { method: "POST" });
+  return adminFetch(`/agents/${agentId}/corpus/test`, {
+    method: "POST",
+    body: JSON.stringify({ query: query || "" }),
+  });
 }
 
 // --- User Memory ---

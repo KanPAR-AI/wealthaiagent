@@ -9,6 +9,10 @@ interface ChatState {
   // pendingMessage now correctly includes MessageFile[] and useMockService flag
   pendingMessage: { chatId: string; text: string; files: MessageFile[]; useMockService?: boolean } | null;
 
+  // Agent selection (null = auto/smart routing)
+  selectedAgent: string | null;
+  setSelectedAgent: (agentId: string | null) => void;
+
   // Message management
   addMessage: (chatId: string, message: Message) => void;
   updateMessage: (chatId: string, messageId: string, updates: Partial<Message>) => void;
@@ -25,6 +29,8 @@ interface ChatState {
 export const useChatStore = create<ChatState>((set, get) => ({
   chats: {},
   pendingMessage: null,
+  selectedAgent: null,
+  setSelectedAgent: (agentId) => set({ selectedAgent: agentId }),
 
   // Add a message to a specific chat
   addMessage: (chatId, message) => {

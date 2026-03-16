@@ -45,6 +45,7 @@ import { toast } from "sonner";
 type AddSourceMode =
   | null
   | "youtube"
+  | "youtube_transcript"
   | "pdf"
   | "audio"
   | "video_file"
@@ -57,6 +58,7 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
     useAdminStore();
 
   const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [youtubeTranscript, setYoutubeTranscript] = useState("");
   const [addMode, setAddMode] = useState<AddSourceMode>(null);
   const [activeJob, setActiveJob] = useState<CorpusJob | null>(null);
   const [textTitle, setTextTitle] = useState("");
@@ -127,9 +129,11 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
   const handleAddYouTube = async () => {
     if (!youtubeUrl.trim()) return;
     try {
-      const result = await addCorpusYouTube(agentId, youtubeUrl.trim());
+      const transcript = addMode === "youtube_transcript" ? youtubeTranscript.trim() || undefined : undefined;
+      const result = await addCorpusYouTube(agentId, youtubeUrl.trim(), transcript);
       startPolling(result.job_id, "youtube", youtubeUrl);
       setYoutubeUrl("");
+      setYoutubeTranscript("");
       setAddMode(null);
       toast.success("YouTube video job started");
     } catch (err) {
@@ -223,7 +227,7 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
     setLoading("corpusTest", true);
     setTestResult(null);
     try {
-      const result = await runCorpusTest(agentId);
+      const result = await runCorpusTest(agentId, testQuery.trim());
       setTestResult(result);
     } catch (err) {
       toast.error(`Test failed: ${(err as Error).message}`);
@@ -356,6 +360,9 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
             <DropdownMenuItem onClick={() => setAddMode("youtube")}>
               <Youtube size={14} className="mr-2 text-red-500" /> YouTube URL
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setAddMode("youtube_transcript")}>
+              <Youtube size={14} className="mr-2 text-red-500" /> YouTube URL + Transcript
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setAddMode("pdf")}>
               <FileText size={14} className="mr-2 text-orange-500" /> Upload PDF
             </DropdownMenuItem>
@@ -410,6 +417,53 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
               <Button size="sm" onClick={handleAddYouTube} disabled={!youtubeUrl.trim()}>
                 Add
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* YouTube + Transcript form */}
+      {addMode === "youtube_transcript" && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Youtube size={16} className="text-red-500" />
+              <span className="text-sm font-medium">Add YouTube URL + Transcript</span>
+              <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setAddMode(null)}>
+                <X size={14} />
+              </Button>
+            </div>
+            <div className="space-y-3">
+              <input
+                type="text"
+                className="w-full px-3 py-1.5 text-sm border rounded-md bg-background"
+                placeholder="https://youtube.com/watch?v=..."
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+              />
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">
+                  Paste the transcript from YouTube (copy from video description or captions)
+                </label>
+                <textarea
+                  className="w-full px-3 py-2 text-sm border rounded-md bg-background min-h-[200px] resize-y font-mono"
+                  placeholder="Paste the full video transcript here..."
+                  value={youtubeTranscript}
+                  onChange={(e) => setYoutubeTranscript(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Uses your pasted transcript instead of auto-fetching from YouTube. Helpful when auto-captions are unavailable or low quality.
+                </p>
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={handleAddYouTube}
+                  disabled={!youtubeUrl.trim() || !youtubeTranscript.trim()}
+                >
+                  Add
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -640,46 +694,75 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
 
             {testResult && (
               <div className="space-y-3">
-                <div className="flex gap-4">
-                  <div className="text-center">
-                    <p className="text-lg font-bold">
-                      {(testResult.recall_at_5 * 100).toFixed(1)}%
-                    </p>
-                    <p className="text-xs text-muted-foreground">Recall@5</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-lg font-bold">
-                      {(testResult.mrr_at_5 * 100).toFixed(1)}%
-                    </p>
-                    <p className="text-xs text-muted-foreground">MRR@5</p>
-                  </div>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  {testResult.per_query_results.length} result{testResult.per_query_results.length !== 1 ? "s" : ""} retrieved
+                </p>
 
-                {testResult.per_query_results.length > 0 && (
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-muted/50">
-                          <th className="text-left px-3 py-2 font-medium">Query</th>
-                          <th className="text-right px-3 py-2 font-medium">Recall</th>
-                          <th className="text-right px-3 py-2 font-medium">MRR</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {testResult.per_query_results.map((r, i) => (
-                          <tr key={i} className="border-t">
-                            <td className="px-3 py-2 truncate max-w-[200px]">{r.query}</td>
-                            <td className="px-3 py-2 text-right">
-                              {(r.recall * 100).toFixed(0)}%
-                            </td>
-                            <td className="px-3 py-2 text-right">
-                              {(r.mrr * 100).toFixed(0)}%
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                {testResult.per_query_results.length > 0 && testResult.per_query_results[0].text ? (
+                  /* Custom query mode — show retrieved chunks */
+                  <div className="space-y-2">
+                    {testResult.per_query_results.map((r, i) => (
+                      <div key={i} className="border rounded-lg p-3 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            #{i + 1} {r.title || r.source_id?.slice(0, 12)}
+                          </span>
+                          {r.score != null && (
+                            <span className="text-xs text-muted-foreground">
+                              score: {r.score.toFixed(4)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                          {r.text}
+                        </p>
+                      </div>
+                    ))}
                   </div>
+                ) : testResult.per_query_results.length > 0 ? (
+                  /* Golden query mode — show recall/MRR table */
+                  <>
+                    <div className="flex gap-4">
+                      <div className="text-center">
+                        <p className="text-lg font-bold">
+                          {(testResult.recall_at_5 * 100).toFixed(1)}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">Recall@5</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-bold">
+                          {(testResult.mrr_at_5 * 100).toFixed(1)}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">MRR@5</p>
+                      </div>
+                    </div>
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-muted/50">
+                            <th className="text-left px-3 py-2 font-medium">Query</th>
+                            <th className="text-right px-3 py-2 font-medium">Recall</th>
+                            <th className="text-right px-3 py-2 font-medium">MRR</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {testResult.per_query_results.map((r, i) => (
+                            <tr key={i} className="border-t">
+                              <td className="px-3 py-2 truncate max-w-[200px]">{r.query}</td>
+                              <td className="px-3 py-2 text-right">
+                                {(r.recall * 100).toFixed(0)}%
+                              </td>
+                              <td className="px-3 py-2 text-right">
+                                {(r.mrr * 100).toFixed(0)}%
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No results found. Try a different query.</p>
                 )}
               </div>
             )}

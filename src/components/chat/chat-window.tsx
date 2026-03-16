@@ -15,6 +15,7 @@ import { ChatWindowProps, MessageFile, SuggestionTileData } from '@/types';
 import { AiLoadingIndicator } from './ai-loading-indicator';
 import { ChatEmptyState } from './chat-empty-state';
 import { PromptInputWithActions, PromptInputRef } from "./chat-input";
+import { AgentSelector } from "./agent-selector";
 import { SuggestionTiles } from './chat-suggestion-tiles';
 import { FilePreviewModal } from './file-preview-modal';
 import { ChatLoadingSkeleton } from './chat-loading-skeleton';
@@ -92,6 +93,8 @@ export default function ChatWindow({
   const scrollViewportRef = useRef<HTMLDivElement>(null);
 
   const clearPendingMessage = useChatStore(state => state.clearPendingMessage);
+  const selectedAgent = useChatStore(state => state.selectedAgent);
+  const setSelectedAgent = useChatStore(state => state.setSelectedAgent);
 
   const {
     handleCopy,
@@ -293,6 +296,13 @@ export default function ChatWindow({
 
                 {/* Centered input bar for empty state */}
                 <div className="w-full max-w-3xl mx-auto flex flex-col gap-4">
+                  <div className="flex items-center gap-2">
+                    <AgentSelector
+                      value={selectedAgent}
+                      onChange={setSelectedAgent}
+                      disabled={isSending || isNewChatInitiating}
+                    />
+                  </div>
                   <PromptInputWithActions
                     onSubmit={handleSend}
                     // Disable input if sending, regenerating, loading token, OR if a new chat is initiating
@@ -352,7 +362,12 @@ export default function ChatWindow({
               className="flex-shrink-0 bg-background dark:bg-zinc-800 border-t border-border/5 ios-input-container"
             >
               <div className="w-full px-2 py-2 sm:px-4 sm:pb-4">
-                <div className="max-w-3xl mx-auto">
+                <div className="max-w-3xl mx-auto space-y-1.5">
+                  <AgentSelector
+                    value={selectedAgent}
+                    onChange={setSelectedAgent}
+                    disabled={isSending}
+                  />
                   <PromptInputWithActions
                     onSubmit={handleSend}
                     // Disable input if sending, regenerating, loading token, OR if a new chat is initiating

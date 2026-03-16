@@ -175,7 +175,8 @@ export const listenToChatStream = async (
   onComplete: () => void,
   onError: (error: Error) => void,
   useMockService: boolean = false,
-  prompt: string = ""
+  prompt: string = "",
+  forceAgent?: string | null,
 ) => {
   // Route to mock service if requested
   if (useMockService) {
@@ -186,7 +187,10 @@ export const listenToChatStream = async (
     console.log("[listenToChatStream] Opening SSE connection for chat:", chatId);
     console.log("[listenToChatStream] URL:", getApiUrl(`/chats/${chatId}/stream`));
     
-    const response = await fetch(getApiUrl(`/chats/${chatId}/stream`), {
+    const streamUrl = forceAgent
+      ? getApiUrl(`/chats/${chatId}/stream?force_agent=${encodeURIComponent(forceAgent)}`)
+      : getApiUrl(`/chats/${chatId}/stream`);
+    const response = await fetch(streamUrl, {
       method: "GET",
       headers: {
         Accept: "text/event-stream",

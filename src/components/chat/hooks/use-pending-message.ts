@@ -28,6 +28,7 @@ export function usePendingMessage({
   clearPendingMessage,
 }: UsePendingMessageProps) {
   const pendingMessage = useChatStore(state => state.pendingMessage);
+  const selectedAgent = useChatStore(state => state.selectedAgent);
 
   console.log('[usePendingMessage] Hook render:', {
     chatId,
@@ -227,7 +228,8 @@ export function usePendingMessage({
               setIsProcessingPendingMessage(false);
             },
             useMockService || isMockChat, // Pass mock service flag (true if explicitly set OR if chat ID is mock)
-            text // Pass prompt text for contextual mock responses
+            text, // Pass prompt text for contextual mock responses
+            selectedAgent, // Force specific agent if user selected one
           );
         } catch (error) {
           console.error("Failed to listen to chat stream:", error);
