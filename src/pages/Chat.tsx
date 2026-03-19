@@ -13,8 +13,16 @@ function Chat() {
   
   return (
     <div className="flex h-full w-full overflow-hidden dark:bg-zinc-800">
-      <main className="flex-1 flex flex-col min-h-0 overflow-hidden w-full"> 
-        <div className="flex-shrink-0 z-10 bg-background dark:bg-zinc-800 border-b border-border w-full">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden w-full">
+        <div
+          className="flex-shrink-0 z-10 bg-background dark:bg-zinc-800 w-full"
+          style={{
+            // Directly apply safe-area padding so the header never hides under
+            // the iOS status bar / Dynamic Island, even when parent containers
+            // use overflow: hidden which can swallow #root padding.
+            paddingTop: 'env(safe-area-inset-top, 0px)',
+          }}
+        >
           <ChatHeader />
         </div>
         <div className="flex-1 min-h-0 overflow-hidden sm:p-0">
