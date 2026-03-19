@@ -13,8 +13,11 @@ html, body {
   width: 100%;
   height: 100vh;
   height: 100dvh;
-  /* iOS safe area: push content below notch/Dynamic Island */
-  padding-top: env(safe-area-inset-top, 0px);
+  /* Safe-area padding is applied at the page level (Chat.tsx, New.tsx) so it
+     stays co-located with the header and doesn't get swallowed by nested
+     overflow: hidden containers.  Only bottom inset is kept here for the
+     home indicator. */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   /* Prevent overscroll bounce on the root container */
   overflow: hidden;
   overscroll-behavior: none;
@@ -133,10 +136,6 @@ html, body {
 
 /* iOS standalone PWA mode — extra safe area handling */
 @media all and (display-mode: standalone) {
-  #root {
-    /* In standalone mode, ensure safe areas are fully respected */
-    padding-top: env(safe-area-inset-top, 0px);
-  }
   .mobile-header {
     top: env(safe-area-inset-top, 0);
   }

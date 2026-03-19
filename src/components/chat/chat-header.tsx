@@ -15,7 +15,7 @@ export function ChatHeader(): JSX.Element {
 
   return (
     <>
-      <div className="flex h-14 flex-shrink-0 items-center bg-background/80 backdrop-blur-sm border-b border-border/50 px-4 justify-between sticky top-0 z-20 w-full [transform:translateZ(0)] [-webkit-transform:translateZ(0)]">
+      <div className="flex h-14 flex-shrink-0 items-center bg-background/80 backdrop-blur-sm border-b border-border/50 px-4 justify-between z-20 w-full [transform:translateZ(0)] [-webkit-transform:translateZ(0)]">
         <SidebarTrigger className="mr-2" />
         <div className="flex items-center gap-2 overflow-hidden flex-1">
           <Logo />
