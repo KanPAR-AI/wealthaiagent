@@ -418,6 +418,30 @@ export async function runCorpusTest(
   });
 }
 
+// --- Tool Library ---
+
+export interface ToolInfo {
+  name: string;
+  display_name: string;
+  description: string;
+  category: string;
+  type: "composio" | "custom";
+}
+
+export async function fetchToolLibrary(): Promise<{ tools: ToolInfo[] }> {
+  return adminFetch("/tools/library");
+}
+
+export async function updateAgentTools(
+  agentId: string,
+  enabledTools: string[]
+): Promise<{ agent_id: string; enabled_tools: string[]; status: string }> {
+  return adminFetch(`/agents/${agentId}/tools`, {
+    method: "PUT",
+    body: JSON.stringify({ enabled_tools: enabledTools }),
+  });
+}
+
 // --- User Memory ---
 
 export interface UserMemoryFact {
