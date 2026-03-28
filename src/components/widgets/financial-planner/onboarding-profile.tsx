@@ -41,15 +41,14 @@ export function OnboardingProfile({ data, isHistory }: OnboardingProfileProps) {
   const handleSubmit = useCallback(() => {
     if (isHistory || submitted) return
     setSubmitted(true)
+    const retireAge = values.retirement_age ?? 60
     const profile: FinancialProfile = {
       age: values.age ?? 30,
       monthly_income: values.monthly_income ?? 75000,
       monthly_expenses: values.monthly_expenses ?? 40000,
       existing_investments: values.existing_investments ?? 0,
-      num_children: values.num_children ?? 0,
-      youngest_child_age: values.youngest_child_age ?? 0,
-      semi_retirement_age: values.semi_retirement_age ?? 55,
-      retirement_age: values.retirement_age ?? 60,
+      retirement_age: retireAge,
+      semi_retirement_age: retireAge, // no part-time by default, user can enable in playground
     }
     window.dispatchEvent(new CustomEvent('chat-quick-reply', {
       detail: { text: JSON.stringify(profile) }

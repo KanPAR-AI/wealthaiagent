@@ -133,27 +133,62 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
           disabled={isHistory}
         />
         <SliderControl
-          label="Go part-time at"
-          value={profile.semi_retirement_age ?? 55}
-          min={Math.max(profile.age + 1, 35)} max={70} step={1}
-          format={v => `Age ${v}`}
-          onChange={v => {
-            const updates: Partial<FinancialProfile> = { semi_retirement_age: v }
-            if (v > (profile.retirement_age ?? 60)) {
-              updates.retirement_age = v
-            }
-            updateProfile(updates)
-          }}
-          disabled={isHistory}
-        />
-        <SliderControl
           label="Fully retire at"
           value={profile.retirement_age ?? 60}
-          min={profile.semi_retirement_age ?? 55} max={75} step={1}
+          min={Math.max(profile.age + 1, 40)} max={75} step={1}
           format={v => `Age ${v}`}
           onChange={v => handleSliderChange('retirement_age', v)}
           disabled={isHistory}
         />
+
+        {/* Part-time toggle + slider */}
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-xs text-slate-400">Part-time phase</span>
+            <button
+              onClick={() => {
+                if (isHistory) return
+                const hasPartTime = (profile.semi_retirement_age ?? (profile.retirement_age ?? 60)) < (profile.retirement_age ?? 60)
+                if (hasPartTime) {
+                  // Disable: set semi = retire (no part-time)
+                  updateProfile({ semi_retirement_age: profile.retirement_age ?? 60 })
+                } else {
+                  // Enable: set semi = retire - 5
+                  updateProfile({ semi_retirement_age: Math.max(profile.age + 1, (profile.retirement_age ?? 60) - 5) })
+                }
+              }}
+              disabled={isHistory}
+              className={`text-[10px] px-2 py-0.5 rounded-full border transition-all
+                ${(profile.semi_retirement_age ?? (profile.retirement_age ?? 60)) < (profile.retirement_age ?? 60)
+                  ? 'border-emerald-500/30 bg-emerald-500/20 text-emerald-400'
+                  : 'border-white/10 bg-white/5 text-slate-500'
+                }`}
+            >
+              {(profile.semi_retirement_age ?? (profile.retirement_age ?? 60)) < (profile.retirement_age ?? 60) ? 'On' : 'Off'}
+            </button>
+          </div>
+          {(profile.semi_retirement_age ?? (profile.retirement_age ?? 60)) < (profile.retirement_age ?? 60) && (
+            <input
+              type="range"
+              min={Math.max(profile.age + 1, 35)}
+              max={(profile.retirement_age ?? 60) - 1}
+              step={1}
+              value={profile.semi_retirement_age ?? 55}
+              onChange={e => updateProfile({ semi_retirement_age: Number(e.target.value) })}
+              disabled={isHistory}
+              className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+                [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:rounded-full
+                touch-none disabled:opacity-50"
+            />
+          )}
+          <div className="text-[10px] text-slate-500 mt-0.5">
+            {(profile.semi_retirement_age ?? (profile.retirement_age ?? 60)) < (profile.retirement_age ?? 60)
+              ? `Half income from age ${profile.semi_retirement_age} to ${profile.retirement_age ?? 60}`
+              : 'Full income until retirement'
+            }
+          </div>
+        </div>
 
         {/* Children — stepper instead of slider */}
         <div>
