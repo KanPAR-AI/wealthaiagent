@@ -35,7 +35,6 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
 
   const goals = data.goals || []
 
-  // Recompute everything client-side when sliders change
   const computed = useMemo(() => {
     const river = computeRiverData(
       profile, goals, 30,
@@ -94,6 +93,9 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
   }, [isHistory])
 
   const numChildren = profile.num_children ?? 0
+  const retireAge = profile.retirement_age ?? 60
+  const semiRetAge = profile.semi_retirement_age ?? retireAge
+  const hasPartTime = semiRetAge < retireAge
 
   return (
     <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-lg p-5 max-w-2xl">
@@ -107,20 +109,22 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
       </div>
 
       {/* River visualization */}
-      <div className="rounded-lg border border-white/5 bg-black/20 p-2 mb-4">
+      <div className="rounded-lg border border-white/5 bg-black/20 p-2 mb-5">
         <RiverVisualization
           riverData={computed.river}
           monteCarlo={computed.mc}
         />
       </div>
 
-      {/* Control sliders */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      {/* ── Section: Income & Expenses ── */}
+      <SectionHeader title="Income & Expenses" hint="Your current cash flow — savings = income minus expenses" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
         <SliderControl
           label="Monthly Income"
           value={profile.monthly_income}
           min={10000} max={1000000} step={5000}
           format={formatINR}
+          hint="Your total monthly take-home pay"
           onChange={v => handleSliderChange('monthly_income', v)}
           disabled={isHistory}
         />
@@ -129,14 +133,21 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
           value={profile.monthly_expenses}
           min={5000} max={800000} step={5000}
           format={formatINR}
+          hint="All household spending excluding investments"
           onChange={v => handleSliderChange('monthly_expenses', v)}
           disabled={isHistory}
         />
+      </div>
+
+      {/* ── Section: Life Phases ── */}
+      <SectionHeader title="Life Phases" hint="When you plan to slow down and stop working" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
         <SliderControl
           label="Fully retire at"
-          value={profile.retirement_age ?? 60}
+          value={retireAge}
           min={Math.max(profile.age + 1, 40)} max={75} step={1}
           format={v => `Age ${v}`}
+          hint="No income after this age"
           onChange={v => handleSliderChange('retirement_age', v)}
           disabled={isHistory}
         />
@@ -148,32 +159,29 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
             <button
               onClick={() => {
                 if (isHistory) return
-                const hasPartTime = (profile.semi_retirement_age ?? (profile.retirement_age ?? 60)) < (profile.retirement_age ?? 60)
                 if (hasPartTime) {
-                  // Disable: set semi = retire (no part-time)
-                  updateProfile({ semi_retirement_age: profile.retirement_age ?? 60 })
+                  updateProfile({ semi_retirement_age: retireAge })
                 } else {
-                  // Enable: set semi = retire - 5
-                  updateProfile({ semi_retirement_age: Math.max(profile.age + 1, (profile.retirement_age ?? 60) - 5) })
+                  updateProfile({ semi_retirement_age: Math.max(profile.age + 1, retireAge - 5) })
                 }
               }}
               disabled={isHistory}
               className={`text-[10px] px-2 py-0.5 rounded-full border transition-all
-                ${(profile.semi_retirement_age ?? (profile.retirement_age ?? 60)) < (profile.retirement_age ?? 60)
+                ${hasPartTime
                   ? 'border-emerald-500/30 bg-emerald-500/20 text-emerald-400'
                   : 'border-white/10 bg-white/5 text-slate-500'
                 }`}
             >
-              {(profile.semi_retirement_age ?? (profile.retirement_age ?? 60)) < (profile.retirement_age ?? 60) ? 'On' : 'Off'}
+              {hasPartTime ? 'On' : 'Off'}
             </button>
           </div>
-          {(profile.semi_retirement_age ?? (profile.retirement_age ?? 60)) < (profile.retirement_age ?? 60) && (
+          {hasPartTime && (
             <input
               type="range"
               min={Math.max(profile.age + 1, 35)}
-              max={(profile.retirement_age ?? 60) - 1}
+              max={retireAge - 1}
               step={1}
-              value={profile.semi_retirement_age ?? 55}
+              value={semiRetAge}
               onChange={e => updateProfile({ semi_retirement_age: Number(e.target.value) })}
               disabled={isHistory}
               className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer
@@ -183,14 +191,18 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
             />
           )}
           <div className="text-[10px] text-slate-500 mt-0.5">
-            {(profile.semi_retirement_age ?? (profile.retirement_age ?? 60)) < (profile.retirement_age ?? 60)
-              ? `Half income from age ${profile.semi_retirement_age} to ${profile.retirement_age ?? 60}`
-              : 'Full income until retirement'
+            {hasPartTime
+              ? `50% income from age ${semiRetAge} to ${retireAge}`
+              : 'Enable to model a low-stress job before full retirement'
             }
           </div>
         </div>
+      </div>
 
-        {/* Children — stepper instead of slider */}
+      {/* ── Section: Family ── */}
+      <SectionHeader title="Family" hint="Children add age-based expenses (school, college, etc.)" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+        {/* Children stepper */}
         <div>
           <div className="flex justify-between items-center mb-1">
             <span className="text-xs text-slate-400">Children</span>
@@ -217,6 +229,9 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
               +
             </button>
           </div>
+          <div className="text-[10px] text-slate-500 mt-0.5">
+            Costs: ~8K/mo (0-3), ~15K (4-14), ~25K (15-17), ~35K (18-22)
+          </div>
         </div>
 
         {numChildren > 0 && (
@@ -225,16 +240,32 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
             value={profile.youngest_child_age ?? 0}
             min={0} max={18} step={1}
             format={v => `${v} yrs`}
+            hint="Older children assumed 2 years apart"
             onChange={v => handleSliderChange('youngest_child_age', v)}
             disabled={isHistory}
           />
         )}
+      </div>
+
+      {/* ── Section: Assumptions ── */}
+      <SectionHeader title="Assumptions" hint="Market assumptions used for projections" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
         <SliderControl
           label="Expected Return"
           value={assumptions.expected_return}
           min={0.04} max={0.18} step={0.01}
           format={formatPercent}
+          hint="Blended portfolio return (equity + debt)"
           onChange={v => handleSliderChange('expected_return', v)}
+          disabled={isHistory}
+        />
+        <SliderControl
+          label="Inflation Rate"
+          value={assumptions.inflation_rate}
+          min={0.02} max={0.12} step={0.005}
+          format={formatPercent}
+          hint="How fast prices rise each year"
+          onChange={v => handleSliderChange('inflation_rate', v)}
           disabled={isHistory}
         />
       </div>
@@ -287,6 +318,17 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
   )
 }
 
+// ── Section header component ──────────────────────────────────────────
+
+function SectionHeader({ title, hint }: { title: string; hint: string }) {
+  return (
+    <div className="mb-2.5">
+      <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">{title}</h4>
+      <p className="text-[10px] text-slate-500">{hint}</p>
+    </div>
+  )
+}
+
 // ── Slider helper component ──────────────────────────────────────────
 
 interface SliderControlProps {
@@ -298,9 +340,10 @@ interface SliderControlProps {
   format: (v: number) => string
   onChange: (v: number) => void
   disabled?: boolean
+  hint?: string
 }
 
-function SliderControl({ label, value, min, max, step, format, onChange, disabled }: SliderControlProps) {
+function SliderControl({ label, value, min, max, step, format, onChange, disabled, hint }: SliderControlProps) {
   return (
     <div>
       <div className="flex justify-between items-center mb-1">
@@ -318,6 +361,7 @@ function SliderControl({ label, value, min, max, step, format, onChange, disable
           [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:rounded-full
           touch-none disabled:opacity-50"
       />
+      {hint && <div className="text-[10px] text-slate-500 mt-0.5">{hint}</div>}
     </div>
   )
 }

@@ -116,7 +116,18 @@ export function OnboardingProfile({ data, isHistory }: OnboardingProfileProps) {
         </button>
       )}
 
-      {submitted && (
+      {submitted && !isHistory && (
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <span className="text-sm text-slate-400">Profile submitted</span>
+          <button
+            onClick={() => setSubmitted(false)}
+            className="text-xs text-blue-400 hover:text-blue-300 underline underline-offset-2"
+          >
+            Edit
+          </button>
+        </div>
+      )}
+      {submitted && isHistory && (
         <div className="mt-4 text-center text-sm text-slate-400">Profile submitted</div>
       )}
     </div>

@@ -4,6 +4,20 @@ import { calculateGoalCorpus, DEFAULT_INFLATION_RATE, DEFAULT_BALANCED_RETURN } 
 import { formatINR } from '@/lib/formatters'
 import { GoalTimeline } from './goal-timeline'
 
+function logSlider(position: number, min: number, max: number): number {
+  const minLog = Math.log(Math.max(min, 1))
+  const maxLog = Math.log(max)
+  const scale = (maxLog - minLog) / 100
+  return Math.round(Math.exp(minLog + scale * position))
+}
+
+function logPosition(value: number, min: number, max: number): number {
+  const minLog = Math.log(Math.max(min, 1))
+  const maxLog = Math.log(max)
+  const scale = (maxLog - minLog) / 100
+  return Math.round((Math.log(Math.max(value, 1)) - minLog) / scale)
+}
+
 interface GoalDetailCardProps {
   data: GoalDetailPayload
   isHistory?: boolean
@@ -190,9 +204,9 @@ export function GoalDetailCard({ data, isHistory }: GoalDetailCardProps) {
                     </div>
                     <input
                       type="range"
-                      min={50000} max={50000000} step={50000}
-                      value={goal.target_amount}
-                      onChange={e => updateGoal(i, { target_amount: Number(e.target.value) })}
+                      min={0} max={100} step={1}
+                      value={logPosition(goal.target_amount, 50000, 50000000)}
+                      onChange={e => updateGoal(i, { target_amount: logSlider(Number(e.target.value), 50000, 50000000) })}
                       disabled={isHistory || submitted}
                       className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer
                         [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
@@ -272,7 +286,18 @@ export function GoalDetailCard({ data, isHistory }: GoalDetailCardProps) {
         </button>
       )}
 
-      {submitted && (
+      {submitted && !isHistory && (
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <span className="text-sm text-slate-400">Goals configured</span>
+          <button
+            onClick={() => setSubmitted(false)}
+            className="text-xs text-blue-400 hover:text-blue-300 underline underline-offset-2"
+          >
+            Edit
+          </button>
+        </div>
+      )}
+      {submitted && isHistory && (
         <div className="mt-4 text-center text-sm text-slate-400">Goals configured</div>
       )}
     </div>

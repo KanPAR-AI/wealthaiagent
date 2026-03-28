@@ -24,35 +24,40 @@ const COLORS = {
 export function RiverVisualization({ riverData, monteCarlo, width = 600, height = 320 }: RiverVisualizationProps) {
   const [hoveredYear, setHoveredYear] = useState<number | null>(null)
 
-  const pad = { top: 30, right: 20, bottom: 35, left: 60 }
+  const pad = { top: 30, right: 60, bottom: 35, left: 60 }
   const plotW = width - pad.left - pad.right
   const plotH = height - pad.top - pad.bottom
 
-  const { maxWealth, xScale, yScale, wealthPath, incomePath, expensePath, mcBandPath, mcMedianPath } = useMemo(() => {
-    if (!riverData.length) return { maxWealth: 0, xScale: () => 0, yScale: () => 0, wealthPath: '', incomePath: '', expensePath: '', mcBandPath: '', mcMedianPath: '' }
+  const { maxWealth, maxFlow, xScale, yScale, yScaleFlow, wealthPath, incomePath, expensePath, mcBandPath, mcMedianPath } = useMemo(() => {
+    if (!riverData.length) return { maxWealth: 0, maxFlow: 0, xScale: () => 0, yScale: () => 0, yScaleFlow: () => 0, wealthPath: '', incomePath: '', expensePath: '', mcBandPath: '', mcMedianPath: '' }
 
     const years = riverData.length
 
-    // Determine max Y from wealth (or MC p90 if available)
+    // Left Y-axis: wealth (and Monte Carlo bands)
     let maxY = Math.max(...riverData.map(d => d.wealth))
     if (monteCarlo?.p90?.length) {
       maxY = Math.max(maxY, ...monteCarlo.p90)
     }
     maxY = maxY * 1.1 // 10% headroom
 
+    // Right Y-axis: income and expenses (annual flows)
+    let maxF = Math.max(...riverData.map(d => Math.max(d.income, d.expenses)))
+    maxF = maxF * 1.1 // 10% headroom
+
     const xs = (y: number) => pad.left + (y / (years - 1)) * plotW
     const ys = (v: number) => pad.top + plotH - (v / maxY) * plotH
+    const ysFlow = (v: number) => pad.top + plotH - (v / maxF) * plotH
 
-    // Wealth line
+    // Wealth line (left Y-axis)
     const wp = riverData.map((d, i) => `${i === 0 ? 'M' : 'L'}${xs(i).toFixed(1)},${ys(d.wealth).toFixed(1)}`).join(' ')
 
-    // Income line
-    const ip = riverData.map((d, i) => `${i === 0 ? 'M' : 'L'}${xs(i).toFixed(1)},${ys(d.income).toFixed(1)}`).join(' ')
+    // Income line (right Y-axis)
+    const ip = riverData.map((d, i) => `${i === 0 ? 'M' : 'L'}${xs(i).toFixed(1)},${ysFlow(d.income).toFixed(1)}`).join(' ')
 
-    // Expenses line
-    const ep = riverData.map((d, i) => `${i === 0 ? 'M' : 'L'}${xs(i).toFixed(1)},${ys(d.expenses).toFixed(1)}`).join(' ')
+    // Expenses line (right Y-axis)
+    const ep = riverData.map((d, i) => `${i === 0 ? 'M' : 'L'}${xs(i).toFixed(1)},${ysFlow(d.expenses).toFixed(1)}`).join(' ')
 
-    // Monte Carlo band (p10 to p90 fill)
+    // Monte Carlo band (p10 to p90 fill) — left Y-axis
     let mcBand = ''
     let mcMed = ''
     if (monteCarlo?.p10?.length && monteCarlo.p10.length === years) {
@@ -66,7 +71,7 @@ export function RiverVisualization({ riverData, monteCarlo, width = 600, height 
       mcMed = monteCarlo.p50.map((v, i) => `${i === 0 ? 'M' : 'L'}${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(' ')
     }
 
-    return { maxWealth: maxY, xScale: xs, yScale: ys, wealthPath: wp, incomePath: ip, expensePath: ep, mcBandPath: mcBand, mcMedianPath: mcMed }
+    return { maxWealth: maxY, maxFlow: maxF, xScale: xs, yScale: ys, yScaleFlow: ysFlow, wealthPath: wp, incomePath: ip, expensePath: ep, mcBandPath: mcBand, mcMedianPath: mcMed }
   }, [riverData, monteCarlo, plotW, plotH, pad])
 
   const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
@@ -80,13 +85,21 @@ export function RiverVisualization({ riverData, monteCarlo, width = 600, height 
 
   const hoveredData = hoveredYear !== null ? riverData[hoveredYear] : null
 
-  // Y-axis ticks
+  // Left Y-axis ticks (wealth)
   const yTicks = useMemo(() => {
     if (maxWealth <= 0) return []
     const tickCount = 5
     const step = maxWealth / tickCount
     return Array.from({ length: tickCount + 1 }, (_, i) => i * step)
   }, [maxWealth])
+
+  // Right Y-axis ticks (income/expenses)
+  const yTicksFlow = useMemo(() => {
+    if (maxFlow <= 0) return []
+    const tickCount = 5
+    const step = maxFlow / tickCount
+    return Array.from({ length: tickCount + 1 }, (_, i) => i * step)
+  }, [maxFlow])
 
   // X-axis ticks (every 5 years)
   const xTicks = useMemo(() => {
@@ -112,11 +125,20 @@ export function RiverVisualization({ riverData, monteCarlo, width = 600, height 
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setHoveredYear(null)}
     >
-      {/* Grid lines */}
+      {/* Grid lines + left Y-axis (wealth) */}
       {yTicks.map((v, i) => (
         <g key={`y-${i}`}>
           <line x1={pad.left} y1={yScale(v)} x2={width - pad.right} y2={yScale(v)} stroke={COLORS.grid} strokeWidth={0.5} strokeDasharray="4,4" />
-          <text x={pad.left - 8} y={yScale(v) + 4} textAnchor="end" fill={COLORS.text} fontSize={9}>
+          <text x={pad.left - 8} y={yScale(v) + 4} textAnchor="end" fill={COLORS.wealth} fontSize={9}>
+            {formatINR(v)}
+          </text>
+        </g>
+      ))}
+
+      {/* Right Y-axis (income/expenses) */}
+      {yTicksFlow.map((v, i) => (
+        <g key={`yf-${i}`}>
+          <text x={width - pad.right + 8} y={yScaleFlow(v) + 4} textAnchor="start" fill={COLORS.income} fontSize={9}>
             {formatINR(v)}
           </text>
         </g>
@@ -140,10 +162,10 @@ export function RiverVisualization({ riverData, monteCarlo, width = 600, height 
       )}
 
       {/* Income line */}
-      <path d={incomePath} fill="none" stroke={COLORS.income} strokeWidth={1.5} opacity={0.6} />
+      <path d={incomePath} fill="none" stroke={COLORS.income} strokeWidth={2.0} opacity={0.8} />
 
       {/* Expenses line */}
-      <path d={expensePath} fill="none" stroke={COLORS.expenses} strokeWidth={1.5} opacity={0.6} />
+      <path d={expensePath} fill="none" stroke={COLORS.expenses} strokeWidth={2.0} opacity={0.8} />
 
       {/* Wealth line (main) */}
       <path d={wealthPath} fill="none" stroke={COLORS.wealth} strokeWidth={2.5} />
