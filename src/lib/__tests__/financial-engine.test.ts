@@ -131,8 +131,13 @@ describe('computeRiverData', () => {
     expect(river[10].year).toBe(10)
   })
 
-  it('income grows over time', () => {
+  it('income stays constant with 0% growth (default)', () => {
     const river = computeRiverData(sampleProfile, sampleGoals, 5)
+    expect(river[5].income).toBe(river[0].income)
+  })
+
+  it('income grows when growth rate is set', () => {
+    const river = computeRiverData(sampleProfile, sampleGoals, 5, undefined, 0.08)
     expect(river[5].income).toBeGreaterThan(river[0].income)
   })
 
