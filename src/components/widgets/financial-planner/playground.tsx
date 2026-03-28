@@ -26,7 +26,7 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
   const [profile, setProfile] = useState<FinancialProfile>(data.profile)
   const [assumptions, setAssumptions] = useState(data.assumptions || {
     inflation_rate: 0.06,
-    income_growth_rate: 0.0,  // constant income by default
+    income_growth_rate: 0.0,
     expected_return: 0.10,
   })
   const [queryText, setQueryText] = useState('')
@@ -50,6 +50,11 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
       : []
     return { river, mc, feas, nudges: nudgeList }
   }, [profile, goals, assumptions])
+
+  const updateProfile = useCallback((updates: Partial<FinancialProfile>) => {
+    if (isHistory) return
+    setProfile(prev => ({ ...prev, ...updates }))
+  }, [isHistory])
 
   const handleSliderChange = useCallback((key: string, value: number) => {
     if (isHistory) return
@@ -78,7 +83,7 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
       detail: { text: queryText.trim() }
     }))
     setQueryText('')
-    setTimeout(() => setLoading(false), 2000) // Reset after expected server response
+    setTimeout(() => setLoading(false), 2000)
   }, [queryText, isHistory])
 
   const handleGeneratePlan = useCallback(() => {
@@ -87,6 +92,8 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
       detail: { text: 'generate plan summary' }
     }))
   }, [isHistory])
+
+  const numChildren = profile.num_children ?? 0
 
   return (
     <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-lg p-5 max-w-2xl">
@@ -131,11 +138,11 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
           min={Math.max(profile.age + 1, 35)} max={70} step={1}
           format={v => `Age ${v}`}
           onChange={v => {
-            handleSliderChange('semi_retirement_age', v)
-            // Push retirement age forward if needed
+            const updates: Partial<FinancialProfile> = { semi_retirement_age: v }
             if (v > (profile.retirement_age ?? 60)) {
-              handleSliderChange('retirement_age', v)
+              updates.retirement_age = v
             }
+            updateProfile(updates)
           }}
           disabled={isHistory}
         />
@@ -147,15 +154,37 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
           onChange={v => handleSliderChange('retirement_age', v)}
           disabled={isHistory}
         />
-        <SliderControl
-          label="Children"
-          value={profile.num_children ?? 0}
-          min={0} max={4} step={1}
-          format={v => `${v}`}
-          onChange={v => handleSliderChange('num_children', v)}
-          disabled={isHistory}
-        />
-        {(profile.num_children ?? 0) > 0 && (
+
+        {/* Children — stepper instead of slider */}
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-xs text-slate-400">Children</span>
+            <span className="text-xs font-medium text-white">{numChildren}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => updateProfile({ num_children: Math.max(0, numChildren - 1) })}
+              disabled={isHistory || numChildren <= 0}
+              className="w-9 h-9 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-lg font-bold
+                transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              -
+            </button>
+            <div className="flex-1 text-center text-sm font-medium text-white">
+              {numChildren === 0 ? 'No children' : `${numChildren} child${numChildren > 1 ? 'ren' : ''}`}
+            </div>
+            <button
+              onClick={() => updateProfile({ num_children: Math.min(4, numChildren + 1) })}
+              disabled={isHistory || numChildren >= 4}
+              className="w-9 h-9 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-lg font-bold
+                transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {numChildren > 0 && (
           <SliderControl
             label="Youngest Child Age"
             value={profile.youngest_child_age ?? 0}
