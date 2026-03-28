@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react'
 import type { GoalDetailPayload, FinancialGoal } from './types'
 import { calculateGoalCorpus, DEFAULT_INFLATION_RATE, DEFAULT_BALANCED_RETURN } from '@/lib/financial-engine'
 import { formatINR } from '@/lib/formatters'
+import { GoalTimeline } from './goal-timeline'
 
 interface GoalDetailCardProps {
   data: GoalDetailPayload
@@ -9,6 +10,20 @@ interface GoalDetailCardProps {
 }
 
 const CHILD_GOALS = ['childrens_education', 'childrens_wedding']
+
+const PRIORITY_OPTIONS = [
+  { value: 1, label: 'Must Have', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  { value: 2, label: 'Should Have', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  { value: 3, label: 'Good to Have', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  { value: 4, label: 'Stretch', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
+]
+
+const OPTIMIZE_OPTIONS = [
+  { value: 'essentials_first', label: 'Essentials first', desc: 'Fund Must Haves before others' },
+  { value: 'minimize_sip', label: 'Lowest monthly outflow', desc: 'Spread goals to minimize SIP' },
+  { value: 'earliest_goals', label: 'Achieve goals sooner', desc: 'Prioritize shorter timelines' },
+  { value: 'balanced', label: 'Balanced', desc: 'Even allocation across all goals' },
+]
 
 function getTimelineLabel(goal: FinancialGoal, profile: { age?: number; youngest_child_age?: number } | null): {
   label: string
@@ -38,8 +53,8 @@ function getTimelineLabel(goal: FinancialGoal, profile: { age?: number; youngest
   }
 
   return {
-    label: 'Timeline',
-    format: (years) => `${years} yrs (age ${userAge + years})`,
+    label: 'Achieve by',
+    format: (years) => `Year ${years} (age ${userAge + years})`,
     min: 1,
     max: 40,
   }
@@ -51,12 +66,14 @@ export function GoalDetailCard({ data, isHistory }: GoalDetailCardProps) {
 
   const [goals, setGoals] = useState<FinancialGoal[]>(initialGoals)
   const [submitted, setSubmitted] = useState(false)
+  const [optimizeStrategy, setOptimizeStrategy] = useState('balanced')
+  const [expandedGoal, setExpandedGoal] = useState<string | null>(null)
 
-  const updateGoal = useCallback((index: number, field: string, value: number) => {
+  const updateGoal = useCallback((index: number, updates: Partial<FinancialGoal>) => {
     if (isHistory || submitted) return
     setGoals(prev => {
       const next = [...prev]
-      next[index] = { ...next[index], [field]: value }
+      next[index] = { ...next[index], ...updates }
       return next
     })
   }, [isHistory, submitted])
@@ -75,6 +92,8 @@ export function GoalDetailCard({ data, isHistory }: GoalDetailCardProps) {
     })
   }, [goals, profile])
 
+  const totalSIP = goalSIPs.reduce((a, b) => a + b, 0)
+
   const handleSubmit = useCallback(() => {
     if (isHistory || submitted) return
     setSubmitted(true)
@@ -86,104 +105,167 @@ export function GoalDetailCard({ data, isHistory }: GoalDetailCardProps) {
       priority: g.priority,
     }))
     window.dispatchEvent(new CustomEvent('chat-quick-reply', {
-      detail: { text: JSON.stringify({ goals: payload }) }
+      detail: { text: JSON.stringify({ goals: payload, optimize: optimizeStrategy }) }
     }))
-  }, [goals, isHistory, submitted])
-
-  const priorityLabels: Record<number, string> = { 1: 'High', 2: 'Medium', 3: 'Low' }
-  const priorityColors: Record<number, string> = {
-    1: 'bg-red-500/20 text-red-400',
-    2: 'bg-yellow-500/20 text-yellow-400',
-    3: 'bg-green-500/20 text-green-400',
-  }
+  }, [goals, optimizeStrategy, isHistory, submitted])
 
   return (
-    <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-lg p-5 max-w-lg">
-      <h3 className="text-lg font-semibold text-white mb-4">Configure Your Goals</h3>
+    <div className="rounded-xl border border-white/10 bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-lg p-5 max-w-2xl">
+      <h3 className="text-lg font-semibold text-white mb-1">Your Goal Timeline</h3>
+      <p className="text-xs text-slate-400 mb-4">Tap a goal to configure. Drag timeline sliders to adjust when each goal is achieved.</p>
 
-      <div className="space-y-5">
+      {/* Timeline visualization */}
+      <div className="rounded-lg border border-white/5 bg-black/20 p-2 mb-5">
+        <GoalTimeline
+          goals={goals}
+          userAge={profile?.age ?? 30}
+          monthlySIPs={goalSIPs}
+        />
+      </div>
+
+      {/* Goal cards — compact, expandable */}
+      <div className="space-y-2 mb-4">
         {goals.map((goal, i) => {
           const tl = getTimelineLabel(goal, profile)
+          const isExpanded = expandedGoal === goal.goal_type
+          const currentPriority = PRIORITY_OPTIONS.find(p => p.value === (goal.priority || 2)) || PRIORITY_OPTIONS[1]
+
           return (
-            <div key={goal.goal_type} className="rounded-lg border border-white/10 bg-white/5 p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xl">{goal.icon || '🎯'}</span>
-                <span className="font-medium text-white">{goal.name || goal.goal_type.replace(/_/g, ' ')}</span>
-                <button
-                  onClick={() => {
-                    const next = ((goal.priority || 2) % 3) + 1
-                    updateGoal(i, 'priority', next)
-                  }}
-                  disabled={isHistory || submitted}
-                  className={`ml-auto text-xs px-2 py-0.5 rounded-full ${priorityColors[goal.priority || 2]}`}
-                >
-                  {priorityLabels[goal.priority || 2]}
-                </button>
-              </div>
-
-              {/* Target amount slider */}
-              <div className="mb-3">
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-400">Target Amount</span>
-                  <span className="text-white font-medium">{formatINR(goal.target_amount)}</span>
+            <div
+              key={goal.goal_type}
+              className={`rounded-lg border transition-all ${
+                isExpanded ? 'border-blue-500/30 bg-white/5' : 'border-white/10 bg-white/[0.02]'
+              }`}
+            >
+              {/* Compact header — always visible */}
+              <button
+                onClick={() => setExpandedGoal(isExpanded ? null : goal.goal_type)}
+                disabled={isHistory || submitted}
+                className="w-full flex items-center gap-3 p-3 text-left disabled:opacity-60"
+              >
+                <span className="text-lg">{goal.icon || '🎯'}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-white truncate">
+                    {goal.name || goal.goal_type.replace(/_/g, ' ')}
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    {formatINR(goal.target_amount)} · {tl.format(goal.timeline_years)} · {formatINR(goalSIPs[i])}/mo
+                  </div>
                 </div>
-                <input
-                  type="range"
-                  min={50000}
-                  max={50000000}
-                  step={50000}
-                  value={goal.target_amount}
-                  onChange={e => updateGoal(i, 'target_amount', Number(e.target.value))}
-                  disabled={isHistory || submitted}
-                  className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer
-                    [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
-                    [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:rounded-full
-                    touch-none disabled:opacity-50"
-                />
-              </div>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full border ${currentPriority.color}`}>
+                  {currentPriority.label}
+                </span>
+                <span className="text-slate-500 text-xs">{isExpanded ? '▲' : '▼'}</span>
+              </button>
 
-              {/* Timeline slider — context-aware label */}
-              <div className="mb-3">
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-400">{tl.label}</span>
-                  <span className="text-white font-medium">{tl.format(goal.timeline_years)}</span>
+              {/* Expanded config */}
+              {isExpanded && (
+                <div className="px-3 pb-3 space-y-3">
+                  {/* Priority selector */}
+                  <div>
+                    <span className="text-xs text-slate-400 mb-1.5 block">Priority</span>
+                    <div className="flex gap-1.5">
+                      {PRIORITY_OPTIONS.map(opt => (
+                        <button
+                          key={opt.value}
+                          onClick={() => updateGoal(i, { priority: opt.value })}
+                          disabled={isHistory || submitted}
+                          className={`flex-1 text-[10px] py-1.5 rounded-md border transition-all
+                            ${(goal.priority || 2) === opt.value
+                              ? opt.color + ' border-current'
+                              : 'border-white/10 text-slate-500 hover:text-slate-300'
+                            } disabled:opacity-40`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Target amount */}
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-slate-400">Target Amount</span>
+                      <span className="text-white font-medium">{formatINR(goal.target_amount)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={50000} max={50000000} step={50000}
+                      value={goal.target_amount}
+                      onChange={e => updateGoal(i, { target_amount: Number(e.target.value) })}
+                      disabled={isHistory || submitted}
+                      className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer
+                        [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+                        [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:rounded-full
+                        touch-none disabled:opacity-50"
+                    />
+                  </div>
+
+                  {/* Timeline */}
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-slate-400">{tl.label}</span>
+                      <span className="text-white font-medium">{tl.format(goal.timeline_years)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={tl.min} max={tl.max} step={1}
+                      value={goal.timeline_years}
+                      onChange={e => updateGoal(i, { timeline_years: Number(e.target.value) })}
+                      disabled={isHistory || submitted}
+                      className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer
+                        [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+                        [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:rounded-full
+                        touch-none disabled:opacity-50"
+                    />
+                  </div>
+
+                  {/* SIP result */}
+                  <div className="text-xs text-slate-300 bg-slate-800/50 rounded-md px-3 py-1.5">
+                    Monthly SIP: <span className="text-white font-medium">{formatINR(goalSIPs[i])}</span>
+                  </div>
                 </div>
-                <input
-                  type="range"
-                  min={tl.min}
-                  max={tl.max}
-                  step={1}
-                  value={goal.timeline_years}
-                  onChange={e => updateGoal(i, 'timeline_years', Number(e.target.value))}
-                  disabled={isHistory || submitted}
-                  className="w-full h-1.5 bg-slate-700 rounded-full appearance-none cursor-pointer
-                    [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
-                    [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:rounded-full
-                    touch-none disabled:opacity-50"
-                />
-              </div>
-
-              {/* Computed SIP */}
-              <div className="text-sm text-slate-300 bg-slate-800/50 rounded-md px-3 py-1.5">
-                Monthly SIP needed: <span className="text-white font-medium">{formatINR(goalSIPs[i])}</span>
-              </div>
+              )}
             </div>
           )
         })}
       </div>
 
       {/* Total SIP */}
-      <div className="mt-4 flex justify-between items-center bg-blue-500/10 rounded-lg px-4 py-2.5 border border-blue-500/20">
+      <div className="flex justify-between items-center bg-blue-500/10 rounded-lg px-4 py-2.5 border border-blue-500/20 mb-4">
         <span className="text-sm text-blue-300">Total Monthly SIP</span>
-        <span className="text-lg font-semibold text-white">
-          {formatINR(goalSIPs.reduce((a, b) => a + b, 0))}
-        </span>
+        <span className="text-lg font-semibold text-white">{formatINR(totalSIP)}</span>
       </div>
+
+      {/* Optimization strategy */}
+      {!isHistory && !submitted && (
+        <div className="mb-4">
+          <span className="text-xs text-slate-400 mb-2 block">What should I optimize for?</span>
+          <div className="grid grid-cols-2 gap-2">
+            {OPTIMIZE_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setOptimizeStrategy(opt.value)}
+                className={`text-left p-2.5 rounded-lg border transition-all
+                  ${optimizeStrategy === opt.value
+                    ? 'border-blue-500/40 bg-blue-500/10'
+                    : 'border-white/10 bg-white/[0.02] hover:bg-white/5'
+                  }`}
+              >
+                <div className={`text-xs font-medium ${optimizeStrategy === opt.value ? 'text-blue-400' : 'text-white'}`}>
+                  {opt.label}
+                </div>
+                <div className="text-[10px] text-slate-500 mt-0.5">{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {!isHistory && !submitted && (
         <button
           onClick={handleSubmit}
-          className="mt-4 w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 active:scale-[0.98]
+          className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 active:scale-[0.98]
             text-white font-medium text-sm transition-all"
         >
           Continue
