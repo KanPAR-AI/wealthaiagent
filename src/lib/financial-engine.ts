@@ -132,13 +132,22 @@ export function calculateAllGoals(
 // ── River projection ──────────────────────────────────────────────────
 
 /**
- * Get tapered income growth rate for a given age.
- * Realistic career progression: full growth until 45, halved 45-55, minimal after 55.
+ * Get effective annual income for a given age based on life phases.
+ *
+ * Three phases:
+ *   1. Full-time: full income (with optional growth)
+ *   2. Semi-retirement: 50% income (part-time / low-stress job)
+ *   3. Retired: 0 income
  */
-function taperedIncomeGrowth(currentAge: number, baseGrowthRate: number): number {
-  if (currentAge < 45) return baseGrowthRate
-  if (currentAge < 55) return baseGrowthRate * 0.4
-  return baseGrowthRate * 0.1 // near-zero growth post-55
+function phaseAdjustedIncome(
+  baseAnnualIncome: number,
+  currentAge: number,
+  semiRetirementAge: number,
+  retirementAge: number,
+): number {
+  if (currentAge >= retirementAge) return 0
+  if (currentAge >= semiRetirementAge) return baseAnnualIncome * 0.5
+  return baseAnnualIncome
 }
 
 /**
@@ -193,19 +202,18 @@ export function computeRiverData(
     goalSips[g.goal_type] = g.monthly_sip
   }
 
+  const semiRetAge = profile.semi_retirement_age ?? 55
+  const retireAge = profile.retirement_age ?? 60
+
   const projection: RiverDataPoint[] = []
   let wealth = existing_investments
-  let cumulativeIncome = monthly_income * 12 // track compounded income year over year
+  const baseAnnualIncome = monthly_income * 12
 
   for (let y = 0; y <= years; y++) {
-    // Apply income growth (if any)
-    if (y > 0) {
-      const growthRate = taperedIncomeGrowth(age + y, incomeGrowthRate)
-      cumulativeIncome = cumulativeIncome * (1 + growthRate)
-    }
-
-    // No income after age 60 (retirement)
-    const currentIncome = (age + y) <= 60 ? cumulativeIncome : 0
+    // Apply income growth to base (modest, if any)
+    const grownIncome = baseAnnualIncome * Math.pow(1 + incomeGrowthRate, y)
+    // Phase-adjust: full → semi-retired (50%) → retired (0%)
+    const currentIncome = phaseAdjustedIncome(grownIncome, age + y, semiRetAge, retireAge)
     const baseExpenses = monthly_expenses * 12 * Math.pow(1 + inflationRate, y)
     const childExp = annualChildExpenses(numChildren, youngestChildAge, y, inflationRate)
     const currentExpenses = baseExpenses + childExp

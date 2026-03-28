@@ -22,6 +22,8 @@ export interface FinancialProfile {
   risk_tolerance?: string
   num_children?: number
   youngest_child_age?: number
+  semi_retirement_age?: number  // age when switching to part-time/low-stress (50% income)
+  retirement_age?: number       // age when income stops completely
 }
 
 export interface FinancialGoal {

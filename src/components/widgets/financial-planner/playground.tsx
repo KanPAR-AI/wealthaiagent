@@ -26,7 +26,7 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
   const [profile, setProfile] = useState<FinancialProfile>(data.profile)
   const [assumptions, setAssumptions] = useState(data.assumptions || {
     inflation_rate: 0.06,
-    income_growth_rate: 0.0,
+    income_growth_rate: 0.0,  // constant income by default
     expected_return: 0.10,
   })
   const [queryText, setQueryText] = useState('')
@@ -126,6 +126,28 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
           disabled={isHistory}
         />
         <SliderControl
+          label="Go part-time at"
+          value={profile.semi_retirement_age ?? 55}
+          min={Math.max(profile.age + 1, 35)} max={70} step={1}
+          format={v => `Age ${v}`}
+          onChange={v => {
+            handleSliderChange('semi_retirement_age', v)
+            // Push retirement age forward if needed
+            if (v > (profile.retirement_age ?? 60)) {
+              handleSliderChange('retirement_age', v)
+            }
+          }}
+          disabled={isHistory}
+        />
+        <SliderControl
+          label="Fully retire at"
+          value={profile.retirement_age ?? 60}
+          min={profile.semi_retirement_age ?? 55} max={75} step={1}
+          format={v => `Age ${v}`}
+          onChange={v => handleSliderChange('retirement_age', v)}
+          disabled={isHistory}
+        />
+        <SliderControl
           label="Children"
           value={profile.num_children ?? 0}
           min={0} max={4} step={1}
@@ -143,14 +165,6 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
             disabled={isHistory}
           />
         )}
-        <SliderControl
-          label="Income Growth"
-          value={assumptions.income_growth_rate}
-          min={0} max={0.20} step={0.01}
-          format={formatPercent}
-          onChange={v => handleSliderChange('income_growth_rate', v)}
-          disabled={isHistory}
-        />
         <SliderControl
           label="Expected Return"
           value={assumptions.expected_return}
