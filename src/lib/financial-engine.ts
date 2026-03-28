@@ -22,7 +22,7 @@ import type {
 // ── Indian financial defaults ──────────────────────────────────────────
 
 export const DEFAULT_INFLATION_RATE = 0.06
-export const DEFAULT_INCOME_GROWTH_RATE = 0.08
+export const DEFAULT_INCOME_GROWTH_RATE = 0.0
 export const DEFAULT_EQUITY_RETURN = 0.12
 export const DEFAULT_DEBT_RETURN = 0.07
 export const DEFAULT_BALANCED_RETURN = 0.10
@@ -198,13 +198,14 @@ export function computeRiverData(
   let cumulativeIncome = monthly_income * 12 // track compounded income year over year
 
   for (let y = 0; y <= years; y++) {
-    // Taper income growth based on age (realistic career progression)
+    // Apply income growth (if any)
     if (y > 0) {
       const growthRate = taperedIncomeGrowth(age + y, incomeGrowthRate)
       cumulativeIncome = cumulativeIncome * (1 + growthRate)
     }
 
-    const currentIncome = cumulativeIncome
+    // No income after age 60 (retirement)
+    const currentIncome = (age + y) <= 60 ? cumulativeIncome : 0
     const baseExpenses = monthly_expenses * 12 * Math.pow(1 + inflationRate, y)
     const childExp = annualChildExpenses(numChildren, youngestChildAge, y, inflationRate)
     const currentExpenses = baseExpenses + childExp

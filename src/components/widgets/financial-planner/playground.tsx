@@ -26,7 +26,7 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
   const [profile, setProfile] = useState<FinancialProfile>(data.profile)
   const [assumptions, setAssumptions] = useState(data.assumptions || {
     inflation_rate: 0.06,
-    income_growth_rate: 0.08,
+    income_growth_rate: 0.0,
     expected_return: 0.10,
   })
   const [queryText, setQueryText] = useState('')
