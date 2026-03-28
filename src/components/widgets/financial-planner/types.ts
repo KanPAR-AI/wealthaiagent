@@ -20,6 +20,8 @@ export interface FinancialProfile {
   monthly_expenses: number
   existing_investments: number
   risk_tolerance?: string
+  num_children?: number
+  youngest_child_age?: number
 }
 
 export interface FinancialGoal {

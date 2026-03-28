@@ -126,6 +126,24 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
           disabled={isHistory}
         />
         <SliderControl
+          label="Children"
+          value={profile.num_children ?? 0}
+          min={0} max={4} step={1}
+          format={v => `${v}`}
+          onChange={v => handleSliderChange('num_children', v)}
+          disabled={isHistory}
+        />
+        {(profile.num_children ?? 0) > 0 && (
+          <SliderControl
+            label="Youngest Child Age"
+            value={profile.youngest_child_age ?? 0}
+            min={0} max={18} step={1}
+            format={v => `${v} yrs`}
+            onChange={v => handleSliderChange('youngest_child_age', v)}
+            disabled={isHistory}
+          />
+        )}
+        <SliderControl
           label="Income Growth"
           value={assumptions.income_growth_rate}
           min={0} max={0.20} step={0.01}

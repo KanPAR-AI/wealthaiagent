@@ -46,6 +46,8 @@ export function OnboardingProfile({ data, isHistory }: OnboardingProfileProps) {
       monthly_income: values.monthly_income ?? 75000,
       monthly_expenses: values.monthly_expenses ?? 40000,
       existing_investments: values.existing_investments ?? 0,
+      num_children: values.num_children ?? 0,
+      youngest_child_age: values.youngest_child_age ?? 0,
     }
     window.dispatchEvent(new CustomEvent('chat-quick-reply', {
       detail: { text: JSON.stringify(profile) }

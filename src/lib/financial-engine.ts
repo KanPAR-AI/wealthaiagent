@@ -131,6 +131,50 @@ export function calculateAllGoals(
 
 // ── River projection ──────────────────────────────────────────────────
 
+/**
+ * Get tapered income growth rate for a given age.
+ * Realistic career progression: full growth until 45, halved 45-55, minimal after 55.
+ */
+function taperedIncomeGrowth(currentAge: number, baseGrowthRate: number): number {
+  if (currentAge < 45) return baseGrowthRate
+  if (currentAge < 55) return baseGrowthRate * 0.4
+  return baseGrowthRate * 0.1 // near-zero growth post-55
+}
+
+/**
+ * Monthly child expense based on child's current age (in today's rupees).
+ * Increases with school, peaks during higher education, drops to 0 when independent.
+ */
+function childMonthlyExpense(childAge: number): number {
+  if (childAge < 0 || childAge >= 23) return 0
+  if (childAge < 4) return 8000      // daycare, basic
+  if (childAge < 14) return 15000    // school fees, activities
+  if (childAge < 18) return 25000    // coaching, higher secondary
+  return 35000                        // college, hostel, living (18-22)
+}
+
+/**
+ * Compute total annual child-related expenses for a given projection year.
+ * Children are assumed 2 years apart starting from youngest_child_age.
+ */
+function annualChildExpenses(
+  numChildren: number,
+  youngestChildAge: number,
+  projectionYear: number,
+  inflationRate: number,
+): number {
+  if (numChildren <= 0) return 0
+  let total = 0
+  for (let i = 0; i < numChildren; i++) {
+    const childAgeNow = youngestChildAge + i * 2 // each older child is 2 years apart
+    const childAgeAtYear = childAgeNow + projectionYear
+    const baseExpense = childMonthlyExpense(childAgeAtYear) * 12
+    // Inflate to that year's value
+    total += baseExpense * Math.pow(1 + inflationRate, projectionYear)
+  }
+  return total
+}
+
 export function computeRiverData(
   profile: FinancialProfile,
   goals: FinancialGoal[],
@@ -140,6 +184,8 @@ export function computeRiverData(
   expectedReturn = DEFAULT_BALANCED_RETURN,
 ): RiverDataPoint[] {
   const { age = 30, monthly_income = 0, monthly_expenses = 0, existing_investments = 0 } = profile
+  const numChildren = profile.num_children ?? 0
+  const youngestChildAge = profile.youngest_child_age ?? 0
 
   const goalCalcs = calculateAllGoals(goals, monthly_expenses, inflationRate, expectedReturn)
   const goalSips: Record<string, number> = {}
@@ -149,10 +195,19 @@ export function computeRiverData(
 
   const projection: RiverDataPoint[] = []
   let wealth = existing_investments
+  let cumulativeIncome = monthly_income * 12 // track compounded income year over year
 
   for (let y = 0; y <= years; y++) {
-    const currentIncome = monthly_income * 12 * Math.pow(1 + incomeGrowthRate, y)
-    const currentExpenses = monthly_expenses * 12 * Math.pow(1 + inflationRate, y)
+    // Taper income growth based on age (realistic career progression)
+    if (y > 0) {
+      const growthRate = taperedIncomeGrowth(age + y, incomeGrowthRate)
+      cumulativeIncome = cumulativeIncome * (1 + growthRate)
+    }
+
+    const currentIncome = cumulativeIncome
+    const baseExpenses = monthly_expenses * 12 * Math.pow(1 + inflationRate, y)
+    const childExp = annualChildExpenses(numChildren, youngestChildAge, y, inflationRate)
+    const currentExpenses = baseExpenses + childExp
     const annualSavings = Math.max(currentIncome - currentExpenses, 0)
 
     const allocations: Record<string, number> = {}
