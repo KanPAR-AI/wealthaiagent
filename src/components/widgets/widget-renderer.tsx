@@ -12,6 +12,11 @@ import { MultiSelectWidget } from "./multi-select-widget"
 import { OnboardingFormWidget } from "./onboarding-form-widget"
 import { CuisineProportionWidget } from "./cuisine-proportion-widget"
 import { SpecialistPickerWidget } from "./specialist-picker-widget"
+import { OnboardingProfile } from "./financial-planner/onboarding-profile"
+import { GoalPicker } from "./financial-planner/goal-picker"
+import { GoalDetailCard } from "./financial-planner/goal-detail-card"
+import { Playground } from "./financial-planner/playground"
+import { PlanSummary } from "./financial-planner/plan-summary"
 
 export interface Widget {
   id: string
@@ -73,6 +78,21 @@ export function WidgetRenderer({ widget, isHistory }: WidgetRendererProps) {
 
     case 'widget_specialist_picker':
       return <SpecialistPickerWidget {...widget} isHistory={isHistory} />
+
+    case 'widget_financial_onboarding':
+      return <OnboardingProfile data={widget.data ?? widget} isHistory={isHistory} />
+
+    case 'widget_financial_goals':
+      return <GoalPicker data={widget.data ?? widget} isHistory={isHistory} />
+
+    case 'widget_financial_goal_detail':
+      return <GoalDetailCard data={widget.data ?? widget} isHistory={isHistory} />
+
+    case 'widget_financial_playground':
+      return <Playground data={widget.data ?? widget} isHistory={isHistory} />
+
+    case 'widget_financial_summary':
+      return <PlanSummary data={widget.data ?? widget} isHistory={isHistory} />
 
     default:
       console.warn('[WidgetRenderer] Unknown widget type:', widget.type)
