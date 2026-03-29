@@ -448,6 +448,46 @@ export function generateNudges(
     }
   }
 
+  // 5. Higher-risk allocation — show impact of switching to aggressive equity
+  if (expectedReturn < 0.14) {
+    const aggressiveReturn = 0.14
+    const currentTotal = calculateAllGoals(goals, monthly_expenses, inflationRate, expectedReturn).total_monthly_sip
+    const aggressiveTotal = calculateAllGoals(goals, monthly_expenses, inflationRate, aggressiveReturn).total_monthly_sip
+    const impact = currentTotal - aggressiveTotal
+    if (impact > 0) {
+      nudges.push({
+        nudge_type: 'higher_risk',
+        description: 'Switch to aggressive equity portfolio (14% return)',
+        impact_monthly: Math.round(impact * 100) / 100,
+      })
+    }
+  }
+
+  // 6. Entrepreneurship / side income — model 2x income scenario
+  if (monthly_income > 0) {
+    nudges.push({
+      nudge_type: 'entrepreneurship',
+      description: 'Start a side business or freelance (double income)',
+      impact_monthly: Math.round(monthly_income * 100) / 100,
+      adjusted_value: Math.round(monthly_income * 2 * 100) / 100,
+    })
+  }
+
+  // 7. Phased retirement — suggest semi-retirement if not already enabled
+  const retireAge = profile.retirement_age ?? 60
+  const semiRetAge = profile.semi_retirement_age ?? retireAge
+  if (semiRetAge >= retireAge && retireAge < 65) {
+    // Not using semi-retirement — suggest adding a part-time phase
+    const phasedRetireAge = retireAge + 5
+    const totalWithPhase = calculateAllGoals(goals, monthly_expenses, inflationRate, expectedReturn).total_monthly_sip
+    // Extending effective earning years by 5 via part-time reduces pressure
+    nudges.push({
+      nudge_type: 'phased_retirement',
+      description: `Add part-time phase: half income from ${retireAge} to ${phasedRetireAge}`,
+      impact_monthly: Math.round(monthly_income * 0.5 * (5 / ((retireAge - (profile.age ?? 30)) * 12)) * 12 * 100) / 100 || Math.round(monthly_income * 0.25 * 100) / 100,
+    })
+  }
+
   nudges.sort((a, b) => b.impact_monthly - a.impact_monthly)
   return nudges
 }

@@ -72,8 +72,15 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
       setProfile(prev => ({ ...prev, monthly_expenses: Number(nudge.adjusted_value) }))
     } else if (nudge.nudge_type === 'increase_income' && nudge.adjusted_value) {
       setProfile(prev => ({ ...prev, monthly_income: Number(nudge.adjusted_value) }))
+    } else if (nudge.nudge_type === 'entrepreneurship' && nudge.adjusted_value) {
+      setProfile(prev => ({ ...prev, monthly_income: Number(nudge.adjusted_value) }))
+    } else if (nudge.nudge_type === 'higher_risk') {
+      setAssumptions(prev => ({ ...prev, expected_return: 0.14 }))
+    } else if (nudge.nudge_type === 'phased_retirement') {
+      const retAge = profile.retirement_age ?? 60
+      setProfile(prev => ({ ...prev, semi_retirement_age: retAge, retirement_age: retAge + 5 }))
     }
-  }, [])
+  }, [profile])
 
   const handleQuery = useCallback(() => {
     if (!queryText.trim() || isHistory) return
@@ -248,17 +255,24 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
       </div>
 
       {/* ── Section: Assumptions ── */}
-      <SectionHeader title="Assumptions" hint="Market assumptions used for projections" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-        <SliderControl
-          label="Expected Return"
-          value={assumptions.expected_return}
-          min={0.04} max={0.18} step={0.01}
-          format={formatPercent}
-          hint="Blended portfolio return (equity + debt)"
-          onChange={v => handleSliderChange('expected_return', v)}
-          disabled={isHistory}
-        />
+      <SectionHeader title="Assumptions" hint="Market assumptions used for projections — explore any scenario" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-1">
+        <div>
+          <SliderControl
+            label="Expected Return"
+            value={assumptions.expected_return}
+            min={0.04} max={0.40} step={0.01}
+            format={formatPercent}
+            hint={
+              assumptions.expected_return <= 0.12 ? 'Conservative to balanced (debt + equity)' :
+              assumptions.expected_return <= 0.18 ? 'Aggressive equity-heavy portfolio' :
+              assumptions.expected_return <= 0.25 ? 'Very aggressive (concentrated equity, crypto)' :
+              'Extreme — startup equity / venture returns'
+            }
+            onChange={v => handleSliderChange('expected_return', v)}
+            disabled={isHistory}
+          />
+        </div>
         <SliderControl
           label="Inflation Rate"
           value={assumptions.inflation_rate}
@@ -269,6 +283,19 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
           disabled={isHistory}
         />
       </div>
+      {assumptions.expected_return > 0.15 && (
+        <div className={`text-[11px] px-3 py-2 rounded-lg mb-4 border ${
+          assumptions.expected_return > 0.25
+            ? 'bg-red-500/10 border-red-500/20 text-red-400'
+            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+        }`}>
+          {assumptions.expected_return > 0.25
+            ? `⚠️ ${formatPercent(assumptions.expected_return)} returns are rare and volatile — startup equity, crypto, or concentrated bets. High chance of capital loss. Treat this as a best-case scenario, not a plan.`
+            : `⚠️ ${formatPercent(assumptions.expected_return)} is aggressive — requires mostly equity with high volatility. Use for scenario exploration.`
+          }
+        </div>
+      )}
+      {assumptions.expected_return <= 0.15 && <div className="mb-5" />}
 
       {/* Nudge panel */}
       {computed.feas.status !== 'green' && (

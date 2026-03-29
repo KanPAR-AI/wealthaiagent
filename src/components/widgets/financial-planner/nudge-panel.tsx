@@ -13,6 +13,9 @@ const nudgeIcons: Record<string, string> = {
   increase_income: '📈',
   reduce_target: '🎯',
   change_allocation: '⚖️',
+  higher_risk: '🔥',
+  entrepreneurship: '🚀',
+  phased_retirement: '🔄',
 }
 
 export function NudgePanel({ nudges, onApply, isHistory }: NudgePanelProps) {
