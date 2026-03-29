@@ -17,6 +17,10 @@ import { GoalPicker } from "./financial-planner/goal-picker"
 import { GoalDetailCard } from "./financial-planner/goal-detail-card"
 import { Playground } from "./financial-planner/playground"
 import { PlanSummary } from "./financial-planner/plan-summary"
+import { PrescriptivePlan } from "./financial-planner/prescriptive-plan"
+import { ScenarioComparison } from "./financial-planner/scenario-comparison"
+import { ProfileReview } from "./financial-planner/profile-review"
+import { AdvisorPanel } from "./financial-planner/advisor-panel"
 
 export interface Widget {
   id: string
@@ -93,6 +97,18 @@ export function WidgetRenderer({ widget, isHistory }: WidgetRendererProps) {
 
     case 'widget_financial_summary':
       return <PlanSummary data={widget.data ?? widget} isHistory={isHistory} />
+
+    case 'widget_financial_prescriptive_plan':
+      return <PrescriptivePlan data={widget.data ?? widget} isHistory={isHistory} />
+
+    case 'widget_financial_scenario_comparison':
+      return <ScenarioComparison data={widget.data ?? widget} isHistory={isHistory} />
+
+    case 'widget_financial_profile_review':
+      return <ProfileReview data={widget.data ?? widget} isHistory={isHistory} />
+
+    case 'widget_financial_advisor':
+      return <AdvisorPanel data={widget.data ?? widget} isHistory={isHistory} />
 
     default:
       console.warn('[WidgetRenderer] Unknown widget type:', widget.type)

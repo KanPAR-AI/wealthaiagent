@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from 'react'
-import type { PlaygroundPayload, FinancialProfile, FinancialGoal, Nudge, FeasibilityStatus } from './types'
-import { computeRiverData, runMonteCarloSimulation, checkFeasibility, generateNudges } from '@/lib/financial-engine'
+import type { PlaygroundPayload, FinancialProfile, FinancialGoal, Nudge, FeasibilityStatus, CorpusAllocation } from './types'
+import { computeRiverData, runMonteCarloSimulation, checkFeasibility, generateNudges, computeCorpusReturn } from '@/lib/financial-engine'
 import { formatINR, formatPercent } from '@/lib/formatters'
 import { RiverVisualization } from './river-visualization'
 import { NudgePanel } from './nudge-panel'
@@ -125,6 +125,22 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
 
       {/* ── Section: Income & Expenses ── */}
       <SectionHeader title="Income & Expenses" hint="Your current cash flow — savings = income minus expenses" />
+
+      {/* Show individual income sources if available from enhanced profile */}
+      {'income_sources' in data.profile && (data.profile as any).income_sources?.length > 0 && (
+        <div className="rounded-lg border border-white/5 bg-white/5 p-2.5 mb-3">
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1.5">Income Breakdown</p>
+          <div className="space-y-1">
+            {((data.profile as any).income_sources as Array<{label: string; monthly_amount: number}>).map((src, i) => (
+              <div key={i} className="flex justify-between text-xs">
+                <span className="text-slate-400 capitalize">{src.label.replace(/_/g, ' ')}</span>
+                <span className="text-white font-medium">{formatINR(src.monthly_amount)}/mo</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
         <SliderControl
           label="Monthly Income"
@@ -297,6 +313,17 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
       )}
       {assumptions.expected_return <= 0.15 && <div className="mb-5" />}
 
+      {/* ── Section: Corpus Allocation ── */}
+      {profile.existing_investments > 0 && (
+        <>
+          <SectionHeader title="Corpus Allocation" hint="How your existing investments are split — affects compounding" />
+          <CorpusAllocationSliders
+            existing={profile.existing_investments}
+            isHistory={isHistory}
+          />
+        </>
+      )}
+
       {/* Nudge panel */}
       {computed.feas.status !== 'green' && (
         <div className="mb-4">
@@ -389,6 +416,67 @@ function SliderControl({ label, value, min, max, step, format, onChange, disable
           touch-none disabled:opacity-50"
       />
       {hint && <div className="text-[10px] text-slate-500 mt-0.5">{hint}</div>}
+    </div>
+  )
+}
+
+// ── Corpus allocation sliders ────────────────────────────────────────
+
+function CorpusAllocationSliders({ existing, isHistory }: { existing: number; isHistory?: boolean }) {
+  const [equity, setEquity] = useState(0.4)
+  const [debt, setDebt] = useState(0.2)
+  const [realEstate, setRealEstate] = useState(0)
+  const balanced = Math.max(0, 1 - equity - debt - realEstate)
+
+  const weightedReturn = computeCorpusReturn({ equity_pct: equity, debt_pct: debt, real_estate_pct: realEstate })
+
+  return (
+    <div className="rounded-lg border border-white/5 bg-white/5 p-3 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-2">
+        <div>
+          <div className="flex justify-between text-[10px] mb-0.5">
+            <span className="text-slate-500">Equity</span>
+            <span className="text-emerald-400">{(equity * 100).toFixed(0)}%</span>
+          </div>
+          <input type="range" min={0} max={1} step={0.05} value={equity}
+            onChange={e => { const v = Number(e.target.value); setEquity(Math.min(v, 1 - debt - realEstate)) }}
+            disabled={isHistory}
+            className="w-full h-1 bg-slate-700 rounded-full appearance-none cursor-pointer
+              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3
+              [&::-webkit-slider-thumb]:bg-emerald-500 [&::-webkit-slider-thumb]:rounded-full touch-none disabled:opacity-50"
+          />
+        </div>
+        <div>
+          <div className="flex justify-between text-[10px] mb-0.5">
+            <span className="text-slate-500">Debt</span>
+            <span className="text-blue-400">{(debt * 100).toFixed(0)}%</span>
+          </div>
+          <input type="range" min={0} max={1} step={0.05} value={debt}
+            onChange={e => { const v = Number(e.target.value); setDebt(Math.min(v, 1 - equity - realEstate)) }}
+            disabled={isHistory}
+            className="w-full h-1 bg-slate-700 rounded-full appearance-none cursor-pointer
+              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3
+              [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:rounded-full touch-none disabled:opacity-50"
+          />
+        </div>
+        <div>
+          <div className="flex justify-between text-[10px] mb-0.5">
+            <span className="text-slate-500">Real Estate</span>
+            <span className="text-amber-400">{(realEstate * 100).toFixed(0)}%</span>
+          </div>
+          <input type="range" min={0} max={1} step={0.05} value={realEstate}
+            onChange={e => { const v = Number(e.target.value); setRealEstate(Math.min(v, 1 - equity - debt)) }}
+            disabled={isHistory}
+            className="w-full h-1 bg-slate-700 rounded-full appearance-none cursor-pointer
+              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3
+              [&::-webkit-slider-thumb]:bg-amber-500 [&::-webkit-slider-thumb]:rounded-full touch-none disabled:opacity-50"
+          />
+        </div>
+      </div>
+      <div className="flex justify-between text-[10px] text-slate-500">
+        <span>Balanced: {(balanced * 100).toFixed(0)}%</span>
+        <span>Weighted return: <span className="text-white font-medium">{(weightedReturn * 100).toFixed(1)}%</span></span>
+      </div>
     </div>
   )
 }

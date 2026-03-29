@@ -17,6 +17,11 @@ import type {
   FeasibilityResult,
   FeasibilityStatus,
   Nudge,
+  EnhancedProfile,
+  Scenario,
+  ChildPlan,
+  ActionItem,
+  CorpusAllocation,
 } from '@/components/widgets/financial-planner/types'
 
 // ── Indian financial defaults ──────────────────────────────────────────
@@ -490,4 +495,216 @@ export function generateNudges(
 
   nudges.sort((a, b) => b.impact_monthly - a.impact_monthly)
   return nudges
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// V2 — Enhanced Prescriptive Plan Computations
+// ══════════════════════════════════════════════════════════════════════
+
+const ASSET_RETURNS: Record<string, number> = {
+  equity: 0.12,
+  debt: 0.07,
+  real_estate: 0.07,
+  balanced: 0.10,
+  aggressive_equity: 0.14,
+}
+
+/** Weighted average return from corpus allocation */
+export function computeCorpusReturn(allocation: CorpusAllocation): number {
+  const eq = allocation.equity_pct || 0
+  const debt = allocation.debt_pct || 0
+  const re = allocation.real_estate_pct || 0
+  const bal = Math.max(0, 1.0 - eq - debt - re)
+  return (
+    eq * ASSET_RETURNS.equity +
+    debt * ASSET_RETURNS.debt +
+    re * ASSET_RETURNS.real_estate +
+    bal * ASSET_RETURNS.balanced
+  )
+}
+
+/** Compute per-child education corpus and school fee schedule */
+export function computeChildEducationPlan(
+  child: { name?: string; age_months: number; education_corpus_by_age?: number; education_withdrawal_rate?: number; school_fee_annual?: number; school_fee_starts_in_years?: number; school_fee_growth_rate?: number },
+  inflationRate = DEFAULT_INFLATION_RATE,
+  expectedReturn = DEFAULT_BALANCED_RETURN,
+): ChildPlan {
+  const name = child.name || 'Child'
+  const ageYears = child.age_months / 12
+  const targetAge = child.education_corpus_by_age ?? 18
+  const yearsToTarget = Math.max(1, Math.floor(targetAge - ageYears))
+
+  const baseEducationCost = 2500000 // ₹25L today
+  const inflatedCost = futureValue(baseEducationCost, inflationRate, yearsToTarget)
+  const corpusNeeded = inflatedCost
+  const monthlySipNeeded = sipNeeded(corpusNeeded, expectedReturn, yearsToTarget)
+
+  const feeAnnual = child.school_fee_annual ?? 0
+  const feeStarts = child.school_fee_starts_in_years ?? 0
+  const feeGrowth = child.school_fee_growth_rate ?? 0.06
+  const feeDuration = feeAnnual > 0 ? Math.max(1, targetAge - Math.floor(ageYears) - feeStarts) : 0
+
+  const schedule: { year: number; amount: number }[] = []
+  for (let yr = 0; yr < feeDuration; yr++) {
+    const actualYear = feeStarts + yr
+    const amount = feeAnnual * Math.pow(1 + feeGrowth, yr)
+    schedule.push({ year: actualYear, amount: Math.round(amount * 100) / 100 })
+  }
+
+  return {
+    child_name: name,
+    corpus_needed: Math.round(corpusNeeded * 100) / 100,
+    monthly_sip: Math.round(monthlySipNeeded * 100) / 100,
+    school_fee_schedule: schedule,
+  }
+}
+
+/** Generate 3 auto-scenarios with different risk/return profiles */
+export function generateScenarios(
+  profile: EnhancedProfile | FinancialProfile,
+  goals: FinancialGoal[],
+  inflationRate = DEFAULT_INFLATION_RATE,
+): Scenario[] {
+  const age = profile.age
+  const retireAge = profile.retirement_age ?? 60
+
+  // Extract income/expenses — handle both V1 and V2 profiles
+  let monthlyIncome: number
+  let monthlyExpenses: number
+  let existing: number
+
+  if ('income_sources' in profile && profile.income_sources) {
+    monthlyIncome = (profile as EnhancedProfile).income_sources.reduce((s, src) => s + src.monthly_amount, 0)
+    monthlyExpenses = (profile as EnhancedProfile).expenses.reduce((s, e) => s + e.monthly_amount, 0)
+    existing = (profile as EnhancedProfile).existing_corpus || 0
+  } else {
+    monthlyIncome = (profile as FinancialProfile).monthly_income || 0
+    monthlyExpenses = (profile as FinancialProfile).monthly_expenses || 0
+    existing = (profile as FinancialProfile).existing_investments || 0
+  }
+
+  const configs = [
+    { name: 'Conservative' as const, ret: 0.08, offset: 2, desc: 'Lower risk, mostly debt + balanced funds. Retire 2 years later for safety margin.', tradeoff: 'Lower volatility but need to work 2 more years' },
+    { name: 'Moderate' as const, ret: 0.10, offset: 0, desc: 'Balanced equity-debt mix. Retire at your target age.', tradeoff: 'Good balance of growth and stability' },
+    { name: 'Aggressive' as const, ret: 0.14, offset: -2, desc: 'Equity-heavy portfolio. Potential to retire earlier if markets perform.', tradeoff: 'Higher growth potential but significant volatility risk' },
+  ]
+
+  return configs.map(cfg => {
+    const sRetire = Math.max(age + 5, retireAge + cfg.offset)
+    const yearsToRetire = sRetire - age
+
+    const legacy: FinancialProfile = {
+      age,
+      monthly_income: monthlyIncome,
+      monthly_expenses: monthlyExpenses,
+      existing_investments: existing,
+      retirement_age: sRetire,
+      semi_retirement_age: profile.semi_retirement_age ?? sRetire,
+    }
+
+    const feas = checkFeasibility(legacy, goals, inflationRate, cfg.ret)
+    const river = computeRiverData(legacy, goals, yearsToRetire, inflationRate, 0, cfg.ret)
+    const corpusAtRetire = river.length > 0 ? river[river.length - 1].wealth : 0
+
+    return {
+      name: cfg.name,
+      description: cfg.desc,
+      retirement_age: sRetire,
+      monthly_sip: feas.total_sip_needed,
+      corpus_at_retirement: Math.round(corpusAtRetire * 100) / 100,
+      feasibility: feas.status,
+      key_tradeoff: cfg.tradeoff,
+    }
+  })
+}
+
+/** Enhanced river projection with multiple income sources and lump-sum inflows */
+export function computeEnhancedRiver(
+  profile: EnhancedProfile,
+  goals: FinancialGoal[],
+  years = 30,
+  inflationRate = DEFAULT_INFLATION_RATE,
+  expectedReturn = DEFAULT_BALANCED_RETURN,
+): RiverDataPoint[] {
+  const { age, income_sources, expenses, scheduled_expenses = [], lump_sum_inflows = [], children = [] } = profile
+  const existingCorpus = profile.existing_corpus || 0
+  const corpusReturn = profile.corpus_allocation ? computeCorpusReturn(profile.corpus_allocation) : expectedReturn
+  const semiRetAge = profile.semi_retirement_age ?? profile.retirement_age
+  const retireAge = profile.retirement_age
+
+  const totalMonthlyExpenses = expenses.reduce((s, e) => s + e.monthly_amount, 0)
+  const goalCalcs = calculateAllGoals(goals, totalMonthlyExpenses, inflationRate, expectedReturn)
+  const goalSips: Record<string, number> = {}
+  for (const g of goalCalcs.goals) goalSips[g.goal_type] = g.monthly_sip
+
+  const projection: RiverDataPoint[] = []
+  let wealth = existingCorpus
+
+  for (let y = 0; y <= years; y++) {
+    const currentAge = age + y
+
+    // Income: each source with own growth, phase-adjusted
+    let annualIncome = 0
+    for (const src of income_sources) {
+      const base = src.monthly_amount * 12
+      const grown = base * Math.pow(1 + src.growth_rate, y)
+      annualIncome += phaseAdjustedIncome(grown, currentAge, semiRetAge, retireAge)
+    }
+
+    // Expenses: each with own inflation
+    let annualExpenses = 0
+    for (const exp of expenses) {
+      annualExpenses += exp.monthly_amount * 12 * Math.pow(1 + (exp.inflation_rate || inflationRate), y)
+    }
+
+    // Scheduled expenses
+    for (const sexp of scheduled_expenses) {
+      if (sexp.starts_in_years <= y && y < sexp.starts_in_years + sexp.duration_years) {
+        const yearsActive = y - sexp.starts_in_years
+        annualExpenses += sexp.annual_amount * Math.pow(1 + sexp.growth_rate, yearsActive)
+      }
+    }
+
+    // Child expenses
+    for (const child of children) {
+      const childAgeAtYear = (child.age_months / 12) + y
+      annualExpenses += childMonthlyExpense(Math.floor(childAgeAtYear)) * 12 * Math.pow(1 + inflationRate, y)
+    }
+
+    // Lump-sum inflows
+    let lumpSum = 0
+    for (const ls of lump_sum_inflows) {
+      if (Math.floor(ls.arrives_in_months / 12) === y) lumpSum += ls.amount
+    }
+
+    const annualSavings = Math.max(annualIncome - annualExpenses, 0)
+
+    const allocations: Record<string, number> = {}
+    for (const goal of goals) {
+      allocations[goal.goal_type] = y < goal.timeline_years ? (goalSips[goal.goal_type] || 0) * 12 : 0
+    }
+    const totalSipAnnual = Object.values(allocations).reduce((a, b) => a + b, 0)
+
+    if (y === 0) {
+      wealth = existingCorpus + lumpSum
+    } else {
+      wealth = wealth * (1 + corpusReturn) + annualSavings + lumpSum
+    }
+
+    projection.push({
+      year: y,
+      age: currentAge,
+      income: Math.round(annualIncome * 100) / 100,
+      expenses: Math.round(annualExpenses * 100) / 100,
+      savings: Math.round(annualSavings * 100) / 100,
+      investments: Math.round(totalSipAnnual * 100) / 100,
+      unallocated: Math.round(Math.max(annualSavings - totalSipAnnual, 0) * 100) / 100,
+      wealth: Math.round(wealth * 100) / 100,
+      goal_allocations: Object.fromEntries(
+        Object.entries(allocations).map(([k, v]) => [k, Math.round(v * 100) / 100])
+      ),
+    })
+  }
+
+  return projection
 }
