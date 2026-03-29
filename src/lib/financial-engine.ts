@@ -314,11 +314,27 @@ export function checkFeasibility(
   inflationRate = DEFAULT_INFLATION_RATE,
   expectedReturn = DEFAULT_BALANCED_RETURN,
 ): FeasibilityResult {
-  const { monthly_income = 0, monthly_expenses = 0 } = profile
+  const { monthly_income = 0, monthly_expenses = 0, existing_investments = 0 } = profile
   const availableSavings = monthly_income - monthly_expenses
 
   const goalCalcs = calculateAllGoals(goals, monthly_expenses, inflationRate, expectedReturn)
-  const totalSIP = goalCalcs.total_monthly_sip
+  let totalSIP = goalCalcs.total_monthly_sip
+
+  // Existing investments grow and offset SIP requirements
+  // Distribute existing corpus proportionally across goals based on SIP weight
+  if (existing_investments > 0 && totalSIP > 0) {
+    let sipReduction = 0
+    for (const g of goalCalcs.goals) {
+      const share = g.monthly_sip / totalSIP
+      const allocatedCorpus = existing_investments * share
+      // FV of allocated corpus at goal timeline
+      const corpusFV = futureValue(allocatedCorpus, expectedReturn, g.timeline_years)
+      // How much SIP is offset by this existing corpus growing?
+      const offsetSIP = Math.min(g.monthly_sip, sipNeeded(corpusFV, expectedReturn, g.timeline_years))
+      sipReduction += offsetSIP
+    }
+    totalSIP = Math.max(totalSIP - sipReduction, 0)
+  }
 
   const gap = Math.max(totalSIP - availableSavings, 0)
   const ratio = availableSavings > 0 ? totalSIP / availableSavings : Infinity
@@ -374,14 +390,14 @@ export function generateNudges(
   const nudges: Nudge[] = []
   const { monthly_income = 0, monthly_expenses = 0 } = profile
 
-  // 1. Extend timelines
+  // 1. Extend timelines — use calculateGoalCorpus for consistency
   for (const goal of goals) {
     const tl = goal.timeline_years
     if (tl < 40) {
       const extraYears = Math.min(3, 40 - tl)
-      const currentSIP = sipNeeded(futureValue(goal.target_amount, inflationRate, tl), expectedReturn, tl)
-      const newSIP = sipNeeded(futureValue(goal.target_amount, inflationRate, tl + extraYears), expectedReturn, tl + extraYears)
-      const impact = currentSIP - newSIP
+      const currentCalc = calculateGoalCorpus(goal.goal_type, goal.target_amount, tl, inflationRate, expectedReturn, monthly_expenses)
+      const newCalc = calculateGoalCorpus(goal.goal_type, goal.target_amount, tl + extraYears, inflationRate, expectedReturn, monthly_expenses)
+      const impact = currentCalc.monthly_sip - newCalc.monthly_sip
       if (impact > 0) {
         nudges.push({
           nudge_type: 'extend_timeline',
@@ -414,13 +430,13 @@ export function generateNudges(
     })
   }
 
-  // 4. Reduce targets for low-priority goals
+  // 4. Reduce targets for low-priority goals — use calculateGoalCorpus for consistency
   const lowPriority = goals.filter(g => (g.priority || 2) >= 2)
   for (const goal of lowPriority) {
     const tl = goal.timeline_years
-    const currentSIP = sipNeeded(futureValue(goal.target_amount, inflationRate, tl), expectedReturn, tl)
-    const newSIP = sipNeeded(futureValue(goal.target_amount * 0.80, inflationRate, tl), expectedReturn, tl)
-    const impact = currentSIP - newSIP
+    const currentCalc = calculateGoalCorpus(goal.goal_type, goal.target_amount, tl, inflationRate, expectedReturn, monthly_expenses)
+    const newCalc = calculateGoalCorpus(goal.goal_type, goal.target_amount * 0.80, tl, inflationRate, expectedReturn, monthly_expenses)
+    const impact = currentCalc.monthly_sip - newCalc.monthly_sip
     if (impact > 0) {
       nudges.push({
         nudge_type: 'reduce_target',
