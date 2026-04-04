@@ -21,6 +21,7 @@ import { PrescriptivePlan } from "./financial-planner/prescriptive-plan"
 import { ScenarioComparison } from "./financial-planner/scenario-comparison"
 import { ProfileReview } from "./financial-planner/profile-review"
 import { AdvisorPanel } from "./financial-planner/advisor-panel"
+import { HealthSnapshot } from "./financial-planner/health-snapshot"
 
 export interface Widget {
   id: string
@@ -109,6 +110,9 @@ export function WidgetRenderer({ widget, isHistory }: WidgetRendererProps) {
 
     case 'widget_financial_advisor':
       return <AdvisorPanel data={widget.data ?? widget} isHistory={isHistory} />
+
+    case 'widget_financial_health_snapshot':
+      return <HealthSnapshot data={widget.data ?? widget} isHistory={isHistory} />
 
     default:
       console.warn('[WidgetRenderer] Unknown widget type:', widget.type)

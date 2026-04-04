@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { PlaygroundPayload, FeasibilityStatus } from './types'
+import type { PlaygroundPayload, GoalFeasibilityStatus } from './types'
 import { formatINR } from '@/lib/formatters'
 
 interface PlanSummaryProps {
@@ -7,16 +7,18 @@ interface PlanSummaryProps {
   isHistory?: boolean
 }
 
-const statusColors: Record<FeasibilityStatus, string> = {
+const statusColors: Record<GoalFeasibilityStatus, string> = {
   green: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
   yellow: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
   red: 'bg-red-500/20 text-red-400 border-red-500/30',
+  phased: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
 }
 
-const statusLabels: Record<FeasibilityStatus, string> = {
+const statusLabels: Record<GoalFeasibilityStatus, string> = {
   green: 'Feasible',
   yellow: 'Tight',
   red: 'Infeasible',
+  phased: 'Phased',
 }
 
 export function PlanSummary({ data, isHistory }: PlanSummaryProps) {

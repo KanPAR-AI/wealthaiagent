@@ -227,71 +227,85 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
         </div>
       </div>
 
-      {/* ── Section: Family ── */}
-      <SectionHeader title="Family" hint="Children add age-based expenses (school, college, etc.)" />
-      <div className="mb-5">
-        {/* Children stepper */}
-        <div className="mb-3">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-xs text-slate-400">Children</span>
-            <span className="text-xs font-medium text-white">{numChildren}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                const newCount = Math.max(0, numChildren - 1)
-                const newAges = [...childAges].slice(0, newCount)
-                setChildAges(newAges)
-                updateProfile({ num_children: newCount, youngest_child_age: newAges.length ? Math.min(...newAges) : 0 })
-              }}
-              disabled={isHistory || numChildren <= 0}
-              className="w-9 h-9 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-lg font-bold
-                transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              -
-            </button>
-            <div className="flex-1 text-center text-sm font-medium text-white">
-              {numChildren === 0 ? 'No children' : `${numChildren} child${numChildren > 1 ? 'ren' : ''}`}
+      {/* ── Section: Family — only shown when children exist or user expands ── */}
+      {numChildren > 0 ? (
+        <>
+          <SectionHeader title="Family" hint="Children add age-based expenses (school, college, etc.)" />
+          <div className="mb-5">
+            <div className="mb-3">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-xs text-slate-400">Children</span>
+                <span className="text-xs font-medium text-white">{numChildren}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const newCount = Math.max(0, numChildren - 1)
+                    const newAges = [...childAges].slice(0, newCount)
+                    setChildAges(newAges)
+                    updateProfile({ num_children: newCount, youngest_child_age: newAges.length ? Math.min(...newAges) : 0 })
+                  }}
+                  disabled={isHistory || numChildren <= 0}
+                  className="w-9 h-9 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-lg font-bold
+                    transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  -
+                </button>
+                <div className="flex-1 text-center text-sm font-medium text-white">
+                  {`${numChildren} child${numChildren > 1 ? 'ren' : ''}`}
+                </div>
+                <button
+                  onClick={() => {
+                    const newCount = Math.min(4, numChildren + 1)
+                    const newAges = [...childAges, 0]
+                    setChildAges(newAges)
+                    updateProfile({ num_children: newCount, youngest_child_age: Math.min(...newAges) })
+                  }}
+                  disabled={isHistory || numChildren >= 4}
+                  className="w-9 h-9 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-lg font-bold
+                    transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  +
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => {
-                const newCount = Math.min(4, numChildren + 1)
-                const newAges = [...childAges, 0]
-                setChildAges(newAges)
-                updateProfile({ num_children: newCount, youngest_child_age: Math.min(...newAges) })
-              }}
-              disabled={isHistory || numChildren >= 4}
-              className="w-9 h-9 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-lg font-bold
-                transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              +
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {childAges.slice(0, numChildren).map((age, i) => (
+                <SliderControl
+                  key={i}
+                  label={`Child ${i + 1} Age`}
+                  value={age}
+                  min={0} max={22} step={1}
+                  format={v => v < 1 ? `${v * 12} mo` : `${v} yrs`}
+                  hint={age < 5 ? 'Pre-school' : age < 15 ? 'School (₹5-15L/yr)' : age < 18 ? 'Sr. secondary' : 'College'}
+                  onChange={v => {
+                    const newAges = [...childAges]
+                    newAges[i] = v
+                    setChildAges(newAges)
+                    updateProfile({ youngest_child_age: Math.min(...newAges) })
+                  }}
+                  disabled={isHistory}
+                />
+              ))}
+            </div>
           </div>
+        </>
+      ) : (
+        <div className="mb-5">
+          <button
+            onClick={() => {
+              if (isHistory) return
+              const newAges = [0]
+              setChildAges(newAges)
+              updateProfile({ num_children: 1, youngest_child_age: 0 })
+            }}
+            disabled={isHistory}
+            className="text-xs text-slate-500 hover:text-slate-300 transition-colors disabled:cursor-not-allowed"
+          >
+            + Add family planning
+          </button>
         </div>
-
-        {/* Per-child age inputs */}
-        {numChildren > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {childAges.slice(0, numChildren).map((age, i) => (
-              <SliderControl
-                key={i}
-                label={`Child ${i + 1} Age`}
-                value={age}
-                min={0} max={22} step={1}
-                format={v => v < 1 ? `${v * 12} mo` : `${v} yrs`}
-                hint={age < 5 ? 'Pre-school' : age < 15 ? 'School (₹5-15L/yr)' : age < 18 ? 'Sr. secondary' : 'College'}
-                onChange={v => {
-                  const newAges = [...childAges]
-                  newAges[i] = v
-                  setChildAges(newAges)
-                  updateProfile({ youngest_child_age: Math.min(...newAges) })
-                }}
-                disabled={isHistory}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* ── Section: Assumptions ── */}
       <SectionHeader title="Assumptions" hint="Market assumptions used for projections — explore any scenario" />

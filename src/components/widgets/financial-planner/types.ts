@@ -32,6 +32,7 @@ export interface FinancialGoal {
   icon?: string
   target_amount: number
   timeline_years: number
+  starts_in_years?: number  // phased SIP: when SIP starts (0 = now)
   priority: number
   monthly_sip?: number
   corpus_needed?: number
@@ -60,15 +61,23 @@ export interface MonteCarloResult {
 }
 
 export type FeasibilityStatus = 'green' | 'yellow' | 'red'
+export type GoalFeasibilityStatus = FeasibilityStatus | 'phased'
+
+export interface SipScheduleEntry {
+  year: number
+  monthly_sip: number
+}
 
 export interface FeasibilityResult {
   status: FeasibilityStatus
   total_sip_needed: number
+  year0_sip?: number             // SIP for goals starting now only
   available_savings: number
   gap: number
   ratio: number
-  per_goal_status: Record<string, FeasibilityStatus>
+  per_goal_status: Record<string, GoalFeasibilityStatus>
   binding_constraints: string[]
+  sip_schedule?: SipScheduleEntry[]
 }
 
 export interface Nudge {
@@ -89,13 +98,14 @@ export interface Assumptions {
 export interface OnboardingField {
   name: string
   label: string
-  type: 'slider' | 'input' | 'select'
+  type: 'slider' | 'input' | 'select' | 'stepper'
   min?: number
   max?: number
   default?: number
   step?: number
   unit?: string
   scale?: 'linear' | 'log'
+  options?: string[]
 }
 
 export interface OnboardingPayload {
@@ -192,12 +202,28 @@ export interface EnhancedProfile {
   retirement_age: number
 }
 
+export interface SipBreakdownItem {
+  fund: string
+  amount: number
+  return: number
+}
+
+export interface TimelineRow {
+  year: number
+  age: number
+  annual_income: number
+  annual_expenses: number
+  annual_savings: number
+  net_worth: number
+}
+
 export interface ActionItem {
-  category: 'corpus' | 'sip' | 'lump_sum' | 'insurance' | 'expense'
+  category: 'corpus' | 'sip' | 'lump_sum' | 'insurance' | 'expense' | 'home_loan'
   instruction: string        // "Invest ₹3Cr in balanced funds at 8%"
   amount: number
   instrument?: string
   expected_return?: number
+  sip_breakdown?: SipBreakdownItem[]
 }
 
 export interface Scenario {
@@ -205,8 +231,15 @@ export interface Scenario {
   description: string
   retirement_age: number
   monthly_sip: number
-  corpus_at_retirement: number
+  total_monthly_investment?: number
+  corpus_needed?: number              // Target corpus (expenses / SWP rate)
+  corpus_at_retirement: number        // Projected corpus if SIP is followed
+  monthly_expense_at_retirement?: number  // Inflated monthly expenses at retirement
   feasibility: FeasibilityStatus
+  risk_level?: 'low' | 'medium' | 'high'
+  equity_pct?: number
+  expected_return?: number            // Pre-retirement accumulation return
+  swp_rate?: number                   // Post-retirement SWP rate (0.04/0.06/0.10)
   key_tradeoff: string
 }
 
@@ -223,12 +256,84 @@ export interface InsuranceRecommendation {
   reasoning: string
 }
 
+export interface SipPhaseGoal {
+  name: string
+  goal_type: string
+  monthly_sip: number
+}
+
+export interface SipPhase {
+  phase: string           // "now" | "year_2" | "year_4"
+  label: string           // "Start now" | "Add in year 2 (age 30)"
+  start_year: number
+  age: number
+  goals: SipPhaseGoal[]
+  phase_sip: number       // SIP added in this phase
+  cumulative_sip: number  // Total SIP after this phase
+}
+
 export interface PrescriptivePlanPayload {
   profile: EnhancedProfile
   action_items: ActionItem[]
   scenarios: Scenario[]
   child_plans: ChildPlan[]
   insurance?: InsuranceRecommendation
+  timeline?: TimelineRow[]
+  sip_phases?: SipPhase[]
+  home_purchase_plan?: HomePurchasePlan
+}
+
+// ── Home Purchase Plan Types ──────────────────────────────────────────
+
+export interface AmortizationMilestone {
+  year: number
+  outstanding: number
+  principal_paid: number
+  interest_paid: number
+  equity_pct: number
+}
+
+export interface HomeLoanInsurance {
+  cover: number
+  premium_monthly: number
+  type: string
+  reasoning: string
+}
+
+export interface HomePurchasePhase {
+  name: string
+  duration_years?: number
+  monthly_sip?: number
+  target?: number
+  at_year?: number
+  outflow?: number
+  starts_year?: number
+  monthly_emi?: number
+  total_interest?: number
+  description?: string
+}
+
+export interface HomePurchasePlan {
+  home_value: number
+  home_value_at_purchase: number
+  down_payment: number
+  down_payment_pct: number
+  stamp_duty: number
+  total_upfront: number
+  loan_principal: number
+  loan_rate: number
+  loan_tenure_years: number
+  emi_monthly: number
+  total_interest: number
+  total_payment: number
+  purchase_in_years: number
+  surplus_before_emi: number
+  surplus_after_emi: number
+  surplus_drop_pct: number
+  amortization: AmortizationMilestone[]
+  home_loan_insurance: HomeLoanInsurance
+  home_equity_at_loan_end: number
+  phases: HomePurchasePhase[]
 }
 
 export interface ScenarioComparisonPayload {

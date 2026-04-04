@@ -30,9 +30,9 @@ import { useIOSKeyboard } from '@/hooks/use-ios-keyboard';
 const suggestionTiles: SuggestionTileData[] = [
   { 
     id: 1, 
-    title: "Show my portfolio allocation", 
-    description: "View asset breakdown",
-    useMockService: true,
+    title: "Help me plan my finances",
+    description: "Plan your financial future",
+    useMockService: false,
   },
   {
     id: 2,
