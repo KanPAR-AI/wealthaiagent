@@ -40,21 +40,32 @@ export function PrescriptivePlan({ data, isHistory }: PrescriptivePlanProps) {
                 <span className="text-base">{meta.icon}</span>
                 <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">{meta.title}</span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {items.map((item, i) => (
                   <div key={i} className="flex items-start gap-2">
                     <span className="text-emerald-400 mt-0.5 text-xs">●</span>
                     <div className="flex-1">
-                      <p className="text-sm text-white">{item.instruction}</p>
+                      {/* Render multi-line instructions properly */}
+                      {item.instruction.split('\n').map((line, j) => (
+                        <p key={j} className={j === 0 ? 'text-sm text-white font-medium' : 'text-xs text-slate-300 mt-1'}>
+                          {j > 0 ? line.split(' | ').map((part, k) => (
+                            <span key={k} className="inline-block mr-3 mb-0.5">
+                              <span className="text-slate-500">→</span> {part}
+                            </span>
+                          )) : line}
+                        </p>
+                      ))}
                       {item.expected_return != null && (
-                        <p className="text-[10px] text-slate-500 mt-0.5">
-                          Expected return: {(item.expected_return * 100).toFixed(0)}% p.a.
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          Blended expected return: <span className="text-emerald-400 font-medium">{(item.expected_return * 100).toFixed(1)}% p.a.</span>
                         </p>
                       )}
                     </div>
-                    <span className="text-xs font-medium text-slate-400 whitespace-nowrap">
-                      {formatINR(item.amount)}
-                    </span>
+                    {item.amount > 0 && (
+                      <span className="text-xs font-medium text-slate-400 whitespace-nowrap">
+                        {formatINR(item.amount)}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>

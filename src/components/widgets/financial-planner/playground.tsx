@@ -32,6 +32,11 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
   const [queryText, setQueryText] = useState('')
   const [loading, setLoading] = useState(false)
   const rafRef = useRef<number>(0)
+  const [childAges, setChildAges] = useState<number[]>(() => {
+    const n = data.profile.num_children ?? 0
+    const youngest = data.profile.youngest_child_age ?? 0
+    return Array.from({ length: n }, (_, i) => youngest + i * 2)
+  })
 
   const goals = data.goals || []
 
@@ -145,7 +150,7 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
         <SliderControl
           label="Monthly Income"
           value={profile.monthly_income}
-          min={10000} max={1000000} step={5000}
+          min={10000} max={5000000} step={5000}
           format={formatINR}
           hint="Your total monthly take-home pay"
           onChange={v => handleSliderChange('monthly_income', v)}
@@ -154,7 +159,7 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
         <SliderControl
           label="Monthly Expenses"
           value={profile.monthly_expenses}
-          min={5000} max={800000} step={5000}
+          min={5000} max={2500000} step={5000}
           format={formatINR}
           hint="All household spending excluding investments"
           onChange={v => handleSliderChange('monthly_expenses', v)}
@@ -224,16 +229,21 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
 
       {/* ── Section: Family ── */}
       <SectionHeader title="Family" hint="Children add age-based expenses (school, college, etc.)" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+      <div className="mb-5">
         {/* Children stepper */}
-        <div>
+        <div className="mb-3">
           <div className="flex justify-between items-center mb-1">
             <span className="text-xs text-slate-400">Children</span>
             <span className="text-xs font-medium text-white">{numChildren}</span>
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => updateProfile({ num_children: Math.max(0, numChildren - 1) })}
+              onClick={() => {
+                const newCount = Math.max(0, numChildren - 1)
+                const newAges = [...childAges].slice(0, newCount)
+                setChildAges(newAges)
+                updateProfile({ num_children: newCount, youngest_child_age: newAges.length ? Math.min(...newAges) : 0 })
+              }}
               disabled={isHistory || numChildren <= 0}
               className="w-9 h-9 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-lg font-bold
                 transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
@@ -244,7 +254,12 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
               {numChildren === 0 ? 'No children' : `${numChildren} child${numChildren > 1 ? 'ren' : ''}`}
             </div>
             <button
-              onClick={() => updateProfile({ num_children: Math.min(4, numChildren + 1) })}
+              onClick={() => {
+                const newCount = Math.min(4, numChildren + 1)
+                const newAges = [...childAges, 0]
+                setChildAges(newAges)
+                updateProfile({ num_children: newCount, youngest_child_age: Math.min(...newAges) })
+              }}
               disabled={isHistory || numChildren >= 4}
               className="w-9 h-9 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-lg font-bold
                 transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
@@ -252,21 +267,29 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
               +
             </button>
           </div>
-          <div className="text-[10px] text-slate-500 mt-0.5">
-            Costs: ~8K/mo (0-3), ~15K (4-14), ~25K (15-17), ~35K (18-22)
-          </div>
         </div>
 
+        {/* Per-child age inputs */}
         {numChildren > 0 && (
-          <SliderControl
-            label="Youngest Child Age"
-            value={profile.youngest_child_age ?? 0}
-            min={0} max={18} step={1}
-            format={v => `${v} yrs`}
-            hint="Older children assumed 2 years apart"
-            onChange={v => handleSliderChange('youngest_child_age', v)}
-            disabled={isHistory}
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {childAges.slice(0, numChildren).map((age, i) => (
+              <SliderControl
+                key={i}
+                label={`Child ${i + 1} Age`}
+                value={age}
+                min={0} max={22} step={1}
+                format={v => v < 1 ? `${v * 12} mo` : `${v} yrs`}
+                hint={age < 5 ? 'Pre-school' : age < 15 ? 'School (₹5-15L/yr)' : age < 18 ? 'Sr. secondary' : 'College'}
+                onChange={v => {
+                  const newAges = [...childAges]
+                  newAges[i] = v
+                  setChildAges(newAges)
+                  updateProfile({ youngest_child_age: Math.min(...newAges) })
+                }}
+                disabled={isHistory}
+              />
+            ))}
+          </div>
         )}
       </div>
 
