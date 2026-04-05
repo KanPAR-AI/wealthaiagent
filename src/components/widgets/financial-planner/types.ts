@@ -272,6 +272,24 @@ export interface SipPhase {
   cumulative_sip: number  // Total SIP after this phase
 }
 
+export interface ReturnStrategy {
+  name: string
+  realistic_return: string
+  allocation_pct: number
+  min_capital: number
+  liquidity: string
+  risk: string
+  how_it_works: string
+  key_risks: string
+  example: string
+}
+
+export interface ReturnStrategiesPayload {
+  reality_check?: string | null
+  target_return: number
+  strategies: ReturnStrategy[]
+}
+
 export interface PrescriptivePlanPayload {
   profile: EnhancedProfile
   action_items: ActionItem[]
@@ -281,6 +299,7 @@ export interface PrescriptivePlanPayload {
   timeline?: TimelineRow[]
   sip_phases?: SipPhase[]
   home_purchase_plan?: HomePurchasePlan
+  return_strategies?: ReturnStrategiesPayload
 }
 
 // ── Home Purchase Plan Types ──────────────────────────────────────────

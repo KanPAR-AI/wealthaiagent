@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { PrescriptivePlanPayload, ActionItem, TimelineRow, SipPhase, HomePurchasePlan } from './types'
+import type { PrescriptivePlanPayload, ActionItem, TimelineRow, SipPhase, HomePurchasePlan, ReturnStrategiesPayload, ReturnStrategy } from './types'
 import { formatINR } from '@/lib/formatters'
 
 interface PrescriptivePlanProps {
@@ -20,7 +20,7 @@ export function PrescriptivePlan({ data, isHistory }: PrescriptivePlanProps) {
   const [expandedChild, setExpandedChild] = useState<number | null>(null)
   const [showTimeline, setShowTimeline] = useState(false)
   const [showAmortization, setShowAmortization] = useState(false)
-  const { action_items = [], child_plans = [], insurance, timeline = [], sip_phases = [], home_purchase_plan } = data
+  const { action_items = [], child_plans = [], insurance, timeline = [], sip_phases = [], home_purchase_plan, return_strategies } = data
 
   // Group action items by category
   const grouped: Record<string, ActionItem[]> = {}
@@ -208,6 +208,11 @@ export function PrescriptivePlan({ data, isHistory }: PrescriptivePlanProps) {
           showAmortization={showAmortization}
           setShowAmortization={setShowAmortization}
         />
+      )}
+
+      {/* How to earn the target return (LLM-generated) */}
+      {return_strategies && return_strategies.strategies.length > 0 && (
+        <ReturnStrategiesSection data={return_strategies} />
       )}
 
       {/* Timeline Projection */}
@@ -442,6 +447,108 @@ function HomePurchaseSection({
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+
+// ── Return Strategies sub-component ─────────────────────────────────
+// Shown when the user pins an ambitious expected_return via the playground
+// slider. Populated by an LLM call in the financial_planner agent.
+
+const riskColor: Record<string, string> = {
+  medium: 'text-yellow-300 border-yellow-500/30 bg-yellow-500/10',
+  high: 'text-orange-300 border-orange-500/30 bg-orange-500/10',
+  very_high: 'text-red-300 border-red-500/30 bg-red-500/10',
+}
+
+const liquidityColor: Record<string, string> = {
+  high: 'text-emerald-300',
+  medium: 'text-yellow-300',
+  low: 'text-red-300',
+}
+
+function ReturnStrategiesSection({ data }: { data: ReturnStrategiesPayload }) {
+  const [expanded, setExpanded] = useState<number | null>(0)
+  const targetPct = Math.round(data.target_return * 100)
+
+  return (
+    <div className="mt-5">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-base">🚀</span>
+        <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+          How to target {targetPct}% returns
+        </h4>
+      </div>
+      <p className="text-[11px] text-slate-500 mb-3">
+        AI-generated strategies. Not financial advice — consult a SEBI-registered advisor.
+      </p>
+
+      {data.reality_check && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 mb-3">
+          <div className="flex items-start gap-2">
+            <span className="text-amber-400 text-sm">⚠️</span>
+            <p className="text-xs text-amber-200">{data.reality_check}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {data.strategies.map((s: ReturnStrategy, i: number) => {
+          const isOpen = expanded === i
+          return (
+            <div key={i} className="rounded-lg border border-white/10 bg-white/[0.03] overflow-hidden">
+              <button
+                onClick={() => setExpanded(isOpen ? null : i)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/[0.02] transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium text-white">{s.name}</span>
+                    <span className="text-[10px] text-emerald-400 font-semibold">{s.realistic_return}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500">
+                    <span>Allocate {s.allocation_pct}%</span>
+                    <span>•</span>
+                    <span>Min {formatINR(s.min_capital)}</span>
+                    <span>•</span>
+                    <span className={liquidityColor[s.liquidity] || 'text-slate-400'}>{s.liquidity} liquidity</span>
+                  </div>
+                </div>
+                <span className={`text-[9px] px-2 py-0.5 rounded-full border ${riskColor[s.risk] || riskColor.high}`}>
+                  {s.risk.replace('_', ' ')}
+                </span>
+                <svg
+                  className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {isOpen && (
+                <div className="px-3 pb-3 pt-1 border-t border-white/5 space-y-2 text-[11px]">
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">How it works</p>
+                    <p className="text-slate-300 leading-snug">{s.how_it_works}</p>
+                  </div>
+                  {s.example && (
+                    <div>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Example</p>
+                      <p className="text-slate-300 leading-snug">{s.example}</p>
+                    </div>
+                  )}
+                  {s.key_risks && (
+                    <div>
+                      <p className="text-[10px] text-red-400 uppercase tracking-wider mb-0.5">Key risk</p>
+                      <p className="text-slate-300 leading-snug">{s.key_risks}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

@@ -99,10 +99,13 @@ export function Playground({ data, isHistory }: PlaygroundProps) {
 
   const handleGeneratePlan = useCallback(() => {
     if (isHistory) return
+    // Embed the current playground assumptions in the message so the
+    // backend's _parse_expected_return picks up the slider value.
+    const pct = Math.round((assumptions.expected_return || 0.10) * 100)
     window.dispatchEvent(new CustomEvent('chat-quick-reply', {
-      detail: { text: 'generate plan summary' }
+      detail: { text: `generate plan summary at ${pct}% expected return` }
     }))
-  }, [isHistory])
+  }, [isHistory, assumptions.expected_return])
 
   const numChildren = profile.num_children ?? 0
   const retireAge = profile.retirement_age ?? 60
