@@ -12,6 +12,12 @@ import {
   User,
   Bot,
   FlaskConical,
+  Eye,
+  ChevronDown,
+  ChevronRight,
+  Database,
+  Brain,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,10 +43,170 @@ interface Props {
   agentId: string;
 }
 
+// Phase 1D — sandbox trace payload. Mirrors the backend trace
+// collector in services/agents/dynamic_rag_agent.py::_execute().
+interface RetrievedChunk {
+  title: string;
+  text: string;
+  score: number;
+  source_type: string;
+  source_id: string;
+  url: string | null;
+}
+
+interface MemoryFact {
+  category: string;
+  key: string;
+  value: string;
+}
+
+interface SandboxTrace {
+  agent_id: string;
+  agent_type: string;
+  org_id: string;
+  mode: string;
+  retrieved_chunks: RetrievedChunk[];
+  memory_facts: MemoryFact[];
+  system_prompt: string;
+  user_message: string;
+  tool_calls: unknown[];
+  response_length: number;
+}
+
 interface TestMessage {
   role: "user" | "assistant";
   content: string;
   rating?: "up" | "down";
+  streaming?: boolean;
+  trace?: SandboxTrace;
+}
+
+/**
+ * TracePanel — Phase 1D "Show your work" for the sandbox.
+ *
+ * Renders the structured trace returned by the backend alongside each
+ * assistant response: which corpus chunks were retrieved (with scores),
+ * which memory facts were injected, the FULL system prompt as sent to
+ * the LLM, tool calls, and agent metadata. This is the admin's primary
+ * debugging surface — if an answer looks wrong, open this first.
+ */
+function TracePanel({ trace }: { trace: SandboxTrace }) {
+  return (
+    <div className="mt-2 rounded-lg border border-primary/20 bg-gradient-to-br from-primary/5 to-background p-3 space-y-3 text-xs">
+      {/* --- Metadata header --- */}
+      <div className="flex items-center gap-3 flex-wrap text-[10px] uppercase tracking-wider text-muted-foreground">
+        <span>
+          mode: <span className="text-primary font-medium">{trace.mode}</span>
+        </span>
+        <span>
+          agent:{" "}
+          <span className="text-primary font-medium">{trace.agent_id}</span>
+        </span>
+        <span>
+          response:{" "}
+          <span className="text-primary font-medium">
+            {trace.response_length} chars
+          </span>
+        </span>
+      </div>
+
+      {/* --- Retrieved corpus chunks --- */}
+      <div>
+        <div className="flex items-center gap-1.5 mb-1.5 font-medium text-foreground/80">
+          <Database size={11} className="text-emerald-500" />
+          Retrieved chunks ({trace.retrieved_chunks.length})
+        </div>
+        {trace.retrieved_chunks.length === 0 ? (
+          <div className="pl-4 text-muted-foreground/60 italic">
+            No corpus retrieval — this agent has no RAG corpus, or none
+            of the chunks matched the query closely enough.
+          </div>
+        ) : (
+          <ul className="space-y-1.5 pl-4">
+            {trace.retrieved_chunks.map((c, i) => (
+              <li
+                key={i}
+                className="border-l-2 border-emerald-500/30 pl-2"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-medium text-foreground/80 truncate">
+                    {c.title || c.source_id || "(untitled)"}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                    score {c.score.toFixed(3)}
+                  </span>
+                </div>
+                <div className="text-muted-foreground/80 line-clamp-2 mt-0.5">
+                  {c.text}
+                </div>
+                {c.url && (
+                  <a
+                    href={c.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-primary hover:underline"
+                  >
+                    {c.source_type} ↗
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* --- Memory facts --- */}
+      <div>
+        <div className="flex items-center gap-1.5 mb-1.5 font-medium text-foreground/80">
+          <Brain size={11} className="text-violet-500" />
+          Memory facts injected ({trace.memory_facts.length})
+        </div>
+        {trace.memory_facts.length === 0 ? (
+          <div className="pl-4 text-muted-foreground/60 italic">
+            None — either memory is disabled or no facts stored for this user yet.
+          </div>
+        ) : (
+          <ul className="space-y-0.5 pl-4">
+            {trace.memory_facts.map((f, i) => (
+              <li key={i} className="font-mono text-[10px]">
+                <span className="text-violet-500">{f.category}</span>
+                <span className="text-muted-foreground"> / </span>
+                <span className="text-foreground/80">{f.key}</span>
+                <span className="text-muted-foreground"> = </span>
+                <span>{f.value}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* --- Full system prompt as sent to the LLM --- */}
+      <details className="group">
+        <summary className="flex items-center gap-1.5 cursor-pointer font-medium text-foreground/80 hover:text-primary">
+          <FileText size={11} className="text-amber-500" />
+          Full system prompt sent to LLM
+          <span className="text-[10px] text-muted-foreground ml-auto">
+            {trace.system_prompt.length} chars
+          </span>
+        </summary>
+        <pre className="mt-2 p-2 rounded border border-border/30 bg-muted/30 whitespace-pre-wrap font-mono text-[10px] leading-relaxed max-h-60 overflow-y-auto">
+          {trace.system_prompt}
+        </pre>
+      </details>
+
+      {/* --- Tool calls (if any) --- */}
+      {trace.tool_calls.length > 0 && (
+        <div>
+          <div className="font-medium text-foreground/80 mb-1">
+            Tool calls ({trace.tool_calls.length})
+          </div>
+          <pre className="pl-4 text-[10px] font-mono text-muted-foreground overflow-x-auto">
+            {JSON.stringify(trace.tool_calls, null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function SandboxPanel({ agentId }: Props) {
@@ -69,62 +235,145 @@ export function SandboxPanel({ agentId }: Props) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  /**
+   * Send a test message to the agent via SSE with trace events.
+   *
+   * Flow:
+   *   1. POST /chats with firstMessage (creates a throwaway test chat)
+   *   2. Open /chats/{id}/stream?trace=true&force_agent={agentId}
+   *   3. Parse SSE events — message_delta accumulates into streaming
+   *      assistant message, trace attaches a full trace payload for
+   *      the "Show your work" panel, message_complete finalizes.
+   *
+   * force_agent routes straight to THIS agent (bypasses the orchestrator's
+   * routing heuristics), so we get a clean signal — no need to prefix
+   * context markers the way the old sandbox did.
+   */
   const sendTestMessage = async () => {
     if (!input.trim() || sending) return;
     const userMsg = input.trim();
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: userMsg },
+      { role: "assistant", content: "", streaming: true },
+    ]);
     setSending(true);
 
     try {
       const token = await auth.currentUser?.getIdToken();
-      const url = getApiUrl("/chats");
-      const chatRes = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({}),
-      });
-      if (!chatRes.ok) throw new Error("Failed to create test chat");
-      const chatData = await chatRes.json();
 
-      const marker =
-        agentConfig?.routing?.context_markers?.[0] ||
-        `[Using ${agentId} agent]`;
-      const msgUrl = getApiUrl(
-        `/chats/${chatData.chat_id}/messages`
-      );
-      const msgRes = await fetch(msgUrl, {
+      // 1) Create a fresh test chat with the user message as firstMessage
+      const createRes = await fetch(getApiUrl("/chats"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          content: `${marker} ${userMsg}`,
+          title: `Sandbox test: ${agentId}`,
+          firstMessage: { content: userMsg, attachments: [] },
         }),
       });
-      if (!msgRes.ok) throw new Error("Failed to send message");
-      const msgData = await msgRes.json();
+      if (!createRes.ok) throw new Error("Failed to create test chat");
+      const chatData = await createRes.json();
+      const chatId = chatData.chat?.id;
+      if (!chatId) throw new Error("Create chat returned no chat.id");
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content:
-            msgData.response || msgData.content || "No response received",
+      // 2) Open the SSE stream with trace + force_agent pinning
+      const streamUrl = getApiUrl(
+        `/chats/${chatId}/stream?trace=true&force_agent=${encodeURIComponent(agentId)}`
+      );
+      const streamRes = await fetch(streamUrl, {
+        method: "GET",
+        headers: {
+          Accept: "text/event-stream",
+          Authorization: `Bearer ${token}`,
         },
-      ]);
+      });
+      if (!streamRes.ok || !streamRes.body) {
+        throw new Error(`Stream failed: ${streamRes.statusText}`);
+      }
+
+      // 3) Parse SSE line-by-line (matches chat-service.ts pattern)
+      const reader = streamRes.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+      let accumulated = "";
+
+      const updateLastAssistant = (patch: Partial<TestMessage>) => {
+        setMessages((prev) => {
+          const next = [...prev];
+          for (let i = next.length - 1; i >= 0; i--) {
+            if (next[i].role === "assistant") {
+              next[i] = { ...next[i], ...patch };
+              break;
+            }
+          }
+          return next;
+        });
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (let line of lines) {
+          line = line.replace(/\r$/, "");
+          if (!line.startsWith("data:")) continue;
+
+          const payload = line.replace(/^data:\s*/, "");
+          if (!payload.startsWith("{")) continue;
+
+          try {
+            const evt = JSON.parse(payload);
+            if (evt.type === "message_delta") {
+              // Skip the router's "[Using X agent]\n\n" preamble from
+              // the visible text — it's pure noise in a sandbox view.
+              let delta = evt.delta || "";
+              if (!accumulated && delta.startsWith("[Using ")) {
+                const nlIdx = delta.indexOf("\n\n");
+                delta = nlIdx >= 0 ? delta.slice(nlIdx + 2) : "";
+              }
+              accumulated += delta;
+              updateLastAssistant({ content: accumulated });
+              await new Promise((r) => setTimeout(r, 0));
+            } else if (evt.type === "trace") {
+              updateLastAssistant({ trace: evt.trace });
+            } else if (evt.type === "message_complete") {
+              updateLastAssistant({ streaming: false });
+            }
+          } catch (err) {
+            console.warn("SSE parse error:", payload, err);
+          }
+        }
+      }
+
+      // If stream closed without explicit message_complete
+      updateLastAssistant({ streaming: false });
     } catch (err) {
       toast.error("Test chat failed", {
         description: (err as Error).message,
       });
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Error: Could not get a response. Make sure the agent is active." },
-      ]);
+      setMessages((prev) => {
+        const next = [...prev];
+        for (let i = next.length - 1; i >= 0; i--) {
+          if (next[i].role === "assistant") {
+            next[i] = {
+              ...next[i],
+              streaming: false,
+              content:
+                "Error: Could not get a response. Make sure the agent is active and force-routing is enabled.",
+            };
+            break;
+          }
+        }
+        return next;
+      });
     } finally {
       setSending(false);
     }
@@ -165,6 +414,11 @@ export function SandboxPanel({ agentId }: Props) {
   };
 
   const clearChat = () => setMessages([]);
+
+  // Toggle per-message trace panel open state.
+  const [openTraces, setOpenTraces] = useState<Record<number, boolean>>({});
+  const toggleTrace = (idx: number) =>
+    setOpenTraces((prev) => ({ ...prev, [idx]: !prev[idx] }));
 
   return (
     <div className="space-y-4">
@@ -313,7 +567,7 @@ export function SandboxPanel({ agentId }: Props) {
                     </pre>
                   </div>
                   {msg.role === "assistant" && (
-                    <div className="flex gap-0.5 mt-1 ml-1">
+                    <div className="flex items-center gap-0.5 mt-1 ml-1">
                       <button
                         onClick={() => rateMessage(i, "up")}
                         className={`p-1.5 rounded-lg transition-colors ${
@@ -334,7 +588,27 @@ export function SandboxPanel({ agentId }: Props) {
                       >
                         <ThumbsDown size={11} />
                       </button>
+                      {/* Phase 1D — "Show your work" toggle */}
+                      {msg.trace && (
+                        <button
+                          onClick={() => toggleTrace(i)}
+                          className="ml-1 px-2 py-1 rounded-lg flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground/60 hover:text-primary hover:bg-primary/10 transition-colors"
+                          data-testid="sandbox-show-work"
+                        >
+                          {openTraces[i] ? (
+                            <ChevronDown size={10} />
+                          ) : (
+                            <ChevronRight size={10} />
+                          )}
+                          <Eye size={10} />
+                          Show your work
+                        </button>
+                      )}
                     </div>
+                  )}
+                  {/* Expandable trace panel */}
+                  {msg.role === "assistant" && msg.trace && openTraces[i] && (
+                    <TracePanel trace={msg.trace} />
                   )}
                 </div>
               </div>
