@@ -35,6 +35,8 @@ import {
   Volume2,
   Sparkles,
   MessageSquare,
+  Wand2,
+  FileText as FileTextIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,7 +47,6 @@ import {
 } from "@/services/admin-service";
 import type {
   StagedJobPayload,
-  StagedSegment,
   FinalizeCurationRequest,
 } from "@/services/admin-service";
 import { toast } from "sonner";
@@ -90,13 +91,20 @@ export function TranscriptReviewPanel({
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<StagedJobPayload | null>(null);
 
-  // Per-segment curation state
+  // View mode: sanitized (LLM-cleaned passages) is the default;
+  // raw is the fallback if admin wants fine-grained ASR curation.
+  const [mode, setMode] = useState<"sanitized" | "raw">("sanitized");
+
+  // --- SANITIZED MODE state ---
+  const [passageKeep, setPassageKeep] = useState<Record<number, boolean>>({});
+  const [passageEdits, setPassageEdits] = useState<Record<number, string>>({});
+  const [editingPassageIdx, setEditingPassageIdx] = useState<number | null>(null);
+
+  // --- RAW MODE state ---
   const [keepMap, setKeepMap] = useState<Record<number, boolean>>({});
   const [edits, setEdits] = useState<Record<number, string>>({});
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
-
-  // Global curation filters
   const [dropNonSpeech, setDropNonSpeech] = useState(true);
   const [minConfidence, setMinConfidence] = useState(0);
   const [selectedSpeakers, setSelectedSpeakers] = useState<Set<string>>(new Set());
@@ -114,15 +122,31 @@ export function TranscriptReviewPanel({
         if (!mounted) return;
         setPayload(data);
 
-        // Default: keep all speech segments, skip non-speech
+        // Prefer sanitized mode when passages exist — this is the
+        // cleaned, topic-organized corpus content produced by the
+        // LLM sanitization pass. Raw mode is available as a fallback
+        // for cases where the sanitizer dropped something important.
+        const hasSanitized =
+          data.staged.sanitized !== null &&
+          (data.staged.sanitized?.passages?.length ?? 0) > 0;
+        setMode(hasSanitized ? "sanitized" : "raw");
+
+        // Initialize raw-mode state
         const initialKeep: Record<number, boolean> = {};
         data.staged.transcript.segments.forEach((s, i) => {
           initialKeep[i] = s.is_speech;
         });
         setKeepMap(initialKeep);
-
-        // Default selected speakers = all speakers (no filter)
         setSelectedSpeakers(new Set(data.staged.transcript.speakers.map((s) => s.id)));
+
+        // Initialize sanitized-mode state — all passages kept by default
+        if (hasSanitized && data.staged.sanitized) {
+          const initialPassageKeep: Record<number, boolean> = {};
+          data.staged.sanitized.passages.forEach((_p, i) => {
+            initialPassageKeep[i] = true;
+          });
+          setPassageKeep(initialPassageKeep);
+        }
       } catch (err) {
         if (mounted) setError((err as Error).message);
       } finally {
@@ -155,6 +179,12 @@ export function TranscriptReviewPanel({
     [effectiveKeep]
   );
 
+  // --- Sanitized-mode counts (must be declared before any early return) ---
+  const passageKeptCount = useMemo(
+    () => Object.values(passageKeep).filter(Boolean).length,
+    [passageKeep]
+  );
+
   // --- Actions ---
   const toggleSegment = (i: number, value: boolean) => {
     setKeepMap((prev) => ({ ...prev, [i]: value }));
@@ -172,30 +202,68 @@ export function TranscriptReviewPanel({
 
   const handleFinalize = async () => {
     if (!payload) return;
-    if (keptCount === 0) {
-      toast.error("Cannot finalize — no segments selected");
-      return;
-    }
+
     setFinalizing(true);
     try {
-      const keep_segment_indices = Object.entries(effectiveKeep)
-        .filter(([, v]) => v)
-        .map(([k]) => Number(k));
-      const segment_edits: Record<number, string> = {};
-      Object.entries(edits).forEach(([k, v]) => {
-        const idx = Number(k);
-        const orig = payload.staged.transcript.segments[idx]?.text;
-        if (v && v !== orig) segment_edits[idx] = v;
-      });
-      const curation: FinalizeCurationRequest = {
-        keep_segment_indices,
-        segment_edits: Object.keys(segment_edits).length > 0 ? segment_edits : undefined,
-        drop_non_speech: dropNonSpeech,
-        min_confidence: minConfidence,
-      };
+      let curation: FinalizeCurationRequest;
+
+      if (mode === "sanitized") {
+        const sanitized = payload.staged.sanitized;
+        if (!sanitized) {
+          toast.error("No sanitized passages available");
+          setFinalizing(false);
+          return;
+        }
+        const keep_passage_indices = Object.entries(passageKeep)
+          .filter(([, v]) => v)
+          .map(([k]) => Number(k));
+        if (keep_passage_indices.length === 0) {
+          toast.error("Cannot finalize — no passages selected");
+          setFinalizing(false);
+          return;
+        }
+        const passage_edits_clean: Record<number, string> = {};
+        Object.entries(passageEdits).forEach(([k, v]) => {
+          const idx = Number(k);
+          const orig = sanitized.passages[idx]?.content;
+          if (v && v !== orig) passage_edits_clean[idx] = v;
+        });
+        curation = {
+          use_sanitized: true,
+          keep_passage_indices,
+          passage_edits: Object.keys(passage_edits_clean).length > 0 ? passage_edits_clean : undefined,
+        };
+      } else {
+        // Raw mode
+        if (keptCount === 0) {
+          toast.error("Cannot finalize — no segments selected");
+          setFinalizing(false);
+          return;
+        }
+        const keep_segment_indices = Object.entries(effectiveKeep)
+          .filter(([, v]) => v)
+          .map(([k]) => Number(k));
+        const segment_edits: Record<number, string> = {};
+        Object.entries(edits).forEach(([k, v]) => {
+          const idx = Number(k);
+          const orig = payload.staged.transcript.segments[idx]?.text;
+          if (v && v !== orig) segment_edits[idx] = v;
+        });
+        curation = {
+          use_sanitized: false,
+          keep_segment_indices,
+          segment_edits: Object.keys(segment_edits).length > 0 ? segment_edits : undefined,
+          drop_non_speech: dropNonSpeech,
+          min_confidence: minConfidence,
+        };
+      }
+
       await finalizeStagedJob(agentId, jobId, curation);
       toast.success("Corpus finalized", {
-        description: `${keptCount} segments committed to the corpus`,
+        description:
+          mode === "sanitized"
+            ? `${curation.keep_passage_indices?.length ?? 0} passages committed`
+            : `${keptCount} segments committed`,
       });
       onFinalized();
     } catch (err) {
@@ -255,6 +323,9 @@ export function TranscriptReviewPanel({
     filename: payload.staged.filename,
   };
 
+  const sanitized = payload.staged.sanitized;
+  const hasSanitized = sanitized !== null && (sanitized?.passages?.length ?? 0) > 0;
+
   // --- Auto-generated clarifying questions based on transcript metadata ---
   const lowConfidenceCount = transcript.segments.filter(
     (s) => s.confidence < 0.6
@@ -292,6 +363,261 @@ export function TranscriptReviewPanel({
           )}
         </div>
 
+        {/* Mode toggle: sanitized (LLM-cleaned) vs raw (per-segment ASR) */}
+        <div className="flex items-center gap-1 p-1 rounded-lg border border-border/50 bg-muted/30 w-fit">
+          <button
+            type="button"
+            onClick={() => setMode("sanitized")}
+            disabled={!hasSanitized}
+            className={`text-xs px-3 py-1.5 rounded-md font-medium inline-flex items-center gap-1.5 transition-colors ${
+              mode === "sanitized"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            } ${!hasSanitized ? "opacity-40 cursor-not-allowed" : ""}`}
+            title={hasSanitized ? "LLM-cleaned, topic-organized passages" : "No sanitized passages available"}
+            data-testid="review-mode-sanitized"
+          >
+            <Wand2 size={12} />
+            Sanitized
+            {hasSanitized && (
+              <span className="text-[10px] font-mono opacity-60">
+                ({sanitized?.passages.length})
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("raw")}
+            className={`text-xs px-3 py-1.5 rounded-md font-medium inline-flex items-center gap-1.5 transition-colors ${
+              mode === "raw"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            title="Raw ASR transcript with per-segment controls"
+            data-testid="review-mode-raw"
+          >
+            <FileTextIcon size={12} />
+            Raw transcript
+            <span className="text-[10px] font-mono opacity-60">
+              ({transcript.segments.length})
+            </span>
+          </button>
+        </div>
+
+        {/* === SANITIZED MODE === */}
+        {mode === "sanitized" && sanitized && (
+          <>
+            {/* Sanitizer summary */}
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                <Sparkles size={12} />
+                LLM sanitizer report
+                <span className="ml-auto text-[10px] uppercase tracking-wider opacity-60">
+                  {sanitized.model}
+                </span>
+              </div>
+              {sanitized.overall_quality_note && (
+                <p className="text-xs text-foreground/80 leading-snug">
+                  {sanitized.overall_quality_note}
+                </p>
+              )}
+              {sanitized.dropped_count > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  <strong className="text-foreground">
+                    {sanitized.dropped_count} segment{sanitized.dropped_count === 1 ? "" : "s"} dropped
+                  </strong>
+                  {sanitized.dropped_reasons.length > 0 && (
+                    <span> — {sanitized.dropped_reasons.slice(0, 3).join("; ")}</span>
+                  )}
+                </div>
+              )}
+              <div className="text-[10px] text-muted-foreground italic">
+                Tip: passages are extracted and structured by an LLM using this agent's
+                system prompt as context. Toggle off any passage that doesn't fit, or
+                switch to Raw transcript for fine-grained per-segment curation.
+              </div>
+            </div>
+
+            {/* Passage list */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">
+                {passageKeptCount} / {sanitized.passages.length} passages selected
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                  onClick={() => {
+                    const all: Record<number, boolean> = {};
+                    sanitized.passages.forEach((_p, i) => (all[i] = true));
+                    setPassageKeep(all);
+                  }}
+                >
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                  onClick={() => {
+                    const none: Record<number, boolean> = {};
+                    sanitized.passages.forEach((_p, i) => (none[i] = false));
+                    setPassageKeep(none);
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-[520px] overflow-y-auto border border-border/50 rounded-lg divide-y divide-border/30">
+              {sanitized.passages.map((passage, i) => {
+                const keep = passageKeep[i] ?? true;
+                const isEditing = editingPassageIdx === i;
+                const displayText = passageEdits[i] ?? passage.content;
+                const qualityPct = Math.round(passage.quality * 100);
+                const qualityColor =
+                  passage.quality >= 0.8
+                    ? "bg-emerald-500"
+                    : passage.quality >= 0.6
+                      ? "bg-amber-500"
+                      : "bg-red-500";
+
+                return (
+                  <div
+                    key={i}
+                    className={`flex gap-3 p-3 transition-opacity ${keep ? "opacity-100" : "opacity-40 bg-muted/30"}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={keep}
+                      onChange={(e) =>
+                        setPassageKeep((prev) => ({ ...prev, [i]: e.target.checked }))
+                      }
+                      className="mt-1 h-4 w-4 shrink-0"
+                      data-testid="review-passage-keep-toggle"
+                    />
+
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      {/* Topic label + metadata */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] font-semibold text-foreground bg-blue-500/10 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded border border-blue-500/30">
+                          {passage.topic}
+                        </span>
+                        {passage.source_segment_indices.length > 0 && (
+                          <span className="font-mono text-[10px] text-muted-foreground">
+                            {formatSeek(passage.source_start_seconds)}–{formatSeek(passage.source_end_seconds)}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground">
+                          {passage.source_segment_indices.length} src segment
+                          {passage.source_segment_indices.length === 1 ? "" : "s"}
+                        </span>
+                        <div className="w-12 h-1 rounded-full bg-border/50 overflow-hidden">
+                          <div
+                            className={`h-full ${qualityColor}`}
+                            style={{ width: `${qualityPct}%` }}
+                          />
+                        </div>
+                        <span className="text-[9px] text-muted-foreground font-mono">
+                          q{passage.quality.toFixed(2)}
+                        </span>
+
+                        <div className="ml-auto flex items-center gap-1">
+                          {source_url && passage.source_segment_indices.length > 0 && (
+                            <a
+                              href={`${source_url}#t=${passage.source_start_seconds}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-1 rounded hover:bg-muted"
+                              title="Open source at this moment"
+                            >
+                              <Play size={11} />
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPassageEdits((prev) => ({
+                                ...prev,
+                                [i]: prev[i] ?? passage.content,
+                              }));
+                              setEditingPassageIdx(i);
+                            }}
+                            className="p-1 rounded hover:bg-muted"
+                            title="Edit passage"
+                          >
+                            <Pencil size={11} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Passage content (view or edit) */}
+                      {isEditing ? (
+                        <div className="space-y-1">
+                          <textarea
+                            value={displayText}
+                            onChange={(e) =>
+                              setPassageEdits((prev) => ({ ...prev, [i]: e.target.value }))
+                            }
+                            rows={Math.max(3, Math.ceil(displayText.length / 80))}
+                            className="w-full text-xs rounded border border-border/50 bg-background p-2 leading-relaxed"
+                            autoFocus
+                          />
+                          <div className="flex gap-1 justify-end">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-[10px]"
+                              onClick={() => {
+                                setPassageEdits((prev) => {
+                                  const next = { ...prev };
+                                  delete next[i];
+                                  return next;
+                                });
+                                setEditingPassageIdx(null);
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-6 px-2 text-[10px]"
+                              onClick={() => setEditingPassageIdx(null)}
+                            >
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                          {displayText}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* Empty sanitized state — sanitizer ran but produced nothing */}
+        {mode === "sanitized" && !sanitized && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-xs text-muted-foreground">
+            No sanitized passages available for this transcript. Switch to{" "}
+            <button
+              type="button"
+              className="text-foreground underline"
+              onClick={() => setMode("raw")}
+            >
+              Raw transcript
+            </button>{" "}
+            to curate manually.
+          </div>
+        )}
+
+        {/* === RAW MODE === */}
+        {mode === "raw" && (<>
         {/* Clarifying questions */}
         {(hasMultipleSpeakers || lowConfidenceCount > 0 || nonSpeechPct > 5 || hasMultipleLanguages) && (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
@@ -529,6 +855,8 @@ export function TranscriptReviewPanel({
           })}
         </div>
 
+        </>)}
+
         {/* Actions */}
         <div className="flex justify-end gap-2 pt-2 border-t border-border/50">
           <Button
@@ -544,7 +872,11 @@ export function TranscriptReviewPanel({
           <Button
             size="sm"
             onClick={handleFinalize}
-            disabled={finalizing || cancelling || keptCount === 0}
+            disabled={
+              finalizing ||
+              cancelling ||
+              (mode === "sanitized" ? passageKeptCount === 0 : keptCount === 0)
+            }
             data-testid="review-finalize"
           >
             {finalizing ? (
@@ -552,7 +884,9 @@ export function TranscriptReviewPanel({
             ) : (
               <CheckCircle2 size={14} className="mr-1" />
             )}
-            Commit {keptCount} segments to corpus
+            {mode === "sanitized"
+              ? `Commit ${passageKeptCount} passage${passageKeptCount === 1 ? "" : "s"} to corpus`
+              : `Commit ${keptCount} segments to corpus`}
           </Button>
         </div>
       </CardContent>

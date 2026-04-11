@@ -426,6 +426,25 @@ export interface StagedTranscript {
   engine_notes: string;
 }
 
+// LLM-sanitized passage — the cleaned/restructured output used
+// as the default view in the review panel.
+export interface SanitizedPassage {
+  topic: string;
+  content: string;
+  source_start_seconds: number;
+  source_end_seconds: number;
+  source_segment_indices: number[];
+  quality: number;
+}
+
+export interface SanitizedPayload {
+  passages: SanitizedPassage[];
+  dropped_count: number;
+  dropped_reasons: string[];
+  overall_quality_note: string;
+  model: string;
+}
+
 export interface StagedJobPayload {
   job_id: string;
   agent_id: string;
@@ -440,6 +459,7 @@ export interface StagedJobPayload {
     agent_id: string;
     source_url: string | null;
     transcript: StagedTranscript;
+    sanitized: SanitizedPayload | null;
   };
 }
 
@@ -451,6 +471,12 @@ export async function fetchStagedTranscript(
 }
 
 export interface FinalizeCurationRequest {
+  // Mode selector — null/undefined = auto (sanitized if available)
+  use_sanitized?: boolean;
+  // Sanitized mode (default): curate LLM-cleaned passages
+  keep_passage_indices?: number[];
+  passage_edits?: Record<number, string>;
+  // Raw mode (fallback): curate original ASR segments
   keep_segment_indices?: number[];
   segment_edits?: Record<number, string>;
   segment_speaker_overrides?: Record<number, string>;
