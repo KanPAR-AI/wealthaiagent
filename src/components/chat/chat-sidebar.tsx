@@ -1,12 +1,27 @@
 import {
+  Activity,
+  Apple,
+  Baby,
   BarChart3,
+  Brain,
+  Dumbbell,
+  Heart,
   History,
+  Home,
   MessageSquareText,
   MoreHorizontal,
+  PiggyBank,
   Plus,
+  Salad,
   Search,
   Settings,
+  Shield,
   Star,
+  Stethoscope,
+  Trophy,
+  Utensils,
+  Wallet,
+  type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -43,10 +58,53 @@ interface Chat {
   title: string;
   updatedAt: string;
   isFavorite: boolean;
+  lastAgentType?: string;
 }
 
 interface ChatSidebarProps {
   currentChatId?: string;
+}
+
+// --- Agent Metadata ---
+// Maps backend AgentType enum values (services/agents/base.py) to sidebar
+// badge presentation. Keys must match the enum string values exactly.
+interface AgentMeta {
+  label: string;
+  icon: LucideIcon;
+  className: string; // tailwind color classes for the badge
+}
+
+const AGENT_META: Record<string, AgentMeta> = {
+  real_estate:         { label: "Real Estate",   icon: Home,        className: "bg-amber-100 text-amber-800" },
+  insurance:           { label: "Insurance",     icon: Shield,      className: "bg-sky-100 text-sky-800" },
+  financial:           { label: "Financial",     icon: Wallet,      className: "bg-emerald-100 text-emerald-800" },
+  financial_planner:   { label: "Planner",       icon: PiggyBank,   className: "bg-emerald-100 text-emerald-800" },
+  knee_arthritis:      { label: "Knee",          icon: Activity,    className: "bg-rose-100 text-rose-800" },
+  dietician:           { label: "Dietician",     icon: Salad,       className: "bg-lime-100 text-lime-800" },
+  weight_management:   { label: "Weight",        icon: Dumbbell,    className: "bg-orange-100 text-orange-800" },
+  medical_nutrition:   { label: "Medical Nutr.", icon: Stethoscope, className: "bg-red-100 text-red-800" },
+  kids_nutrition:      { label: "Kids Nutr.",    icon: Baby,        className: "bg-pink-100 text-pink-800" },
+  pregnancy_nutrition: { label: "Pregnancy",     icon: Heart,       className: "bg-fuchsia-100 text-fuchsia-800" },
+  sports_nutrition:    { label: "Sports Nutr.",  icon: Trophy,      className: "bg-yellow-100 text-yellow-800" },
+  fitness_nutrition:   { label: "Fitness Nutr.", icon: Apple,       className: "bg-teal-100 text-teal-800" },
+  mental_health:       { label: "Mental Health", icon: Brain,       className: "bg-violet-100 text-violet-800" },
+  dynamic:             { label: "Agent",         icon: Utensils,    className: "bg-slate-100 text-slate-800" },
+};
+
+function AgentBadge({ agentType }: { agentType?: string }) {
+  if (!agentType) return null;
+  const meta = AGENT_META[agentType];
+  if (!meta) return null;
+  const Icon = meta.icon;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium flex-shrink-0 ${meta.className}`}
+      title={meta.label}
+    >
+      <Icon size={10} />
+      <span className="max-w-[70px] truncate">{meta.label}</span>
+    </span>
+  );
 }
 
 // --- Helper Functions ---
@@ -213,8 +271,9 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
              className="w-full"
            >
              <MessageSquareText size={16} className="flex-shrink-0" />
-             <span className="truncate flex-grow">{chat.title}</span>
-             <span className="text-xs text-muted-foreground ml-2 flex-shrink-0 group-hover:hidden">
+             <span className="truncate flex-grow min-w-0">{chat.title}</span>
+             <AgentBadge agentType={chat.lastAgentType} />
+             <span className="text-xs text-muted-foreground ml-1 flex-shrink-0 group-hover:hidden">
                 {formatChatDate(chat.updatedAt)}
              </span>
            </SidebarMenuButton>

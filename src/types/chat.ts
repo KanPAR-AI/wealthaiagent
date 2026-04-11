@@ -112,6 +112,7 @@ export interface Chat {
   title: string;
   date?: string;
   isFavorite?: boolean;
+  lastAgentType?: string;
 }
 
 /**
