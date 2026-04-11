@@ -102,6 +102,28 @@ async function selectAgent(page: Page, agentId: string) {
   await page.waitForTimeout(1000);
 }
 
+/**
+ * Opens the legacy 4-step wizard, which since Phase 1C lives behind
+ * the "Advanced: skip AI, manual create" link on the goal-first draft
+ * screen. Click Create Agent → click Advanced → wait for wizard.
+ *
+ * Most of this test suite was written against the wizard directly.
+ * The new default for "Create Agent" is the goal-first draft screen
+ * (covered by phase1c-goal-first-create.spec.ts). This helper lets
+ * the legacy wizard tests keep verifying the wizard path without
+ * duplicating the goal-first coverage.
+ */
+async function openLegacyWizard(page: Page) {
+  await page.getByRole('button', { name: /Create Agent/i }).click();
+  await page
+    .getByText('What should this agent do?')
+    .waitFor({ state: 'visible', timeout: 5_000 });
+  await page.getByText('Advanced: skip AI, manual create').click();
+  await page
+    .getByText('Step 1 of 4: Basic Info')
+    .waitFor({ state: 'visible', timeout: 5_000 });
+}
+
 async function clickTab(page: Page, tabLabel: string) {
   const tab = page.locator('button').filter({ hasText: tabLabel });
   await tab.click();
@@ -134,27 +156,42 @@ test.describe('Agent Builder', () => {
   });
 
   // ═══════════════════════════════════════════════════════════════════
-  // TEST 1: "Create Agent" button opens wizard modal
+  // TEST 1: "Create Agent" opens the goal-first draft screen by default
+  //         AND "Advanced" link still reaches the legacy wizard
+  //
+  // Phase 1C moved the default Create flow from the 4-step wizard to a
+  // single-screen goal-first experience. This test locks in both: the
+  // new default AND the preserved escape hatch.
   // ═══════════════════════════════════════════════════════════════════
-  test('Create Agent button opens wizard modal', async ({ page }) => {
+  test('Create Agent opens draft screen; Advanced reaches legacy wizard', async ({
+    page,
+  }) => {
     await goToAdmin(page);
 
     const createBtn = page.getByRole('button', { name: /Create Agent/i });
     await expect(createBtn).toBeVisible();
     await createBtn.click();
 
-    // Wizard modal should appear
+    // Phase 1C default: goal-first draft screen
+    await expect(page.getByText('What should this agent do?')).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(
+      page.getByRole('button', { name: /Draft with AI/i })
+    ).toBeVisible();
+    await expect(
+      page.getByText('Advanced: skip AI, manual create')
+    ).toBeVisible();
+
+    // Clicking Advanced switches to the legacy 4-step wizard
+    await page.getByText('Advanced: skip AI, manual create').click();
     await expect(page.getByText('Create New Agent')).toBeVisible({
       timeout: 5_000,
     });
     await expect(page.getByText('Step 1 of 4: Basic Info')).toBeVisible();
 
-    // Close button works (the X button in the wizard header)
-    const closeBtn = page
-      .locator('[class*="fixed"]')
-      .locator('button')
-      .filter({ has: page.locator('svg.lucide-x') });
-    await closeBtn.click();
+    // Cancel closes the wizard
+    await page.getByRole('button', { name: /Cancel/i }).click();
     await expect(page.getByText('Create New Agent')).not.toBeVisible();
   });
 
@@ -165,8 +202,7 @@ test.describe('Agent Builder', () => {
     page,
   }) => {
     await goToAdmin(page);
-    await page.getByRole('button', { name: /Create Agent/i }).click();
-    await page.getByText('Create New Agent').waitFor({ state: 'visible' });
+    await openLegacyWizard(page);
 
     // Next button should be disabled when Agent ID and Name are empty
     const nextBtn = page.getByRole('button', { name: /Next/i });
@@ -188,8 +224,7 @@ test.describe('Agent Builder', () => {
   // ═══════════════════════════════════════════════════════════════════
   test('Wizard navigates between steps with Next/Back', async ({ page }) => {
     await goToAdmin(page);
-    await page.getByRole('button', { name: /Create Agent/i }).click();
-    await page.getByText('Create New Agent').waitFor({ state: 'visible' });
+    await openLegacyWizard(page);
 
     // Step 1: Fill required fields
     await page
@@ -235,8 +270,7 @@ test.describe('Agent Builder', () => {
   // ═══════════════════════════════════════════════════════════════════
   test('Full wizard flow creates a dynamic agent', async ({ page }) => {
     await goToAdmin(page);
-    await page.getByRole('button', { name: /Create Agent/i }).click();
-    await page.getByText('Create New Agent').waitFor({ state: 'visible' });
+    await openLegacyWizard(page);
 
     // --- Step 1: Basic Info ---
     await page
