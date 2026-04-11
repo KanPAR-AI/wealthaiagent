@@ -170,3 +170,50 @@ export async function reloadAgent(
     method: "POST",
   });
 }
+
+// --- Agent Builder: Goal-First Draft (Phase 1A endpoint) ---
+
+export interface AgentDraft {
+  agent_id: string;
+  name: string;
+  description: string;
+  routing: {
+    strong_indicators: string[];
+    context_markers: string[];
+    router_description: string;
+  };
+  prompts: {
+    system_prompt: string;
+    user_instruction: string;
+    disclaimer: string;
+  };
+  memory_config: {
+    enabled: boolean;
+    categories: string[];
+    decay_rates: Record<string, number>;
+    extraction_prompt: string;
+  };
+  ontology: Record<
+    string,
+    { display_name: string; category: string; aliases: string[] }
+  >;
+  example_queries: string[];
+}
+
+/**
+ * Goal-first draft: takes a one-sentence description of what the agent
+ * should do and returns a complete config draft from Claude Opus 4.6
+ * (with fallback to Gemini / GPT-4 if Anthropic is down).
+ *
+ * The admin then edits what they want and calls createDynamicAgent.
+ * This is the Phase 1 productionization entry point that replaces
+ * the 4-step wizard.
+ */
+export async function draftFromGoal(
+  goal: string
+): Promise<{ draft: AgentDraft; status: string }> {
+  return adminFetch("/agent-builder/draft", {
+    method: "POST",
+    body: JSON.stringify({ goal }),
+  });
+}

@@ -25,6 +25,7 @@ import { RoutingConfig } from "@/components/admin/agent-builder/routing-config";
 import { MemoryConfigPanel } from "@/components/admin/agent-builder/memory-config";
 import { OntologyEditor } from "@/components/admin/agent-builder/ontology-editor";
 import { AgentCreationWizard } from "@/components/admin/agent-builder/agent-creation-wizard";
+import { AgentDraftScreen } from "@/components/admin/agent-builder/agent-draft-screen";
 import { AgentStatusBadge } from "@/components/admin/agent-builder/agent-status-badge";
 import { AgentBuilderChat } from "@/components/admin/agent-builder/agent-builder-chat";
 import { SandboxPanel } from "@/components/admin/agent-builder/sandbox-panel";
@@ -71,6 +72,10 @@ export default function Admin() {
   } = useAdminStore();
   const [activeTab, setActiveTab] = useState<Tab>("videos");
   const [error, setError] = useState<string | null>(null);
+  // Phase 1C: goal-first draft screen is the default create flow.
+  // The legacy 4-step wizard is still reachable via "Advanced: manual
+  // create" link inside the draft screen — flips this flag to true.
+  const [useManualWizard, setUseManualWizard] = useState(false);
 
   // Load agents on mount
   useEffect(() => {
@@ -202,9 +207,24 @@ export default function Admin() {
         </div>
       )}
 
-      {/* Creation Wizard Modal */}
-      {showCreateWizard && (
-        <AgentCreationWizard onClose={() => setShowCreateWizard(false)} />
+      {/* Creation flow: goal-first draft screen by default,
+          legacy 4-step wizard reachable via "Advanced" link */}
+      {showCreateWizard && !useManualWizard && (
+        <AgentDraftScreen
+          onClose={() => {
+            setShowCreateWizard(false);
+            setUseManualWizard(false);
+          }}
+          onOpenManualWizard={() => setUseManualWizard(true)}
+        />
+      )}
+      {showCreateWizard && useManualWizard && (
+        <AgentCreationWizard
+          onClose={() => {
+            setShowCreateWizard(false);
+            setUseManualWizard(false);
+          }}
+        />
       )}
     </div>
   );
