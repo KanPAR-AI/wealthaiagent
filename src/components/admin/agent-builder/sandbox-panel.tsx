@@ -82,6 +82,92 @@ interface TestMessage {
 }
 
 /**
+ * ChunkRow — renders one retrieved corpus chunk with source-type-aware
+ * playback controls. Video chunks (`video_file`) with a `url` can be
+ * expanded into an inline `<video>` player that seeks to the chunk's
+ * timestamp via the URL's `#t=<seconds>` fragment. YouTube chunks open
+ * in a new tab (embedding them inline requires the iframe API + ToS
+ * constraints, not worth the complexity for the sandbox debugging
+ * surface).
+ */
+function ChunkRow({ chunk }: { chunk: RetrievedChunk }) {
+  const [playing, setPlaying] = useState(false);
+  const isInlinePlayable =
+    chunk.source_type === "video_file" && !!chunk.url;
+  const isYouTube = chunk.source_type === "youtube" && !!chunk.url;
+
+  // Extract the seek-time from the URL's #t= fragment (written by the
+  // backend for stored videos — see corpus_pipeline.add_video_file).
+  const tMatch = chunk.url?.match(/#t=(\d+(?:\.\d+)?)/);
+  const seekSeconds = tMatch ? parseFloat(tMatch[1]) : 0;
+
+  return (
+    <li className="border-l-2 border-emerald-500/30 pl-2">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="font-medium text-foreground/80 truncate">
+          {chunk.title || chunk.source_id || "(untitled)"}
+        </span>
+        <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+          score {chunk.score.toFixed(3)}
+        </span>
+      </div>
+      <div className="text-muted-foreground/80 line-clamp-2 mt-0.5">
+        {chunk.text}
+      </div>
+
+      {chunk.url && (
+        <div className="flex items-center gap-2 mt-0.5">
+          {isInlinePlayable && (
+            <button
+              type="button"
+              onClick={() => setPlaying((p) => !p)}
+              className="text-[10px] text-primary hover:underline inline-flex items-center gap-1"
+              data-testid="sandbox-video-play-toggle"
+            >
+              {playing ? "▾ hide" : "▸ play"} @ {formatSeek(seekSeconds)}
+            </button>
+          )}
+          <a
+            href={chunk.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-primary hover:underline"
+            title={isYouTube ? "Open in YouTube" : "Open source"}
+          >
+            {chunk.source_type} ↗
+          </a>
+        </div>
+      )}
+
+      {isInlinePlayable && playing && chunk.url && (
+        <div className="mt-1.5 rounded border border-emerald-500/20 bg-background/50 p-1">
+          <video
+            key={chunk.url}
+            src={chunk.url}
+            controls
+            autoPlay
+            preload="metadata"
+            className="w-full max-h-56 rounded"
+            // The #t= fragment in chunk.url tells the browser where
+            // to seek on initial load — works natively in Chrome,
+            // Safari, Firefox. No JS seek needed.
+          />
+        </div>
+      )}
+    </li>
+  );
+}
+
+function formatSeek(seconds: number): string {
+  if (!seconds || seconds < 0) return "0:00";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+/**
  * TracePanel — Phase 1D "Show your work" for the sandbox.
  *
  * Renders the structured trace returned by the backend alongside each
@@ -124,32 +210,7 @@ function TracePanel({ trace }: { trace: SandboxTrace }) {
         ) : (
           <ul className="space-y-1.5 pl-4">
             {trace.retrieved_chunks.map((c, i) => (
-              <li
-                key={i}
-                className="border-l-2 border-emerald-500/30 pl-2"
-              >
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-medium text-foreground/80 truncate">
-                    {c.title || c.source_id || "(untitled)"}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">
-                    score {c.score.toFixed(3)}
-                  </span>
-                </div>
-                <div className="text-muted-foreground/80 line-clamp-2 mt-0.5">
-                  {c.text}
-                </div>
-                {c.url && (
-                  <a
-                    href={c.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] text-primary hover:underline"
-                  >
-                    {c.source_type} ↗
-                  </a>
-                )}
-              </li>
+              <ChunkRow key={i} chunk={c} />
             ))}
           </ul>
         )}

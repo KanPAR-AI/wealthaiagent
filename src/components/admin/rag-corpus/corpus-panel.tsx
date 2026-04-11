@@ -64,6 +64,11 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
   const [textTitle, setTextTitle] = useState("");
   const [textContent, setTextContent] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  // Phase 1D video ingestion: when uploading a video, admin decides
+  // whether to persist the original file to GCS. Storing = clickable
+  // source citations in the sandbox (via #t=<seconds>). Not storing =
+  // transcript-only, smaller footprint, ephemeral preview.
+  const [storeVideoSource, setStoreVideoSource] = useState(true);
   const [testResult, setTestResult] = useState<RetrievalTestResult | null>(null);
   const [testQuery, setTestQuery] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -153,7 +158,7 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
           result = await addCorpusAudio(agentId, file);
           break;
         case "video_file":
-          result = await addCorpusVideoFile(agentId, file);
+          result = await addCorpusVideoFile(agentId, file, storeVideoSource);
           break;
         case "document":
           result = await addCorpusDocument(agentId, file);
@@ -262,9 +267,12 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
       case "pdf":
         return ".pdf";
       case "audio":
-        return ".mp3,.wav,.m4a";
+        return ".mp3,.wav,.m4a,.ogg,.flac";
       case "video_file":
-        return ".mp4,.mov";
+        // Accept anything ffmpeg can read — users may have arbitrary
+        // video containers, and ffmpeg is configured with wide codec
+        // support in the Docker image.
+        return ".mp4,.mov,.webm,.mkv,.avi,.m4v,video/*";
       case "document":
         return ".jpg,.jpeg,.png,.gif";
       default:
@@ -279,7 +287,7 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
       case "audio":
         return "Audio (mp3, wav, m4a)";
       case "video_file":
-        return "Video (mp4, mov)";
+        return "Video (mp4, mov, webm, mkv, avi)";
       case "document":
         return "Document/Image";
       default:
@@ -480,6 +488,28 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
                 <X size={14} />
               </Button>
             </div>
+
+            {/* Video-specific options: store source in GCS for clickable citations */}
+            {addMode === "video_file" && (
+              <div className="mb-3 flex items-start gap-2 rounded-md border border-border/50 bg-muted/30 p-3">
+                <input
+                  type="checkbox"
+                  id="store-video-source"
+                  checked={storeVideoSource}
+                  onChange={(e) => setStoreVideoSource(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-muted-foreground/40"
+                />
+                <label htmlFor="store-video-source" className="text-xs text-muted-foreground cursor-pointer">
+                  <span className="font-medium text-foreground">Store original video in GCS</span>
+                  <br />
+                  When enabled, the uploaded video is persisted so source citations
+                  in the sandbox &quot;Show your work&quot; panel become clickable —
+                  jumping to the exact moment via <code>#t=</code> fragments.
+                  Transcript + timestamps are always stored either way.
+                </label>
+              </div>
+            )}
+
             <div
               className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
                 dragOver
@@ -507,6 +537,12 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
               <p className="text-xs text-muted-foreground mt-1">
                 Accepts: {acceptForMode(addMode)}
               </p>
+              {addMode === "video_file" && (
+                <p className="text-[10px] text-muted-foreground/60 mt-2">
+                  Max 4 hours. Transcribed with OpenAI Whisper (segment-level
+                  timestamps). Long videos auto-chunk into 20-min parts.
+                </p>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"

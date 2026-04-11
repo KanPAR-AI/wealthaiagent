@@ -356,11 +356,16 @@ export async function addCorpusAudio(
 
 export async function addCorpusVideoFile(
   agentId: string,
-  file: File
-): Promise<{ job_id: string; poll_url: string }> {
+  file: File,
+  storeSource: boolean = true
+): Promise<{ job_id: string; poll_url: string; store_source: boolean }> {
   const fd = new FormData();
   fd.append("file", file);
-  return adminUpload(`/agents/${agentId}/corpus/video_file`, fd);
+  // Backend endpoint is /corpus/video (not /corpus/video_file) — older
+  // frontend code pointed at /video_file which 404'd. Fixed alongside
+  // Phase 1D follow-up video ingestion pipeline (Whisper transcription).
+  fd.append("store_source", storeSource ? "true" : "false");
+  return adminUpload(`/agents/${agentId}/corpus/video`, fd);
 }
 
 export async function addCorpusDocument(
