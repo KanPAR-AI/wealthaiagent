@@ -244,9 +244,25 @@ export interface CorpusItem {
   chunk_count: number;
 }
 
+// Individual chunk as returned when include_chunks=true — used by
+// the inline chunk editor in the corpus panel.
+export interface CorpusChunk {
+  chunk_id: number;
+  source_id: string;
+  source_type: string;
+  title: string;
+  text: string;
+  language: string;
+  timestamp_seconds?: number;
+  speaker?: string;
+  asr_confidence?: number;
+  url?: string | null;
+}
+
 export interface CorpusListResponse {
   items: CorpusItem[];
   total_chunks: number;
+  chunks?: CorpusChunk[];
 }
 
 export interface CorpusStats {
@@ -261,15 +277,31 @@ export interface CorpusJob {
   agent_id?: string;
   source_type: string;
   source_ref: string;
-  status: "pending" | "running" | "complete" | "failed";
+  status:
+    | "pending"
+    | "running"
+    | "awaiting_review"
+    | "finalizing"
+    | "complete"
+    | "failed"
+    | "cancelled";
   chunks_created: number;
   error: string | null;
   created_at: string;
   updated_at?: string;
+  source_url?: string | null;
+  needs_review?: boolean;
 }
 
-export async function fetchCorpus(agentId: string): Promise<CorpusListResponse> {
-  return adminFetch(`/agents/${agentId}/corpus`);
+export async function fetchCorpus(
+  agentId: string,
+  opts?: { sourceId?: string; includeChunks?: boolean }
+): Promise<CorpusListResponse> {
+  const params = new URLSearchParams();
+  if (opts?.sourceId) params.set("source_id", opts.sourceId);
+  if (opts?.includeChunks) params.set("include_chunks", "true");
+  const qs = params.toString();
+  return adminFetch(`/agents/${agentId}/corpus${qs ? "?" + qs : ""}`);
 }
 
 export async function fetchCorpusStats(agentId: string): Promise<CorpusStats> {
@@ -358,14 +390,115 @@ export async function addCorpusVideoFile(
   agentId: string,
   file: File,
   storeSource: boolean = true
-): Promise<{ job_id: string; poll_url: string; store_source: boolean }> {
+): Promise<{ job_id: string; poll_url: string; store_source: boolean; requires_review: boolean }> {
   const fd = new FormData();
   fd.append("file", file);
-  // Backend endpoint is /corpus/video (not /corpus/video_file) — older
-  // frontend code pointed at /video_file which 404'd. Fixed alongside
-  // Phase 1D follow-up video ingestion pipeline (Whisper transcription).
   fd.append("store_source", storeSource ? "true" : "false");
   return adminUpload(`/agents/${agentId}/corpus/video`, fd);
+}
+
+// --- Curated ingestion: staged transcript review ---
+
+export interface StagedSegment {
+  text: string;
+  start_seconds: number;
+  end_seconds: number;
+  speaker: string;
+  confidence: number;
+  is_speech: boolean;
+  language: string;
+}
+
+export interface StagedSpeaker {
+  id: string;
+  speech_seconds: number;
+  speech_ratio: number;
+  description?: string;
+}
+
+export interface StagedTranscript {
+  segments: StagedSegment[];
+  speakers: StagedSpeaker[];
+  total_duration_seconds: number;
+  non_speech_ratio: number;
+  detected_languages: string[];
+  engine: string;
+  engine_notes: string;
+}
+
+export interface StagedJobPayload {
+  job_id: string;
+  agent_id: string;
+  source_type: string;
+  source_ref: string;
+  source_url: string | null;
+  staged: {
+    source_id: string;
+    source_type: string;
+    filename: string;
+    org_id: string;
+    agent_id: string;
+    source_url: string | null;
+    transcript: StagedTranscript;
+  };
+}
+
+export async function fetchStagedTranscript(
+  agentId: string,
+  jobId: string
+): Promise<StagedJobPayload> {
+  return adminFetch(`/agents/${agentId}/corpus/jobs/${jobId}/transcript`);
+}
+
+export interface FinalizeCurationRequest {
+  keep_segment_indices?: number[];
+  segment_edits?: Record<number, string>;
+  segment_speaker_overrides?: Record<number, string>;
+  primary_speakers?: string[];
+  drop_non_speech?: boolean;
+  min_confidence?: number;
+}
+
+export async function finalizeStagedJob(
+  agentId: string,
+  jobId: string,
+  curation: FinalizeCurationRequest
+): Promise<{ job_id: string; status: string; poll_url: string }> {
+  return adminFetch(`/agents/${agentId}/corpus/jobs/${jobId}/finalize`, {
+    method: "POST",
+    body: JSON.stringify(curation),
+  });
+}
+
+export async function cancelStagedJob(
+  agentId: string,
+  jobId: string
+): Promise<{ job_id: string; status: string }> {
+  return adminFetch(`/agents/${agentId}/corpus/jobs/${jobId}/cancel`, {
+    method: "POST",
+  });
+}
+
+// --- Per-chunk editing ---
+
+export async function updateCorpusChunk(
+  agentId: string,
+  chunkId: number,
+  newText: string
+): Promise<{ chunk_id: number; text: string; total_chunks: number }> {
+  return adminFetch(`/agents/${agentId}/corpus/chunks/${chunkId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ text: newText }),
+  });
+}
+
+export async function deleteCorpusChunkById(
+  agentId: string,
+  chunkId: number
+): Promise<{ chunk_id: number; removed_text_preview: string; total_chunks: number }> {
+  return adminFetch(`/agents/${agentId}/corpus/chunks/${chunkId}`, {
+    method: "DELETE",
+  });
 }
 
 export async function addCorpusDocument(

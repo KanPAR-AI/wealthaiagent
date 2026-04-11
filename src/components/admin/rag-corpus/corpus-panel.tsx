@@ -14,6 +14,7 @@ import {
   Search,
   ChevronDown,
   X,
+  Pencil,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,10 @@ import {
   deleteCorpusItem,
   reloadCorpusVectors,
   runCorpusTest,
+  updateCorpusChunk,
+  deleteCorpusChunkById,
 } from "@/services/admin-service";
+import { TranscriptReviewPanel } from "./transcript-review-panel";
 import type { CorpusJob, RetrievalTestResult } from "@/services/admin-service";
 import { toast } from "sonner";
 
@@ -52,6 +56,28 @@ type AddSourceMode =
   | "document"
   | "text"
   | "batch";
+
+// Module-scope helper so both CorpusPanel and SourceRow can use it.
+function sourceTypeIconGlobal(type: string) {
+  switch (type) {
+    case "youtube":
+      return <Youtube size={14} className="text-red-500" />;
+    case "document":
+      return <FileText size={14} className="text-blue-500" />;
+    case "pdf":
+      return <FileText size={14} className="text-orange-500" />;
+    case "audio":
+      return <Music size={14} className="text-purple-500" />;
+    case "video_file":
+      return <Video size={14} className="text-green-500" />;
+    case "text":
+      return <Type size={14} className="text-gray-500" />;
+    case "image":
+      return <Image size={14} className="text-blue-500" />;
+    default:
+      return <Database size={14} />;
+  }
+}
 
 export function CorpusPanel({ agentId }: { agentId: string }) {
   const { corpusData, corpusStats, setCorpusData, setCorpusStats, loading, setLoading } =
@@ -114,14 +140,29 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
       try {
         const job = await pollCorpusJob(agentId, jobId);
         setActiveJob(job);
-        if (job.status === "complete" || job.status === "failed") {
+        // Terminal states stop polling.
+        // - "complete" / "failed" / "cancelled" → done
+        // - "awaiting_review" → also stop polling; the review panel
+        //   takes over from here and will call /finalize which
+        //   re-starts polling through its own mechanism (or we'll
+        //   just refresh the corpus list after finalize returns).
+        const isTerminal =
+          job.status === "complete" ||
+          job.status === "failed" ||
+          job.status === "cancelled" ||
+          job.status === "awaiting_review";
+        if (isTerminal) {
           if (pollRef.current) clearInterval(pollRef.current);
           pollRef.current = null;
           if (job.status === "complete") {
             toast.success(`Added ${job.chunks_created} chunks`);
             loadData();
-          } else {
+          } else if (job.status === "failed") {
             toast.error(`Job failed: ${job.error}`);
+          } else if (job.status === "awaiting_review") {
+            toast.info("Transcript ready for review", {
+              description: "Curate segments below before committing to corpus.",
+            });
           }
         }
       } catch {
@@ -241,26 +282,7 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
     }
   };
 
-  const sourceTypeIcon = (type: string) => {
-    switch (type) {
-      case "youtube":
-        return <Youtube size={14} className="text-red-500" />;
-      case "document":
-        return <FileText size={14} className="text-blue-500" />;
-      case "pdf":
-        return <FileText size={14} className="text-orange-500" />;
-      case "audio":
-        return <Music size={14} className="text-purple-500" />;
-      case "video_file":
-        return <Video size={14} className="text-green-500" />;
-      case "text":
-        return <Type size={14} className="text-gray-500" />;
-      case "image":
-        return <Image size={14} className="text-blue-500" />;
-      default:
-        return <Database size={14} />;
-    }
-  };
+  const sourceTypeIcon = sourceTypeIconGlobal;
 
   const acceptForMode = (mode: AddSourceMode): string => {
     switch (mode) {
@@ -338,21 +360,47 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
         </div>
       )}
 
-      {/* Active job progress */}
-      {activeJob && (activeJob.status === "pending" || activeJob.status === "running") && (
-        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <RefreshCw size={14} className="animate-spin" />
-              <span className="text-sm font-medium">
-                Processing: {activeJob.source_ref}
-              </span>
-              <span className="text-xs text-muted-foreground ml-auto capitalize">
-                {activeJob.status}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Active job progress — running/finalizing phases */}
+      {activeJob &&
+        (activeJob.status === "pending" ||
+          activeJob.status === "running" ||
+          activeJob.status === "finalizing") && (
+          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <RefreshCw size={14} className="animate-spin" />
+                <span className="text-sm font-medium">
+                  {activeJob.status === "finalizing" ? "Committing" : "Processing"}:{" "}
+                  {activeJob.source_ref}
+                </span>
+                <span className="text-xs text-muted-foreground ml-auto capitalize">
+                  {activeJob.status.replace("_", " ")}
+                </span>
+              </div>
+              {(activeJob.status === "running" || activeJob.status === "pending") && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Transcribing with diarization (AssemblyAI → Gemini → Whisper). Large videos take ~1 sec per 30 sec of audio.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+      {/* Staged transcript review — shows when job is awaiting_review.
+          Admin curates segments here before they're committed to the corpus. */}
+      {activeJob && activeJob.status === "awaiting_review" && (
+        <TranscriptReviewPanel
+          agentId={agentId}
+          jobId={activeJob.job_id}
+          onFinalized={() => {
+            setActiveJob(null);
+            loadData();
+            toast.success("Corpus updated");
+          }}
+          onCancelled={() => {
+            setActiveJob(null);
+          }}
+        />
       )}
 
       {/* Actions */}
@@ -665,30 +713,13 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
           ) : (
             <div className="space-y-2">
               {corpusData.items.map((item) => (
-                <div
+                <SourceRow
                   key={item.source_id}
-                  className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                >
-                  {sourceTypeIcon(item.source_type)}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {item.title || item.source_id.slice(0, 12) + "..."}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.chunk_count} chunks | {item.language}
-                      {item.original_language !== item.language &&
-                        ` (translated from ${item.original_language})`}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleDelete(item.source_id)}
-                  >
-                    <Trash2 size={14} />
-                  </Button>
-                </div>
+                  item={item}
+                  agentId={agentId}
+                  onDelete={() => handleDelete(item.source_id)}
+                  onChunksChanged={loadData}
+                />
               ))}
             </div>
           )}
@@ -805,6 +836,203 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SourceRow — expandable source in the corpus list. Clicking "Chunks"
+// fetches individual chunks for the source and renders them with inline
+// edit/delete. Lets admins fix transcription errors at chunk granularity
+// without re-ingesting the whole source.
+// ---------------------------------------------------------------------------
+
+import type { CorpusItem, CorpusChunk } from "@/services/admin-service";
+
+function SourceRow({
+  item,
+  agentId,
+  onDelete,
+  onChunksChanged,
+}: {
+  item: CorpusItem;
+  agentId: string;
+  onDelete: () => void;
+  onChunksChanged: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [chunks, setChunks] = useState<CorpusChunk[] | null>(null);
+  const [loadingChunks, setLoadingChunks] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+
+  const loadChunks = async () => {
+    setLoadingChunks(true);
+    try {
+      const res = await fetchCorpus(agentId, {
+        sourceId: item.source_id,
+        includeChunks: true,
+      });
+      setChunks(res.chunks || []);
+    } catch (err) {
+      toast.error(`Failed to load chunks: ${(err as Error).message}`);
+    } finally {
+      setLoadingChunks(false);
+    }
+  };
+
+  const toggleExpand = async () => {
+    if (!expanded && !chunks) await loadChunks();
+    setExpanded((e) => !e);
+  };
+
+  const handleEditSave = async (chunkId: number) => {
+    try {
+      await updateCorpusChunk(agentId, chunkId, editText.trim());
+      toast.success("Chunk updated");
+      setEditingId(null);
+      await loadChunks();
+      onChunksChanged();
+    } catch (err) {
+      toast.error(`Update failed: ${(err as Error).message}`);
+    }
+  };
+
+  const handleChunkDelete = async (chunkId: number) => {
+    if (!confirm("Delete this chunk? Cannot be undone.")) return;
+    try {
+      await deleteCorpusChunkById(agentId, chunkId);
+      toast.success("Chunk deleted");
+      await loadChunks();
+      onChunksChanged();
+    } catch (err) {
+      toast.error(`Delete failed: ${(err as Error).message}`);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border hover:bg-muted/30 transition-colors overflow-hidden">
+      <div className="flex items-center gap-3 p-3">
+        {sourceTypeIconGlobal(item.source_type)}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">
+            {item.title || item.source_id.slice(0, 12) + "..."}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {item.chunk_count} chunks | {item.language}
+            {item.original_language !== item.language &&
+              ` (translated from ${item.original_language})`}
+          </p>
+        </div>
+        <Button size="sm" variant="ghost" onClick={toggleExpand}>
+          {expanded ? "Hide chunks" : "View chunks"}
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="text-destructive hover:text-destructive"
+          onClick={onDelete}
+          title="Delete entire source"
+        >
+          <Trash2 size={14} />
+        </Button>
+      </div>
+
+      {/* Expanded chunk list with inline edit/delete */}
+      {expanded && (
+        <div className="border-t border-border/50 bg-muted/10 px-3 py-2 space-y-1.5 max-h-96 overflow-y-auto">
+          {loadingChunks ? (
+            <p className="text-xs text-muted-foreground py-2">Loading chunks…</p>
+          ) : !chunks || chunks.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2">No chunks.</p>
+          ) : (
+            chunks.map((c) => (
+              <div
+                key={c.chunk_id}
+                className="rounded border border-border/40 bg-background p-2 text-xs space-y-1"
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-mono text-[9px] text-muted-foreground">
+                    #{c.chunk_id}
+                  </span>
+                  {c.speaker && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted font-mono">
+                      Speaker {c.speaker}
+                    </span>
+                  )}
+                  {c.timestamp_seconds !== undefined && c.timestamp_seconds !== null && (
+                    <span className="text-[9px] text-muted-foreground font-mono">
+                      @ {Math.floor(c.timestamp_seconds / 60)}:
+                      {String(Math.floor(c.timestamp_seconds % 60)).padStart(2, "0")}
+                    </span>
+                  )}
+                  {c.asr_confidence !== undefined && c.asr_confidence !== null && (
+                    <span className="text-[9px] text-muted-foreground font-mono">
+                      conf {c.asr_confidence.toFixed(2)}
+                    </span>
+                  )}
+                  <div className="ml-auto flex items-center gap-1">
+                    {editingId !== c.chunk_id && (
+                      <>
+                        <button
+                          type="button"
+                          className="p-1 rounded hover:bg-muted"
+                          title="Edit"
+                          onClick={() => {
+                            setEditingId(c.chunk_id);
+                            setEditText(c.text);
+                          }}
+                        >
+                          <Pencil size={10} />
+                        </button>
+                        <button
+                          type="button"
+                          className="p-1 rounded hover:bg-muted text-destructive"
+                          title="Delete"
+                          onClick={() => handleChunkDelete(c.chunk_id)}
+                        >
+                          <Trash2 size={10} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {editingId === c.chunk_id ? (
+                  <div className="space-y-1">
+                    <textarea
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      rows={Math.max(2, Math.ceil(editText.length / 80))}
+                      className="w-full text-xs font-mono rounded border border-border/50 bg-background p-1.5"
+                      autoFocus
+                    />
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={() => setEditingId(null)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={() => handleEditSave(c.chunk_id)}
+                        disabled={!editText.trim()}
+                      >
+                        Save + re-embed
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-foreground/80 leading-snug">{c.text}</p>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
