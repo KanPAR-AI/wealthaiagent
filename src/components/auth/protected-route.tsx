@@ -4,14 +4,16 @@ import { useAuth } from "@/hooks/use-auth";
 
 interface ProtectedRouteProps {
   requireAdmin?: boolean;
+  requireAuth?: boolean;
   children: React.ReactNode;
 }
 
 export function ProtectedRoute({
   requireAdmin = false,
+  requireAuth = false,
   children,
 }: ProtectedRouteProps) {
-  const { isAuthLoading, isAdmin } = useAuth();
+  const { isAuthLoading, isAdmin, isSignedIn } = useAuth();
 
   if (isAuthLoading) {
     return (
@@ -19,6 +21,10 @@ export function ProtectedRoute({
         <p className="text-muted-foreground">Loading...</p>
       </div>
     );
+  }
+
+  if ((requireAuth || requireAdmin) && !isSignedIn) {
+    return <Navigate to="/" replace />;
   }
 
   if (requireAdmin && !isAdmin) {

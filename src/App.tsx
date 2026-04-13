@@ -31,7 +31,7 @@ const App = () => (
           <Route path="/chat" element={<New />} />
           <Route path="/chat/:chatid" element={<Chat />} />
           <Route path="/mealplan/:chatid" element={<MealPlan />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings" element={<ProtectedRoute requireAuth><Settings /></ProtectedRoute>} />
         </Route>
         <Route path="/trade" element={<Trade />} />
         <Route path="/debug/:chatid" element={<Debug />} />
