@@ -12,6 +12,7 @@ import PWAInstall from "./components/PWAInstall";
 import LoginPage from "./pages/Login";
 import Admin from "./pages/Admin";
 import TestChat from "./pages/TestChat";
+import Settings from "./pages/Settings";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { isNativePlatform } from "@/lib/capacitor";
 
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/chat" element={<New />} />
           <Route path="/chat/:chatid" element={<Chat />} />
           <Route path="/mealplan/:chatid" element={<MealPlan />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
         <Route path="/trade" element={<Trade />} />
         <Route path="/debug/:chatid" element={<Debug />} />
