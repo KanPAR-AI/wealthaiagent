@@ -13,7 +13,10 @@ import {
   Bot,
   FlaskConical,
 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { AdminHeader } from "@/components/admin/admin-header";
+import { AgentManagementView } from "@/components/admin/agent-management-view";
+import { Button } from "@/components/ui/button";
 import { VideoPanel } from "@/components/admin/video-management/video-panel";
 import { ModelConfigPanel } from "@/components/admin/model-config/model-config-panel";
 import { CostPanel } from "@/components/admin/cost-dashboard/cost-panel";
@@ -76,18 +79,19 @@ export default function Admin() {
   // The legacy 4-step wizard is still reachable via "Advanced: manual
   // create" link inside the draft screen — flips this flag to true.
   const [useManualWizard, setUseManualWizard] = useState(false);
+  // Default landing is the management view; clicking an agent flips to
+  // detail. Lets admins triage / delete without committing to a single
+  // agent's tab UI first.
+  const [view, setView] = useState<"manage" | "detail">("manage");
+
+  const refreshAgents = () =>
+    fetchAgents()
+      .then((data) => setAgents(data.agents))
+      .catch((err: Error) => setError(err.message));
 
   // Load agents on mount
   useEffect(() => {
-    fetchAgents()
-      .then((data) => {
-        setAgents(data.agents);
-        // Auto-select first agent if none selected
-        if (!selectedAgentId && data.agents.length > 0) {
-          setSelectedAgentId(data.agents[0].id);
-        }
-      })
-      .catch((err: Error) => setError(err.message));
+    void refreshAgents();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedAgent = agents.find((a) => a.id === selectedAgentId);
@@ -117,8 +121,37 @@ export default function Admin() {
     <div className="min-h-screen bg-background">
       <AdminHeader />
 
-      {selectedAgent ? (
+      {view === "manage" ? (
+        <div className="max-w-6xl mx-auto px-6 py-6">
+          <div className="mb-4">
+            <h2 className="text-xl font-bold">Agents</h2>
+            <p className="text-sm text-muted-foreground">
+              Browse, filter, and manage all agents. Click a name to edit, or
+              select rows for bulk actions.
+            </p>
+          </div>
+          <AgentManagementView
+            agents={agents}
+            onSelectAgent={(id) => {
+              setSelectedAgentId(id);
+              setView("detail");
+            }}
+            onCreate={() => setShowCreateWizard(true)}
+            onRefresh={refreshAgents}
+          />
+        </div>
+      ) : selectedAgent ? (
         <div className="max-w-4xl mx-auto px-6 py-6">
+          {/* Back to list */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-3 -ml-2 text-muted-foreground"
+            onClick={() => setView("manage")}
+          >
+            <ArrowLeft size={14} className="mr-1" />
+            Back to all agents
+          </Button>
           {/* Agent info */}
           <div className="mb-6">
             <div className="flex items-center gap-2">
@@ -203,7 +236,7 @@ export default function Admin() {
         </div>
       ) : (
         <div className="flex items-center justify-center h-[60vh] text-muted-foreground text-sm">
-          Select an agent from the dropdown above to get started.
+          No agent selected.
         </div>
       )}
 

@@ -34,10 +34,18 @@ export interface AgentInfo {
   capabilities: string[];
   is_dynamic?: boolean;
   status?: "draft" | "active" | "archived";
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export async function fetchAgents(): Promise<{ agents: AgentInfo[] }> {
   return adminFetch("/agents");
+}
+
+export async function deleteAgent(
+  agentId: string
+): Promise<{ agent_id: string; deleted: boolean }> {
+  return adminFetch(`/agents/${agentId}`, { method: "DELETE" });
 }
 
 // --- Videos ---
@@ -287,8 +295,12 @@ export interface CorpusJob {
     | "cancelled";
   chunks_created: number;
   error: string | null;
+  progress_pct?: number;
+  progress_stage?: string;
   created_at: string;
   updated_at?: string;
+  started_at?: string | null;
+  finished_at?: string | null;
   source_url?: string | null;
   needs_review?: boolean;
 }
@@ -379,21 +391,27 @@ export async function addCorpusPdf(
 
 export async function addCorpusAudio(
   agentId: string,
-  file: File
+  file: File,
+  opts?: { language?: string; transcript?: string }
 ): Promise<{ job_id: string; poll_url: string }> {
   const fd = new FormData();
   fd.append("file", file);
+  if (opts?.language) fd.append("language", opts.language);
+  if (opts?.transcript) fd.append("transcript", opts.transcript);
   return adminUpload(`/agents/${agentId}/corpus/audio`, fd);
 }
 
 export async function addCorpusVideoFile(
   agentId: string,
   file: File,
-  storeSource: boolean = true
+  storeSource: boolean = true,
+  opts?: { language?: string; transcript?: string }
 ): Promise<{ job_id: string; poll_url: string; store_source: boolean; requires_review: boolean }> {
   const fd = new FormData();
   fd.append("file", file);
   fd.append("store_source", storeSource ? "true" : "false");
+  if (opts?.language) fd.append("language", opts.language);
+  if (opts?.transcript) fd.append("transcript", opts.transcript);
   return adminUpload(`/agents/${agentId}/corpus/video`, fd);
 }
 
