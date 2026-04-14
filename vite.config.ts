@@ -17,23 +17,29 @@ export default defineConfig({
       registerType: 'autoUpdate',
       workbox: {
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB — main bundle exceeds default 2 MB limit
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+        // Precache hashed assets but NOT index.html — index.html is the bootstrap
+        // pointer to the latest hashed bundle; if it's precached, users keep loading
+        // stale JS even after a deploy.
+        globPatterns: ['**/*.{js,css,ico,png,svg,json}'],
+        // Activate new SW immediately + take over open tabs without waiting
+        // for them to close. Combined with the periodic update check in
+        // PWAInstall.tsx, this gives users the latest UI within ~5 min.
+        skipWaiting: true,
+        clientsClaim: true,
+        // Always fetch index.html from network so the entry point points
+        // at the freshest hashed bundles. Falls back to cache if offline.
+        navigateFallback: null,
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/api\./i,
+            urlPattern: ({ request }) => request.mode === 'navigate',
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // <== 365 days
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
+              cacheName: 'html-cache',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 },
+            },
+          },
+        ],
       },
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {

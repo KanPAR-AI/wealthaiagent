@@ -1,22 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, Download, Smartphone, Wifi } from 'lucide-react';
+// Real PWA registration hook from vite-plugin-pwa.
+// The previous in-file mock returned needRefresh=false forever, which meant
+// users kept running stale JS until they manually hard-refreshed.
+import { useRegisterSW } from 'virtual:pwa-register/react';
 
-// PWA registration types
-interface PWAInstallComponent {
-  needRefresh: [boolean, (value: boolean) => void];
-  updateServiceWorker: (reloadPage?: boolean) => Promise<void>;
-}
-
-// Mock PWA registration for development
-const useRegisterSW = (_options?: any): PWAInstallComponent => {
-  const [needRefresh, _setNeedRefresh] = useState<[boolean, (value: boolean) => void]>([false, () => {}]);
-  const updateServiceWorker = async (reloadPage?: boolean) => {
-    if (reloadPage) {
-      window.location.reload();
-    }
-  };
-  return { needRefresh, updateServiceWorker };
-};
+// Poll for new SW every 5 minutes — long-lived PWA tabs may never navigate,
+// and without an explicit poll the SW only checks on page load.
+const SW_UPDATE_INTERVAL_MS = 5 * 60 * 1000;
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -40,13 +31,47 @@ const PWAInstall: React.FC = () => {
     needRefresh: [needRefresh, _setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegistered(r: any) {
-      console.log('SW Registered: ' + r);
+    onRegisteredSW(_swUrl: string, registration?: ServiceWorkerRegistration) {
+      // Poll the server every 5 min for an updated SW. With skipWaiting +
+      // clientsClaim in vite.config.ts, an update activates immediately and
+      // we auto-reload below — so any active user gets the latest UI within
+      // ~5 min of a deploy without ever doing a manual hard-refresh.
+      if (!registration) return;
+      setInterval(() => {
+        registration.update().catch(() => undefined);
+      }, SW_UPDATE_INTERVAL_MS);
     },
-    onRegisterError(error: any) {
-      console.log('SW registration error', error);
+    onRegisterError(error: unknown) {
+      console.warn('SW registration error', error);
     },
   });
+
+  // When a new SW is ready, reload — but politely:
+  //   - If tab is in the background, reload immediately.
+  //   - If tab is visible, wait until next backgrounding OR 60s, whichever
+  //     comes first, so we don't interrupt mid-action.
+  useEffect(() => {
+    if (!needRefresh) return;
+    let done = false;
+    const reload = () => {
+      if (done) return;
+      done = true;
+      updateServiceWorker(true);
+    };
+    if (document.visibilityState === 'hidden') {
+      reload();
+      return;
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') reload();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    const t = setTimeout(reload, 60_000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      clearTimeout(t);
+    };
+  }, [needRefresh, updateServiceWorker]);
 
   useEffect(() => {
     // Check if running on iOS
