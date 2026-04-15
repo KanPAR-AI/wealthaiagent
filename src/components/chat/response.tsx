@@ -7,6 +7,8 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 
+import { BedtimeVideoWidget, tryParseBedtimePayload } from '@/components/widgets/bedtime-video-widget';
+
 interface ResponseProps {
   children?: string;
   className?: string;
@@ -23,32 +25,41 @@ function cleanContent(text: string): string {
 /**
  * Pre-process markdown to convert YouTube links to embedded iframe HTML.
  *
- * Converts patterns like:
- *   **Watch:** [Title](https://www.youtube.com/watch?v=ID&t=36)
- *   [Title](https://youtube.com/watch?v=ID)
- *
- * Into raw HTML <div> blocks that rehype-raw will render as block elements
- * (avoiding the invalid div-inside-p nesting problem).
+ * Consolidates multiple references to the same video into a single
+ * embedded player so the response doesn't show 3 identical iframes
+ * when 3 corpus chunks from the same video are cited.
  */
 function embedYouTubeLinks(text: string): string {
-  return text.replace(
-    /^(.*?)\[([^\]]+)\]\((https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s)]*v=([a-zA-Z0-9_-]+)[^\s)]*|youtu\.be\/([a-zA-Z0-9_-]+)[^\s)]*?))\)(.*)$/gm,
-    (_match, before, title, fullUrl, vidId1, vidId2, after) => {
-      const videoId = vidId1 || vidId2;
-      if (!videoId) return _match;
-      const timeMatch = fullUrl.match(/[?&]t=(\d+)/);
-      const start = timeMatch ? timeMatch[1] : '0';
-      const embedUrl = `https://www.youtube.com/embed/${videoId}?start=${start}&rel=0`;
-      const prefix = before.trim() ? before.trim() + '\n\n' : '';
-      const suffix = after.trim() ? '\n\n' + after.trim() : '';
-      return (
-        `${prefix}<div class="youtube-embed my-3">` +
-        `<iframe src="${embedUrl}" title="${title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` +
-        `<div class="youtube-embed-caption"><a href="${fullUrl}" target="_blank" rel="noopener noreferrer">${title}</a></div>` +
-        `</div>${suffix}`
-      );
+  // First pass: collect all YouTube links and group by video ID
+  const ytPattern =
+    /^(.*?)\[([^\]]+)\]\((https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s)]*v=([a-zA-Z0-9_-]+)[^\s)]*|youtu\.be\/([a-zA-Z0-9_-]+)[^\s)]*?))\)(.*)$/gm;
+
+  const seenVideos = new Set<string>();
+  return text.replace(ytPattern, (_match, before, title, fullUrl, vidId1, vidId2, after) => {
+    const videoId = vidId1 || vidId2;
+    if (!videoId) return _match;
+
+    // Skip duplicate embeds for the same video — show only the first
+    if (seenVideos.has(videoId)) {
+      // Keep the surrounding text but replace the link with a plain text ref
+      const prefix = before.trim() ? before.trim() + ' ' : '';
+      const suffix = after.trim() ? ' ' + after.trim() : '';
+      return `${prefix}*(see video above)*${suffix}`;
     }
-  );
+    seenVideos.add(videoId);
+
+    const timeMatch = fullUrl.match(/[?&]t=(\d+)/);
+    const start = timeMatch ? timeMatch[1] : '0';
+    const embedUrl = `https://www.youtube.com/embed/${videoId}?start=${start}&rel=0`;
+    const prefix = before.trim() ? before.trim() + '\n\n' : '';
+    const suffix = after.trim() ? '\n\n' + after.trim() : '';
+    return (
+      `${prefix}<div class="youtube-embed my-3">` +
+      `<iframe src="${embedUrl}" title="${title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` +
+      `<div class="youtube-embed-caption"><a href="${fullUrl}" target="_blank" rel="noopener noreferrer">${title}</a></div>` +
+      `</div>${suffix}`
+    );
+  });
 }
 
 /** Check if a URL is an internal app link (starts with / and matches known routes) */
@@ -60,6 +71,25 @@ function isInternalLink(href: string | undefined): boolean {
 /** Build markdown components, injecting an optional navigate handler for internal links */
 function buildMdComponents(onNavigate?: (path: string) => void): Components {
   return {
+    // Intercept fenced ```bedtime_video {...}``` blocks and render the
+    // interactive widget. Any other fenced code block falls through to the
+    // default <code> rendering.
+    code: ({ className, children, ...props }: any) => {
+      const lang = /language-(\w+)/.exec(className || "")?.[1];
+      const raw = String(children ?? "").trim();
+
+      if (lang === "bedtime_video") {
+        const payload = tryParseBedtimePayload(raw);
+        if (payload) return <BedtimeVideoWidget payload={payload} />;
+      }
+
+      // Default: inline code or unknown language — let react-markdown do its thing.
+      return (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
+    },
     table: ({ children, ...props }) => (
       <div className="rounded-md border overflow-x-auto my-3">
         <table className="w-full text-[11px] sm:text-sm" {...props}>{children}</table>
