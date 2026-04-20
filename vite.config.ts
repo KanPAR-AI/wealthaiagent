@@ -46,7 +46,7 @@ export default defineConfig({
         name: 'WealthWise AI - Financial Advisor',
         short_name: 'WealthWise AI',
         description: 'Your personal AI-powered financial advisor for smart investment decisions',
-        theme_color: '#3b82f6',
+        theme_color: '#128C7E',
         background_color: '#ffffff',
         display: 'standalone',
         scope: '/',

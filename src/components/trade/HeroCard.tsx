@@ -58,7 +58,7 @@ export function HeroCard() {
               className={cn(
                 "p-1.5 rounded transition-colors",
                 isPinned
-                  ? "bg-[#4EA8F5]/20 text-[#4EA8F5]"
+                  ? "bg-[#25D366]/20 text-[#25D366]"
                   : "hover:bg-white/5 text-white/40"
               )}
               aria-label={isPinned ? 'Unpin ticker' : 'Pin ticker'}
@@ -72,7 +72,7 @@ export function HeroCard() {
           </div>
           <div className="flex items-center gap-2 mb-2 sm:mb-3">
             <span className="text-sm font-semibold text-white">{selected.ticker}</span>
-            <span className="text-xs px-1.5 py-0.5 rounded bg-[#4EA8F5]/20 text-[#4EA8F5] uppercase">
+            <span className="text-xs px-1.5 py-0.5 rounded bg-[#25D366]/20 text-[#25D366] uppercase">
               {selected.exchange}
             </span>
           </div>
