@@ -187,8 +187,11 @@ export const listenToChatStream = async (
     console.log("[listenToChatStream] Opening SSE connection for chat:", chatId);
     console.log("[listenToChatStream] URL:", getApiUrl(`/chats/${chatId}/stream`));
     
-    const streamUrl = forceAgent
-      ? getApiUrl(`/chats/${chatId}/stream?force_agent=${encodeURIComponent(forceAgent)}`)
+    // MysticAI mode: always force astrology agent
+    const { isMysticAI, MYSTIC_AGENT } = await import("@/lib/mysticai");
+    const effectiveAgent = forceAgent || (isMysticAI ? MYSTIC_AGENT : null);
+    const streamUrl = effectiveAgent
+      ? getApiUrl(`/chats/${chatId}/stream?force_agent=${encodeURIComponent(effectiveAgent)}`)
       : getApiUrl(`/chats/${chatId}/stream`);
     const response = await fetch(streamUrl, {
       method: "GET",

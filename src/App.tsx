@@ -15,8 +15,13 @@ import TestChat from "./pages/TestChat";
 import Settings from "./pages/Settings";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { isNativePlatform } from "@/lib/capacitor";
+import { isMysticAI, applyMysticTheme } from "@/lib/mysticai";
 
-const basename = isNativePlatform ? '/' : '/chataiagent';
+// MysticAI (astro.yourfinadvisor.com) serves from root; main app from /chataiagent
+const basename = isNativePlatform ? '/' : isMysticAI ? '/' : '/chataiagent';
+
+// Apply MysticAI theme overrides if on astro domain
+applyMysticTheme();
 
 const App = () => (
   <AppProviders>
