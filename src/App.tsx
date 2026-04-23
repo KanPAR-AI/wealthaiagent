@@ -17,8 +17,9 @@ import { ProtectedRoute } from "@/components/auth/protected-route";
 import { isNativePlatform } from "@/lib/capacitor";
 import { isMysticAI, applyMysticTheme } from "@/lib/mysticai";
 
-// MysticAI (astro.yourfinadvisor.com) serves from root; main app from /chataiagent
-const basename = isNativePlatform ? '/' : isMysticAI ? '/' : '/chataiagent';
+// Keep /chataiagent basename always — nginx handles root-to-chataiagent redirect
+// for astro.yourfinadvisor.com. MysticAI mode only changes theme + agent, not routing.
+const basename = isNativePlatform ? '/' : '/chataiagent';
 
 // Apply MysticAI theme overrides if on astro domain
 applyMysticTheme();
