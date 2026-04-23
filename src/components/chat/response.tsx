@@ -18,6 +18,8 @@ interface ResponseProps {
 /** Collapse excessive blank lines to max one blank line */
 function cleanContent(text: string): string {
   return text
+    // Strip "[Using X agent]" prefix — internal routing info, not user-facing
+    .replace(/^\[Using \w+ agent\]\s*/i, '')
     .replace(/(\n[ \t]*){3,}/g, '\n\n')
     .replace(/^\n+/, '');
 }
@@ -81,6 +83,12 @@ function buildMdComponents(onNavigate?: (path: string) => void): Components {
       if (lang === "bedtime_video") {
         const payload = tryParseBedtimePayload(raw);
         if (payload) return <BedtimeVideoWidget payload={payload} />;
+      }
+
+      // Hide palm_analysis, muhurta_results, natal_chart JSON blocks
+      // (rendered as formatted markdown below the block, the raw JSON is noise)
+      if (lang && ["palm_analysis", "muhurta_results", "natal_chart"].includes(lang)) {
+        return null;
       }
 
       // Default: inline code or unknown language — let react-markdown do its thing.
