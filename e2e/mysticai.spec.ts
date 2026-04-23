@@ -34,7 +34,7 @@ test.describe('MysticAI Mode', () => {
     await page.waitForLoadState('networkidle');
 
     // Should have the full chat input with attachment button
-    await expect(page.locator('text=Ask me anything')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByPlaceholder(/ask me anything/i)).toBeVisible({ timeout: 5000 });
 
     await page.screenshot({ path: 'e2e/screenshots/mysticai-chat-input.png', fullPage: true });
   });

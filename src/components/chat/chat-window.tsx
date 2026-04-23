@@ -27,9 +27,18 @@ import { usePendingMessage } from './hooks/use-pending-message';
 import { useMessageSending } from './hooks/use-message-sending';
 import { useIOSKeyboard } from '@/hooks/use-ios-keyboard';
 
-const suggestionTiles: SuggestionTileData[] = [
-  { 
-    id: 1, 
+import { isMysticAI } from '@/lib/mysticai';
+
+const mysticSuggestionTiles: SuggestionTileData[] = [
+  { id: 1, title: "Find muhurta for c-section delivery", description: "Auspicious birth timing", useMockService: false },
+  { id: 2, title: "Read my kundli / birth chart", description: "Vedic natal chart analysis", useMockService: false },
+  { id: 3, title: "Analyze my palm lines", description: "Palmistry reading", useMockService: false },
+  { id: 4, title: "Check our compatibility", description: "Kundli Milan / Synastry", useMockService: false },
+];
+
+const defaultSuggestionTiles: SuggestionTileData[] = [
+  {
+    id: 1,
     title: "Help me plan my finances",
     description: "Plan your financial future",
     useMockService: false,
@@ -40,21 +49,21 @@ const suggestionTiles: SuggestionTileData[] = [
     description: "Monthly growth trends",
     useMockService: true,
   },
-  { 
-    id: 3, 
-    title: "What are my top holdings?", 
+  {
+    id: 3,
+    title: "What are my top holdings?",
     description: "View stock positions",
     useMockService: true,
   },
-  { 
-    id: 4, 
-    title: "Explain SIP with examples", 
+  {
+    id: 4,
+    title: "Explain SIP with examples",
     description: "Investment strategy visualization",
     useMockService: true,
   },
-  { 
-    id: 5, 
-    title: "Compare mutual fund types", 
+  {
+    id: 5,
+    title: "Compare mutual fund types",
     description: "Performance comparison",
     useMockService: true,
   },
@@ -296,13 +305,15 @@ export default function ChatWindow({
 
                 {/* Centered input bar for empty state */}
                 <div className="w-full max-w-3xl mx-auto flex flex-col gap-4">
-                  <div className="flex items-center gap-2">
-                    <AgentSelector
-                      value={selectedAgent}
-                      onChange={setSelectedAgent}
-                      disabled={isSending || isNewChatInitiating}
-                    />
-                  </div>
+                  {!isMysticAI && (
+                    <div className="flex items-center gap-2">
+                      <AgentSelector
+                        value={selectedAgent}
+                        onChange={setSelectedAgent}
+                        disabled={isSending || isNewChatInitiating}
+                      />
+                    </div>
+                  )}
                   <PromptInputWithActions
                     onSubmit={handleSend}
                     // Disable input if sending, regenerating, loading token, OR if a new chat is initiating
@@ -310,7 +321,7 @@ export default function ChatWindow({
                     isInEmptyState={true}
                   />
                   <SuggestionTiles
-                    tiles={suggestionTiles}
+                    tiles={isMysticAI ? mysticSuggestionTiles : defaultSuggestionTiles}
                     onSuggestionClick={(title, useMockService) => handleSend(title, [], useMockService)}
                     // Disable suggestions if sending or regenerating OR if a new chat is initiating
                     disabled={isSending || isRegenerating || isNewChatInitiating}

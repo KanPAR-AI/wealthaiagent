@@ -29,12 +29,29 @@ export const MYSTIC_THEME = {
   '--mystic-text-muted': '#6b5a80',
 } as const;
 
-/** Apply MysticAI CSS custom properties to document root */
+/** Apply MysticAI dark cosmic theme */
 export function applyMysticTheme() {
   if (!isMysticAI) return;
   const root = document.documentElement;
   root.classList.add('dark', 'mystic');
+
+  // Force dark mode
+  localStorage.setItem('vite-ui-theme', 'dark');
+
+  // Set CSS variables
   for (const [key, value] of Object.entries(MYSTIC_THEME)) {
     root.style.setProperty(key, value);
+  }
+
+  // Override body/app background to deep indigo
+  document.body.style.background = '#0a0612';
+  document.body.style.color = '#f0e7ff';
+
+  // Inject Cinzel font if not loaded
+  if (!document.querySelector('link[href*="Cinzel"]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap';
+    document.head.appendChild(link);
   }
 }
