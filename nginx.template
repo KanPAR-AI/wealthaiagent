@@ -22,15 +22,11 @@ server {
         try_files $uri $uri/ /chataiagent/index.html; # Serve SPA
     }
 
-    # MysticAI (astro.yourfinadvisor.com) serves from root /.
-    # Main app (chat.yourfinadvisor.com) redirects root to /chataiagent/.
-    # Nginx can't read hostname easily in location blocks, so we serve
-    # the SPA from root for ALL domains — the React app handles routing
-    # via basename detection (isMysticAI → '/' or '/chataiagent').
-    location / {
-        root /usr/share/nginx/html/chataiagent;
-        index index.html;
-        try_files $uri $uri/ /index.html;
+    # Root → redirect to /chataiagent/ (React app lives there).
+    # Works for both chat.yourfinadvisor.com and astro.yourfinadvisor.com —
+    # the React app detects the hostname and switches to MysticAI mode.
+    location = / {
+        return 302 /chataiagent/;
     }
 
     # Health check endpoint
