@@ -43,8 +43,10 @@ export function applyMysticTheme() {
     root.style.setProperty(key, value);
   }
 
-  // Override body/app background to deep indigo
-  document.body.style.background = '#0a0612';
+  // Body background stays transparent — the <CosmicBackground /> component
+  // renders a fixed, full-viewport starfield + nebula behind the app.
+  // We only set a solid fallback in case the canvas fails to mount.
+  document.body.style.background = '#060210';
   document.body.style.color = '#f0e7ff';
 
   // Inject Cinzel font if not loaded

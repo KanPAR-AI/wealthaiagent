@@ -3,10 +3,13 @@ import { isMysticAI } from "@/lib/mysticai";
 const Logo = () => {
   if (isMysticAI) {
     return (
-      <div className="flex justify-center w-fit items-center gap-1.5">
-        <span className="text-xl" role="img">🔮</span>
-        <h1 className="text-xl font-semibold" style={{ fontFamily: "'Cinzel', serif" }}>
-          Mystic<span style={{ color: '#ffca28' }}>AI</span>
+      <div className="flex justify-center w-fit items-center gap-2">
+        <span className="text-xl mystic-glow" role="img" aria-label="crystal ball">🔮</span>
+        <h1
+          className="text-xl font-semibold mystic-heading"
+          style={{ letterSpacing: '0.04em' }}
+        >
+          MysticAI
         </h1>
       </div>
     );
