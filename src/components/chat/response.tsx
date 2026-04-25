@@ -8,6 +8,8 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 
 import { BedtimeVideoWidget, tryParseBedtimePayload } from '@/components/widgets/bedtime-video-widget';
+import { PalmReadingWidget, tryParsePalmPayload } from '@/components/widgets/palm-reading-widget';
+import { PalmScanningWidget, tryParsePalmScanningPayload } from '@/components/widgets/palm-scanning-widget';
 
 interface ResponseProps {
   children?: string;
@@ -85,9 +87,25 @@ function buildMdComponents(onNavigate?: (path: string) => void): Components {
         if (payload) return <BedtimeVideoWidget payload={payload} />;
       }
 
-      // Hide palm_analysis, muhurta_results, natal_chart JSON blocks
-      // (rendered as formatted markdown below the block, the raw JSON is noise)
-      if (lang && ["palm_analysis", "muhurta_results", "natal_chart"].includes(lang)) {
+      // Cinematic scanning placeholder while Gemini Vision is running.
+      if (lang === "palm_scanning") {
+        const payload = tryParsePalmScanningPayload(raw);
+        if (payload) return <PalmScanningWidget payload={payload} />;
+        return null;
+      }
+
+      // Render palm_analysis as the visual PalmReadingWidget (image + neon
+      // line overlay + viral prediction chips). If parsing fails for any
+      // reason, fall back to hiding the raw JSON.
+      if (lang === "palm_analysis") {
+        const payload = tryParsePalmPayload(raw);
+        if (payload) return <PalmReadingWidget payload={payload} />;
+        return null;
+      }
+
+      // Hide muhurta_results, natal_chart JSON blocks for now (rendered as
+      // formatted markdown below the block; raw JSON is noise).
+      if (lang && ["muhurta_results", "natal_chart"].includes(lang)) {
         return null;
       }
 
