@@ -21,8 +21,9 @@ import { isMysticAI, applyMysticTheme } from "@/lib/mysticai";
 // for astro.yourfinadvisor.com. MysticAI mode only changes theme + agent, not routing.
 const basename = isNativePlatform ? '/' : '/chataiagent';
 
-// Apply MysticAI theme overrides if on astro domain
-applyMysticTheme();
+// Apply MysticAI theme overrides only on the astro domain / ?mystic=1 —
+// the agent dropdown handles runtime activation explicitly.
+if (isMysticAI) applyMysticTheme();
 
 const App = () => (
   <AppProviders>

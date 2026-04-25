@@ -1,7 +1,8 @@
-import { isMysticAI } from "@/lib/mysticai";
+import { useIsMysticAI } from "@/lib/mysticai";
 
 const Logo = () => {
-  if (isMysticAI) {
+  const isMystic = useIsMysticAI();
+  if (isMystic) {
     return (
       <div className="flex justify-center w-fit items-center gap-2">
         <span className="text-xl mystic-glow" role="img" aria-label="crystal ball">🔮</span>

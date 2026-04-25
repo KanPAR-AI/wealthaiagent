@@ -157,7 +157,10 @@ test.describe('MysticAI Holistic Reading E2E', () => {
     console.log('[ui] Opening seeded chat in browser...');
     await page.goto(`${BASE_UI}/chat/${chatId}?mystic=1`);
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('text=MysticAI')).toBeVisible();
+    // .first() — once chat history is loaded, "MysticAI" may appear in
+    // multiple places (logo + assistant prose), which trips Playwright
+    // strict-mode. We only care that the cosmic chrome rendered at least once.
+    await expect(page.locator('text=MysticAI').first()).toBeVisible();
     await page.screenshot({ path: 'e2e/screenshots/holistic-01-loaded.png', fullPage: true });
 
     // Confirm the prior turns rendered.

@@ -27,7 +27,7 @@ import { usePendingMessage } from './hooks/use-pending-message';
 import { useMessageSending } from './hooks/use-message-sending';
 import { useIOSKeyboard } from '@/hooks/use-ios-keyboard';
 
-import { isMysticAI } from '@/lib/mysticai';
+import { useIsMysticAI } from '@/lib/mysticai';
 
 const mysticSuggestionTiles: SuggestionTileData[] = [
   { id: 1, title: "Find muhurta for c-section delivery", description: "Auspicious birth timing", useMockService: false },
@@ -90,6 +90,7 @@ export default function ChatWindow({
   className = '',
   contextPrompt,
 }: ChatWindowProps) {
+  const isMysticAI = useIsMysticAI();
   const { idToken: token, isAuthLoading: isLoadingToken } = useAuth();
   const { isFirstMessage } = useChatSession(chatId);
   const { messages, addMessage, updateMessage, clearMessages } = useChatMessages(chatId || '');

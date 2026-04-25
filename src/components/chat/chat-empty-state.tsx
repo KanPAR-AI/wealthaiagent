@@ -1,9 +1,10 @@
 // src/components/chat/ChatEmptyState.tsx
 import { JSX } from "react";
-import { isMysticAI } from "@/lib/mysticai";
+import { useIsMysticAI } from "@/lib/mysticai";
 
 export function ChatEmptyState(): JSX.Element {
-  if (isMysticAI) {
+  const isMystic = useIsMysticAI();
+  if (isMystic) {
     return (
       <div className="relative text-center space-y-5 select-none">
         {/* Orbital rings behind the heading */}

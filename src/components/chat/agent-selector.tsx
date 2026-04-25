@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Bot, ChevronDown, Sparkles, X } from "lucide-react";
 import { getApiUrl } from "@/config/environment";
 import { useAuthStore } from "@/store/auth";
-import { applyMysticTheme, MYSTIC_AGENT } from "@/lib/mysticai";
+import { applyMysticTheme, MYSTIC_AGENT, revertMysticTheme } from "@/lib/mysticai";
 
 interface AgentOption {
   id: string;
@@ -154,14 +154,13 @@ export function AgentSelector({ value, onChange, disabled }: AgentSelectorProps)
               onClick={() => {
                 onChange(agent.id);
                 setOpen(false);
-                // MysticAI: apply dark cosmic theme when astrology agent selected
+                // MysticAI: apply dark cosmic theme when astrology agent selected.
+                // Both helpers fire the reactive useIsMysticAI() hook so the
+                // CosmicBackground / empty state / logo re-render.
                 if (agent.id === MYSTIC_AGENT) {
                   applyMysticTheme();
                 } else {
-                  // Revert to default theme if switching away
-                  document.body.style.background = '';
-                  document.body.style.color = '';
-                  document.documentElement.classList.remove('mystic');
+                  revertMysticTheme();
                 }
               }}
               className={`
