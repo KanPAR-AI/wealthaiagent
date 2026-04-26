@@ -7,6 +7,7 @@ import type { User as FirebaseUser } from "firebase/auth";
 export interface AppUser {
   uid: string;
   email: string | null;
+  phoneNumber: string | null;
   displayName: string | null;
   photoURL: string | null;
   isAnonymous: boolean;

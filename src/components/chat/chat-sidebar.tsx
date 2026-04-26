@@ -408,9 +408,27 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
                     </span>
                   </div>
                 )}
-                <span className="text-sm ml-2 truncate group-data-[collapsible=icon]:hidden">
-                  {user?.displayName || user?.email || (user?.isAnonymous ? "Guest" : "User")}
-                </span>
+                <div className="ml-2 min-w-0 flex flex-col group-data-[collapsible=icon]:hidden">
+                  <span className="text-sm truncate leading-tight">
+                    {user?.displayName || user?.email || user?.phoneNumber || (user?.isAnonymous ? "Guest" : "User")}
+                  </span>
+                  {/* Secondary identifier: email or phone, shown only when distinct
+                      from the primary line so we don't repeat e.g. Google users
+                      whose displayName *is* their email. */}
+                  {(() => {
+                    const primary = user?.displayName || user?.email || user?.phoneNumber;
+                    const secondary = user?.email && user.email !== primary
+                      ? user.email
+                      : user?.phoneNumber && user.phoneNumber !== primary
+                        ? user.phoneNumber
+                        : null;
+                    return secondary ? (
+                      <span className="text-[11px] text-muted-foreground truncate leading-tight">
+                        {secondary}
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
               </div>
               {isSignedIn ? (
                 <Button

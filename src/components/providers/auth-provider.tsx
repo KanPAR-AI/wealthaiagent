@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser({
               uid: firebaseUser.uid,
               email: firebaseUser.email || data.email,
+              phoneNumber: firebaseUser.phoneNumber || data.phoneNumber || null,
               // Prefer Firebase's profile (has real Google name/photo)
               displayName: firebaseUser.displayName || data.displayName,
               photoURL: firebaseUser.photoURL || data.photoURL,
@@ -70,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
+              phoneNumber: firebaseUser.phoneNumber,
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
               isAnonymous: firebaseUser.isAnonymous,
@@ -81,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
+            phoneNumber: firebaseUser.phoneNumber,
             displayName: firebaseUser.displayName,
             photoURL: firebaseUser.photoURL,
             isAnonymous: firebaseUser.isAnonymous,

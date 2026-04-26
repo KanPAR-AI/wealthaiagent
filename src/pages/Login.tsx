@@ -80,8 +80,8 @@ export default function LoginPage() {
     }
   };
 
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendOtp = async (e?: React.FormEvent | React.MouseEvent) => {
+    e?.preventDefault?.();
     setError(null);
     setLoading(true);
     try {
@@ -91,14 +91,21 @@ export default function LoginPage() {
         formatted = "+91" + formatted; // Default to India
       }
 
-      // Initialize invisible reCAPTCHA
-      if (!recaptchaVerifier.current && recaptchaRef.current) {
-        recaptchaVerifier.current = new RecaptchaVerifier(auth, recaptchaRef.current, {
-          size: "invisible",
-        });
+      // Always rebuild the reCAPTCHA: phone-auth tokens are single-use, so
+      // both error-retry and "Resend code" must start fresh. Reusing a
+      // consumed verifier was the silent-fail cause of resend on mobile.
+      if (recaptchaVerifier.current) {
+        try { recaptchaVerifier.current.clear(); } catch { /* widget may already be torn down */ }
+        recaptchaVerifier.current = null;
       }
+      if (!recaptchaRef.current) {
+        throw new Error("reCAPTCHA container not mounted");
+      }
+      recaptchaVerifier.current = new RecaptchaVerifier(auth, recaptchaRef.current, {
+        size: "invisible",
+      });
 
-      const result = await signInWithPhoneNumber(auth, formatted, recaptchaVerifier.current!);
+      const result = await signInWithPhoneNumber(auth, formatted, recaptchaVerifier.current);
       setConfirmationResult(result);
       setMode("otp");
       // Focus first OTP input
@@ -112,8 +119,11 @@ export default function LoginPage() {
       } else {
         setError(msg);
       }
-      // Reset reCAPTCHA on error
-      recaptchaVerifier.current = null;
+      // Reset reCAPTCHA on error so the next attempt rebuilds it.
+      if (recaptchaVerifier.current) {
+        try { recaptchaVerifier.current.clear(); } catch { /* noop */ }
+        recaptchaVerifier.current = null;
+      }
     } finally {
       setLoading(false);
     }
@@ -136,14 +146,35 @@ export default function LoginPage() {
   };
 
   const handleOtpChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
-    const newOtp = [...otp];
-    newOtp[index] = value.slice(-1);
-    setOtp(newOtp);
-    if (value && index < 5) {
-      otpRefs.current[index + 1]?.focus();
+    // Strip non-digits — SMS autofill on iOS sometimes injects spaces/dashes.
+    const digits = value.replace(/\D/g, "");
+    if (!digits) {
+      // Pure clear (backspace produced empty value).
+      const cleared = [...otp];
+      cleared[index] = "";
+      setOtp(cleared);
+      return;
     }
-    // Auto-submit when all 6 digits entered
+
+    const newOtp = [...otp];
+    if (digits.length === 1) {
+      // Single keypress.
+      newOtp[index] = digits;
+      if (index < 5) otpRefs.current[index + 1]?.focus();
+    } else {
+      // Multi-digit input — SMS autofill or paste of the full code. Distribute
+      // across the inputs starting at the current index. iOS "From Messages"
+      // chip pastes the entire 6-digit code into the focused input; without
+      // this, only the first digit is kept and OTP looks "broken" on mobile.
+      for (let i = 0; i < digits.length && index + i < 6; i++) {
+        newOtp[index + i] = digits[i];
+      }
+      const lastFilled = Math.min(index + digits.length, 5);
+      otpRefs.current[lastFilled]?.focus();
+    }
+    setOtp(newOtp);
+
+    // Auto-submit when all 6 digits entered.
     if (newOtp.every((d) => d) && newOtp.join("").length === 6) {
       setTimeout(() => handleVerifyOtp(), 150);
     }
@@ -320,6 +351,8 @@ export default function LoginPage() {
                   </div>
                   <Input
                     type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
                     placeholder="Phone number"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/[^\d+]/g, ""))}
@@ -359,7 +392,13 @@ export default function LoginPage() {
                     ref={(el) => { otpRefs.current[i] = el; }}
                     type="text"
                     inputMode="numeric"
-                    maxLength={1}
+                    pattern="[0-9]*"
+                    // Only the first input declares one-time-code so the iOS
+                    // SMS autofill chip targets it; handleOtpChange distributes
+                    // the full pasted code across the remaining inputs.
+                    autoComplete={i === 0 ? "one-time-code" : "off"}
+                    // No maxLength — we need to receive the full pasted/autofilled
+                    // string so handleOtpChange can fan it out to the other boxes.
                     value={digit}
                     onChange={(e) => handleOtpChange(i, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(i, e)}

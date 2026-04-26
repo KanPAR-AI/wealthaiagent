@@ -39,6 +39,7 @@ describe("useAuthStore", () => {
       const googleUser: AppUser = {
         uid: "google_uid_abc",
         email: "dad@gmail.com",
+        phoneNumber: null,
         displayName: "Dad's Name",
         photoURL: "https://photo.google.com/dad.jpg",
         isAnonymous: false,
@@ -56,6 +57,7 @@ describe("useAuthStore", () => {
       const user1: AppUser = {
         uid: "uid_1",
         email: "user1@gmail.com",
+        phoneNumber: null,
         displayName: "User One",
         photoURL: null,
         isAnonymous: false,
@@ -64,6 +66,7 @@ describe("useAuthStore", () => {
       const user2: AppUser = {
         uid: "uid_2",
         email: "user2@gmail.com",
+        phoneNumber: null,
         displayName: "User Two",
         photoURL: null,
         isAnonymous: false,
@@ -82,6 +85,7 @@ describe("useAuthStore", () => {
       const anonUser: AppUser = {
         uid: "anon_uid",
         email: null,
+        phoneNumber: null,
         displayName: null,
         photoURL: null,
         isAnonymous: true,
@@ -98,6 +102,7 @@ describe("useAuthStore", () => {
       const adminUser: AppUser = {
         uid: "admin_uid",
         email: "ravi@yourfinadvisor.com",
+        phoneNumber: null,
         displayName: "Ravi",
         photoURL: null,
         isAnonymous: false,
@@ -143,6 +148,7 @@ describe("useAuthStore", () => {
       useAuthStore.getState().setUser({
         uid: "uid_1",
         email: "test@test.com",
+        phoneNumber: null,
         displayName: "Test",
         photoURL: null,
         isAnonymous: false,
