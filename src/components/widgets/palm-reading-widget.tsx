@@ -249,3 +249,70 @@ export function PalmReadingWidget({ payload }: { payload: PalmAnalysisPayload })
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// PalmPredictionsCard — pinned at the top of every holistic follow-up answer.
+// Backend emits ```palm_predictions { chips: [...keys], predictions: {...} }```
+// when a follow-up is being routed through the Verification Method and we
+// already have palm predictions on file. This is the chip-only sibling of
+// PalmReadingWidget (no image overlay, no large layout) so each follow-up
+// reply opens with the lucid TikTok-style snapshot tied to the user's question.
+// ---------------------------------------------------------------------------
+
+export type PalmPredictionsPayload = {
+  type: 'palm_predictions';
+  chips: Array<keyof NonNullable<PalmAnalysisPayload['predictions']>>;
+  predictions: NonNullable<PalmAnalysisPayload['predictions']>;
+};
+
+export function tryParsePalmPredictionsPayload(raw: string): PalmPredictionsPayload | null {
+  try {
+    const obj = JSON.parse(raw);
+    if (obj && obj.type === 'palm_predictions' && Array.isArray(obj.chips)) {
+      return obj as PalmPredictionsPayload;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+export function PalmPredictionsCard({ payload }: { payload: PalmPredictionsPayload }) {
+  const chips = payload.chips
+    .map((key) => {
+      const spec = PREDICTION_CHIPS.find((c) => c.key === key);
+      const p = payload.predictions[key];
+      if (!spec || !p || p.value == null) return null;
+      return { ...spec, value: p.value };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+  if (chips.length === 0) return null;
+  return (
+    <div className="my-3 rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-950/60 to-indigo-950/70 backdrop-blur-md shadow-xl px-4 py-3">
+      <div className="text-[10px] tracking-[0.18em] uppercase text-amber-300/80 mb-2 text-center">
+        ✦ Your Palm Snapshot ✦
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {chips.map((chip) => (
+          <div
+            key={chip.key}
+            className="rounded-xl px-2 py-2 border bg-black/40 backdrop-blur-sm text-center"
+            style={{
+              borderColor: `${chip.color}55`,
+              boxShadow: `0 0 18px ${chip.color}22, inset 0 0 12px ${chip.color}10`,
+            }}
+          >
+            <div
+              className="text-[10px] tracking-widest font-semibold flex items-center justify-center gap-1"
+              style={{ color: chip.color }}
+            >
+              <span className="text-base leading-none">{chip.emoji}</span>
+              <span>{chip.label}</span>
+            </div>
+            <div className="text-xs sm:text-sm font-semibold text-white mt-0.5">
+              {chip.format(chip.value)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

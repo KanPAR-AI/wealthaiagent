@@ -8,7 +8,12 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 
 import { BedtimeVideoWidget, tryParseBedtimePayload } from '@/components/widgets/bedtime-video-widget';
-import { PalmReadingWidget, tryParsePalmPayload } from '@/components/widgets/palm-reading-widget';
+import {
+  PalmPredictionsCard,
+  PalmReadingWidget,
+  tryParsePalmPayload,
+  tryParsePalmPredictionsPayload,
+} from '@/components/widgets/palm-reading-widget';
 import { PalmScanningWidget, tryParsePalmScanningPayload } from '@/components/widgets/palm-scanning-widget';
 
 interface ResponseProps {
@@ -100,6 +105,13 @@ function buildMdComponents(onNavigate?: (path: string) => void): Components {
       if (lang === "palm_analysis") {
         const payload = tryParsePalmPayload(raw);
         if (payload) return <PalmReadingWidget payload={payload} />;
+        return null;
+      }
+
+      // Compact chip-only card pinned at the top of holistic follow-ups.
+      if (lang === "palm_predictions") {
+        const payload = tryParsePalmPredictionsPayload(raw);
+        if (payload) return <PalmPredictionsCard payload={payload} />;
         return null;
       }
 
