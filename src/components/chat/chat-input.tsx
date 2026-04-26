@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useAuthStore } from "@/store/auth";
 import { SignInWall } from "@/components/auth/sign-in-wall";
 import { useCachedFile } from "@/hooks/use-cached-file";
+import { useRecentUploads } from "@/hooks/use-recent-uploads";
 import { MessageFile } from "@/types"; // Import MessageFile
 import { ArrowUp, Mic, MicOff, Paperclip, Square, X, Loader2, FileText } from "lucide-react";
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
@@ -90,6 +91,50 @@ function FilePreviewItem({ file, onRemove, isUploading }: { file: MessageFile; o
   );
 }
 
+// Small thumbnail tile of a previously-uploaded image. Click reuses the
+// existing GCS file (no re-upload). Long-press / X removes from the tray.
+function RecentImageTile({
+  file,
+  onPick,
+  onRemove,
+}: {
+  file: MessageFile;
+  onPick: () => void;
+  onRemove: () => void;
+}) {
+  const { idToken: token } = useAuth();
+  const { blobUrl } = useCachedFile(file, token);
+  return (
+    <div className="relative group flex-shrink-0">
+      <button
+        type="button"
+        onClick={onPick}
+        className="size-12 rounded-lg overflow-hidden border border-border/50 hover:border-primary/60 transition-colors bg-muted"
+        title={`Reuse ${file.name}`}
+      >
+        {blobUrl ? (
+          <img src={blobUrl} alt={file.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Loader2 className="size-3 animate-spin text-muted-foreground" />
+          </div>
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        className="absolute -top-1 -right-1 size-4 rounded-full bg-background border border-border/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-destructive hover:text-destructive-foreground"
+        aria-label={`Forget ${file.name}`}
+      >
+        <X className="size-2.5" />
+      </button>
+    </div>
+  );
+}
+
 export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWithActionsProps>(
   function PromptInputWithActions({
     onSubmit,
@@ -110,6 +155,7 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
     const { idToken: token, isAnonymous } = useAuth();
     const incrementAnonymousMessageCount = useAuthStore(s => s.incrementAnonymousMessageCount);
     const [showSignInWall, setShowSignInWall] = useState(false);
+    const { addRecent, removeRecent, visibleRecents } = useRecentUploads();
 
     // Expose methods to parent component
     useImperativeHandle(ref, () => ({
@@ -293,6 +339,9 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
 
       const results = await Promise.all(uploadPromises);
       setUploadedFiles((prev) => [...prev, ...results]); // Add new uploaded files to state
+      // Remember images so the user can re-attach (e.g. their palm photo)
+      // in a new chat with one tap, no re-upload required.
+      results.forEach((f) => addRecent(f));
 
     } catch (error) {
       console.error('File upload error:', error);
@@ -337,6 +386,29 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
               file={file}
               onRemove={() => handleRemoveFile(index)}
               isUploading={isUploading}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Quick re-attach: horizontal tile of recent image uploads. Lets the
+          user reuse e.g. their palm photo across chats without re-uploading.
+          Hidden once they've already attached something this turn. */}
+      {uploadedFiles.length === 0 && visibleRecents(3).length > 0 && (
+        <div className="flex items-center gap-2 px-3 pb-2 overflow-x-auto">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 flex-shrink-0">
+            Recent
+          </span>
+          {visibleRecents(3).map((file) => (
+            <RecentImageTile
+              key={file.url}
+              file={file}
+              onPick={() =>
+                setUploadedFiles((prev) =>
+                  prev.some((p) => p.url === file.url) ? prev : [...prev, file],
+                )
+              }
+              onRemove={() => removeRecent(file.url)}
             />
           ))}
         </div>
