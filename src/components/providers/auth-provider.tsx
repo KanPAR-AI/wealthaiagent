@@ -1,6 +1,11 @@
 // components/providers/auth-provider.tsx
 import { useEffect } from "react";
-import { onAuthStateChanged, signInAnonymously, type User as FirebaseUser } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  signInAnonymously,
+  getRedirectResult,
+  type User as FirebaseUser,
+} from "firebase/auth";
 import { auth } from "@/config/firebase";
 import { useAuthStore } from "@/store/auth";
 import { getApiUrl } from "@/config/environment";
@@ -10,6 +15,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useAuthStore();
 
   useEffect(() => {
+    // Mobile redirect handshake: if the user came back from a Google
+    // signInWithRedirect on mobile, getRedirectResult resolves with the new
+    // user object. We don't actually need its return value for state — the
+    // onAuthStateChanged listener below fires with the same user — but we
+    // MUST call it before onAuthStateChanged to upgrade the anonymous user
+    // to the Google user, otherwise the SDK can leave the page in a
+    // half-initialized state where the listener fires with `null` first
+    // and triggers a fresh anonymous sign-in.
+    getRedirectResult(auth).catch((err) => {
+      // No pending redirect, or redirect failed — non-fatal; we continue
+      // with the normal anonymous-or-signed-in flow below.
+      console.debug("[auth] no pending redirect result:", err?.code);
+    });
+
     // Safety timeout: if auth doesn't resolve in 5s, stop loading
     const timeout = setTimeout(() => {
       setIsAuthLoading(false);

@@ -306,15 +306,13 @@ export default function ChatWindow({
 
                 {/* Centered input bar for empty state */}
                 <div className="w-full max-w-3xl mx-auto flex flex-col gap-4">
-                  {!isMysticAI && (
-                    <div className="flex items-center gap-2">
-                      <AgentSelector
-                        value={selectedAgent}
-                        onChange={setSelectedAgent}
-                        disabled={isSending || isNewChatInitiating}
-                      />
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <AgentSelector
+                      value={selectedAgent}
+                      onChange={setSelectedAgent}
+                      disabled={isSending || isNewChatInitiating}
+                    />
+                  </div>
                   <PromptInputWithActions
                     onSubmit={handleSend}
                     // Disable input if sending, regenerating, loading token, OR if a new chat is initiating

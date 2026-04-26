@@ -4,6 +4,7 @@
 import { useCallback } from "react";
 import {
   signInWithPopup,
+  signInWithRedirect,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -12,13 +13,42 @@ import {
 import { auth } from "@/config/firebase";
 import { useAuthStore } from "@/store/auth";
 
+/** Detect whether we should use redirect-based Google sign-in instead of popup.
+ *
+ * `signInWithPopup` is unreliable on mobile browsers (iOS Safari opens a new
+ * tab whose auth completion doesn't propagate to the original tab's
+ * `onAuthStateChanged` listener — user appears stuck as anonymous even after
+ * Google sign-in succeeds). `signInWithRedirect` is the canonical fix:
+ * full-page redirect to Google, Google redirects back, app calls
+ * `getRedirectResult()` on mount to pick up the auth state.
+ */
+function shouldUseRedirect(): boolean {
+  if (typeof window === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  // Standard mobile UA matchers (iOS, Android, IE/Edge mobile, Opera mini).
+  if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)) return true;
+  // Coarse pointer = touch device (covers most tablets too).
+  if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) return true;
+  // Narrow viewport — phones in portrait.
+  if (window.innerWidth < 768) return true;
+  return false;
+}
+
 export function useAuth() {
   const { user, idToken, isAuthLoading, anonymousMessageCount } =
     useAuthStore();
 
   const signInWithGoogle = useCallback(async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    if (shouldUseRedirect()) {
+      // On mobile: full-page redirect. The user leaves this page; on return
+      // the AuthProvider's getRedirectResult() in useEffect picks up the
+      // auth state. The promise below resolves before the redirect actually
+      // happens, so callers should treat it as fire-and-forget.
+      await signInWithRedirect(auth, provider);
+    } else {
+      await signInWithPopup(auth, provider);
+    }
   }, []);
 
   const signInWithEmail = useCallback(

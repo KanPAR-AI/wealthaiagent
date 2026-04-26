@@ -1,4 +1,5 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { AppProviders } from "./components/providers/app-providers";
 import AppLayout from "@/components/layout/app-layout";
 import Chat from "./pages/Chat";
@@ -15,7 +16,7 @@ import TestChat from "./pages/TestChat";
 import Settings from "./pages/Settings";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { isNativePlatform } from "@/lib/capacitor";
-import { isMysticAI, applyMysticTheme } from "@/lib/mysticai";
+import { isMysticAI, applyMysticTheme, revertMysticTheme } from "@/lib/mysticai";
 
 // Keep /chataiagent basename always — nginx handles root-to-chataiagent redirect
 // for astro.yourfinadvisor.com. MysticAI mode only changes theme + agent, not routing.
@@ -25,9 +26,31 @@ const basename = isNativePlatform ? '/' : '/chataiagent';
 // the agent dropdown handles runtime activation explicitly.
 if (isMysticAI) applyMysticTheme();
 
+// Routes where the cosmic mystic theme must be torn down — these render
+// outside AppLayout, so app-layout's selectedAgent useEffect can't revert.
+// Without this, navigating from a MysticAI chat to /admin leaves the
+// `mystic` CSS class on <html>, breaking the admin portal layout.
+const NON_MYSTIC_ROUTE_PREFIXES = ["/admin", "/debug", "/trade", "/logs"];
+
+function MysticRouteGuard() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const isNonMysticRoute = NON_MYSTIC_ROUTE_PREFIXES.some((p) =>
+      pathname === p || pathname.startsWith(p + "/"),
+    );
+    // Only force-revert on admin/debug/etc. Don't touch chat routes — the
+    // agent selector + AppLayout effect handle those reactively.
+    if (isNonMysticRoute && !isMysticAI) {
+      revertMysticTheme();
+    }
+  }, [pathname]);
+  return null;
+}
+
 const App = () => (
   <AppProviders>
     <BrowserRouter basename={basename}>
+      <MysticRouteGuard />
       <Routes>
         {/* Login page as the first screen */}
         <Route path="/" element={<LoginPage />} />
