@@ -2,6 +2,11 @@
 
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   PromptInput,
   PromptInputAction,
   PromptInputActions,
@@ -391,28 +396,6 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
         </div>
       )}
 
-      {/* Quick re-attach: horizontal tile of recent image uploads. Lets the
-          user reuse e.g. their palm photo across chats without re-uploading.
-          Hidden once they've already attached something this turn. */}
-      {uploadedFiles.length === 0 && visibleRecents(3).length > 0 && (
-        <div className="flex items-center gap-2 px-3 pb-2 overflow-x-auto">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 flex-shrink-0">
-            Recent
-          </span>
-          {visibleRecents(3).map((file) => (
-            <RecentImageTile
-              key={file.url}
-              file={file}
-              onPick={() =>
-                setUploadedFiles((prev) =>
-                  prev.some((p) => p.url === file.url) ? prev : [...prev, file],
-                )
-              }
-              onRemove={() => removeRecent(file.url)}
-            />
-          ))}
-        </div>
-      )}
 
       {/* Display recording/transcribing status */}
       {(isRecording || isTranscribing) && (
@@ -442,31 +425,77 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
       {/* Action buttons (attach, mic, send) */}
       <PromptInputActions className="flex items-center justify-between gap-2 pt-2">
         <div className="flex items-center gap-1">
-          {/* Attach files button */}
+          {/* Attach files: dropdown with recent uploads + Browse. The
+              hidden <input type=file> sits outside the dropdown so it can
+              be triggered programmatically by the Browse button. Accept
+              attribute makes iOS / Android pickers show the right
+              affordances (Photo Library + Files for PDFs). */}
+          <input
+            type="file"
+            multiple
+            accept="image/*,application/pdf,audio/*"
+            onChange={handleFileChange}
+            className="hidden"
+            id="file-upload"
+            ref={uploadInputRef}
+            disabled={!canAttachFiles}
+          />
           <PromptInputAction tooltip={
-            !canAttachFiles 
-              ? isUploading 
-                ? "Please wait for current upload to finish" 
-                : isRecording 
+            !canAttachFiles
+              ? isUploading
+                ? "Please wait for current upload to finish"
+                : isRecording
                   ? "Please stop recording first"
                   : "File attachment temporarily disabled"
               : "Attach files"
           }>
-            <label
-              htmlFor="file-upload"
-              className={`hover:bg-secondary-foreground/10 flex h-8 w-8 items-center justify-center rounded-full ${!canAttachFiles ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-            >
-              <input
-                type="file"
-                multiple // Allow multiple file selection
-                onChange={handleFileChange}
-                className="hidden"
-                id="file-upload"
-                ref={uploadInputRef}
-                disabled={!canAttachFiles}
-              />
-              <Paperclip className="text-primary size-5" />
-            </label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  disabled={!canAttachFiles}
+                  className={`hover:bg-secondary-foreground/10 flex h-8 w-8 items-center justify-center rounded-full ${!canAttachFiles ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                  aria-label="Attach files"
+                >
+                  <Paperclip className="text-primary size-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[280px] p-3">
+                {visibleRecents(3).length > 0 && (
+                  <div className="mb-3">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70 mb-2">
+                      Recent uploads
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {visibleRecents(3).map((file) => (
+                        <RecentImageTile
+                          key={file.url}
+                          file={file}
+                          onPick={() =>
+                            setUploadedFiles((prev) =>
+                              prev.some((p) => p.url === file.url) ? prev : [...prev, file],
+                            )
+                          }
+                          onRemove={() => removeRecent(file.url)}
+                        />
+                      ))}
+                    </div>
+                    <div className="h-px bg-border/60 mt-3" />
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => uploadInputRef.current?.click()}
+                  className="w-full flex items-center gap-2 px-2 py-2 rounded-md text-sm hover:bg-accent transition-colors"
+                >
+                  <Paperclip className="size-4 text-muted-foreground" />
+                  <span>Browse files</span>
+                  <span className="ml-auto text-[10px] text-muted-foreground/60">
+                    Image · PDF · Audio
+                  </span>
+                </button>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </PromptInputAction>
 
           {/* Microphone button */}
