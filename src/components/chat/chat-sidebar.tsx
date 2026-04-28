@@ -138,8 +138,18 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
   const { idToken: token, user, isAdmin, isSignedIn, signOut } = useAuth();
 
   // --- Data Fetching ---
+  // Clear the local chat list immediately on sign-out / account switch, so
+  // the previous user's chats can't flash on screen while the new fetch is
+  // in flight. Without this, the sidebar held stale chats keyed by the
+  // previous Firebase UID until the next /chats response landed.
+  useEffect(() => {
+    setChats([]);
+    setError(null);
+  }, [user?.uid]);
+
   useEffect(() => {
     if (!token) {
+      setChats([]);
       setIsLoading(false);
       return;
     }
@@ -153,7 +163,7 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
         });
 
         if (!response.ok) throw new Error("Failed to fetch chat history");
-        
+
         const data: Chat[] = await response.json();
         const sortedData = data.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
         setChats(sortedData);

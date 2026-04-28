@@ -12,6 +12,7 @@ import {
 } from "firebase/auth";
 import { auth } from "@/config/firebase";
 import { useAuthStore } from "@/store/auth";
+import { useChatStore } from "@/store/chat";
 
 /** Detect whether we should use redirect-based Google sign-in instead of popup.
  *
@@ -68,6 +69,11 @@ export function useAuth() {
   const signOut = useCallback(async () => {
     await firebaseSignOut(auth);
     useAuthStore.getState().signOut();
+    // Wipe in-memory chat state so the next user (anon or signed-in)
+    // doesn't inherit the previous user's open chat, pending message,
+    // or agent selection. The chat list re-fetches from the backend
+    // (filtered by the new Firebase UID) on the next render.
+    useChatStore.getState().reset();
   }, []);
 
   // Always returns a fresh token (auto-refreshes if expired)

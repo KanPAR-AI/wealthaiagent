@@ -23,6 +23,11 @@ interface ChatState {
   setPendingMessage: (text: string, files: MessageFile[], targetChatId: string, useMockService?: boolean) => void;
   getPendingMessage: (chatId: string) => { text: string; files: MessageFile[]; useMockService?: boolean } | null;
   clearPendingMessage: () => void;
+
+  // Wipe everything — called on sign-out / account switch so the next user
+  // doesn't inherit the previous user's open chat, pending message, or
+  // agent selection.
+  reset: () => void;
 }
 
 // Create the Zustand store
@@ -144,5 +149,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   clearPendingMessage: () => {
     console.log('[Store] clearPendingMessage called');
     set({ pendingMessage: null });
+  },
+
+  reset: () => {
+    set({ chats: {}, pendingMessage: null, selectedAgent: null });
   },
 }));
