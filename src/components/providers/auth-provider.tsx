@@ -15,26 +15,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useAuthStore();
 
   useEffect(() => {
-    // Mobile redirect handshake: if the user came back from a Google
-    // signInWithRedirect on mobile, getRedirectResult resolves with the new
-    // user object. We don't actually need its return value for state — the
-    // onAuthStateChanged listener below fires with the same user — but we
-    // MUST call it before onAuthStateChanged to upgrade the anonymous user
-    // to the Google user, otherwise the SDK can leave the page in a
-    // half-initialized state where the listener fires with `null` first
-    // and triggers a fresh anonymous sign-in.
-    getRedirectResult(auth).catch((err) => {
-      // No pending redirect, or redirect failed — non-fatal; we continue
-      // with the normal anonymous-or-signed-in flow below.
-      console.debug("[auth] no pending redirect result:", err?.code);
-    });
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
 
-    // Safety timeout: if auth doesn't resolve in 5s, stop loading
+    // Safety timeout: if auth doesn't resolve in 8s, stop the loading
+    // state. Slightly longer than before because getRedirectResult on a
+    // slow mobile connection can take 2-4s on its own.
     const timeout = setTimeout(() => {
-      setIsAuthLoading(false);
-    }, 5000);
+      if (!cancelled) setIsAuthLoading(false);
+    }, 8000);
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+    // CRITICAL: process any pending redirect FIRST, awaiting it before we
+    // subscribe to onAuthStateChanged. Without this, the listener fires
+    // synchronously with `null` (because the SDK hasn't yet parsed the
+    // redirect token from the URL hash), our `else` branch triggers
+    // signInAnonymously, and the Google user is silently overwritten by
+    // the new anonymous session — exactly the "still anonymous after
+    // Google sign-in on mobile" symptom the user is seeing.
+    const setupAuth = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          console.info(
+            "[auth] redirect sign-in completed for",
+            result.user.email || result.user.uid,
+          );
+        }
+      } catch (err: any) {
+        // Surface this as error (not debug) so it shows up in mobile
+        // remote-debug consoles. Common causes: unauthorized domain
+        // (`auth/unauthorized-domain`), invalid OAuth client config,
+        // third-party-cookie blocked (Safari ITP). The page continues
+        // — onAuthStateChanged will fall through to anonymous below.
+        console.error(
+          "[auth] redirect result error:",
+          err?.code || err?.message || err,
+        );
+      }
+
+      if (cancelled) return;
+
+      unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       clearTimeout(timeout);
       if (firebaseUser) {
         setFirebaseUser(firebaseUser);
@@ -104,8 +125,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setIsAuthLoading(false);
     });
+    };
 
-    return () => unsubscribe();
+    setupAuth();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+      unsubscribe?.();
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <>{children}</>;
