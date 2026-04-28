@@ -47,8 +47,34 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
-    } catch (err: unknown) {
-      setError((err as Error).message);
+      // signInWithPopup resolved → onAuthStateChanged fires with the
+      // Google user → useEffect on isSignedIn navigates to /chat. If we
+      // don't navigate within ~2s after this point it means the auth
+      // state isn't propagating (most often: backend /auth/me rejected
+      // the token, or the listener was registered too late and missed
+      // the user-set event).
+      console.info("[auth] signInWithGoogle resolved");
+    } catch (err: any) {
+      // Surface Firebase's `auth/...` error code prominently — without
+      // it, "popup closed by user" and "unauthorized domain" look the
+      // same to the user and the fix is completely different.
+      const code = err?.code || "";
+      const msg = err?.message || String(err);
+      console.error("[auth] signInWithGoogle failed:", code, msg);
+      if (code === "auth/popup-closed-by-user") {
+        setError("Sign-in popup was closed before completing. Try again.");
+      } else if (code === "auth/cancelled-popup-request") {
+        // Benign — happens when the user clicks the button twice.
+        setError(null);
+      } else if (code === "auth/popup-blocked") {
+        setError("Your browser blocked the popup. Allow popups for this site or try email sign-in.");
+      } else if (code === "auth/unauthorized-domain") {
+        setError(`This domain is not authorized for Google sign-in. Add it under Firebase Console → Authentication → Settings → Authorized domains.`);
+      } else if (code === "auth/network-request-failed") {
+        setError("Network error. Check your connection and try again.");
+      } else {
+        setError(`${code || "Sign-in failed"}: ${msg}`);
+      }
     } finally {
       setLoading(false);
     }

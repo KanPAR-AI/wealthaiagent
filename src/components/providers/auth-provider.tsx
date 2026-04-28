@@ -57,6 +57,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       clearTimeout(timeout);
+      console.info(
+        "[auth] state change:",
+        firebaseUser
+          ? `${firebaseUser.isAnonymous ? "anon" : "user"} ${firebaseUser.email || firebaseUser.uid}`
+          : "null",
+      );
       if (firebaseUser) {
         setFirebaseUser(firebaseUser);
 
