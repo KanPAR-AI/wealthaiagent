@@ -43,9 +43,11 @@ export default function LoginPage() {
   if (isSignedIn) return null;
 
   const handleGoogleSignIn = async () => {
+    console.log("[AUTH] handleGoogleSignIn invoked");
     setError(null);
     setLoading(true);
     try {
+      console.log("[AUTH] calling signInWithGoogle()");
       await signInWithGoogle();
       // signInWithPopup resolved → onAuthStateChanged fires with the
       // Google user → useEffect on isSignedIn navigates to /chat. If we

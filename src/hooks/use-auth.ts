@@ -16,23 +16,22 @@ import { useChatStore } from "@/store/chat";
 
 /** Detect whether we should use redirect-based Google sign-in instead of popup.
  *
- * `signInWithPopup` is unreliable on mobile browsers (iOS Safari opens a new
- * tab whose auth completion doesn't propagate to the original tab's
- * `onAuthStateChanged` listener — user appears stuck as anonymous even after
- * Google sign-in succeeds). `signInWithRedirect` is the canonical fix:
- * full-page redirect to Google, Google redirects back, app calls
- * `getRedirectResult()` on mount to pick up the auth state.
+ * `signInWithPopup` is unreliable on actual mobile browsers (iOS Safari opens
+ * a new tab whose auth completion doesn't propagate back). `signInWithRedirect`
+ * is the canonical fix there: full-page redirect to Google, redirected back,
+ * `getRedirectResult()` picks up the credential.
+ *
+ * UA-based detection ONLY. Earlier heuristics (narrow viewport, coarse
+ * pointer) misfired on desktop browsers — a Mac user with a narrow window
+ * or Chrome DevTools "Toggle device toolbar" enabled would hit the redirect
+ * path, which on localhost+third-party-iframe is fragile and silently
+ * returned null from getRedirectResult. End-user symptom: full-page redirect
+ * to Google, sign in, redirected back to login page still anonymous.
  */
 function shouldUseRedirect(): boolean {
   if (typeof window === "undefined") return false;
   const ua = navigator.userAgent || "";
-  // Standard mobile UA matchers (iOS, Android, IE/Edge mobile, Opera mini).
-  if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)) return true;
-  // Coarse pointer = touch device (covers most tablets too).
-  if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) return true;
-  // Narrow viewport — phones in portrait.
-  if (window.innerWidth < 768) return true;
-  return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
 }
 
 export function useAuth() {
