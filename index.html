@@ -3,7 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- interactive-widget=resizes-content: when the on-screen keyboard
+         opens on iOS / Android, resize the layout viewport instead of
+         scrolling the document. Without it, iOS Safari/Chrome scrolls
+         the body to bring the focused input into view, dragging the
+         top bar (and any other in-flow elements) out of the visible area. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+    <!-- Replaces deprecated apple-mobile-web-app-capable warning in
+         modern Chrome. Both kept for legacy iOS support. -->
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>WealthWise AI</title>
     
     <!-- PWA Meta Tags -->
