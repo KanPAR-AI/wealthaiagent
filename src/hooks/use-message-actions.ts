@@ -16,42 +16,39 @@ export const useMessageActions = (chatId: string) => {
   const regenControllerRef = useRef<AbortController | null>(null);
   useEffect(() => {
     return () => {
-      regenControllerRef.current?.abort(new DOMException("ChatWindow unmounted", "AbortError"));
+      regenControllerRef.current?.abort(new DOMException('ChatWindow unmounted', 'AbortError'));
     };
   }, []);
 
   const handleCopy = (messageId: string) => {
-    const message = messages.find((m: { id: string; }) => m.id === messageId);
+    const message = messages.find((m: { id: string }) => m.id === messageId);
     if (message) {
-      navigator.clipboard.writeText(message.message)
-        .then(() => console.log("Copied to clipboard"))
-        .catch(err => console.error("Copy failed:", err));
+      navigator.clipboard.writeText(message.message).catch((err) => console.error('Copy failed:', err));
     }
   };
 
   const handleLike = (messageId: string) => {
-    console.log("Liked message:", messageId);
+    console.log('Liked message:', messageId);
   };
 
   const handleDislike = (messageId: string) => {
-    console.log("Disliked message:", messageId);
+    console.log('Disliked message:', messageId);
   };
 
   const handleRegenerate = async (messageId: string) => {
     if (!chatId || isRegenerating || !token) {
-      console.warn("Regeneration skipped: Missing chatId, already regenerating, or missing token.");
       return;
     }
 
-    const botMessageIndex = messages.findIndex((m: { id: string; }) => m.id === messageId);
+    const botMessageIndex = messages.findIndex((m: { id: string }) => m.id === messageId);
     if (botMessageIndex === -1 || messages[botMessageIndex].sender !== 'bot') {
-      console.warn("Attempted to regenerate a non-bot message or message not found.");
+      console.warn('Attempted to regenerate a non-bot message or message not found.');
       return;
     }
 
     const userMessage = messages[botMessageIndex - 1];
     if (!userMessage || userMessage.sender !== 'user') {
-      console.warn("No preceding user message found for regeneration.");
+      console.warn('No preceding user message found for regeneration.');
       return;
     }
 
@@ -72,13 +69,10 @@ export const useMessageActions = (chatId: string) => {
     // try the stream — the worst case is a duplicate bot message in history
     // which is recoverable via another delete on next regenerate.
     try {
-      const delResp = await fetch(
-        getApiUrl(`/chats/${chatId}/messages/${messageId}/regenerate`),
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      const delResp = await fetch(getApiUrl(`/chats/${chatId}/messages/${messageId}/regenerate`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!delResp.ok && delResp.status !== 404) {
         console.warn(`[handleRegenerate] Delete returned ${delResp.status}; proceeding anyway`);
       }
@@ -93,6 +87,12 @@ export const useMessageActions = (chatId: string) => {
     let receivedText = '';
     const streamingChunks: string[] = [];
 
+    // Track the live bot message id — backend's `message_start` event will
+    // hand us the new Firestore uuid. Swap it in so subsequent Retry clicks
+    // on this same bubble target the new server-side row, not the deleted
+    // one whose uuid we just removed via /regenerate.
+    let botIdLive = messageId;
+
     await listenToChatStream(
       token,
       chatId,
@@ -100,7 +100,7 @@ export const useMessageActions = (chatId: string) => {
         if (type === 'text_chunk') {
           receivedText += chunk;
           streamingChunks.push(chunk);
-          updateMessage(messageId, {
+          updateMessage(botIdLive, {
             message: receivedText,
             streamingContent: receivedText,
             streamingChunks: [...streamingChunks],
@@ -108,7 +108,7 @@ export const useMessageActions = (chatId: string) => {
         }
       },
       () => {
-        updateMessage(messageId, {
+        updateMessage(botIdLive, {
           isStreaming: false,
           message: receivedText,
           streamingContent: receivedText,
@@ -116,32 +116,34 @@ export const useMessageActions = (chatId: string) => {
         setIsRegenerating(false);
       },
       (error: any) => {
-        console.error("Regeneration stream failed:", error);
-        const isTimeout = error?.name === "TimeoutError" || /timed out/i.test(error?.message || "");
-        updateMessage(messageId, {
+        console.error('Regeneration stream failed:', error);
+        const isTimeout = error?.name === 'TimeoutError' || /timed out/i.test(error?.message || '');
+        updateMessage(botIdLive, {
           message: receivedText,
           streamingContent: receivedText,
           error: isTimeout
-            ? "Connection timed out. Tap Retry to continue."
-            : "Response interrupted. Tap Retry to continue.",
+            ? 'Connection timed out. Tap Retry to continue.'
+            : 'Response interrupted. Tap Retry to continue.',
           isStreaming: false,
         });
         setIsRegenerating(false);
       },
       false,
       userMessage.message,
-      null, // forceAgent — let backend pick
+      null,
       controller.signal,
-      // Tell backend to regenerate against this specific user message, not
-      // "latest". Required when retrying an older failed bot message.
       userMessage.id,
+      (backendBotId: string) => {
+        if (backendBotId && backendBotId !== botIdLive) {
+          updateMessage(botIdLive, { id: backendBotId });
+          botIdLive = backendBotId;
+        }
+      },
     );
   };
 
   const handleSharePdf = async (_messageId: string) => {
     // Use browser's native print → "Save as PDF" on Mac/Windows.
-    // Zero dependencies, works with all modern CSS (oklch, oklab, etc).
-    // The browser renders everything natively — charts, tables, all of it.
     window.print();
   };
 

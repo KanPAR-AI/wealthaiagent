@@ -49,14 +49,18 @@ export interface Attachment {
 
 /**
  * Creates a new chat session.
- * Corresponds to Postman's "1. Create a new chat".
+ *
+ * Returns both the new chat id AND the first user message id. Frontend
+ * needs the message id to swap its local nanoid placeholder for the
+ * Firestore UUID — without that, /regenerate and target_user_message_id
+ * calls with the local nanoid never resolve server-side.
  */
 export const createChatSession = async (
   jwt: string,
   title: string,
   firstMessageContent: string,
   files: MessageFile[]
-): Promise<string> => {
+): Promise<{ chatId: string; firstMessageId: string }> => {
   const response = await fetch(getApiUrl('/chats'), {
     method: 'POST',
     headers: {
@@ -73,23 +77,25 @@ export const createChatSession = async (
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
+    const errorData = await response.json().catch(() => ({}));
     throw new Error(
       `Failed to create chat: ${errorData.detail || response.statusText}`
     );
   }
 
   const data = await response.json();
-  return data.chat.id; // Return the new chat ID
+  return {
+    chatId: data.chat.id,
+    firstMessageId: data.messages?.[0]?.id ?? '',
+  };
 };
 
 /**
  * Sends a follow-up message to an existing chat.
  *
- * Caller may pass an `AbortSignal` to enable cancellation (component unmount,
- * user navigation, retry). A 15s hard timeout is also enforced internally —
- * if the caller's signal is not aborted by then, the fetch aborts on its own.
- * This is the safety net against POST hanging forever on a network blip.
+ * Returns the backend-assigned message id. Caller swaps this in for the
+ * local nanoid optimistic placeholder so /regenerate and
+ * target_user_message_id resolve correctly.
  */
 export const sendChatMessage = async (
   jwt: string,
@@ -97,7 +103,7 @@ export const sendChatMessage = async (
   content: string,
   files: MessageFile[],
   externalSignal?: AbortSignal,
-): Promise<void> => {
+): Promise<string> => {
   const controller = new AbortController();
   const onExternalAbort = () => controller.abort(externalSignal?.reason);
   if (externalSignal) {
@@ -129,6 +135,8 @@ export const sendChatMessage = async (
         `Failed to send message: ${errorData.detail || response.statusText}`
       );
     }
+    const data = await response.json().catch(() => ({}));
+    return data?.id ?? '';
   } finally {
     clearTimeout(timeoutId);
     externalSignal?.removeEventListener("abort", onExternalAbort);
@@ -215,6 +223,11 @@ export const listenToChatStream = async (
   forceAgent?: string | null,
   externalSignal?: AbortSignal,
   targetUserMessageId?: string | null,
+  // Called once when the backend's `message_start` event arrives, carrying
+  // the assistant message id Firestore will save under. Caller uses this
+  // to swap their local nanoid placeholder so subsequent /regenerate
+  // and target_user_message_id calls match what's in the DB.
+  onAssistantId?: (assistantId: string) => void,
 ) => {
   // Route to mock service if requested
   if (useMockService) {
@@ -316,6 +329,15 @@ export const listenToChatStream = async (
         if (payload.startsWith("{")) {
           try {
             const parsedEvent = JSON.parse(payload);
+
+            if (parsedEvent.type === 'message_start') {
+              // Backend sends a stable assistant message id here that
+              // matches what will be saved in Firestore. Surface it so
+              // the caller can swap their local nanoid for the real id.
+              const startedId = parsedEvent.message?.id;
+              if (startedId && onAssistantId) onAssistantId(startedId);
+              continue;
+            }
 
             if (parsedEvent.type === 'message_delta') {
               noteChunk();

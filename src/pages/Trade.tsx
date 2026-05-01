@@ -391,7 +391,7 @@ export default function Trade() {
       }
       
       console.log('[Trade] Creating real chat session with context...');
-      const newChatId = await createChatSession(token, 'Trade Chat', messageTextWithContext, attachments);
+      const { chatId: newChatId } = await createChatSession(token, 'Trade Chat', messageTextWithContext, attachments);
       console.log('[Trade] Chat created with ID:', newChatId);
       
       // Store the chat ID

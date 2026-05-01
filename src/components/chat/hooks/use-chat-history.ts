@@ -191,21 +191,25 @@ export function useChatHistory({
         const chatResponse = await backendPromise;
   
         const loadedMessages: Message[] = chatResponse.messages.map((msg) => {
-          const files: MessageFile[] = (msg.attachments || []).map((att: any) => {
-            console.log('Processing attachment:', att);
-            
-            // Handle both string URLs and object attachments
+          // Filter out empty/null attachments before mapping. Without this
+          // a backend record with attachments=[""] (which has shown up in
+          // the wild) renders as a broken "Preview unavailable" tile under
+          // text-only messages.
+          const rawAttachments = (msg.attachments || []).filter((att: any) => {
+            if (!att) return false;
+            if (typeof att === 'string') return att.trim().length > 0;
+            return Boolean(att.url);
+          });
+          const files: MessageFile[] = rawAttachments.map((att: any) => {
             if (typeof att === 'string') {
-              // Backend sends just URL strings
               const fileName = att.split('/').pop() || 'Unknown file';
               return {
                 name: fileName,
-                type: 'application/octet-stream', // Default type, will be detected by FileRenderer
+                type: 'application/octet-stream',
                 url: att,
-                size: 0, // Unknown size
+                size: 0,
               };
             } else {
-              // Backend sends attachment objects
               return {
                 name: att.name || 'Unknown file',
                 type: att.type || 'application/octet-stream',

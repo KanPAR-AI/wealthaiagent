@@ -27,11 +27,12 @@ describe('Chat Service', () => {
             id: 'chat_mock123456',
             messageCount: 1,
             title: 'Test Chat'
-          }
+          },
+          messages: [{ id: 'msg_mock_first', content: 'Hello', sender: 'user' }],
         })
       });
 
-      const chatId = await createChatSession(
+      const { chatId, firstMessageId } = await createChatSession(
         mockToken,
         'Test Chat',
         'Hello, this is my first message',
@@ -39,6 +40,7 @@ describe('Chat Service', () => {
       );
 
       expect(chatId).toBe('chat_mock123456');
+      expect(firstMessageId).toBe('msg_mock_first');
 
       // Mock fetch history response
       mockFetch.mockResolvedValueOnce({
@@ -161,12 +163,15 @@ describe('Chat Service', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({})
+        json: async () => ({ id: 'msg_backend_uuid_42' })
       });
-      
+
+      // sendChatMessage now returns the backend-assigned message id so the
+      // frontend can swap its local nanoid placeholder for it (required for
+      // /regenerate and target_user_message_id to match Firestore rows).
       await expect(
         sendChatMessage(mockToken, chatId, 'Follow-up message', [])
-      ).resolves.toBeUndefined();
+      ).resolves.toBe('msg_backend_uuid_42');
       
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining(`/chats/${chatId}/messages`),
