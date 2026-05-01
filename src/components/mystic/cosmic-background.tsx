@@ -1,336 +1,160 @@
 /**
- * CosmicBackground — starfield, shooting stars, drifting planets, nebula.
+ * CosmicBackground — light, modern cosmic ambient layer for MysticAI.
  *
- * Rendered as a fixed, full-viewport, pointer-events-none layer behind the
- * rest of the MysticAI UI. Canvas handles stars + shooting stars for
- * performance; planets are CSS-animated SVGs.
+ * Pure CSS + SVG. No canvas, no requestAnimationFrame loop. The previous
+ * implementation ran a 560-star canvas paint loop; on mobile that hit
+ * the GPU on every frame just to draw twinkles. This version is hardware-
+ * accelerated CSS animations — the browser handles them on the compositor
+ * thread, so the JS thread stays free and bundle / runtime cost is tiny.
  *
- * Respects prefers-reduced-motion by freezing the canvas animation and
- * dampening planet drift.
+ * Visual: pastel celestial palette (lavender → rose → mint), three glowing
+ * planets, a small constellation of twinkling stars, and shooting stars
+ * that streak BETWEEN planets — making the planets feel like they're
+ * exchanging light. Respects prefers-reduced-motion.
  */
 
-import { useEffect, useRef } from 'react';
+const STARS = [
+  { x: 12, y: 18, size: 2, delay: 0 },
+  { x: 24, y: 8, size: 1, delay: 1.2 },
+  { x: 38, y: 22, size: 1.5, delay: 2.4 },
+  { x: 47, y: 6, size: 1, delay: 0.8 },
+  { x: 58, y: 14, size: 2, delay: 3.1 },
+  { x: 67, y: 28, size: 1, delay: 1.6 },
+  { x: 78, y: 9, size: 1.5, delay: 2.0 },
+  { x: 89, y: 18, size: 1, delay: 0.4 },
+  { x: 8, y: 42, size: 1, delay: 2.8 },
+  { x: 19, y: 56, size: 1.5, delay: 1.0 },
+  { x: 31, y: 68, size: 1, delay: 3.4 },
+  { x: 44, y: 78, size: 2, delay: 0.6 },
+  { x: 56, y: 84, size: 1, delay: 2.2 },
+  { x: 71, y: 64, size: 1.5, delay: 1.8 },
+  { x: 82, y: 76, size: 1, delay: 3.0 },
+  { x: 92, y: 52, size: 2, delay: 1.4 },
+  { x: 28, y: 92, size: 1, delay: 0.2 },
+  { x: 63, y: 48, size: 1, delay: 2.6 },
+  { x: 5, y: 72, size: 1, delay: 1.1 },
+  { x: 96, y: 36, size: 1.5, delay: 0.9 },
+];
 
-type Star = {
-  x: number;
-  y: number;
-  r: number;
-  baseAlpha: number;
-  twinkleSpeed: number;
-  twinklePhase: number;
-  hue: number;
+// Each shooting star streaks between two planet anchors. The CSS animation
+// uses a different `delay` and `duration` per beam so the streaks feel
+// organic rather than synchronized.
+const BEAMS = [
+  { from: 'saturn', to: 'neptune', delay: 0,   duration: 4.5 },
+  { from: 'neptune', to: 'mars',    delay: 1.8, duration: 5.2 },
+  { from: 'mars',    to: 'saturn',  delay: 3.6, duration: 4.8 },
+  { from: 'saturn', to: 'mars',    delay: 5.4, duration: 5.0 },
+  { from: 'neptune', to: 'saturn',  delay: 7.2, duration: 4.7 },
+];
+
+// Planet anchor coordinates as % of viewport (top-left origin).
+const PLANETS = {
+  saturn:  { x: 88, y: 22 },
+  neptune: { x: 90, y: 78 },
+  mars:    { x: 8,  y: 88 },
 };
-
-type ShootingStar = {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  maxLife: number;
-  length: number;
-};
-
-const STAR_COUNT_DESKTOP = 560;
-const STAR_COUNT_MOBILE = 280;
-const SHOOTING_STAR_INTERVAL_MS = 1100;
 
 export function CosmicBackground() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const rafRef = useRef<number>(0);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d', { alpha: true });
-    if (!ctx) return;
-
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const isMobile = window.innerWidth < 768;
-    const starCount = isMobile ? STAR_COUNT_MOBILE : STAR_COUNT_DESKTOP;
-
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    let width = window.innerWidth;
-    let height = window.innerHeight;
-
-    const resize = () => {
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    resize();
-
-    // Pre-generate stars. Size distribution is weighted so a small fraction
-    // are noticeably bright "beacon" stars, which read well in screenshots
-    // and in motion. Positions are biased toward a diagonal "Milky Way" band
-    // for dramatic density.
-    const stars: Star[] = Array.from({ length: starCount }, (_, i) => {
-      // 30% of stars cluster in a diagonal band (top-left → bottom-right)
-      const inBand = i % 10 < 3;
-      let x: number;
-      let y: number;
-      if (inBand) {
-        const t = Math.random();
-        const bandCenterX = t * width;
-        const bandCenterY = t * height * 1.1 - height * 0.05;
-        const bandWidth = height * 0.28;
-        x = bandCenterX + (Math.random() - 0.5) * bandWidth;
-        y = bandCenterY + (Math.random() - 0.5) * bandWidth * 0.6;
-      } else {
-        x = Math.random() * width;
-        y = Math.random() * height;
-      }
-
-      const sizeRoll = Math.random();
-      const r =
-        sizeRoll > 0.98 ? 2.6 + Math.random() * 1.0 // rare beacon
-        : sizeRoll > 0.88 ? 1.6 + Math.random() * 0.8 // uncommon bright
-        : 0.6 + Math.random() * 1.0; // normal
-      return {
-        x,
-        y,
-        r,
-        baseAlpha: r > 1.5 ? 0.9 + Math.random() * 0.1 : 0.55 + Math.random() * 0.4,
-        twinkleSpeed: Math.random() * 0.0018 + 0.0005,
-        twinklePhase: Math.random() * Math.PI * 2,
-        hue:
-          Math.random() < 0.1 ? 40 + Math.random() * 30 // golden
-          : Math.random() < 0.2 ? 260 + Math.random() * 40 // violet
-          : 210 + Math.random() * 20, // mostly cool-white-blue
-      };
-    });
-
-    const shootingStars: ShootingStar[] = [];
-    let lastShootSpawn = 0;
-
-    const spawnShootingStar = () => {
-      const fromLeft = Math.random() < 0.5;
-      const angle = (Math.PI / 6) + (Math.random() * Math.PI / 6); // 30–60°
-      const speed = Math.random() * 0.9 + 1.1; // px per ms
-      const vx = (fromLeft ? 1 : -1) * Math.cos(angle) * speed;
-      const vy = Math.sin(angle) * speed;
-      const startY = Math.random() * height * 0.6;
-      shootingStars.push({
-        x: fromLeft ? -50 : width + 50,
-        y: startY,
-        vx,
-        vy,
-        life: 0,
-        maxLife: 1200 + Math.random() * 800,
-        length: 80 + Math.random() * 80,
-      });
-    };
-
-    let lastTime = performance.now();
-
-    const render = (t: number) => {
-      const dt = Math.min(t - lastTime, 64); // cap delta for tab-switch jumps
-      lastTime = t;
-
-      ctx.clearRect(0, 0, width, height);
-
-      // Stars
-      for (const s of stars) {
-        const twinkle = reduceMotion
-          ? s.baseAlpha
-          : s.baseAlpha * (0.65 + 0.35 * Math.sin(s.twinklePhase + t * s.twinkleSpeed));
-        const glow = `hsla(${s.hue}, 90%, 85%, ${twinkle})`;
-        ctx.beginPath();
-        ctx.fillStyle = glow;
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Soft halo on the brightest stars — the halo is what gives them
-        // their "constellation" presence instead of a bare dot.
-        if (s.r > 1.0) {
-          const haloRadius = s.r * 8;
-          const grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, haloRadius);
-          grad.addColorStop(0, `hsla(${s.hue}, 95%, 85%, ${twinkle * 0.55})`);
-          grad.addColorStop(0.4, `hsla(${s.hue}, 95%, 85%, ${twinkle * 0.15})`);
-          grad.addColorStop(1, `hsla(${s.hue}, 95%, 85%, 0)`);
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.arc(s.x, s.y, haloRadius, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Four-point starburst cross on the biggest beacons
-          if (s.r > 1.8) {
-            ctx.strokeStyle = `hsla(${s.hue}, 95%, 92%, ${twinkle * 0.45})`;
-            ctx.lineWidth = 0.8;
-            ctx.beginPath();
-            ctx.moveTo(s.x - s.r * 4, s.y);
-            ctx.lineTo(s.x + s.r * 4, s.y);
-            ctx.moveTo(s.x, s.y - s.r * 4);
-            ctx.lineTo(s.x, s.y + s.r * 4);
-            ctx.stroke();
-          }
-        }
-      }
-
-      // Shooting stars
-      if (!reduceMotion && t - lastShootSpawn > SHOOTING_STAR_INTERVAL_MS + Math.random() * 2200) {
-        spawnShootingStar();
-        lastShootSpawn = t;
-      }
-
-      for (let i = shootingStars.length - 1; i >= 0; i--) {
-        const s = shootingStars[i];
-        s.life += dt;
-        s.x += s.vx * dt * 0.4;
-        s.y += s.vy * dt * 0.4;
-
-        const alpha = Math.max(0, 1 - s.life / s.maxLife);
-        const tailX = s.x - s.vx * s.length * 0.4;
-        const tailY = s.y - s.vy * s.length * 0.4;
-
-        const grad = ctx.createLinearGradient(s.x, s.y, tailX, tailY);
-        grad.addColorStop(0, `rgba(255,240,220,${alpha})`);
-        grad.addColorStop(0.4, `rgba(200,170,255,${alpha * 0.6})`);
-        grad.addColorStop(1, 'rgba(200,170,255,0)');
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(s.x, s.y);
-        ctx.lineTo(tailX, tailY);
-        ctx.stroke();
-
-        // Bright head
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(255,250,240,${alpha})`;
-        ctx.arc(s.x, s.y, 2, 0, Math.PI * 2);
-        ctx.fill();
-
-        if (s.life > s.maxLife || s.x < -200 || s.x > width + 200 || s.y > height + 200) {
-          shootingStars.splice(i, 1);
-        }
-      }
-
-      rafRef.current = requestAnimationFrame(render);
-    };
-
-    rafRef.current = requestAnimationFrame(render);
-    window.addEventListener('resize', resize);
-
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      window.removeEventListener('resize', resize);
-    };
-  }, []);
-
   return (
-    <div className="mystic-cosmos" aria-hidden="true">
-      {/* Base nebula gradient */}
-      <div className="mystic-nebula" />
-      {/* Canvas starfield + shooting stars */}
-      <canvas ref={canvasRef} className="mystic-starfield" />
-      {/* Planets drifting on CSS animations */}
-      <div className="mystic-planets">
-        <Planet
-          className="mystic-planet mystic-planet--saturn"
-          size={260}
-          hue={36}
-          ring
-          style={{ top: '6%', right: '4%' }}
-        />
-        <Planet
-          className="mystic-planet mystic-planet--mars"
-          size={150}
-          hue={18}
-          style={{ top: '62%', left: '3%' }}
-        />
-        <Planet
-          className="mystic-planet mystic-planet--neptune"
-          size={190}
-          hue={220}
-          style={{ top: '74%', right: '12%' }}
-        />
-        <Planet
-          className="mystic-planet mystic-planet--small"
-          size={80}
-          hue={280}
-          style={{ top: '22%', left: '4%' }}
-        />
-      </div>
-      {/* Vignette to focus chat content */}
-      <div className="mystic-vignette" />
-    </div>
-  );
-}
-
-function Planet({
-  size,
-  hue,
-  ring,
-  className,
-  style,
-}: {
-  size: number;
-  hue: number;
-  ring?: boolean;
-  className?: string;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 200 200"
-      className={className}
-      style={style}
+    <div
+      aria-hidden
+      className="cosmic-bg fixed inset-0 pointer-events-none overflow-hidden"
+      style={{ zIndex: 0 }}
     >
-      <defs>
-        <radialGradient id={`planet-${hue}`} cx="35%" cy="32%" r="75%">
-          <stop offset="0%" stopColor={`hsl(${hue}, 85%, 78%)`} />
-          <stop offset="55%" stopColor={`hsl(${hue}, 70%, 48%)`} />
-          <stop offset="100%" stopColor={`hsl(${hue + 15}, 60%, 14%)`} />
-        </radialGradient>
-        <radialGradient id={`planet-glow-${hue}`} cx="50%" cy="50%" r="60%">
-          <stop offset="0%" stopColor={`hsla(${hue}, 95%, 72%, 0.45)`} />
-          <stop offset="100%" stopColor={`hsla(${hue}, 95%, 72%, 0)`} />
-        </radialGradient>
-      </defs>
-      {/* Glow */}
-      <circle cx="100" cy="100" r="96" fill={`url(#planet-glow-${hue})`} />
-      {/* Planet body */}
-      <circle cx="100" cy="100" r="68" fill={`url(#planet-${hue})`} />
-      {/* Subtle surface band */}
-      <ellipse
-        cx="100"
-        cy="108"
-        rx="62"
-        ry="9"
-        fill={`hsla(${hue + 20}, 60%, 25%, 0.35)`}
-      />
-      {/* Optional ring (for Saturn) */}
-      {ring && (
-        <g>
-          <ellipse
-            cx="100"
-            cy="100"
-            rx="96"
-            ry="18"
-            fill="none"
-            stroke={`hsla(${hue}, 70%, 70%, 0.45)`}
-            strokeWidth="4"
-            transform="rotate(-14 100 100)"
+      {/* Layered gradient base — pastel celestial. Static, GPU-cheap. */}
+      <div className="cosmic-base" />
+      <div className="cosmic-aurora" />
+
+      {/* Twinkling stars — CSS-animated opacity only, ~20 elements. */}
+      {STARS.map((s, i) => (
+        <span
+          key={i}
+          className="cosmic-star"
+          style={{
+            left: `${s.x}%`,
+            top: `${s.y}%`,
+            width: `${s.size}px`,
+            height: `${s.size}px`,
+            animationDelay: `${s.delay}s`,
+          }}
+        />
+      ))}
+
+      {/* Planets — SVG with soft glow filter. */}
+      <svg className="cosmic-planet cosmic-saturn" viewBox="0 0 200 200" aria-hidden>
+        <defs>
+          <radialGradient id="saturnBody" cx="40%" cy="38%">
+            <stop offset="0%"  stopColor="#fff4d6" />
+            <stop offset="55%" stopColor="#f3a55b" />
+            <stop offset="100%" stopColor="#a3621e" />
+          </radialGradient>
+          <radialGradient id="saturnHalo">
+            <stop offset="60%" stopColor="rgba(255, 215, 140, 0.0)" />
+            <stop offset="100%" stopColor="rgba(255, 215, 140, 0.18)" />
+          </radialGradient>
+        </defs>
+        <circle cx="100" cy="100" r="95" fill="url(#saturnHalo)" />
+        <ellipse cx="100" cy="105" rx="84" ry="14" fill="none" stroke="rgba(255,225,170,0.4)" strokeWidth="3" />
+        <ellipse cx="100" cy="105" rx="92" ry="18" fill="none" stroke="rgba(255,225,170,0.18)" strokeWidth="2" />
+        <circle cx="100" cy="100" r="58" fill="url(#saturnBody)" />
+      </svg>
+
+      <svg className="cosmic-planet cosmic-neptune" viewBox="0 0 200 200" aria-hidden>
+        <defs>
+          <radialGradient id="neptuneBody" cx="38%" cy="40%">
+            <stop offset="0%"  stopColor="#cde9ff" />
+            <stop offset="60%" stopColor="#5d8ad1" />
+            <stop offset="100%" stopColor="#1f3d70" />
+          </radialGradient>
+          <radialGradient id="neptuneHalo">
+            <stop offset="65%" stopColor="rgba(120, 170, 240, 0)" />
+            <stop offset="100%" stopColor="rgba(120, 170, 240, 0.16)" />
+          </radialGradient>
+        </defs>
+        <circle cx="100" cy="100" r="95" fill="url(#neptuneHalo)" />
+        <circle cx="100" cy="100" r="52" fill="url(#neptuneBody)" />
+      </svg>
+
+      <svg className="cosmic-planet cosmic-mars" viewBox="0 0 200 200" aria-hidden>
+        <defs>
+          <radialGradient id="marsBody" cx="40%" cy="38%">
+            <stop offset="0%"  stopColor="#ffd6b5" />
+            <stop offset="55%" stopColor="#d56a4a" />
+            <stop offset="100%" stopColor="#7a2a14" />
+          </radialGradient>
+          <radialGradient id="marsHalo">
+            <stop offset="65%" stopColor="rgba(240, 140, 100, 0)" />
+            <stop offset="100%" stopColor="rgba(240, 140, 100, 0.18)" />
+          </radialGradient>
+        </defs>
+        <circle cx="100" cy="100" r="95" fill="url(#marsHalo)" />
+        <circle cx="100" cy="100" r="40" fill="url(#marsBody)" />
+      </svg>
+
+      {/* Shooting-star beams between planets. Each beam is a tiny gradient
+          strip rotated + translated via CSS variables. */}
+      {BEAMS.map((b, i) => {
+        const a = PLANETS[b.from as keyof typeof PLANETS];
+        const c = PLANETS[b.to as keyof typeof PLANETS];
+        const dx = c.x - a.x;
+        const dy = c.y - a.y;
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        return (
+          <span
+            key={i}
+            className="cosmic-beam"
+            style={{
+              ['--from-x' as string]: `${a.x}vw`,
+              ['--from-y' as string]: `${a.y}vh`,
+              ['--dx' as string]: `${dx}vw`,
+              ['--dy' as string]: `${dy}vh`,
+              ['--angle' as string]: `${angle}deg`,
+              animationDelay: `${b.delay}s`,
+              animationDuration: `${b.duration}s`,
+            }}
           />
-          <ellipse
-            cx="100"
-            cy="100"
-            rx="88"
-            ry="14"
-            fill="none"
-            stroke={`hsla(${hue + 25}, 80%, 85%, 0.35)`}
-            strokeWidth="2"
-            transform="rotate(-14 100 100)"
-          />
-        </g>
-      )}
-    </svg>
+        );
+      })}
+    </div>
   );
 }
