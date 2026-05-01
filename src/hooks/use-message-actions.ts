@@ -1,5 +1,6 @@
 // hooks/use-message-actions.ts
-import { listenToChatStream, sendChatMessage } from '@/services/chat-service';
+import { listenToChatStream } from '@/services/chat-service';
+import { getApiUrl } from '@/config/environment';
 import { useState } from 'react';
 import { useChatMessages } from './use-chat-messages';
 import { useAuth } from './use-auth';
@@ -34,79 +35,97 @@ export const useMessageActions = (chatId: string) => {
 
     const botMessageIndex = messages.findIndex((m: { id: string; }) => m.id === messageId);
     if (botMessageIndex === -1 || messages[botMessageIndex].sender !== 'bot') {
-        console.warn("Attempted to regenerate a non-bot message or message not found.");
-        return;
+      console.warn("Attempted to regenerate a non-bot message or message not found.");
+      return;
     }
 
     const userMessage = messages[botMessageIndex - 1];
     if (!userMessage || userMessage.sender !== 'user') {
-        console.warn("No preceding user message found for regeneration.");
-        return;
+      console.warn("No preceding user message found for regeneration.");
+      return;
     }
 
     setIsRegenerating(true);
 
+    // Reset the bot bubble in place so the user keeps their scroll position.
     updateMessage(messageId, {
       message: '',
       streamingContent: '',
       streamingChunks: [],
+      contentBlocks: undefined,
       isStreaming: true,
-      error: undefined
+      error: undefined,
     });
 
-    const aiMessageToUpdateId = messageId;
-
+    // Best-effort delete of the failed/partial bot message from Firestore.
+    // 204 = deleted; 404 = chat gone (rare); anything else we log but still
+    // try the stream — the worst case is a duplicate bot message in history
+    // which is recoverable via another delete on next regenerate.
     try {
-      await sendChatMessage(token, chatId, userMessage.message, userMessage.files || []);
-
-      let receivedText = '';
-      const streamingChunks: string[] = [];
-
-      await listenToChatStream(
-        token,
-        chatId,
-        (chunk, type) => {
-          if (type === 'text_chunk') {
-            receivedText += chunk;
-            streamingChunks.push(chunk);
-            updateMessage(aiMessageToUpdateId, {
-              message: receivedText,
-              streamingContent: receivedText,
-              streamingChunks: [...streamingChunks],
-            });
-          }
+      const delResp = await fetch(
+        getApiUrl(`/chats/${chatId}/messages/${messageId}/regenerate`),
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
         },
-        () => {
-          updateMessage(aiMessageToUpdateId, {
-            isStreaming: false,
+      );
+      if (!delResp.ok && delResp.status !== 404) {
+        console.warn(`[handleRegenerate] Delete returned ${delResp.status}; proceeding anyway`);
+      }
+    } catch (err) {
+      console.warn('[handleRegenerate] Delete network error; proceeding anyway:', err);
+    }
+
+    // One controller for the regen stream — same pattern as the normal send.
+    // Component unmount will not abort this directly, but listenToChatStream
+    // has TTFB and idle watchdogs that protect against hangs.
+    const controller = new AbortController();
+    let receivedText = '';
+    const streamingChunks: string[] = [];
+
+    await listenToChatStream(
+      token,
+      chatId,
+      (chunk, type) => {
+        if (type === 'text_chunk') {
+          receivedText += chunk;
+          streamingChunks.push(chunk);
+          updateMessage(messageId, {
             message: receivedText,
             streamingContent: receivedText,
+            streamingChunks: [...streamingChunks],
           });
-          setIsRegenerating(false);
-        },
-        (error) => {
-          console.error("Regeneration stream failed:", error);
-          updateMessage(aiMessageToUpdateId, {
-            message: receivedText || "Failed to regenerate response.",
-            streamingContent: receivedText || "Failed to regenerate response.",
-            error: "Regeneration error",
-            isStreaming: false
-          });
-          setIsRegenerating(false);
         }
-      );
-
-    } catch (error) {
-      console.error("Regeneration process failed:", error);
-      updateMessage(aiMessageToUpdateId, {
-        message: "Failed to regenerate response.",
-        streamingContent: "Failed to regenerate response.",
-        sender: "bot",
-        error: "Regeneration error",
-        isStreaming: false
-      });
-      setIsRegenerating(false);
-    }
+      },
+      () => {
+        updateMessage(messageId, {
+          isStreaming: false,
+          message: receivedText,
+          streamingContent: receivedText,
+        });
+        setIsRegenerating(false);
+      },
+      (error: any) => {
+        console.error("Regeneration stream failed:", error);
+        const isTimeout = error?.name === "TimeoutError" || /timed out/i.test(error?.message || "");
+        updateMessage(messageId, {
+          message: receivedText,
+          streamingContent: receivedText,
+          error: isTimeout
+            ? "Connection timed out. Tap Retry to continue."
+            : "Response interrupted. Tap Retry to continue.",
+          isStreaming: false,
+        });
+        setIsRegenerating(false);
+      },
+      false,
+      userMessage.message,
+      null, // forceAgent — let backend pick
+      controller.signal,
+      // Tell backend to regenerate against this specific user message, not
+      // "latest". Required when retrying an older failed bot message.
+      userMessage.id,
+    );
   };
 
   const handleSharePdf = async (_messageId: string) => {

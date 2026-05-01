@@ -136,11 +136,17 @@ export function useMessageSending({
     });
     console.log("[useMessageSending] Bot message addMessage() called, should be in store now");
 
+    // One controller for the whole send lifecycle (POST + SSE). Aborting it
+    // cancels both the HTTP fetch and the SSE reader. Stored in component
+    // state so the unmount cleanup in useChatWindowState can call abort().
+    const controller = new AbortController();
+    setStreamingController(controller);
+
     try {
       // Only send message to backend if NOT a mock chat
       if (!isMockChat && !useMockService) {
         console.log("[useMessageSending] Sending message to real backend API");
-        await sendChatMessage(token!, chatId, messageText, attachments); // Use messageText with context
+        await sendChatMessage(token!, chatId, messageText, attachments, controller.signal);
       } else {
         console.log("[useMessageSending] Skipping real API call for mock chat");
       }
@@ -149,7 +155,6 @@ export function useMessageSending({
       const streamingChunks: string[] = [];
       const contentBlocks: any[] = [];
       let currentTextBlock = '';
-      setStreamingController(new AbortController());
 
       await listenToChatStream(
         token || 'mock-token', // Use dummy token for mock service
@@ -247,12 +252,18 @@ export function useMessageSending({
           });
           setIsSending(false);
         },
-        (error) => { // onError
+        (error: any) => { // onError
           console.error("Error in SSE stream:", error);
+          const isTimeout = error?.name === "TimeoutError" || /timed out/i.test(error?.message || "");
+          // Preserve any partial text the user already saw — don't replace it
+          // with an error string. The Retry button on the bubble lets them
+          // regenerate without losing what was streamed.
           updateMessage(aiMessageId, {
-            message: receivedText || "Error getting AI response",
-            streamingContent: receivedText || "Error getting AI response",
-            error: "Failed response",
+            message: receivedText,
+            streamingContent: receivedText,
+            error: isTimeout
+              ? "Connection timed out. Tap Retry to continue."
+              : "Response interrupted. Tap Retry to continue.",
             isStreaming: false,
           });
           setIsSending(false);
@@ -260,13 +271,25 @@ export function useMessageSending({
         useMockService || isMockChat, // Pass mock service flag (true if explicitly set OR if chat ID is mock)
         text, // Pass prompt text for contextual mock responses
         selectedAgent, // Force specific agent if user selected one
+        controller.signal,
       );
-    } catch (error) {
+    } catch (error: any) {
+      // AbortError from caller-cancellation (unmount, new send) is silent —
+      // the new mount or the new send will own the UI from here.
+      if (error?.name === "AbortError") {
+        console.log("[useMessageSending] Send cancelled (abort)");
+        return;
+      }
+      // Distinguish timeout vs generic failure so the user-visible error text
+      // is informative without being noisy.
+      const isTimeout = error?.name === "TimeoutError" || /timed out/i.test(error?.message || "");
       console.error("Failed to send message:", error);
       updateMessage(aiMessageId, {
-        message: "Error processing message.",
-        streamingContent: "Error processing message.",
-        error: "Failed response",
+        message: "",
+        streamingContent: "",
+        error: isTimeout
+          ? "Request timed out. Tap Retry to try again."
+          : "Couldn't get a response. Tap Retry to try again.",
         isStreaming: false,
       });
       setIsSending(false);

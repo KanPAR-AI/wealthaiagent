@@ -59,10 +59,11 @@ export function usePendingMessage({
       isProcessingRef.current = true;
       setIsProcessingPendingMessage(true);
       console.log("[Pending Message] Processing pending message for new chat:", pendingMessage);
-      console.log("[Pending Message] Chat ID:", chatId);
-      console.log("[Pending Message] Is mock chat:", isMockChat);
-      console.log("[Pending Message] Using mock service:", useMockService);
 
+      // Clear immediately so an HMR-induced remount doesn't fire a duplicate
+      // SSE for the same first message. Hard refresh wipes the store anyway
+      // (no persist middleware), so delaying the clear wouldn't help refresh
+      // recovery — that's handled by the backend partial-save (Layer 2).
       clearPendingMessage();
 
       const userMessageId = nanoid();
@@ -108,6 +109,11 @@ export function usePendingMessage({
       }, 100);
 
       const startListening = async () => {
+        // One controller for this stream. The unmount cleanup in
+        // useChatWindowState will call abort() on this if the user navigates
+        // away, causing listenToChatStream to exit cleanly.
+        const controller = new AbortController();
+        setStreamingController(controller);
         try {
           // CRITICAL: Wait for the message to be added to the store before starting stream
           // This prevents race condition where we try to update a non-existent message
@@ -117,7 +123,6 @@ export function usePendingMessage({
           const streamingChunks: string[] = [];
           const contentBlocks: any[] = [];
           let currentTextBlock = '';
-          setStreamingController(new AbortController());
 
           await listenToChatStream(
             token || 'mock-token', // Use dummy token for mock service
@@ -215,28 +220,36 @@ export function usePendingMessage({
               isProcessingRef.current = false;
               setIsProcessingPendingMessage(false);
             },
-            (error) => { // onError
+            (error: any) => { // onError
               console.error("Error in SSE stream for pending message:", error);
+              const isTimeout = error?.name === "TimeoutError" || /timed out/i.test(error?.message || "");
               updateMessage(aiMessageId, {
-                message: receivedText || "Error receiving AI response.",
-                streamingContent: receivedText || "Error receiving AI response.",
-                error: "Failed response",
+                message: receivedText,
+                streamingContent: receivedText,
+                error: isTimeout
+                  ? "Connection timed out. Tap Retry to continue."
+                  : "Response interrupted. Tap Retry to continue.",
                 isStreaming: false
               });
               setIsSending(false);
               isProcessingRef.current = false;
               setIsProcessingPendingMessage(false);
             },
-            useMockService || isMockChat, // Pass mock service flag (true if explicitly set OR if chat ID is mock)
-            text, // Pass prompt text for contextual mock responses
-            selectedAgent, // Force specific agent if user selected one
+            useMockService || isMockChat,
+            text,
+            selectedAgent,
+            controller.signal,
           );
-        } catch (error) {
+        } catch (error: any) {
+          if (error?.name === "AbortError") {
+            // Cancelled by unmount — silent. The next mount/route will pick up state.
+            return;
+          }
           console.error("Failed to listen to chat stream:", error);
           updateMessage(aiMessageId, {
-            message: "Error connecting to AI.",
-            streamingContent: "Error connecting to AI.",
-            error: "Failed response",
+            message: '',
+            streamingContent: '',
+            error: "Couldn't connect. Tap Retry to try again.",
             isStreaming: false
           });
           setIsSending(false);

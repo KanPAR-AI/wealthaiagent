@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MessageFile } from '@/types';
 
 export interface ChatWindowState {
@@ -31,6 +31,21 @@ export function useChatWindowState(chatId?: string): ChatWindowState & ChatWindo
   const [isProcessingPendingMessage, setIsProcessingPendingMessage] = useState(false);
   const [streamingController, setStreamingController] = useState<AbortController | null>(null);
   const isProcessingRef = useRef(false);
+
+  // Stable ref so the unmount cleanup below sees the latest controller without
+  // having to add it as a dep (which would re-fire on every send).
+  const controllerRef = useRef<AbortController | null>(null);
+  controllerRef.current = streamingController;
+
+  // On unmount (chat switch, navigation away, hot-reload): abort whatever
+  // stream is in flight. Without this, the SSE keeps reading from a dead
+  // bot-message id, leaks fetch + decoder, and can race with a new send.
+  useEffect(() => {
+    return () => {
+      controllerRef.current?.abort(new DOMException("ChatWindow unmounted", "AbortError"));
+      isProcessingRef.current = false;
+    };
+  }, []);
 
   return {
     selectedFile,

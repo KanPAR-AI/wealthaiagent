@@ -4,6 +4,7 @@ import { ActionIconDefinition, Message, MessageFile, UserInfo } from '@/types';
 import { motion } from 'framer-motion';
 import { JSX, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { RefreshCcw } from 'lucide-react';
 import StructuredContentRenderer from '../ui/structured-content-renderer'; // Assuming this component exists
 import { FileRenderer } from './file-renderer'; // Import the FileRenderer component
 import { StreamingResponse } from './streaming-response';
@@ -247,6 +248,32 @@ export function ChatBubble({
                 <FileRenderer file={file} onFileClick={onFileClick} />
               </motion.div>
             ))}
+          </motion.div>
+        )}
+
+        {/* Error banner with Retry — shown only on bot messages that errored
+            (network timeout, SSE drop, backend exception). Sits below any
+            partial content so the user keeps what was already streamed. */}
+        {!isUser && message.error && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center gap-2 mt-1 text-xs text-muted-foreground"
+            role="status"
+          >
+            <span>{message.error}</span>
+            <button
+              onClick={() => {
+                const retry = actionIcons.find((a) => a.type === 'Regenerate');
+                retry?.action(message.id);
+              }}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary hover:bg-secondary/80 text-foreground transition-colors"
+              aria-label="Retry generating response"
+            >
+              <RefreshCcw className="size-3" />
+              Retry
+            </button>
           </motion.div>
         )}
 
