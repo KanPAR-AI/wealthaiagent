@@ -1,7 +1,7 @@
 // hooks/use-message-actions.ts
 import { listenToChatStream } from '@/services/chat-service';
 import { getApiUrl } from '@/config/environment';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useChatMessages } from './use-chat-messages';
 import { useAuth } from './use-auth';
 
@@ -9,6 +9,16 @@ export const useMessageActions = (chatId: string) => {
   const { messages, updateMessage } = useChatMessages(chatId);
   const { idToken: token } = useAuth();
   const [isRegenerating, setIsRegenerating] = useState(false);
+
+  // Aborts the regen stream when the consumer (chat window) unmounts.
+  // Without this a user navigating away during a retry leaks the SSE
+  // reader and lets it keep updating a stale message id.
+  const regenControllerRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    return () => {
+      regenControllerRef.current?.abort(new DOMException("ChatWindow unmounted", "AbortError"));
+    };
+  }, []);
 
   const handleCopy = (messageId: string) => {
     const message = messages.find((m: { id: string; }) => m.id === messageId);
@@ -76,10 +86,10 @@ export const useMessageActions = (chatId: string) => {
       console.warn('[handleRegenerate] Delete network error; proceeding anyway:', err);
     }
 
-    // One controller for the regen stream — same pattern as the normal send.
-    // Component unmount will not abort this directly, but listenToChatStream
-    // has TTFB and idle watchdogs that protect against hangs.
+    // One controller for the regen stream — stored in a ref so the unmount
+    // cleanup above can abort it if the user navigates away mid-retry.
     const controller = new AbortController();
+    regenControllerRef.current = controller;
     let receivedText = '';
     const streamingChunks: string[] = [];
 
