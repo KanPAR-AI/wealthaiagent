@@ -48,6 +48,42 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((state) => {
       const currentMessages = state.chats[chatId]?.messages || [];
       console.log('[Store] Current message count before add:', currentMessages.length);
+
+      // Dedup by id — if a message with this id already exists, this is a no-op.
+      // Without this, a new-chat optimistic add (nanoid) followed later by a
+      // backend-history refetch (uuid) doubles the bubble; or a hot-reload that
+      // re-runs an effect can re-add the same row.
+      if (currentMessages.some((m) => m.id === message.id)) {
+        console.log('[Store] Skipping duplicate message id:', message.id);
+        return state;
+      }
+
+      // Dedup user messages by sender+content+files within a 60s window. The
+      // optimistic-add user message uses a frontend nanoid while the backend
+      // saves under a UUID — without this, a refetch path that adds the
+      // backend row on top of the optimistic one renders the same bubble twice.
+      // Bot messages are NOT deduped this way: legitimate retries/regenerates
+      // can produce two bot bubbles with identical (often empty) content.
+      if (message.sender === 'user') {
+        const filesKey = (message.files || []).map((f) => f.url).sort().join('|');
+        const newTs = Date.parse(message.timestamp || '') || Date.now();
+        const dup = currentMessages.find((m) => {
+          if (m.sender !== 'user') return false;
+          if ((m.message || '') !== (message.message || '')) return false;
+          const mFilesKey = (m.files || []).map((f) => f.url).sort().join('|');
+          if (mFilesKey !== filesKey) return false;
+          const mTs = Date.parse(m.timestamp || '') || 0;
+          return Math.abs(newTs - mTs) < 60_000;
+        });
+        if (dup) {
+          console.log('[Store] Skipping duplicate user message (content match):', {
+            existingId: dup.id,
+            incomingId: message.id,
+          });
+          return state;
+        }
+      }
+
       const newMessages = [...currentMessages, message];
       // Sort by timestamp to ensure correct order regardless of insertion order
       newMessages.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));

@@ -75,7 +75,16 @@ export default defineConfig({
   // Capacitor serves from '/', web deploys to '/chataiagent/' subfolder
   base: isCapacitor ? '/' : '/chataiagent/',
   server:{
-    allowedHosts: ["e597ac4441c7.ngrok-free.app"] // Remove or comment out for production builds
+    allowedHosts: ["e597ac4441c7.ngrok-free.app"], // Remove or comment out for production builds
+    // Firebase signInWithPopup needs to keep its window.opener handle when the
+    // popup (aiagentapi.firebaseapp.com) returns. Chrome 119+ severs the
+    // opener relationship unless the parent explicitly allows cross-origin
+    // popups via COOP. Without this, the popup completes auth but never
+    // posts the credential back — symptom: "Continue with Google" opens a
+    // popup, user signs in, popup hangs / can't close, parent stays anonymous.
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    },
   },
   resolve: {
     alias: {

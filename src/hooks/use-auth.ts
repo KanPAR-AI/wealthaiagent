@@ -40,7 +40,10 @@ export function useAuth() {
 
   const signInWithGoogle = useCallback(async () => {
     const provider = new GoogleAuthProvider();
-    if (shouldUseRedirect()) {
+    const useRedirect = shouldUseRedirect();
+    console.log("[AUTH] sign-in path:", useRedirect ? "REDIRECT" : "POPUP",
+      "| UA:", typeof navigator !== "undefined" ? navigator.userAgent : "(server)");
+    if (useRedirect) {
       // On mobile: full-page redirect. The user leaves this page; on return
       // the AuthProvider's getRedirectResult() in useEffect picks up the
       // auth state. The promise below resolves before the redirect actually

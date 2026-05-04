@@ -72,6 +72,53 @@ function speakerColorClass(id: string): string {
   return SPEAKER_COLORS[id] || "bg-muted text-muted-foreground border-border";
 }
 
+/**
+ * Friendly label + tooltip for the sanitizer model field. Tells the
+ * admin which path was actually taken — direct multimodal vs ASR+text
+ * fallback — without exposing the raw model ID string.
+ */
+function sanitizerEngineInfo(model: string): { label: string; detail: string } {
+  if (model.includes("gemini-2.5-pro-direct")) {
+    return {
+      label: "Direct audio · Gemini 2.5 Pro",
+      detail:
+        "Gemini 2.5 Pro processed the raw audio natively and extracted passages. " +
+        "No ASR step — best quality for noisy real-world audio because the model " +
+        "could hear background voices, prosody, and mic distance directly.",
+    };
+  }
+  if (model.includes("opus")) {
+    return {
+      label: "ASR + text · Claude Opus 4.6 (fallback)",
+      detail:
+        "Direct Gemini sanitization was unavailable, so this used the fallback " +
+        "path: AssemblyAI/Gemini diarized ASR followed by Opus text-only " +
+        "sanitization. Quality may be lower for noisy audio.",
+    };
+  }
+  if (model.includes("sonnet")) {
+    return {
+      label: "ASR + text · Claude Sonnet (fallback)",
+      detail: "Fallback path with Claude Sonnet. Direct Gemini and Opus were unavailable.",
+    };
+  }
+  if (model.includes("gemini")) {
+    return {
+      label: "ASR + text · Gemini (fallback)",
+      detail:
+        "Fallback path: ASR diarization followed by Gemini text sanitization. " +
+        "Direct multimodal Gemini and Anthropic were both unavailable.",
+    };
+  }
+  if (model.includes("gpt")) {
+    return {
+      label: "ASR + text · GPT-4 (fallback)",
+      detail: "Last-resort fallback: ASR + GPT-4 text sanitization.",
+    };
+  }
+  return { label: model, detail: model };
+}
+
 function formatSeek(seconds: number): string {
   if (!seconds || seconds < 0) return "0:00";
   const h = Math.floor(seconds / 3600);
@@ -405,15 +452,26 @@ export function TranscriptReviewPanel({
         </div>
 
         {/* === SANITIZED MODE === */}
-        {mode === "sanitized" && sanitized && (
+        {mode === "sanitized" && sanitized && (() => {
+          const engineInfo = sanitizerEngineInfo(sanitized.model);
+          const isDirectPath = sanitized.model.includes("gemini-2.5-pro-direct");
+          return (
           <>
             {/* Sanitizer summary */}
             <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
               <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                 <Sparkles size={12} />
                 LLM sanitizer report
-                <span className="ml-auto text-[10px] uppercase tracking-wider opacity-60">
-                  {sanitized.model}
+                <span
+                  className={`ml-auto text-[10px] px-1.5 py-0.5 rounded border font-medium ${
+                    isDirectPath
+                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/40"
+                      : "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30"
+                  }`}
+                  title={engineInfo.detail}
+                  data-testid="review-sanitizer-engine"
+                >
+                  {engineInfo.label}
                 </span>
               </div>
               {sanitized.overall_quality_note && (
@@ -432,9 +490,13 @@ export function TranscriptReviewPanel({
                 </div>
               )}
               <div className="text-[10px] text-muted-foreground italic">
-                Tip: passages are extracted and structured by an LLM using this agent's
-                system prompt as context. Toggle off any passage that doesn't fit, or
-                switch to Raw transcript for fine-grained per-segment curation.
+                {isDirectPath
+                  ? "Gemini processed the raw audio natively (no ASR step), using this " +
+                    "agent's system prompt to decide what's relevant. Toggle off any " +
+                    "passage that doesn't fit, or switch to Raw transcript for ASR-level review."
+                  : "ASR + text sanitization fallback was used (direct multimodal Gemini was " +
+                    "unavailable). Quality may be lower for noisy audio. Toggle off any passage " +
+                    "that doesn't fit, or switch to Raw transcript for fine-grained curation."}
               </div>
             </div>
 
@@ -599,7 +661,8 @@ export function TranscriptReviewPanel({
               })}
             </div>
           </>
-        )}
+          );
+        })()}
 
         {/* Empty sanitized state — sanitizer ran but produced nothing */}
         {mode === "sanitized" && !sanitized && (

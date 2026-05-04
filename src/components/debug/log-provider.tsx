@@ -76,16 +76,31 @@ export const LogProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       try {
         const response = await Reflect.apply(originalFetch, window, args);
         const endTime = Date.now();
-        const responseClone = response.clone();
-        let responseBody: string | object | null = 'Could not parse response body';
+        let responseBody: string | object | null = null;
 
-        try {
-          const contentType = response.headers.get('content-type');
-          responseBody = contentType?.includes('application/json')
-            ? await responseClone.json()
-            : await responseClone.text();
-        } catch {
-            console.error("error in log provider")
+        // ONLY parse text/json bodies. Binary responses (images, PDFs, audio,
+        // video, octet-stream) used to be force-decoded as text — which
+        // turned every 7 MB image fetch into a 10 MB+ string in React state
+        // AND localStorage. That blew past the 5 MB localStorage quota,
+        // causing setItem to throw QuotaExceededError app-wide and silently
+        // breaking *every other* localStorage writer (recent_uploads,
+        // auth state, network-logs itself). Symptom users saw: thumbnails
+        // stuck on spinner forever because addRecent's writeStored failed.
+        const contentType = response.headers.get('content-type') || '';
+        const contentLength = Number(response.headers.get('content-length') || 0);
+        const isText = contentType.includes('json') || contentType.startsWith('text/');
+        const tooBig = contentLength > 256 * 1024; // 256 KB cap per body
+        if (isText && !tooBig) {
+          try {
+            const responseClone = response.clone();
+            responseBody = contentType.includes('application/json')
+              ? await responseClone.json()
+              : await responseClone.text();
+          } catch {
+            responseBody = '<parse error>';
+          }
+        } else {
+          responseBody = `<${contentType || 'binary'}, ${contentLength || '?'} bytes - body skipped>`;
         }
 
         const responseHeaders: Record<string, string> = {};

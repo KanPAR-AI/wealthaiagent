@@ -40,10 +40,22 @@ export function useChatWindowState(chatId?: string): ChatWindowState & ChatWindo
   // On unmount (chat switch, navigation away, hot-reload): abort whatever
   // stream is in flight. Without this, the SSE keeps reading from a dead
   // bot-message id, leaks fetch + decoder, and can race with a new send.
+  //
+  // Defer the abort one tick so React StrictMode's dev double-mount (which
+  // synchronously runs cleanup-then-setup again) doesn't kill the SSE we
+  // just started. `aliveRef` is flipped back to true by the next setup if
+  // the component re-mounts; we only abort if it's still false a tick later.
+  const aliveRef = useRef(true);
   useEffect(() => {
+    aliveRef.current = true;
     return () => {
-      controllerRef.current?.abort(new DOMException("ChatWindow unmounted", "AbortError"));
-      isProcessingRef.current = false;
+      aliveRef.current = false;
+      const ctrl = controllerRef.current;
+      setTimeout(() => {
+        if (aliveRef.current) return; // remounted (StrictMode synthetic)
+        ctrl?.abort(new DOMException("ChatWindow unmounted", "AbortError"));
+        isProcessingRef.current = false;
+      }, 0);
     };
   }, []);
 

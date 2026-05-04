@@ -24,8 +24,17 @@ function scrubStaleStreamingMessages(chatId: string): boolean {
   const state = useChatStore.getState();
   const stored = state.chats[chatId]?.messages || [];
   let scrubbed = false;
+  const now = Date.now();
+  // Grace period: bots added within the last 5s are likely the current mount's
+  // own optimistic add and the SSE may not have produced its first chunk yet.
+  // Without this, React StrictMode dev double-mount (or any rapid remount)
+  // marks an actively-streaming bot as "Response interrupted" immediately
+  // after add — before the stream has had a chance to deliver content.
+  const STREAM_GRACE_MS = 5000;
   for (const m of stored) {
     if (m.sender === 'bot' && m.isStreaming) {
+      const ts = Date.parse(m.timestamp || '');
+      if (ts && now - ts < STREAM_GRACE_MS) continue;
       state.updateMessage(chatId, m.id, {
         isStreaming: false,
         error: 'Response interrupted. Tap Retry to continue.',

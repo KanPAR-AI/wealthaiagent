@@ -17,12 +17,26 @@ interface FileRendererProps {
 function ImagePreview({ file, onFileClick }: FileRendererProps) {
     const { idToken: token } = useAuth();
     const { blobUrl, isLoading, error } = useCachedFile(file, token);
-  
-    if (error || !blobUrl) {
+
+    // Only show the error tile on a real fetch error. Previously this branch
+    // also fired whenever blobUrl was momentarily null (mount → first effect,
+    // or while a network fetch was in flight) — which is why on every chat
+    // reload the user saw a "Preview unavailable" flash even when the image
+    // ultimately loaded fine. Now: error → red tile; loading → skeleton;
+    // success → image.
+    if (error) {
       return (
         <div className="w-full h-48 flex flex-col items-center justify-center bg-zinc-100 dark:bg-zinc-800 rounded-md text-destructive">
           <TriangleAlert className="size-8" />
           <span className="text-xs mt-2">Preview unavailable</span>
+        </div>
+      );
+    }
+
+    if (!blobUrl) {
+      return (
+        <div className="w-full h-48 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 rounded-md">
+          <Loader2 className="animate-spin size-6 text-zinc-500" />
         </div>
       );
     }
@@ -59,11 +73,19 @@ function PdfPreview({ file }: { file: MessageFile }) {
   const { idToken: token } = useAuth();
   const { blobUrl, isLoading, error } = useCachedFile(file, token);
 
-  if (error || !blobUrl) {
+  if (error) {
     return (
       <div className="w-full h-48 flex items-center justify-center text-destructive bg-zinc-100 dark:bg-zinc-800 rounded-md">
         <TriangleAlert className="size-8 mr-2" />
         <span className="text-sm">PDF preview not available</span>
+      </div>
+    );
+  }
+
+  if (!blobUrl) {
+    return (
+      <div className="w-full h-48 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 rounded-md">
+        <Loader2 className="animate-spin size-6 text-zinc-500" />
       </div>
     );
   }

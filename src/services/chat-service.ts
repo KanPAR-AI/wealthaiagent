@@ -9,8 +9,13 @@ import { listenToMockChatStream } from "./mock-sse-service";
 // which surfaces as an `AbortError` in the caller — which is then translated
 // into an `error` on the bot message + a Retry button.
 const POST_TIMEOUT_MS = 15_000;       // hard ceiling on POST /messages
-const SSE_TTFB_TIMEOUT_MS = 30_000;   // first byte must arrive within 30s
-const SSE_IDLE_TIMEOUT_MS = 60_000;   // no chunk for 60s ⇒ dead stream
+// 90s TTFB: MysticAI palm flow runs Gemini 2.5 Pro vision (~28-50s of internal
+// "thoughts" before any user-visible token) and the initial SSE comment pings
+// can be coalesced/buffered upstream by some proxies — so the client may see
+// 0 stream bytes for the entire vision call. 30s wasn't enough; 90s gives
+// vision the headroom it needs without papering over genuinely dead streams.
+const SSE_TTFB_TIMEOUT_MS = 90_000;
+const SSE_IDLE_TIMEOUT_MS = 90_000;   // no chunk for 90s ⇒ dead stream
 
 // TODO: Align the message types for chat history with the backend. Remove the interfaces below and use only those from @/types
 
@@ -316,6 +321,15 @@ export const listenToChatStream = async (
         }
         break;
       }
+
+      // ANY bytes arriving (including SSE comment pings like `: ping\n\n`
+      // that sse-starlette sends every 15s) means the connection is alive.
+      // Clear the TTFB watchdog and reset the idle timer here — without
+      // this, a slow agent (e.g., Gemini 2.5 Pro that spends 20+ seconds
+      // on internal "thoughts" before emitting tokens) trips the 30s TTFB
+      // even though the server is actively keeping the connection warm.
+      if (ttfbTimer) { clearTimeout(ttfbTimer); ttfbTimer = null; }
+      resetIdleTimer();
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split("\n");

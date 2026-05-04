@@ -534,6 +534,36 @@ html.mystic body > #root {
   z-index: 1;
 }
 
+/* Bot bubble contrast on the pastel cosmic plate. Default `bg-muted`
+   (oklch ~0.96) blends into the lavender/peach background and falls
+   below WCAG AA for body text against the cosmic gradient. Promote the
+   bubble to a frosted-white plate with a soft purple boundary so the
+   text island reads cleanly without breaking the cosmic vibe. */
+html.mystic .bg-muted.chat-bubble-content {
+  background: rgba(255, 255, 255, 0.82) !important;
+  border: 1px solid rgba(140, 100, 200, 0.16);
+  box-shadow: 0 2px 16px rgba(110, 70, 170, 0.10);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: rgb(35, 20, 60);
+}
+
+/* User bubble: keep the gradient but boost contrast slightly so blue
+   text-on-pastel doesn't fall below 4.5:1. */
+html.mystic .bg-primary.chat-bubble-content {
+  box-shadow: 0 2px 14px rgba(60, 100, 220, 0.18);
+}
+
+/* Action icons underneath bot bubbles need to read on the cosmic plate
+   — the default text-muted-foreground vanishes against the lavender. */
+html.mystic [role="toolbar"] .text-muted-foreground,
+html.mystic [role="toolbar"] button {
+  color: rgba(80, 50, 130, 0.7);
+}
+html.mystic [role="toolbar"] button:hover {
+  color: rgba(60, 30, 110, 0.95);
+}
+
 /* ============================================================
    Light cosmic background — pure CSS/SVG, GPU-accelerated.
    Replaces the canvas-based version. ~3kB of styles total.
@@ -590,26 +620,49 @@ html.mystic body > #root {
   50%      { opacity: 1;    transform: scale(1.15); }
 }
 
-/* Planets — fixed positions, gentle drift, soft glow. */
+/* Planets — pushed further off-screen + smaller + dimmed so they sit
+   behind content rather than competing with it. The previous sizes
+   (280/220/160) consumed ~30% of the viewport and overlapped chat
+   bubbles on desktop. Halving footprint + dropping opacity to 0.55
+   keeps the cosmic vibe without distracting from the conversation. */
 .cosmic-planet {
   position: absolute;
-  filter: drop-shadow(0 0 30px rgba(255, 180, 200, 0.3));
+  filter: drop-shadow(0 0 24px rgba(255, 180, 200, 0.22));
   will-change: transform;
+  opacity: 0.55;
 }
 .cosmic-saturn {
-  width: 280px;  height: 280px;
-  right: -40px;  top: 6%;
+  width: 200px;  height: 200px;
+  right: -90px;  top: 4%;
   animation: cosmic-drift-a 42s ease-in-out infinite alternate;
 }
 .cosmic-neptune {
-  width: 220px;  height: 220px;
-  right: -20px;  bottom: 4%;
+  width: 160px;  height: 160px;
+  right: -70px;  bottom: 5%;
   animation: cosmic-drift-b 50s ease-in-out infinite alternate;
 }
 .cosmic-mars {
-  width: 160px;  height: 160px;
-  left: -30px;   bottom: 10%;
+  width: 110px;  height: 110px;
+  left: -50px;   bottom: 12%;
   animation: cosmic-drift-c 46s ease-in-out infinite alternate;
+}
+
+/* Mobile: planets shrink further and tuck deeper off-screen so they
+   can't overlap the centered hero or the 2x2 suggestion-tile grid. */
+@media (max-width: 640px) {
+  .cosmic-saturn {
+    width: 130px; height: 130px;
+    right: -75px; top: 2%;
+  }
+  .cosmic-neptune {
+    width: 110px; height: 110px;
+    right: -60px; bottom: 2%;
+  }
+  .cosmic-mars {
+    width: 80px; height: 80px;
+    left: -45px; bottom: 4%;
+  }
+  .cosmic-planet { opacity: 0.4; }
 }
 
 @keyframes cosmic-drift-a {

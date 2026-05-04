@@ -106,11 +106,18 @@ function formatStreamingContent(text: string): string {
  */
 function youtubeMarkdownToEmbed(text: string): string {
   const native = typeof window !== 'undefined' && (window as any).Capacitor?.isNativePlatform?.();
+  const seenVideos = new Set<string>();
   return text.replace(
     /\[([^\]]*)\]\((https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s)]*v=([a-zA-Z0-9_-]+)[^\s)]*|youtu\.be\/([a-zA-Z0-9_-]+)[^\s)]*))\)/g,
     (_match, title, fullUrl, vidId1, vidId2) => {
       const videoId = vidId1 || vidId2;
       if (!videoId) return _match;
+
+      // Skip duplicate embeds for the same video
+      if (seenVideos.has(videoId)) {
+        return `*(see video above)*`;
+      }
+      seenVideos.add(videoId);
 
       if (native) {
         // Native: show thumbnail that opens YouTube app / Safari

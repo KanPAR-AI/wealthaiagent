@@ -18,6 +18,7 @@ import { useAuthStore } from "@/store/auth";
 import { SignInWall } from "@/components/auth/sign-in-wall";
 import { useCachedFile } from "@/hooks/use-cached-file";
 import { useRecentUploads } from "@/hooks/use-recent-uploads";
+import { fileCache } from "@/services/file-cache";
 import { MessageFile } from "@/types"; // Import MessageFile
 import { ArrowUp, Mic, MicOff, Paperclip, Square, X, Loader2, FileText } from "lucide-react";
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
@@ -27,6 +28,9 @@ interface PromptInputWithActionsProps {
   onSubmit: (text: string, attachments: MessageFile[], useMockService?: boolean) => void; // Added useMockService flag
   isLoading?: boolean;
   isInEmptyState?: boolean; // New prop to control border radius styling
+  // Called when user clicks the Stop button while a stream is in flight.
+  // Wires to streamingController.abort() in chat-window.
+  onStop?: () => void;
 }
 
 // Ref methods exposed by the component
@@ -145,6 +149,7 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
     onSubmit,
     isLoading = false,
     isInEmptyState = false,
+    onStop,
   }, ref) {
     const [input, setInput] = useState<string>("");
     const [uploadedFiles, setUploadedFiles] = useState<MessageFile[]>([]); // Use MessageFile[]
@@ -333,13 +338,28 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
           throw new Error(`Missing URL in response for ${file.name}`);
         }
 
-        // Construct a complete MessageFile object using data from both original File and backend response
-        return {
-          name: uploadedFileResponse.fileName || file.name, // Use backend filename if available, else original
-          url: getApiUrl(uploadedFileResponse.url), // Ensure full URL
-          type: file.type, // Use original file's MIME type
-          size: file.size, // Use original file's size
-        } as MessageFile; // Assert type
+        const uploadedUrl = getApiUrl(uploadedFileResponse.url);
+        const messageFile: MessageFile = {
+          name: uploadedFileResponse.fileName || file.name,
+          url: uploadedUrl,
+          type: file.type,
+          size: file.size,
+        };
+
+        // Pre-populate the file cache with the local blob the user just
+        // selected. Without this, the inline message preview AND the recent
+        // uploads thumbnail would both refetch the same image we already
+        // have in memory — and on slow / flaky networks, those refetches
+        // could spin forever, leaving the user staring at a Loader2 right
+        // after they upload. Caching the source File means same-session
+        // thumbs render instantly and the next chat reload is a cache hit.
+        try {
+          await fileCache.set(uploadedUrl, file, messageFile);
+        } catch {
+          // Cache write is best-effort; preview can fall back to network.
+        }
+
+        return messageFile;
       });
 
       const results = await Promise.all(uploadPromises);
@@ -521,14 +541,18 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
           </PromptInputAction>
         </div>
 
-        {/* Send/Stop button */}
+        {/* Send / Stop button. While a stream is in flight (isLoading + onStop
+            available), this becomes a Stop button that aborts the SSE via
+            onStop(). Previously the same icon was wired to handleSubmitInternal
+            but disabled — so clicking it during streaming did nothing, which
+            felt broken. */}
         <PromptInputAction tooltip={
-          !canSend
-            ? isUploading && !input.trim()
-              ? "Please wait for file upload to finish or add some text"
-              : "Send message"
-            : isLoading 
-              ? "Stop generation" 
+          isLoading && onStop
+            ? "Stop generating"
+            : !canSend
+              ? isUploading && !input.trim()
+                ? "Please wait for file upload to finish or add some text"
+                : "Send message"
               : "Send message"
         }>
           <Button
@@ -536,18 +560,29 @@ export const PromptInputWithActions = forwardRef<PromptInputRef, PromptInputWith
             variant="default"
             size="icon"
             className="h-8 w-8 rounded-full"
-            onClick={handleSubmitInternal}
-            // Disable if can't send OR if there's no text and no uploaded files
-            disabled={!canSend || (!input.trim() && uploadedFiles.length === 0)}
+            onClick={() => {
+              if (isLoading && onStop) {
+                onStop();
+              } else {
+                handleSubmitInternal();
+              }
+            }}
+            aria-label={isLoading && onStop ? "Stop generating" : "Send message"}
+            // Stop is always clickable while loading. Send is gated on having
+            // text/files. Upload/transcribe still gate everything.
+            disabled={
+              isUploading || isTranscribing
+                ? true
+                : isLoading && onStop
+                  ? false
+                  : !canSend || (!input.trim() && uploadedFiles.length === 0)
+            }
           >
             {isUploading || isTranscribing ? (
-              // Show spinning loader for upload/transcribe
               <div className="size-5 animate-spin rounded-full border-2 border-background border-t-primary" />
-            ) : isLoading ? (
-              // Show square for stopping generation
+            ) : isLoading && onStop ? (
               <Square className="size-5 fill-current" />
             ) : (
-              // Show arrow for sending
               <ArrowUp className="size-5" />
             )}
           </Button>

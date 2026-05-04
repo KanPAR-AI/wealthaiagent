@@ -31,16 +31,23 @@ export function usePendingMessage({
 
   useEffect(() => {
     const isMockChat = chatId?.startsWith('mock-');
+    // Read live from the store, not the closure. Under React StrictMode (dev)
+    // the effect runs twice per mount: once, then cleanup, then again with
+    // the same closure. The first run synchronously clears pendingMessage,
+    // but the second run still sees the stale value in closure — without a
+    // live read it re-enters and fires a duplicate SSE + duplicate optimistic
+    // adds. Reading from the store sees the cleared null.
+    const livePending = useChatStore.getState().pendingMessage;
     const canProcess =
       (token || isMockChat) &&
       chatId &&
-      pendingMessage &&
-      pendingMessage.chatId === chatId &&
+      livePending &&
+      livePending.chatId === chatId &&
       !isProcessingRef.current;
 
     if (!canProcess) return;
 
-    const { text, files, useMockService } = pendingMessage;
+    const { text, files, useMockService } = livePending;
 
     isProcessingRef.current = true;
     setIsProcessingPendingMessage(true);

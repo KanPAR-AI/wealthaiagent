@@ -36,6 +36,7 @@ import {
   addCorpusText,
   addCorpusBatch,
   pollCorpusJob,
+  listCorpusJobs,
   deleteCorpusItem,
   reloadCorpusVectors,
   runCorpusTest,
@@ -87,6 +88,7 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
   const [youtubeTranscript, setYoutubeTranscript] = useState("");
   const [addMode, setAddMode] = useState<AddSourceMode>(null);
   const [activeJob, setActiveJob] = useState<CorpusJob | null>(null);
+  const [recentJobs, setRecentJobs] = useState<CorpusJob[]>([]);
   const [textTitle, setTextTitle] = useState("");
   const [textContent, setTextContent] = useState("");
   const [dragOver, setDragOver] = useState(false);
@@ -95,9 +97,14 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
   // source citations in the sandbox (via #t=<seconds>). Not storing =
   // transcript-only, smaller footprint, ephemeral preview.
   const [storeVideoSource, setStoreVideoSource] = useState(true);
+  // Language of the uploaded audio/video. "auto" → let Gemini detect;
+  // an ISO-639 code routes both Gemini (prompt hint) and AssemblyAI
+  // (language_code) away from the default English assumption.
+  const [uploadLanguage, setUploadLanguage] = useState<string>("auto");
   const [testResult, setTestResult] = useState<RetrievalTestResult | null>(null);
   const [testQuery, setTestQuery] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recentJobsPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const batchInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -117,12 +124,46 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
     }
   }, [agentId, setCorpusData, setCorpusStats, setLoading]);
 
+  const loadRecentJobs = useCallback(async () => {
+    try {
+      const { jobs } = await listCorpusJobs(agentId);
+      setRecentJobs(jobs);
+      // On first load (or after reload), resume any in-flight job.
+      // Users who close the tab mid-transcription come back and see
+      // progress pick up where it left off.
+      if (!activeJob) {
+        const inFlight = jobs.find(
+          (j) =>
+            j.status === "pending" ||
+            j.status === "running" ||
+            j.status === "finalizing" ||
+            j.status === "awaiting_review",
+        );
+        if (inFlight) {
+          setActiveJob(inFlight);
+          if (inFlight.status !== "awaiting_review") {
+            // resume polling for still-processing jobs
+            startPolling(inFlight.job_id, inFlight.source_type, inFlight.source_ref);
+          }
+        }
+      }
+    } catch {
+      // List endpoint may transiently fail during startup — ignore.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentId]);
+
   useEffect(() => {
     loadData();
+    loadRecentJobs();
+    // Poll recent jobs every 5s so the list reflects progress even
+    // across reloads and for jobs started in other tabs.
+    recentJobsPollRef.current = setInterval(loadRecentJobs, 5000);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
+      if (recentJobsPollRef.current) clearInterval(recentJobsPollRef.current);
     };
-  }, [loadData]);
+  }, [loadData, loadRecentJobs]);
 
   const startPolling = (jobId: string, sourceType: string, sourceRef: string) => {
     setActiveJob({
@@ -169,7 +210,7 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
         if (pollRef.current) clearInterval(pollRef.current);
         pollRef.current = null;
       }
-    }, 3000);
+    }, 5000);
   };
 
   const handleAddYouTube = async () => {
@@ -196,10 +237,14 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
           result = await addCorpusPdf(agentId, file);
           break;
         case "audio":
-          result = await addCorpusAudio(agentId, file);
+          result = await addCorpusAudio(agentId, file, {
+            language: uploadLanguage === "auto" ? undefined : uploadLanguage,
+          });
           break;
         case "video_file":
-          result = await addCorpusVideoFile(agentId, file, storeVideoSource);
+          result = await addCorpusVideoFile(agentId, file, storeVideoSource, {
+            language: uploadLanguage === "auto" ? undefined : uploadLanguage,
+          });
           break;
         case "document":
           result = await addCorpusDocument(agentId, file);
@@ -369,22 +414,45 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
                 <RefreshCw size={14} className="animate-spin" />
-                <span className="text-sm font-medium">
+                <span className="text-sm font-medium truncate">
                   {activeJob.status === "finalizing" ? "Committing" : "Processing"}:{" "}
                   {activeJob.source_ref}
                 </span>
-                <span className="text-xs text-muted-foreground ml-auto capitalize">
-                  {activeJob.status.replace("_", " ")}
+                <span className="text-xs text-muted-foreground ml-auto font-mono">
+                  {activeJob.progress_pct ?? 0}%
                 </span>
               </div>
-              {(activeJob.status === "running" || activeJob.status === "pending") && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Transcribing with diarization (AssemblyAI → Gemini → Whisper). Large videos take ~1 sec per 30 sec of audio.
-                </p>
-              )}
+              {/* Progress bar */}
+              <div className="mt-2 h-1.5 w-full rounded-full bg-blue-100 dark:bg-blue-900/30 overflow-hidden">
+                <div
+                  className="h-full bg-blue-500 transition-all duration-500 ease-out"
+                  style={{ width: `${Math.max(2, activeJob.progress_pct ?? 0)}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {activeJob.progress_stage || "Starting…"}
+              </p>
             </CardContent>
           </Card>
         )}
+
+      {/* Recent jobs — survives reload, shows everything in flight + recent history */}
+      {recentJobs.length > 0 && (
+        <RecentJobsList
+          jobs={recentJobs}
+          activeJobId={activeJob?.job_id}
+          onSelect={(j) => {
+            setActiveJob(j);
+            if (
+              j.status === "pending" ||
+              j.status === "running" ||
+              j.status === "finalizing"
+            ) {
+              startPolling(j.job_id, j.source_type, j.source_ref);
+            }
+          }}
+        />
+      )}
 
       {/* Staged transcript review — shows when job is awaiting_review.
           Admin curates segments here before they're committed to the corpus. */}
@@ -536,6 +604,45 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
                 <X size={14} />
               </Button>
             </div>
+
+            {/* Audio/Video: language selector — routes AssemblyAI language_code
+                and gives Gemini a native-language prompt hint. Critical for
+                non-English audio; without it AssemblyAI produces phonetic
+                English gibberish when the speaker is Hindi/Bengali/Tamil/etc. */}
+            {(addMode === "audio" || addMode === "video_file") && (
+              <div className="mb-3 flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 p-3">
+                <label htmlFor="upload-language" className="text-xs font-medium text-foreground">
+                  Audio language
+                </label>
+                <select
+                  id="upload-language"
+                  value={uploadLanguage}
+                  onChange={(e) => setUploadLanguage(e.target.value)}
+                  className="text-xs rounded border border-border bg-background px-2 py-1"
+                >
+                  <option value="auto">Auto-detect</option>
+                  <option value="en">English</option>
+                  <option value="hi">Hindi</option>
+                  <option value="bn">Bengali</option>
+                  <option value="ta">Tamil</option>
+                  <option value="te">Telugu</option>
+                  <option value="mr">Marathi</option>
+                  <option value="gu">Gujarati</option>
+                  <option value="kn">Kannada</option>
+                  <option value="ml">Malayalam</option>
+                  <option value="pa">Punjabi</option>
+                  <option value="ur">Urdu</option>
+                  <option value="es">Spanish</option>
+                  <option value="fr">French</option>
+                  <option value="de">German</option>
+                  <option value="ja">Japanese</option>
+                  <option value="zh">Chinese</option>
+                </select>
+                <span className="text-[10px] text-muted-foreground ml-auto">
+                  Default is English — set explicitly for non-English audio.
+                </span>
+              </div>
+            )}
 
             {/* Video-specific options: store source in GCS for clickable citations */}
             {addMode === "video_file" && (
@@ -1034,5 +1141,150 @@ function SourceRow({
         </div>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------
+// Recent Jobs — persists across reload, polls every 5s.
+// Shows status, progress bar for in-flight jobs, and lets admin
+// jump back into any job (resume progress view or resume review).
+// ---------------------------------------------------------------
+
+function formatRelativeTime(iso?: string | null): string {
+  if (!iso) return "";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const diffMs = Date.now() - then;
+  const sec = Math.max(0, Math.floor(diffMs / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  return `${day}d ago`;
+}
+
+function jobStatusColor(status: CorpusJob["status"]): string {
+  switch (status) {
+    case "pending":
+    case "running":
+    case "finalizing":
+      return "text-blue-600 dark:text-blue-400";
+    case "awaiting_review":
+      return "text-amber-600 dark:text-amber-400";
+    case "complete":
+      return "text-green-600 dark:text-green-400";
+    case "failed":
+      return "text-red-600 dark:text-red-400";
+    case "cancelled":
+      return "text-muted-foreground";
+  }
+}
+
+function RecentJobsList({
+  jobs,
+  activeJobId,
+  onSelect,
+}: {
+  jobs: CorpusJob[];
+  activeJobId?: string;
+  onSelect: (job: CorpusJob) => void;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const inFlight = jobs.filter(
+    (j) =>
+      j.status === "pending" ||
+      j.status === "running" ||
+      j.status === "finalizing" ||
+      j.status === "awaiting_review",
+  );
+
+  return (
+    <Card>
+      <CardHeader
+        className="cursor-pointer py-3"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <CardTitle className="text-sm flex items-center justify-between">
+          <span>
+            Ingestion jobs
+            {inFlight.length > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1 text-xs font-normal text-blue-600 dark:text-blue-400">
+                <RefreshCw size={10} className="animate-spin" />
+                {inFlight.length} active
+              </span>
+            )}
+          </span>
+          <ChevronDown
+            size={14}
+            className={`transition-transform ${expanded ? "" : "-rotate-90"}`}
+          />
+        </CardTitle>
+      </CardHeader>
+      {expanded && (
+        <CardContent className="p-3 pt-0">
+          <div className="space-y-1.5">
+            {jobs.slice(0, 10).map((j) => {
+              const isActive = j.job_id === activeJobId;
+              const pct = j.progress_pct ?? 0;
+              const isInFlight =
+                j.status === "pending" ||
+                j.status === "running" ||
+                j.status === "finalizing";
+              return (
+                <button
+                  key={j.job_id}
+                  onClick={() => onSelect(j)}
+                  className={`w-full text-left p-2 rounded-md border transition-colors ${
+                    isActive
+                      ? "border-blue-400 bg-blue-50 dark:bg-blue-950/20"
+                      : "border-border hover:bg-muted/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {sourceTypeIconGlobal(j.source_type)}
+                    <span className="text-xs font-medium truncate flex-1">
+                      {j.source_ref}
+                    </span>
+                    <span
+                      className={`text-[10px] font-medium capitalize ${jobStatusColor(j.status)}`}
+                    >
+                      {j.status.replace("_", " ")}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground tabular-nums">
+                      {formatRelativeTime(j.updated_at || j.created_at)}
+                    </span>
+                  </div>
+                  {isInFlight && (
+                    <>
+                      <div className="mt-1.5 h-1 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500 transition-all duration-500 ease-out"
+                          style={{ width: `${Math.max(2, pct)}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1 truncate">
+                        {j.progress_stage || "Starting…"} · {pct}%
+                      </p>
+                    </>
+                  )}
+                  {j.status === "failed" && j.error && (
+                    <p className="text-[10px] text-red-500 mt-1 truncate">
+                      {j.error}
+                    </p>
+                  )}
+                  {j.status === "complete" && j.chunks_created > 0 && (
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {j.chunks_created} chunks added
+                    </p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      )}
+    </Card>
   );
 }

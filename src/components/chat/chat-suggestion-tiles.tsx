@@ -12,12 +12,20 @@ export const Suggestions = ({
   children,
   ...props
 }: SuggestionsProps) => (
-  <ScrollArea className="w-full overflow-x-auto whitespace-nowrap hidden sm:block" {...props}>
-    <div className={cn('flex w-max flex-nowrap items-center gap-2', className)}>
+  <>
+    {/* Mobile: 2x2 grid so tile labels stay fully visible without horizontal
+        scroll, which felt clipped on narrow screens. */}
+    <div className={cn('grid grid-cols-2 gap-2 sm:hidden w-full', className)}>
       {children}
     </div>
-    <ScrollBar className="hidden" orientation="horizontal" />
-  </ScrollArea>
+    {/* ≥640px: horizontal scroll row, original layout. */}
+    <ScrollArea className="w-full overflow-x-auto whitespace-nowrap hidden sm:block" {...props}>
+      <div className={cn('flex w-max flex-nowrap items-center gap-2', className)}>
+        {children}
+      </div>
+      <ScrollBar className="hidden" orientation="horizontal" />
+    </ScrollArea>
+  </>
 );
 
 export type SuggestionProps = Omit<ComponentProps<typeof Button>, 'onClick'> & {
@@ -43,7 +51,12 @@ export const Suggestion = ({
 
   return (
     <Button
-      className={cn('cursor-pointer rounded-full px-4', className)}
+      className={cn(
+        // Mobile (in 2-col grid): allow wrap to two lines, taller tile.
+        // Desktop (in horizontal row): keep single-line pill.
+        'cursor-pointer rounded-full px-4 whitespace-normal sm:whitespace-nowrap min-h-9 sm:min-h-0 text-center leading-tight',
+        className,
+      )}
       onClick={handleClick}
       size={size}
       type="button"

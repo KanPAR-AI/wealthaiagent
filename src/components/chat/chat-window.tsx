@@ -123,7 +123,7 @@ export default function ChatWindow({
     isNewChatInitiating,
     lastUserMessageId,
     isProcessingPendingMessage,
-    streamingController: _streamingController,
+    streamingController,
     isProcessingRef,
     setSelectedFile,
     setIsHistoryLoading,
@@ -133,6 +133,15 @@ export default function ChatWindow({
     setIsProcessingPendingMessage,
     setStreamingController,
   } = useChatWindowState(chatId);
+
+  // Stop the in-flight stream when the user clicks the Stop button.
+  // Aborts the SSE controller (which the listener catches as cancelled by
+  // caller and silently returns), then resets isSending so the input becomes
+  // usable again.
+  const handleStop = useCallback(() => {
+    streamingController?.abort(new DOMException("Stopped by user", "AbortError"));
+    setIsSending(false);
+  }, [streamingController, setIsSending]);
 
   // Custom hooks for business logic
   useChatHistory({
@@ -318,6 +327,7 @@ export default function ChatWindow({
                     // Disable input if sending, regenerating, loading token, OR if a new chat is initiating
                     isLoading={isSending || isRegenerating || isLoadingToken || isNewChatInitiating}
                     isInEmptyState={true}
+                    onStop={handleStop}
                   />
                   <SuggestionTiles
                     tiles={isMysticAI ? mysticSuggestionTiles : defaultSuggestionTiles}
@@ -383,6 +393,7 @@ export default function ChatWindow({
                     // Disable input if sending, regenerating, loading token, OR if a new chat is initiating
                     isLoading={isSending || isRegenerating || isLoadingToken || isNewChatInitiating}
                     isInEmptyState={false}
+                    onStop={handleStop}
                   />
                 </div>
               </div>

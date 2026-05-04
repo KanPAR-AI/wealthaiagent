@@ -20,6 +20,14 @@ server {
         alias /usr/share/nginx/html/chataiagent/;
         index index.html index.htm; # Explicitly define index files
         try_files $uri $uri/ /chataiagent/index.html; # Serve SPA
+
+        # Firebase signInWithPopup needs the parent to keep its window.opener
+        # handle when the popup (aiagentapi.firebaseapp.com) returns. Chrome
+        # 119+ severs the opener relationship unless the parent explicitly
+        # opts in via COOP=same-origin-allow-popups. Without this, Google
+        # sign-in popup completes but the credential never posts back —
+        # symptom: popup hangs / can't close, parent stays anonymous.
+        add_header Cross-Origin-Opener-Policy "same-origin-allow-popups" always;
     }
 
     # Root → redirect to /chataiagent/ (React app lives there).
