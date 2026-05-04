@@ -175,7 +175,7 @@ export const StreamingResponse = ({ content, isStreaming, className, onNavigate 
       {isStreaming ? (
         <StreamingTextRenderer content={content} />
       ) : (
-        <Response onNavigate={onNavigate}>
+        <Response onNavigate={onNavigate} isStreaming={false}>
           {content}
         </Response>
       )}

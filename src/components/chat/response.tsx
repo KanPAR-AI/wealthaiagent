@@ -20,6 +20,10 @@ interface ResponseProps {
   children?: string;
   className?: string;
   onNavigate?: (path: string) => void;
+  // When false (history reload), suppress streaming-only placeholder widgets
+  // like palm_scanning that would otherwise loop their "Compiling reading…"
+  // animation forever on a saved message.
+  isStreaming?: boolean;
 }
 
 /** Collapse excessive blank lines to max one blank line */
@@ -78,7 +82,10 @@ function isInternalLink(href: string | undefined): boolean {
 }
 
 /** Build markdown components, injecting an optional navigate handler for internal links */
-function buildMdComponents(onNavigate?: (path: string) => void): Components {
+function buildMdComponents(
+  onNavigate?: (path: string) => void,
+  isStreaming = true,
+): Components {
   return {
     // Intercept fenced ```bedtime_video {...}``` blocks and render the
     // interactive widget. Any other fenced code block falls through to the
@@ -93,7 +100,11 @@ function buildMdComponents(onNavigate?: (path: string) => void): Components {
       }
 
       // Cinematic scanning placeholder while Gemini Vision is running.
+      // Suppress on history (saved messages also contain the analysis block
+      // that already supersedes this placeholder; otherwise the "Compiling
+      // reading…" animation loops forever after reload).
       if (lang === "palm_scanning") {
+        if (!isStreaming) return null;
         const payload = tryParsePalmScanningPayload(raw);
         if (payload) return <PalmScanningWidget payload={payload} />;
         return null;
@@ -171,11 +182,11 @@ function buildMdComponents(onNavigate?: (path: string) => void): Components {
 }
 
 export const Response = memo(
-  ({ className, children, onNavigate }: ResponseProps) => {
+  ({ className, children, onNavigate, isStreaming = true }: ResponseProps) => {
     const raw = typeof children === 'string' ? children : (children ?? '');
     const cleaned = cleanContent(raw);
     const withEmbeds = embedYouTubeLinks(cleaned);
-    const mdComponents = buildMdComponents(onNavigate);
+    const mdComponents = buildMdComponents(onNavigate, isStreaming);
     return (
       <div className={cn('size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0', className)}>
         <ReactMarkdown
@@ -188,7 +199,10 @@ export const Response = memo(
       </div>
     );
   },
-  (prevProps, nextProps) => prevProps.children === nextProps.children && prevProps.onNavigate === nextProps.onNavigate,
+  (prevProps, nextProps) =>
+    prevProps.children === nextProps.children &&
+    prevProps.onNavigate === nextProps.onNavigate &&
+    prevProps.isStreaming === nextProps.isStreaming,
 );
 
 Response.displayName = 'Response';

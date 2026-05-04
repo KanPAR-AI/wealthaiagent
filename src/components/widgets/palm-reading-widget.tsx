@@ -26,6 +26,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { getApiUrl } from '@/config/environment';
+import { useAuth } from '@/hooks/use-auth';
+import { useCachedFile } from '@/hooks/use-cached-file';
 
 export type PalmPredictionField = {
   value: number | null;
@@ -102,8 +104,13 @@ export function PalmReadingWidget({ payload }: { payload: PalmAnalysisPayload })
   const imgRef = useRef<HTMLImageElement | null>(null);
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
 
-  // Resolve full image URL (the widget payload may carry a relative path).
-  const imgUrl =
+  // Resolve full backend URL for the palm image. The <img> tag below CANNOT
+  // send an Authorization header, so we route the URL through useCachedFile
+  // which fetches with Bearer token, caches the bytes in IndexedDB, and
+  // hands back a blob: URL the <img> can render natively. Without this,
+  // the file endpoint rejected unauthenticated GETs and the widget showed
+  // a broken image on every reload.
+  const backendUrl =
     payload.image_url
       ? payload.image_url.startsWith('http')
         ? payload.image_url
@@ -111,6 +118,17 @@ export function PalmReadingWidget({ payload }: { payload: PalmAnalysisPayload })
       : payload.image_file_id
         ? getApiUrl(`/files/${payload.image_file_id}/download`)
         : null;
+  const { idToken: token } = useAuth();
+  const { blobUrl, error: imgError } = useCachedFile(
+    backendUrl ? { name: 'palm', type: 'image/jpeg', url: backendUrl, size: 0 } : null,
+    token,
+  );
+  const imgUrl = blobUrl;
+  // Distinguish "still fetching" (backendUrl set, blobUrl null, no error) from
+  // "no image was ever attached" (no backendUrl). The original code
+  // collapsed both into a single "(palm image not available)" tile, which
+  // flashed briefly on every reload before the blob arrived.
+  const isImgLoading = Boolean(backendUrl) && !blobUrl && !imgError;
 
   useEffect(() => {
     const el = imgRef.current;
@@ -206,6 +224,10 @@ export function PalmReadingWidget({ payload }: { payload: PalmAnalysisPayload })
               })}
             </svg>
           )}
+        </div>
+      ) : isImgLoading ? (
+        <div className="p-6 flex items-center justify-center min-h-[180px] bg-[#0a0612]/60">
+          <div className="size-6 rounded-full border-2 border-purple-300/30 border-t-purple-300 animate-spin" />
         </div>
       ) : (
         <div className="p-6 text-center text-sm text-purple-200/60">
