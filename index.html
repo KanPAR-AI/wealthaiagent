@@ -32,50 +32,147 @@
     <div id="root">
       <!-- Pre-React splash screen — replaced automatically when React mounts -->
       <style>
-        .splash{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;height:100dvh;background:#fafbff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;overflow:hidden;padding:2rem;user-select:none;-webkit-user-select:none}
-        .splash-logo{width:56px;height:62px;margin-bottom:2rem;animation:float 3s ease-in-out infinite}
-        .splash-title{font-size:1.5rem;font-weight:700;color:#0004E8;letter-spacing:-0.02em;margin-bottom:0.25rem}
-        .splash-subtitle{font-size:0.85rem;color:#8b8fa3;margin-bottom:2.5rem}
-        .splash-spinner{width:36px;height:36px;border:3px solid #e8eaf0;border-top-color:#0004E8;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:1.5rem}
-        .splash-status{font-size:0.8rem;color:#0004E8;height:1.2em;opacity:0;animation:fade-status 12s ease-in-out infinite}
-        .splash-dots{display:flex;gap:6px;margin-top:1.5rem}
-        .splash-dots span{width:6px;height:6px;border-radius:50%;background:#0004E8;opacity:0.15;animation:dot-pulse 1.4s ease-in-out infinite}
-        .splash-dots span:nth-child(2){animation-delay:0.2s}
-        .splash-dots span:nth-child(3){animation-delay:0.4s}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-        @keyframes dot-pulse{0%,100%{opacity:0.15;transform:scale(1)}50%{opacity:0.8;transform:scale(1.3)}}
-        @keyframes fade-status{
-          0%,8%{opacity:0}10%,20%{opacity:1}22%,28%{opacity:0}
-          30%,40%{opacity:1}42%,48%{opacity:0}
-          50%,60%{opacity:1}62%,68%{opacity:0}
-          70%,80%{opacity:1}82%,88%{opacity:0}
-          90%,100%{opacity:1}
-        }
-        @media(prefers-color-scheme:dark){
-          .splash{background:#111318}
-          .splash-title{color:#8b9aff}
-          .splash-subtitle{color:#555a6e}
-          .splash-spinner{border-color:#2a2d3a;border-top-color:#8b9aff}
-          .splash-dots span{background:#8b9aff}
-          .splash-status{color:#8b9aff}
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        :root{--sp-bg:#0a0e1a;--sp-card:rgba(255,255,255,0.03);--sp-border:rgba(255,255,255,0.06);--sp-text:#e2e8f0;--sp-dim:#475569;--sp-accent:#6366f1;--sp-glow:rgba(99,102,241,0.15);--sp-blue:#3b82f6;--sp-emerald:#10b981}
+        .splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--sp-bg);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,sans-serif;overflow:hidden;-webkit-user-select:none;user-select:none}
+
+        /* Animated gradient background orbs */
+        .splash::before,.splash::after{content:'';position:absolute;border-radius:50%;filter:blur(80px);opacity:0.4;animation:orb-drift 8s ease-in-out infinite alternate}
+        .splash::before{width:400px;height:400px;background:radial-gradient(circle,var(--sp-accent),transparent 70%);top:-10%;right:-10%;animation-delay:0s}
+        .splash::after{width:350px;height:350px;background:radial-gradient(circle,var(--sp-blue),transparent 70%);bottom:-10%;left:-15%;animation-delay:-4s}
+
+        /* Grid pattern overlay */
+        .sp-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,black 40%,transparent 100%)}
+
+        /* Content container */
+        .sp-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:2rem;max-width:400px;width:100%}
+
+        /* Logo with glow ring */
+        .sp-logo-wrap{position:relative;margin-bottom:2rem}
+        .sp-logo-ring{width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,var(--sp-accent),var(--sp-blue));padding:2px;animation:ring-spin 4s linear infinite}
+        .sp-logo-ring-inner{width:100%;height:100%;border-radius:50%;background:var(--sp-bg);display:flex;align-items:center;justify-content:center}
+        .sp-logo-ring svg{width:36px;height:40px;color:var(--sp-text);filter:drop-shadow(0 0 8px var(--sp-glow))}
+        .sp-logo-glow{position:absolute;inset:-20px;border-radius:50%;background:radial-gradient(circle,var(--sp-glow),transparent 70%);animation:pulse-glow 3s ease-in-out infinite;z-index:-1}
+
+        /* Title */
+        .sp-title{font-size:1.75rem;font-weight:700;letter-spacing:-0.03em;background:linear-gradient(135deg,#e2e8f0 0%,#6366f1 50%,#3b82f6 100%);background-size:200% 200%;animation:gradient-shift 4s ease-in-out infinite;-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:0.375rem}
+        .sp-tagline{font-size:0.85rem;color:var(--sp-dim);margin-bottom:2.5rem;letter-spacing:0.02em}
+
+        /* Progress bar */
+        .sp-progress{width:200px;height:3px;border-radius:3px;background:var(--sp-card);overflow:hidden;margin-bottom:1.75rem;border:1px solid var(--sp-border)}
+        .sp-progress-bar{height:100%;width:0%;border-radius:3px;background:linear-gradient(90deg,var(--sp-accent),var(--sp-blue),var(--sp-emerald));animation:progress-fill 12s cubic-bezier(0.4,0,0.2,1) forwards}
+
+        /* Status message with typewriter cursor */
+        .sp-status{display:flex;align-items:center;gap:8px;margin-bottom:1.5rem;min-height:24px}
+        .sp-status-dot{width:6px;height:6px;border-radius:50%;background:var(--sp-emerald);box-shadow:0 0 8px var(--sp-emerald);animation:blink 1.5s ease-in-out infinite}
+        .sp-status-text{font-size:0.8rem;color:var(--sp-dim);font-family:'SF Mono',SFMono-Regular,ui-monospace,'Cascadia Mono',Menlo,monospace;letter-spacing:0.01em}
+        .sp-cursor{display:inline-block;width:1px;height:14px;background:var(--sp-accent);margin-left:2px;animation:blink 1s step-end infinite}
+
+        /* Bottom steps */
+        .sp-steps{display:flex;gap:24px}
+        .sp-step{display:flex;flex-direction:column;align-items:center;gap:6px;opacity:0.3;transition:opacity 0.6s ease,transform 0.6s ease;transform:translateY(4px)}
+        .sp-step.active{opacity:1;transform:translateY(0)}
+        .sp-step.done{opacity:0.6}
+        .sp-step-icon{width:32px;height:32px;border-radius:10px;background:var(--sp-card);border:1px solid var(--sp-border);display:flex;align-items:center;justify-content:center;font-size:14px;transition:border-color 0.6s ease,box-shadow 0.6s ease}
+        .sp-step.active .sp-step-icon{border-color:var(--sp-accent);box-shadow:0 0 12px var(--sp-glow)}
+        .sp-step.done .sp-step-icon{border-color:var(--sp-emerald);background:rgba(16,185,129,0.08)}
+        .sp-step-label{font-size:0.65rem;color:var(--sp-dim);white-space:nowrap;letter-spacing:0.02em}
+
+        @keyframes orb-drift{0%{transform:translate(0,0) scale(1)}100%{transform:translate(-30px,20px) scale(1.1)}}
+        @keyframes ring-spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+        @keyframes pulse-glow{0%,100%{opacity:0.4;transform:scale(1)}50%{opacity:0.7;transform:scale(1.15)}}
+        @keyframes gradient-shift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+        @keyframes progress-fill{0%{width:0%}15%{width:15%}30%{width:28%}50%{width:50%}70%{width:68%}85%{width:82%}100%{width:98%}}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+        /* Light mode override */
+        @media(prefers-color-scheme:light){
+          :root{--sp-bg:#f8fafc;--sp-card:rgba(0,0,0,0.02);--sp-border:rgba(0,0,0,0.06);--sp-text:#0f172a;--sp-dim:#64748b;--sp-glow:rgba(99,102,241,0.1)}
+          .splash::before{opacity:0.2}
+          .splash::after{opacity:0.15}
+          .sp-grid{background-image:linear-gradient(rgba(0,0,0,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.03) 1px,transparent 1px)}
+          .sp-title{background:linear-gradient(135deg,#0f172a 0%,#6366f1 50%,#3b82f6 100%);background-size:200% 200%;-webkit-background-clip:text;background-clip:text}
+          .sp-logo-ring-inner{background:var(--sp-bg)}
         }
       </style>
+
       <div class="splash">
-        <svg class="splash-logo" width="56" height="62" viewBox="0 0 36 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path fill-rule="evenodd" clip-rule="evenodd" d="M0 15V31H5C5.525 31 6.045 31.104 6.531 31.305C7.016 31.506 7.457 31.8 7.828 32.172C8.2 32.543 8.495 32.984 8.696 33.469C8.896 33.955 9 34.475 9 35V40H21L36 25V9H31C30.475 9 29.955 8.897 29.469 8.696C28.984 8.495 28.543 8.2 28.172 7.828C27.8 7.457 27.506 7.016 27.304 6.531C27.104 6.045 27 5.525 27 5V0H15L0 15ZM17 30H10V19L19 10H26V21L17 30Z" fill="currentColor"/>
-        </svg>
-        <div class="splash-title">WealthWise AI</div>
-        <div class="splash-subtitle">Your personal financial advisor</div>
-        <div class="splash-spinner"></div>
-        <div class="splash-status" id="splash-msg"></div>
-        <div class="splash-dots"><span></span><span></span><span></span></div>
+        <div class="sp-grid"></div>
+        <div class="sp-content">
+          <div class="sp-logo-wrap">
+            <div class="sp-logo-glow"></div>
+            <div class="sp-logo-ring">
+              <div class="sp-logo-ring-inner">
+                <svg viewBox="0 0 36 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M0 15V31H5C5.525 31 6.045 31.104 6.531 31.305C7.016 31.506 7.457 31.8 7.828 32.172C8.2 32.543 8.495 32.984 8.696 33.469C8.896 33.955 9 34.475 9 35V40H21L36 25V9H31C30.475 9 29.955 8.897 29.469 8.696C28.984 8.495 28.543 8.2 28.172 7.828C27.8 7.457 27.506 7.016 27.304 6.531C27.104 6.045 27 5.525 27 5V0H15L0 15ZM17 30H10V19L19 10H26V21L17 30Z" fill="currentColor"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="sp-title">WealthWise AI</div>
+          <div class="sp-tagline">Your personal financial advisor</div>
+
+          <div class="sp-progress"><div class="sp-progress-bar"></div></div>
+
+          <div class="sp-status">
+            <div class="sp-status-dot"></div>
+            <span class="sp-status-text" id="sp-msg">Initializing</span><span class="sp-cursor"></span>
+          </div>
+
+          <div class="sp-steps">
+            <div class="sp-step active" id="sp-s0">
+              <div class="sp-step-icon">&#9889;</div>
+              <div class="sp-step-label">Services</div>
+            </div>
+            <div class="sp-step" id="sp-s1">
+              <div class="sp-step-icon">&#129504;</div>
+              <div class="sp-step-label">AI Models</div>
+            </div>
+            <div class="sp-step" id="sp-s2">
+              <div class="sp-step-icon">&#128200;</div>
+              <div class="sp-step-label">Data</div>
+            </div>
+            <div class="sp-step" id="sp-s3">
+              <div class="sp-step-icon">&#10024;</div>
+              <div class="sp-step-label">Ready</div>
+            </div>
+          </div>
+        </div>
       </div>
+
       <script>
         (function(){
-          var msgs=["Waking up the engines...","Spinning up cloud services...","Connecting to AI models...","Loading financial data...","Preparing your dashboard...","Almost there..."];
-          var el=document.getElementById("splash-msg"),i=0;
-          if(el){el.textContent=msgs[0];setInterval(function(){i=(i+1)%msgs.length;el.textContent=msgs[i]},2200)}
+          var steps=[
+            {msg:"Spawning cloud services",step:0,dur:2400},
+            {msg:"Warming up containers",step:0,dur:2000},
+            {msg:"Connecting to AI models",step:1,dur:2200},
+            {msg:"Loading neural networks",step:1,dur:1800},
+            {msg:"Fetching market data",step:2,dur:2000},
+            {msg:"Syncing portfolio",step:2,dur:1800},
+            {msg:"Preparing your experience",step:3,dur:2000},
+            {msg:"Almost there",step:3,dur:3000}
+          ];
+          var el=document.getElementById("sp-msg"),idx=0;
+          function show(){
+            if(!el)return;
+            var s=steps[idx];
+            // Type out the message character by character
+            el.textContent="";
+            var chars=s.msg.split(""),ci=0;
+            var typing=setInterval(function(){
+              if(ci<chars.length){el.textContent+=chars[ci];ci++}
+              else{clearInterval(typing)}
+            },30);
+            // Update step indicators
+            for(var j=0;j<4;j++){
+              var se=document.getElementById("sp-s"+j);
+              if(se){se.className="sp-step"+(j<s.step?" done":j===s.step?" active":"")}
+            }
+            idx=(idx+1)%steps.length;
+            setTimeout(show,s.dur);
+          }
+          show();
         })();
       </script>
     </div>
