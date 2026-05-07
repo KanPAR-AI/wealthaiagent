@@ -29,7 +29,56 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Pre-React splash screen — replaced automatically when React mounts -->
+      <style>
+        .splash{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;height:100dvh;background:#fafbff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;overflow:hidden;padding:2rem;user-select:none;-webkit-user-select:none}
+        .splash-logo{width:56px;height:62px;margin-bottom:2rem;animation:float 3s ease-in-out infinite}
+        .splash-title{font-size:1.5rem;font-weight:700;color:#0004E8;letter-spacing:-0.02em;margin-bottom:0.25rem}
+        .splash-subtitle{font-size:0.85rem;color:#8b8fa3;margin-bottom:2.5rem}
+        .splash-spinner{width:36px;height:36px;border:3px solid #e8eaf0;border-top-color:#0004E8;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:1.5rem}
+        .splash-status{font-size:0.8rem;color:#0004E8;height:1.2em;opacity:0;animation:fade-status 12s ease-in-out infinite}
+        .splash-dots{display:flex;gap:6px;margin-top:1.5rem}
+        .splash-dots span{width:6px;height:6px;border-radius:50%;background:#0004E8;opacity:0.15;animation:dot-pulse 1.4s ease-in-out infinite}
+        .splash-dots span:nth-child(2){animation-delay:0.2s}
+        .splash-dots span:nth-child(3){animation-delay:0.4s}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+        @keyframes dot-pulse{0%,100%{opacity:0.15;transform:scale(1)}50%{opacity:0.8;transform:scale(1.3)}}
+        @keyframes fade-status{
+          0%,8%{opacity:0}10%,20%{opacity:1}22%,28%{opacity:0}
+          30%,40%{opacity:1}42%,48%{opacity:0}
+          50%,60%{opacity:1}62%,68%{opacity:0}
+          70%,80%{opacity:1}82%,88%{opacity:0}
+          90%,100%{opacity:1}
+        }
+        @media(prefers-color-scheme:dark){
+          .splash{background:#111318}
+          .splash-title{color:#8b9aff}
+          .splash-subtitle{color:#555a6e}
+          .splash-spinner{border-color:#2a2d3a;border-top-color:#8b9aff}
+          .splash-dots span{background:#8b9aff}
+          .splash-status{color:#8b9aff}
+        }
+      </style>
+      <div class="splash">
+        <svg class="splash-logo" width="56" height="62" viewBox="0 0 36 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M0 15V31H5C5.525 31 6.045 31.104 6.531 31.305C7.016 31.506 7.457 31.8 7.828 32.172C8.2 32.543 8.495 32.984 8.696 33.469C8.896 33.955 9 34.475 9 35V40H21L36 25V9H31C30.475 9 29.955 8.897 29.469 8.696C28.984 8.495 28.543 8.2 28.172 7.828C27.8 7.457 27.506 7.016 27.304 6.531C27.104 6.045 27 5.525 27 5V0H15L0 15ZM17 30H10V19L19 10H26V21L17 30Z" fill="currentColor"/>
+        </svg>
+        <div class="splash-title">WealthWise AI</div>
+        <div class="splash-subtitle">Your personal financial advisor</div>
+        <div class="splash-spinner"></div>
+        <div class="splash-status" id="splash-msg"></div>
+        <div class="splash-dots"><span></span><span></span><span></span></div>
+      </div>
+      <script>
+        (function(){
+          var msgs=["Waking up the engines...","Spinning up cloud services...","Connecting to AI models...","Loading financial data...","Preparing your dashboard...","Almost there..."];
+          var el=document.getElementById("splash-msg"),i=0;
+          if(el){el.textContent=msgs[0];setInterval(function(){i=(i+1)%msgs.length;el.textContent=msgs[i]},2200)}
+        })();
+      </script>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
