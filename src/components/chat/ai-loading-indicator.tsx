@@ -44,7 +44,7 @@ export function AiLoadingIndicator({
   }, [labels.length]);
 
   return (
-    <div className="flex gap-3 justify-start mt-6">
+    <div className="flex gap-3 justify-start mt-6" data-testid="ai-loading-indicator">
       <ChatBubbleAvatar src={avatarSrc} fallback={avatarFallback} className="flex-shrink-0" />
       <div
         className={`min-w-0 max-w-md flex-1 rounded-2xl px-4 py-3 ${

@@ -54,13 +54,25 @@ async function sendMessage(page: Page, text: string) {
   await input.press('Enter');
 }
 
-async function waitForResponse(page: Page, timeoutMs = 60_000) {
+async function waitForResponse(page: Page, timeoutMs = 90_000) {
+  // The frontend's `AiLoadingIndicator` carries data-testid="ai-loading-indicator"
+  // for exactly this purpose. The label inside it ("Reading your message…",
+  // "Searching knowledge…", "Drafting response…") cycles every 3.5s so text-
+  // based waits race; the testid is stable.
+  const indicator = page.getByTestId('ai-loading-indicator');
   try {
-    await page.getByText('Thinking...').waitFor({ state: 'visible', timeout: 10_000 });
+    await indicator.first().waitFor({ state: 'visible', timeout: 10_000 });
   } catch {
-    // Response may have streamed in instantly
+    // Either the response streamed instantly or the indicator
+    // mounted+unmounted between polls. Either way, drop into the
+    // "wait until gone" branch below.
   }
-  await page.getByText('Thinking...').waitFor({ state: 'hidden', timeout: timeoutMs });
+  // Wait until ALL indicators are gone (we send multiple turns per test,
+  // so allow ample time for any active one to finish).
+  await indicator.first().waitFor({ state: 'detached', timeout: timeoutMs }).catch(async () => {
+    // Detached may not fire if React re-mounts; fall back to hidden.
+    await indicator.first().waitFor({ state: 'hidden', timeout: timeoutMs });
+  });
   await page.waitForTimeout(1500); // settle markdown / widgets
 }
 
