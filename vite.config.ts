@@ -1,5 +1,5 @@
 // frontend/vite.config.ts
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from "path"
@@ -7,11 +7,43 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 const isCapacitor = process.env.VITE_CAPACITOR === 'true';
 
+/**
+ * Vite serves the SPA at `base = '/chataiagent/'` (with the slash). A
+ * request to bare `/chataiagent` hits Vite's helpful-but-fatal error
+ * page ("did you mean to visit /chataiagent/ instead?"). This bites
+ * mobile Google sign-in: `signInWithRedirect` → google.com → 302 back
+ * to `localhost:5173/chataiagent` (some redirectors drop the trailing
+ * slash) and the user lands on the error page with no JS shipped, no
+ * router, nothing to recover with. Same for any deep link to
+ * `/chataiagent?foo=bar` from outside the app.
+ *
+ * This plugin issues a 301 from the bare prefix to the slashed form
+ * BEFORE Vite's own middleware sees the request. Web-only — Capacitor
+ * builds use `base: '/'` and don't need it.
+ */
+const redirectBareBaseToSlash = (basePath: string): Plugin => ({
+  name: 'redirect-bare-base-to-slash',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      const url = req.url || '';
+      // Match either the bare prefix OR the bare prefix + query.
+      if (url === basePath || url.startsWith(basePath + '?') || url.startsWith(basePath + '#')) {
+        const tail = url.slice(basePath.length);
+        res.writeHead(301, { Location: `${basePath}/${tail}` });
+        res.end();
+        return;
+      }
+      next();
+    });
+  },
+});
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    ...(!isCapacitor ? [redirectBareBaseToSlash('/chataiagent')] : []),
     // Skip PWA plugin for native Capacitor builds — service workers don't apply
     ...(!isCapacitor ? [VitePWA({
       registerType: 'autoUpdate',
