@@ -61,9 +61,32 @@ export default defineConfig({
         // Always fetch index.html from network so the entry point points
         // at the freshest hashed bundles. Falls back to cache if offline.
         navigateFallback: null,
+        // Tell Workbox that requests Firebase makes for its auth handler
+        // and the credential-bearing redirect back are never SW-business.
+        // Without this, an iOS Safari/CriOS user doing `signInWithRedirect`
+        // sees the OAuth handler return to the SPA with credential params
+        // in the URL fragment, the SW serves a cached HTML response, the
+        // SDK never sees the fragment, and `getRedirectResult()` returns
+        // null → the user lands back anonymous. Confirmed in prod logs
+        // (last_sign_in for the test user stayed at 2026-05-04 while the
+        // session ended up as a fresh anonymous uid).
+        navigateFallbackDenylist: [
+          /__\/auth\//,                  // Firebase hosted auth handler
+          /\/__\/firebase\//,
+          /[?#&](state|id_token|access_token|code|apiKey|authType|providerId|oauth_token)=/,
+        ],
         runtimeCaching: [
           {
-            urlPattern: ({ request }) => request.mode === 'navigate',
+            urlPattern: ({ request, url }) => {
+              if (request.mode !== 'navigate') return false;
+              // Skip Firebase-auth-bearing navigations: their query/fragment
+              // contains the OAuth credential and the SDK needs to read it
+              // from the live URL, not a cached HTML body.
+              const haystack = `${url.search}${url.hash}`;
+              if (/[?#&](state|id_token|access_token|code|apiKey|authType|providerId|oauth_token)=/.test(haystack)) return false;
+              if (url.pathname.includes('/__/auth/') || url.pathname.includes('/__/firebase/')) return false;
+              return true;
+            },
             handler: 'NetworkFirst',
             options: {
               cacheName: 'html-cache',
