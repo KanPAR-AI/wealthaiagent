@@ -5,6 +5,7 @@ import { useCallback } from "react";
 import {
   signInWithPopup,
   signInWithRedirect,
+  signInWithCredential,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -13,25 +14,67 @@ import {
 import { auth } from "@/config/firebase";
 import { useAuthStore } from "@/store/auth";
 import { useChatStore } from "@/store/chat";
+import { signInWithGoogleViaGIS } from "@/lib/google-identity-services";
 
-/** Detect whether we should use redirect-based Google sign-in instead of popup.
+/** Google Sign-In on the web is a minefield: every browser+Firebase
+ * combination has its own failure mode. We try three approaches in
+ * order, falling through on the first failure:
  *
- * `signInWithPopup` is unreliable on actual mobile browsers (iOS Safari opens
- * a new tab whose auth completion doesn't propagate back). `signInWithRedirect`
- * is the canonical fix there: full-page redirect to Google, redirected back,
- * `getRedirectResult()` picks up the credential.
+ *   1. **GIS One Tap / FedCM** — Google Identity Services. Runs as a
+ *      first-party iframe under accounts.google.com, returns an ID
+ *      token via JS callback, then we hand it to
+ *      `signInWithCredential`. NO redirect, NO cross-origin auth-domain
+ *      iframe. This is the only flow that reliably works on iOS Safari
+ *      and iOS Chrome (CriOS) — they're both WebKit and ITP blocks the
+ *      cross-site cookies Firebase's `authDomain` flow needs.
  *
- * UA-based detection ONLY. Earlier heuristics (narrow viewport, coarse
- * pointer) misfired on desktop browsers — a Mac user with a narrow window
- * or Chrome DevTools "Toggle device toolbar" enabled would hit the redirect
- * path, which on localhost+third-party-iframe is fragile and silently
- * returned null from getRedirectResult. End-user symptom: full-page redirect
- * to Google, sign in, redirected back to login page still anonymous.
+ *   2. **signInWithPopup** — Firebase's classic popup. Works on
+ *      desktop and on mobile *when* `Cross-Origin-Opener-Policy:
+ *      same-origin-allow-popups` is set on the parent (we set it in
+ *      both nginx prod config and the Vite dev server). On older iOS
+ *      it can race the popup close — that's why GIS goes first.
+ *
+ *   3. **signInWithRedirect** — last resort, full-page redirect.
+ *      Documented to fail silently on Safari ITP because the auth
+ *      handler's session cookie on `*.firebaseapp.com` gets blocked
+ *      coming back. Confirmed via prod logs:
+ *      ravi.ismystery@gmail.com tried mobile sign-in repeatedly and
+ *      stayed anonymous every time — getRedirectResult() returns null
+ *      because Firebase can't read its own session cookie cross-site.
  */
-function shouldUseRedirect(): boolean {
-  if (typeof window === "undefined") return false;
-  const ua = navigator.userAgent || "";
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+async function signInWithGoogleFallback(): Promise<"gis" | "popup" | "redirect"> {
+  const provider = new GoogleAuthProvider();
+
+  // 1. GIS
+  try {
+    const idToken = await signInWithGoogleViaGIS();
+    if (idToken) {
+      const cred = GoogleAuthProvider.credential(idToken);
+      await signInWithCredential(auth, cred);
+      return "gis";
+    }
+  } catch (e) {
+    console.warn("[AUTH] GIS failed, falling back to popup:", e);
+  }
+
+  // 2. Popup
+  try {
+    await signInWithPopup(auth, provider);
+    return "popup";
+  } catch (e: any) {
+    // Popup blocked, COOP issue, or user closed the popup — fall
+    // through to redirect.
+    const code = e?.code || "";
+    if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+      // User intent: don't auto-fall through to redirect. Re-throw.
+      throw e;
+    }
+    console.warn("[AUTH] popup failed, falling back to redirect:", code || e);
+  }
+
+  // 3. Redirect (rarely reached now)
+  await signInWithRedirect(auth, provider);
+  return "redirect";
 }
 
 export function useAuth() {
@@ -39,19 +82,8 @@ export function useAuth() {
     useAuthStore();
 
   const signInWithGoogle = useCallback(async () => {
-    const provider = new GoogleAuthProvider();
-    const useRedirect = shouldUseRedirect();
-    console.log("[AUTH] sign-in path:", useRedirect ? "REDIRECT" : "POPUP",
-      "| UA:", typeof navigator !== "undefined" ? navigator.userAgent : "(server)");
-    if (useRedirect) {
-      // On mobile: full-page redirect. The user leaves this page; on return
-      // the AuthProvider's getRedirectResult() in useEffect picks up the
-      // auth state. The promise below resolves before the redirect actually
-      // happens, so callers should treat it as fire-and-forget.
-      await signInWithRedirect(auth, provider);
-    } else {
-      await signInWithPopup(auth, provider);
-    }
+    const path = await signInWithGoogleFallback();
+    console.info("[AUTH] sign-in completed via:", path);
   }, []);
 
   const signInWithEmail = useCallback(
