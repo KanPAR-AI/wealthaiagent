@@ -94,6 +94,12 @@ export function AgentDraftScreen({ onClose, onOpenManualWizard }: Props) {
       });
       return;
     }
+    if (goal.trim().length > 10_000) {
+      toast.error("Goal too long", {
+        description: `Description is ${goal.trim().length.toLocaleString()} chars; please keep it under 10,000.`,
+      });
+      return;
+    }
     setDrafting(true);
     try {
       const res = await draftFromGoal(goal.trim());
@@ -205,7 +211,11 @@ export function AgentDraftScreen({ onClose, onOpenManualWizard }: Props) {
               rows={3}
               className="resize-none"
               disabled={drafting || creating}
+              maxLength={10_000}
             />
+            <div className="text-[11px] text-muted-foreground text-right">
+              {goal.length.toLocaleString()} / 10,000
+            </div>
             <div className="flex items-center justify-between gap-2">
               <button
                 type="button"
