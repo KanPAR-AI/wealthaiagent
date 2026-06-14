@@ -4,6 +4,7 @@ import { AppProviders } from "./components/providers/app-providers";
 import AppLayout from "@/components/layout/app-layout";
 import Chat from "./pages/Chat";
 import New from "./pages/New";
+import AgentLanding from "./pages/AgentLanding";
 import NotFound from "./pages/NotFound";
 import Logs from "./pages/Logs";
 import Trade from "./pages/Trade";
@@ -54,6 +55,13 @@ const App = () => (
       <Routes>
         {/* Login page as the first screen */}
         <Route path="/" element={<LoginPage />} />
+
+        {/* Custom per-agent landing pages: /a/<slug> preselects the
+            agent then redirects to /new. Slugs include both pretty
+            aliases ("mystic", "diet") and raw agent ids. Lives
+            outside AppLayout because it never renders any UI — it's
+            just a side-effect-and-redirect bounce. */}
+        <Route path="/a/:slug" element={<AgentLanding />} />
 
         {/* All routes inside AppLayout will have the persistent sidebar */}
         <Route element={<AppLayout />}>
