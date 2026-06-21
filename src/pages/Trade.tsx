@@ -457,7 +457,7 @@ export default function Trade() {
                         <ul className="space-y-2">
                           {selected.signals.map((signal, idx) => (
                             <li key={idx} className="text-sm text-white/70 flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#4EA8F5]" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#25D366]" />
                               <strong>{signal.name}:</strong> {signal.desc}
                             </li>
                           ))}
@@ -520,7 +520,7 @@ export default function Trade() {
                     <ul className="space-y-2">
                       {selected.signals.map((signal, idx) => (
                         <li key={idx} className="text-sm text-white/70 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#4EA8F5]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#25D366]" />
                           <strong>{signal.name}:</strong> {signal.desc}
                         </li>
                       ))}

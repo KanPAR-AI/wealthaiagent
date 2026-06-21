@@ -38,7 +38,7 @@ const EventDot = ({ x, y, marker, onHoverChange }: any) => {
         cy={y}
         r={8}
         fill="none"
-        stroke="#4EA8F5"
+        stroke="#25D366"
         strokeWidth={1.5}
         opacity={0.3}
         className="pulse-ring"
@@ -49,14 +49,14 @@ const EventDot = ({ x, y, marker, onHoverChange }: any) => {
         cx={x}
         cy={y}
         r={3}
-        fill="#4EA8F5"
+        fill="#25D366"
         stroke="#ffffff"
         strokeWidth={1.5}
         className="cursor-pointer"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         style={{ 
-          filter: 'drop-shadow(0 0 4px rgba(78, 168, 245, 0.8))',
+          filter: 'drop-shadow(0 0 4px rgba(37, 211, 102, 0.8))',
           transform: 'none',
           transition: 'none',
           pointerEvents: 'all'
@@ -89,7 +89,7 @@ const EventDot = ({ x, y, marker, onHoverChange }: any) => {
                 )}
                 <div className="flex items-center gap-2">
                   <span className="text-white/60">Score:</span>
-                  <span className="text-[#4EA8F5] font-semibold">{marker.score.toFixed(1)}</span>
+                  <span className="text-[#25D366] font-semibold">{marker.score.toFixed(1)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-white/60">Price:</span>
@@ -721,7 +721,7 @@ export function ChartCanvas({ className }: ChartCanvasProps) {
             className={cn(
               "px-2 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs rounded transition-colors",
               timeRange === range
-                ? "bg-[#4EA8F5]/20 text-[#4EA8F5] border border-[#4EA8F5]/30"
+                ? "bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/30"
                 : "bg-white/5 text-white/60 hover:bg-white/8 border border-white/6"
             )}
           >
@@ -827,7 +827,7 @@ export function ChartCanvas({ className }: ChartCanvasProps) {
                   shape={(props: any) => {
                     if (!props || !props.cx || !props.cy) {
                       // Return a simple circle as fallback
-                      return <circle cx={0} cy={0} r={6} fill="#4EA8F5" />;
+                      return <circle cx={0} cy={0} r={6} fill="#25D366" />;
                     }
                     return (
                       <EventDot

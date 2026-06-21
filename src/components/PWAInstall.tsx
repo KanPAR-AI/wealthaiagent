@@ -214,8 +214,8 @@ const PWAInstall: React.FC = () => {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center space-x-2">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-              <Smartphone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-lg">
+              <Smartphone className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
@@ -246,7 +246,7 @@ const PWAInstall: React.FC = () => {
         {!isIOS && deferredPrompt && (
           <button
             onClick={handleInstallClick}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2 px-4 rounded-lg flex items-center justify-center space-x-2 transition-colors"
           >
             <Download className="h-4 w-4" />
             <span>Install App</span>

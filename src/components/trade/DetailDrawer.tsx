@@ -44,7 +44,7 @@ export function DetailDrawer() {
           {/* Explanation - Most Important Section */}
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-lg">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-1.5 h-8 bg-[#4EA8F5] rounded-full" />
+              <div className="w-1.5 h-8 bg-[#25D366] rounded-full" />
               <h3 className="text-xl font-bold text-white">
                 Explanation
               </h3>
@@ -150,7 +150,7 @@ export function DetailDrawer() {
                   </div>
                   <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-[#4EA8F5] to-[#2ED573] transition-all duration-300"
+                      className="h-full bg-gradient-to-r from-[#25D366] to-[#2ED573] transition-all duration-300"
                       style={{ width: `${signal.weight}%` }}
                     />
                   </div>
@@ -173,7 +173,7 @@ export function DetailDrawer() {
                     className="p-4 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/15 transition-colors"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-[#4EA8F5]">
+                      <span className="text-xs font-semibold text-[#25D366]">
                         {new Date(event.timestamp).toLocaleDateString()}
                       </span>
                       <span className="text-xs text-white/80">

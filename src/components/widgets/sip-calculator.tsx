@@ -90,7 +90,7 @@ export function SIPCalculator({ title, config }: SIPCalculatorProps) {
         <div className="rounded-lg bg-gradient-to-br from-primary/5 to-primary/10 p-6 space-y-3 border border-primary/20">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Amount Invested</span>
-            <span className="font-mono font-semibold text-blue-600">₹{totalInvested.toLocaleString('en-IN')}</span>
+            <span className="font-mono font-semibold text-emerald-600">₹{totalInvested.toLocaleString('en-IN')}</span>
           </div>
           
           <div className="flex justify-between items-center">

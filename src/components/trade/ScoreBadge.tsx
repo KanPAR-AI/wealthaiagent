@@ -24,7 +24,7 @@ export function ScoreBadge({ score, size = 'md', showLabel = false, className }:
       )}
       <span
         className={cn(
-          "font-bold bg-gradient-to-r from-[#4EA8F5] to-[#2ED573] bg-clip-text text-transparent",
+          "font-bold bg-gradient-to-r from-[#25D366] to-[#2ED573] bg-clip-text text-transparent",
           sizeClasses[size]
         )}
       >

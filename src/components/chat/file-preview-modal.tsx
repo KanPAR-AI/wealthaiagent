@@ -55,7 +55,7 @@ export function FilePreviewModal({
             <a
               href={file.url + `?token=${encodeURIComponent(token)}`}
               download={file.name}
-              className="text-blue-400 underline hover:text-blue-300"
+              className="text-emerald-400 underline hover:text-emerald-300"
             >
               Download File
             </a>

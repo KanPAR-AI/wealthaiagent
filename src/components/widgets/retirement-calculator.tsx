@@ -128,7 +128,7 @@ export function RetirementCalculator({ title, config }: RetirementCalculatorProp
         </div>
 
         {/* Main Result */}
-        <div className="rounded-lg bg-gradient-to-br from-green-500/10 to-blue-500/10 p-6 border border-green-500/20">
+        <div className="rounded-lg bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-6 border border-emerald-500/20">
           <div className="text-center space-y-2">
             <div className="text-sm text-muted-foreground">Retirement Corpus at Age {retirementAge}</div>
             <div className="text-4xl font-bold font-mono text-primary">
@@ -144,7 +144,7 @@ export function RetirementCalculator({ title, config }: RetirementCalculatorProp
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="text-center p-4 rounded-lg bg-muted/50 border">
             <div className="text-xs text-muted-foreground mb-1">Total Invested</div>
-            <div className="font-mono font-semibold text-blue-600">₹{(totalInvested / 100000).toFixed(1)}L</div>
+            <div className="font-mono font-semibold text-emerald-600">₹{(totalInvested / 100000).toFixed(1)}L</div>
           </div>
           
           <div className="text-center p-4 rounded-lg bg-muted/50 border">
