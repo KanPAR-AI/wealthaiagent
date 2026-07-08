@@ -6,6 +6,7 @@ import {
   signInWithPopup,
   signInWithRedirect,
   signInWithCredential,
+  signInWithCustomToken,
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -15,6 +16,7 @@ import { auth } from "@/config/firebase";
 import { useAuthStore } from "@/store/auth";
 import { useChatStore } from "@/store/chat";
 import { signInWithGoogleViaGIS } from "@/lib/google-identity-services";
+import { getApiUrl } from "@/config/environment";
 
 /** Google Sign-In on the web is a minefield: every browser+Firebase
  * combination has its own failure mode. We try three approaches in
@@ -42,16 +44,50 @@ import { signInWithGoogleViaGIS } from "@/lib/google-identity-services";
  *      stayed anonymous every time — getRedirectResult() returns null
  *      because Firebase can't read its own session cookie cross-site.
  */
-async function signInWithGoogleFallback(): Promise<"gis" | "popup" | "redirect"> {
+/** Exchange a Google ID token for a Firebase custom token via our own
+ * backend, then sign in with the custom token. This path is immune to
+ * Safari ITP / cross-site cookie blocking because it never touches the
+ * Firebase authDomain popup handler — the OAuth is done directly with
+ * Google (via GIS, first-party accounts.google.com) and Firebase auth
+ * happens via a same-origin call to chatbackend.yourfinadvisor.com,
+ * which mints a custom token from Firebase Admin SDK. */
+async function signInViaServerExchange(idToken: string): Promise<void> {
+  const res = await fetch(getApiUrl("/auth/google-token-exchange"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_token: idToken }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Google token exchange failed (${res.status}): ${body}`);
+  }
+  const { firebase_token } = await res.json();
+  await signInWithCustomToken(auth, firebase_token);
+}
+
+async function signInWithGoogleFallback(): Promise<"gis-exchange" | "gis-credential" | "popup" | "redirect"> {
   const provider = new GoogleAuthProvider();
 
-  // 1. GIS
+  // 1. Preferred: GIS → server-side token exchange → signInWithCustomToken.
+  //    Immune to ITP because nothing crosses firebaseapp.com.
+  //    Fallback: try the same GIS ID token via signInWithCredential in
+  //    case the backend exchange endpoint isn't deployed yet (rollout
+  //    safety for the first few minutes after a chatservice deploy).
   try {
     const idToken = await signInWithGoogleViaGIS();
     if (idToken) {
-      const cred = GoogleAuthProvider.credential(idToken);
-      await signInWithCredential(auth, cred);
-      return "gis";
+      try {
+        await signInViaServerExchange(idToken);
+        return "gis-exchange";
+      } catch (exchangeErr) {
+        console.warn(
+          "[AUTH] server-side exchange failed, falling back to Firebase credential:",
+          exchangeErr,
+        );
+        const cred = GoogleAuthProvider.credential(idToken);
+        await signInWithCredential(auth, cred);
+        return "gis-credential";
+      }
     }
   } catch (e) {
     console.warn("[AUTH] GIS failed, falling back to popup:", e);
