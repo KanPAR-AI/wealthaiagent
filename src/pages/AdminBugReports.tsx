@@ -14,8 +14,7 @@
 // issue" — that's the only reliable way to reproduce.
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ExternalLink, Loader2, RefreshCw } from "lucide-react";
-import { Link } from "react-router-dom";
+import { ExternalLink, Loader2, RefreshCw } from "lucide-react";
 
 import { AdminHeader } from "@/components/admin/admin-header";
 import { Button } from "@/components/ui/button";
@@ -246,14 +245,26 @@ function DetailPanel({
           </div>
         </div>
         {report.chat_id && (
-          <Link
-            to={`/chat/${report.chat_id}`}
+          // Raw anchor (not react-router Link) + target="_blank" so:
+          //   1. The href reads the CURRENT report.chat_id every render — no
+          //      chance a memoized Link retains an older `to` prop across
+          //      report switches.
+          //   2. Opens in a new tab, so admins keep their triage queue on
+          //      /admin/bugs instead of navigating away and losing the list.
+          // The `/chataiagent` prefix must be included explicitly because
+          // React Router's basename prepend only applies to <Link>, not raw
+          // <a href>.
+          <a
+            key={report.id}
+            href={`/chataiagent/chat/${report.chat_id}`}
+            target="_blank"
+            rel="noreferrer"
             className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-            title="Open the chat as this user saw it"
+            title={`Open chat ${report.chat_id.slice(0, 8)}… in a new tab`}
           >
             Open chat
             <ExternalLink className="h-3 w-3" />
-          </Link>
+          </a>
         )}
       </div>
 
