@@ -13,6 +13,7 @@ import MealPlan from "./pages/MealPlan";
 import PWAInstall from "./components/PWAInstall";
 import LoginPage from "./pages/Login";
 import Admin from "./pages/Admin";
+import AdminBugReports from "./pages/AdminBugReports";
 import TestChat from "./pages/TestChat";
 import Settings from "./pages/Settings";
 import { ProtectedRoute } from "@/components/auth/protected-route";
@@ -75,6 +76,7 @@ const App = () => (
         <Route path="/debug/:chatid" element={<Debug />} />
         <Route path="/logs" element={<Logs />} />
         <Route path="/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
+        <Route path="/admin/bugs" element={<ProtectedRoute requireAdmin><AdminBugReports /></ProtectedRoute>} />
         <Route path="/admin/test/:agentId" element={<ProtectedRoute requireAdmin><TestChat /></ProtectedRoute>} />
 
         {/* Routes outside the layout, like a 404 page, won't have the sidebar */}

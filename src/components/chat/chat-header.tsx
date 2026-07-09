@@ -2,16 +2,18 @@
 import { useState } from 'react';
 import Logo from '@/components/ui/logo';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Edit, Bug, Calculator, SlidersHorizontal } from 'lucide-react';
+import { Edit, Bug, Calculator, SlidersHorizontal, AlertCircle } from 'lucide-react';
 import { JSX } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ModeToggle } from '../theme/mode-toggle';
 import { Button } from '../ui/button';
 import CalcDebugModal from '../debug/calc-debug-modal';
+import { ReportBugModal } from './report-bug-modal';
 
 export function ChatHeader(): JSX.Element {
   const { chatid } = useParams<{ chatid: string }>();
   const [isCalcModalOpen, setIsCalcModalOpen] = useState(false);
+  const [isReportBugOpen, setIsReportBugOpen] = useState(false);
 
   return (
     <>
@@ -53,6 +55,21 @@ export function ChatHeader(): JSX.Element {
             </div>
           )}
           <ModeToggle />
+          {/* User-facing "Report an issue" — visible on ALL screen sizes.
+              Distinct from the desktop-only Bug icon above (that one links
+              to internal /logs; this one opens a modal that captures the
+              chat context + a screenshot the user provides). */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-orange-500"
+            onClick={() => setIsReportBugOpen(true)}
+            title="Report an issue"
+            aria-label="Report an issue"
+          >
+            <AlertCircle className="h-[1.2rem] w-[1.2rem]" />
+            <span className="sr-only">Report an issue</span>
+          </Button>
           <Link
             to="/new"
             title="New Chat"
@@ -70,6 +87,11 @@ export function ChatHeader(): JSX.Element {
         chatId={chatid || null}
         isOpen={isCalcModalOpen}
         onClose={() => setIsCalcModalOpen(false)}
+      />
+
+      <ReportBugModal
+        open={isReportBugOpen}
+        onClose={() => setIsReportBugOpen(false)}
       />
     </>
   );
