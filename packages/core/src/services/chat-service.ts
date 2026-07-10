@@ -414,3 +414,90 @@ export const listenToChatStreamCore = async (
     externalSignal?.removeEventListener('abort', onExternalAbort);
   }
 };
+
+// ── Chat list + history hydration ──────────────────────────────────
+
+/** Shape of GET /chats rows. Matches the backend's list response the web
+ *  sidebar has always consumed (favorites, lastAgentType, updatedAt). */
+export interface ChatListItem {
+  id: string;
+  title: string;
+  updatedAt: string;
+  createdAt?: string;
+  isFavorite?: boolean;
+  lastAgentType?: string;
+}
+
+/** Fetch the user's chats, newest first. */
+export const fetchChatList = async (
+  jwt: string,
+  opts: { page?: number; limit?: number } = {},
+): Promise<ChatListItem[]> => {
+  const { fetch, getApiUrl } = getPlatform();
+  const page = opts.page ?? 1;
+  const limit = opts.limit ?? 20;
+  const response = await fetch(getApiUrl(`/chats?page=${page}&limit=${limit}`), {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      `Failed to fetch chats: ${(errorData as any).detail || response.statusText}`
+    );
+  }
+  const data: ChatListItem[] = await response.json();
+  return data.sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+  );
+};
+
+/** Map one backend history message (GET /chats/{id}) to the store's
+ *  Message shape. Extracted from the web's use-chat-history hook so both
+ *  apps hydrate identically:
+ *    - sender 'assistant' → 'bot'
+ *    - metadata.widgets_json (string; avoids Firestore nesting limits) →
+ *      contentBlocks [text, ...widgets]; falls back to legacy
+ *      metadata.widgets
+ *    - attachments (URL strings) → MessageFile[]           */
+export function mapHistoryMessage(msg: ChatMessage): {
+  id: string;
+  message: string;
+  sender: 'user' | 'bot';
+  timestamp?: string;
+  files?: { name: string; type: string; size: number; url: string }[];
+  isStreaming: boolean;
+  streamingContent: string;
+  contentBlocks?: any[];
+} {
+  const files = (msg.attachments || []).map((a: any) => {
+    const url = typeof a === 'string' ? a : a?.url || '';
+    const name = url.split('/').pop() || 'attachment';
+    return { name, type: '', size: 0, url };
+  }).filter((f) => f.url);
+
+  let widgets: any[] | undefined;
+  const meta: any = msg.metadata || {};
+  if (meta.widgets_json) {
+    try { widgets = JSON.parse(meta.widgets_json); } catch { /* ignore */ }
+  } else if (meta.widgets) {
+    widgets = meta.widgets;
+  }
+  let contentBlocks: any[] | undefined;
+  if (widgets && Array.isArray(widgets) && widgets.length > 0) {
+    contentBlocks = [
+      { type: 'text', content: msg.content },
+      ...widgets.map((w: any) => ({ type: 'widget', widget: w })),
+    ];
+  }
+
+  return {
+    id: msg.id,
+    message: msg.content,
+    sender: msg.sender === 'assistant' ? 'bot' : 'user',
+    timestamp: msg.timestamp,
+    files: files.length > 0 ? files : undefined,
+    isStreaming: false,
+    streamingContent: msg.content,
+    contentBlocks,
+  };
+}
