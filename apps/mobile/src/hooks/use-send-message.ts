@@ -19,7 +19,9 @@
 import { useCallback, useRef, useState } from 'react';
 import {
   createChatSession,
+  fetchChatHistory,
   listenToChatStreamCore,
+  mapHistoryMessage,
   sendChatMessage,
   useChatStore,
   type ContentBlock,
@@ -154,6 +156,68 @@ export function useSendMessage(
       // mirroring ChatGPT's stop behavior.
       let settled = false;
 
+      // ── Stream-drop reconciliation ────────────────────────────────
+      // Mobile SSE connections die mid-reply (long silent vision passes,
+      // cell handoffs) while the backend finishes and persists the full
+      // message anyway. Before surfacing "tap to retry" — which would
+      // re-run the whole (expensive) agent — poll the chat history a few
+      // times for the completed reply and splice it into the bubble.
+      // Match by the backend assistant id when message_start delivered
+      // one; otherwise take the newest assistant message iff it's the
+      // last message in the chat and has at least the text we streamed.
+      const reconcileFromServer = async (): Promise<boolean> => {
+        const delays = [1200, 4000, 8000];
+        for (const delay of delays) {
+          await new Promise((r) => setTimeout(r, delay));
+          if (controller.signal.aborted) return false;
+          try {
+            const history = await fetchChatHistory(token, activeChatId!);
+            const msgs = [...(history.messages || [])].sort((a: any, b: any) =>
+              String(a.timestamp || '').localeCompare(String(b.timestamp || '')),
+            );
+            if (!msgs.length) continue;
+            const byId = msgs.find((m: any) => m.id === aiMessageIdLive);
+            let candidate: any = null;
+            if (byId) {
+              candidate = byId;
+            } else {
+              const last = msgs[msgs.length - 1];
+              if (last?.sender === 'assistant') candidate = last;
+            }
+            if (!candidate) continue; // reply not persisted yet — poll again
+            const mapped = mapHistoryMessage(candidate);
+            // Strictly MORE content than we streamed, or reconciling adds
+            // nothing — a server that persisted the same truncated text
+            // (local backends cancel the run on disconnect) should fall
+            // through to the error + Retry, not silently pass off the
+            // partial reply as complete.
+            if (!mapped.message || mapped.message.length <= receivedText.length) continue;
+            if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+            updateMessage(activeChatId!, aiMessageIdLive, {
+              id: mapped.id || aiMessageIdLive,
+              message: mapped.message,
+              streamingContent: mapped.message,
+              contentBlocks: mapped.contentBlocks,
+              isStreaming: false,
+            });
+            return true;
+          } catch { /* network still flaky — next attempt */ }
+        }
+        return false;
+      };
+
+      // Shared failure path for stream error + send exception: reconcile
+      // first (bubble keeps its streaming shimmer), error only if the
+      // server truly has nothing.
+      const failWithReconcile = async (errorText: string) => {
+        const recovered = await reconcileFromServer();
+        if (!recovered) {
+          // A stop during reconciliation is still a stop, not an error.
+          finalFlush(controller.signal.aborted ? {} : { error: errorText });
+        }
+        setState({ isSending: false, isCreatingChat: false });
+      };
+
       try {
         // Message #1 was persisted by createChatSession; later messages
         // POST here and get their backend uuid back.
@@ -208,12 +272,11 @@ export function useSendMessage(
               return;
             }
             const isTimeout = error?.name === 'TimeoutError' || /timed out/i.test(error?.message || '');
-            finalFlush({
-              error: isTimeout
+            void failWithReconcile(
+              isTimeout
                 ? 'Connection timed out. Tap to retry.'
                 : 'Response interrupted. Tap to retry.',
-            });
-            setState({ isSending: false, isCreatingChat: false });
+            );
           },
           {
             forceAgent: selectedAgent,
@@ -226,20 +289,30 @@ export function useSendMessage(
             },
           },
         );
-        // User tapped stop (or unmount aborted): the reader returned
-        // without settling. Freeze the partial reply as a normal message.
+        // The reader returned without message_complete OR an error. Two
+        // very different causes share this shape:
+        //   - user tapped STOP (abort) → freeze the partial text quietly;
+        //   - the connection died in a way that surfaces as a clean EOF
+        //     (severed TCP mid-SSE does this on expo/fetch) → the backend
+        //     is likely still finishing; reconcile before bothering the
+        //     user. This was the filed "response stopped" bug: no error,
+        //     no recovery, just a silently truncated reply.
         if (!settled) {
-          finalFlush({});
-          setState({ isSending: false, isCreatingChat: false });
+          if (controller.signal.aborted) {
+            finalFlush({});
+            setState({ isSending: false, isCreatingChat: false });
+          } else {
+            await failWithReconcile('Response interrupted. Tap to retry.');
+          }
         }
       } catch (error: any) {
         if (error?.name !== 'AbortError') {
           console.error('[useSendMessage] send failed:', error);
-          finalFlush({ error: "Couldn't get a response. Tap to retry." });
-        } else if (!settled) {
-          finalFlush({});
+          await failWithReconcile("Couldn't get a response. Tap to retry.");
+        } else {
+          if (!settled) finalFlush({});
+          setState({ isSending: false, isCreatingChat: false });
         }
-        setState({ isSending: false, isCreatingChat: false });
       }
     },
     [chatId, state.isSending, state.isCreatingChat, addMessage, updateMessage, selectedAgent, onChatCreated],
