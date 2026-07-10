@@ -1,101 +1,102 @@
-import { CORE_VERSION } from '@wealthai/core';
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+// Chat screen — Phase 3 vertical slice.
+//
+// New-chat flow: first send creates the backend session (which persists
+// the message), streams the reply over SSE via @wealthai/core, and keeps
+// the whole transcript in the SHARED zustand store — the same store, the
+// same chat client, and the same backend the web app uses.
+
+import { useState } from 'react';
+import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
+import { ChatInput } from '@/components/chat/chat-input';
+import { MessageList } from '@/components/chat/message-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Colors, Spacing } from '@/constants/theme';
+import { useSendMessage } from '@/hooks/use-send-message';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+const SUGGESTIONS = [
+  'Help me plan my finances',
+  'Analyze my portfolio performance',
+  'Build a 7-day meal plan for me',
+  'What are my top holdings?',
+];
 
-export default function HomeScreen() {
+export default function ChatScreen() {
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const colors = Colors[scheme];
+  const [chatId, setChatId] = useState<string | null>(null);
+  const { send, isSending, isCreatingChat } = useSendMessage(chatId, setChatId);
+
+  const busy = isSending || isCreatingChat;
+
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        {/* Header */}
+        <View style={[styles.header, { borderBottomColor: colors.backgroundElement }]}>
+          <ThemedText type="smallBold">YourFinAdvisor</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Smart routing
           </ThemedText>
-        </ThemedView>
+        </View>
 
-        <ThemedText type="code" style={styles.code}>
-          {/* Proves the @wealthai/core workspace link resolves through
-              Metro — remove once real screens land in Phase 3. */}
-          core {CORE_VERSION} linked
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
+        <KeyboardAvoidingView behavior="padding" style={styles.body}>
+          {chatId ? (
+            <MessageList chatId={chatId} />
+          ) : (
+            <View style={styles.empty}>
+              <ThemedText type="title" style={styles.emptyTitle}>
+                How can I help you today?
+              </ThemedText>
+              <View style={styles.suggestions}>
+                {SUGGESTIONS.map((s) => (
+                  <Pressable
+                    key={s}
+                    disabled={busy}
+                    onPress={() => send(s)}
+                    style={({ pressed }) => [
+                      styles.suggestion,
+                      { backgroundColor: colors.backgroundElement, opacity: pressed ? 0.7 : 1 },
+                    ]}>
+                    <ThemedText type="small">{s}</ThemedText>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
+          <ChatInput onSend={send} busy={busy} />
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
+  container: { flex: 1 },
+  safeArea: { flex: 1 },
+  header: {
     flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    paddingVertical: Spacing.two + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  body: { flex: 1 },
+  empty: {
     flex: 1,
+    justifyContent: 'center',
     paddingHorizontal: Spacing.four,
     gap: Spacing.four,
   },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
+  emptyTitle: { textAlign: 'center' },
+  suggestions: { gap: Spacing.two },
+  suggestion: {
+    borderRadius: 14,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    paddingVertical: Spacing.three,
   },
 });

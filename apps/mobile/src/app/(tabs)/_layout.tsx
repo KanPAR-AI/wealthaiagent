@@ -1,9 +1,15 @@
-import { Redirect } from 'expo-router';
+// Authenticated app group. Chat is the full-bleed root screen —
+// deliberately NO floating tab bar: a bottom tab pill collides with a
+// bottom-docked chat input, and the ChatGPT/Claude-class pattern this app
+// is held to uses a header-driven drawer for history/settings instead
+// (arrives with chat history in a later Phase 3 slice).
 
-import AppTabs from '@/components/app-tabs';
+import { Redirect } from 'expo-router';
+import { Stack } from 'expo-router';
+
 import { useAuth } from '@/hooks/use-auth';
 
-export default function TabsLayout() {
+export default function AppLayout() {
   const { user, isAuthLoading } = useAuth();
 
   // The animated splash overlay (rendered by the root layout) covers this
@@ -16,5 +22,5 @@ export default function TabsLayout() {
   // from within the app.
   if (!user) return <Redirect href="/login" />;
 
-  return <AppTabs />;
+  return <Stack screenOptions={{ headerShown: false }} />;
 }
