@@ -395,9 +395,15 @@ export const listenToChatStreamCore = async (
       }
     }
   } catch (error: any) {
-    // Caller-cancellation (unmount, new send) is not a user-visible error.
-    // Watchdog timeouts and real failures are.
-    if (externalSignal?.aborted && error?.name === 'AbortError') {
+    // Caller-cancellation (stop button, unmount, new send) is not a
+    // user-visible error — and it must be detected by SIGNAL STATE, not
+    // by error name: each platform's fetch rejects aborts differently
+    // (browser: DOMException 'AbortError'; expo/fetch:
+    // Expo.FetchRequestCanceledException). If the caller's signal is
+    // aborted, whatever was thrown is a consequence of that cancel.
+    // Watchdog timeouts abort the INTERNAL controller only, so they
+    // still reach onError below.
+    if (externalSignal?.aborted) {
       console.log('[listenToChatStream] Stream cancelled by caller');
     } else {
       console.error('SSE Stream error:', error);
