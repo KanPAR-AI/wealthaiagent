@@ -1,52 +1,34 @@
-// services/bug-report-service.ts
+// services/bug-report-service.ts — WEB SHIM over @wealthai/core.
 //
-// Thin client for the in-app "Report an issue" feature.
-// User flow: POST /api/v1/bug-reports (multipart) → 201 + BugReport.
-// Admin flow: standard JSON list / get / patch endpoints under /admin.
+// The API client moved to packages/core/src/services/bug-report-service.ts
+// (shared with the Expo mobile app). This module keeps the exact public
+// surface the web app has always had, and supplies the two web-only
+// ingredients core deliberately takes as parameters:
+//   - the Firebase ID token (web firebase init)
+//   - the environment context (navigator / window / import.meta.env)
 
-import { getApiUrl } from "@/config/environment";
-import { auth } from "@/config/firebase";
+import {
+  submitBugReportCore,
+  listBugReportsCore,
+  getBugReportCore,
+  getNewBugCountCore,
+  updateBugStatusCore,
+  type BugReport,
+  type BugReportContext,
+  type BugReportStatus,
+} from '@wealthai/core';
+import { ensureCoreInitialized } from '@/lib/core-adapter';
+import { auth } from '@/config/firebase';
 
-export type BugReportStatus = "new" | "in_progress" | "resolved" | "wont_fix";
+ensureCoreInitialized();
 
-export interface BugReportContext {
-  user_agent?: string;
-  url?: string;
-  viewport?: string;
-  build_sha?: string;
-  selected_agent?: string;
-}
-
-export interface BugReportMessage {
-  id: string;
-  sender: string;
-  content: string;
-  timestamp?: string;
-  attachments?: string[];
-}
-
-export interface BugReportChatSnapshot {
-  chat_id: string;
-  chat_title?: string;
-  last_agent_type?: string;
-  messages: BugReportMessage[];
-}
-
-export interface BugReport {
-  id: string;
-  user_id: string;
-  user_email?: string;
-  user_display_name?: string;
-  description: string;
-  chat_id?: string;
-  screenshot_url?: string;
-  context?: BugReportContext;
-  chat_snapshot?: BugReportChatSnapshot;
-  status: BugReportStatus;
-  admin_notes?: string;
-  created_at: string;
-  updated_at?: string;
-}
+export type {
+  BugReport,
+  BugReportStatus,
+  BugReportContext,
+  BugReportMessage,
+  BugReportChatSnapshot,
+} from '@wealthai/core';
 
 /** Submit a bug report. Screenshot is optional but strongly encouraged
  *  by the modal UX (users can drop / paste directly). */
@@ -58,10 +40,6 @@ export async function submitBugReport(input: {
 }): Promise<BugReport> {
   const token = await auth.currentUser?.getIdToken();
 
-  const form = new FormData();
-  form.append("description", input.description);
-  if (input.chatId) form.append("chat_id", input.chatId);
-
   // Env context — cheap to collect, high value for repro.
   const ctx: BugReportContext = {
     user_agent: navigator.userAgent,
@@ -71,68 +49,42 @@ export async function submitBugReport(input: {
     // If we later expose a build sha via import.meta.env.VITE_BUILD_SHA, plug it here.
     build_sha: (import.meta as any).env?.VITE_BUILD_SHA,
   };
-  form.append("context", JSON.stringify(ctx));
 
-  if (input.screenshot) form.append("screenshot", input.screenshot);
-
-  // Do NOT set Content-Type — browser must set the multipart boundary.
-  const res = await fetch(getApiUrl("/bug-reports"), {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: form,
-  });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || `Report failed: ${res.status}`);
-  }
-  return res.json();
+  return submitBugReportCore(
+    token,
+    {
+      description: input.description,
+      chatId: input.chatId,
+      screenshot: input.screenshot,
+    },
+    ctx,
+  );
 }
 
 // ── Admin ──────────────────────────────────────────────────────────
 
-async function adminFetch(path: string, options: RequestInit = {}) {
-  const token = await auth.currentUser?.getIdToken();
-  const res = await fetch(getApiUrl(`/admin${path}`), {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(body.detail || `Admin API error: ${res.status}`);
-  }
-  return res.json();
+async function getToken(): Promise<string | undefined> {
+  return auth.currentUser?.getIdToken();
 }
 
 export async function listBugReports(opts: { status?: BugReportStatus; limit?: number } = {}): Promise<{
   reports: BugReport[];
   total: number;
 }> {
-  const q = new URLSearchParams();
-  if (opts.status) q.append("status", opts.status);
-  if (opts.limit) q.append("limit", String(opts.limit));
-  const qs = q.toString();
-  return adminFetch(`/bug-reports${qs ? `?${qs}` : ""}`);
+  return listBugReportsCore(await getToken(), opts);
 }
 
 export async function getBugReport(id: string): Promise<BugReport> {
-  return adminFetch(`/bug-reports/${id}`);
+  return getBugReportCore(await getToken(), id);
 }
 
 export async function getNewBugCount(): Promise<{ new: number }> {
-  return adminFetch(`/bug-reports/new-count`);
+  return getNewBugCountCore(await getToken());
 }
 
 export async function updateBugStatus(
   id: string,
   patch: { status: BugReportStatus; admin_notes?: string },
 ): Promise<BugReport> {
-  return adminFetch(`/bug-reports/${id}/status`, {
-    method: "PATCH",
-    body: JSON.stringify(patch),
-  });
+  return updateBugStatusCore(await getToken(), id, patch);
 }

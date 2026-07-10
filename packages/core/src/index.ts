@@ -12,8 +12,12 @@
 //   [x] types/            — chat domain types
 //   [x] platform.ts       — adapter contract + initCore/getPlatform
 //   [x] services/chat-service — API client + SSE streaming reader
-//   [ ] services/bug-report, meal-plan
-//   [ ] store/            — zustand stores (chat, auth, meal-plan)
+//   [x] services/bug-report-service — token/context passed by caller
+//   [x] store/chat        — zustand chat store (verbatim move)
+//   [ ] services/meal-plan
+//   [ ] store/auth        — deferred to Phase 2: needs async-storage
+//                           hydration design alongside mobile auth
+//   [ ] store/meal-plan
 
 export {
   initCore,
@@ -36,5 +40,21 @@ export {
   type ChatResponse,
   type Attachment,
 } from './services/chat-service';
+
+export {
+  submitBugReportCore,
+  listBugReportsCore,
+  getBugReportCore,
+  getNewBugCountCore,
+  updateBugStatusCore,
+  type BugReport,
+  type BugReportStatus,
+  type BugReportContext,
+  type BugReportMessage,
+  type BugReportChatSnapshot,
+  type BugReportScreenshot,
+} from './services/bug-report-service';
+
+export { useChatStore } from './store/chat';
 
 export const CORE_VERSION = '0.1.0';
