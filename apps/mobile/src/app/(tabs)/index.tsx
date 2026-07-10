@@ -7,11 +7,11 @@
 
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getPlatform, useChatStore, type MessageFile } from '@wealthai/core';
+import { getPlatform, submitBugReportCore, useChatStore, type MessageFile } from '@wealthai/core';
 
 import { ChatInput } from '@/components/chat/chat-input';
 import { QUICK_REPLY_EVENT } from '@/components/chat/widget-view';
@@ -40,6 +40,35 @@ export default function ChatScreen() {
   const selectedAgent = useChatStore((st) => st.selectedAgent);
 
   const busy = isSending || isCreatingChat;
+
+  // Report-a-bug: same core service + backend as the web header button.
+  // iOS-native prompt keeps it dependency-free; the backend snapshots the
+  // chat transcript server-side from chat_id.
+  const reportBug = () => {
+    Alert.prompt(
+      'Report an issue',
+      'What went wrong? The current chat is attached for our team.',
+      async (description) => {
+        if (!description?.trim()) return;
+        try {
+          const { getToken } = await import('@/lib/auth');
+          const token = await getToken();
+          await submitBugReportCore(
+            token ?? undefined,
+            { description: description.trim(), chatId },
+            {
+              url: 'app://mobile/chat',
+              selected_agent: selectedAgent || undefined,
+              user_agent: 'YourFinAdvisor iOS (Expo dev)',
+            },
+          );
+          Alert.alert('Thanks!', 'Your report was sent to the team.');
+        } catch (e: any) {
+          Alert.alert('Could not send report', e?.message || 'Try again later.');
+        }
+      },
+    );
+  };
 
   // Widget quick-replies (action tiles, specialist picker, multi-select)
   // arrive over the platform event bus — the mobile analogue of the web's
@@ -72,12 +101,20 @@ export default function ChatScreen() {
               {selectedAgent ? selectedAgent.replace(/_/g, ' ') : 'Smart routing'} ▾
             </ThemedText>
           </Pressable>
-          <Pressable
-            onPress={newChat}
-            hitSlop={12}
-            accessibilityLabel="New chat">
-            <ThemedText type="title" style={styles.headerIcon}>✎</ThemedText>
-          </Pressable>
+          <View style={styles.headerRight}>
+            <Pressable
+              onPress={reportBug}
+              hitSlop={10}
+              accessibilityLabel="Report a bug">
+              <ThemedText type="title" style={styles.headerIcon}>⚑</ThemedText>
+            </Pressable>
+            <Pressable
+              onPress={newChat}
+              hitSlop={10}
+              accessibilityLabel="New chat">
+              <ThemedText type="title" style={styles.headerIcon}>✎</ThemedText>
+            </Pressable>
+          </View>
         </View>
 
         <KeyboardAvoidingView behavior="padding" style={styles.body}>
@@ -123,6 +160,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerCenter: { alignItems: 'center' },
+  headerRight: { flexDirection: 'row', gap: Spacing.three },
   headerIcon: { fontSize: 20, lineHeight: 24 },
   body: { flex: 1 },
   empty: {
