@@ -5,6 +5,9 @@ export default {
   setupFilesAfterEnv: ['<rootDir>/src/test/setup-simple.ts'],
   moduleNameMapper: {
     '^@/config/environment$': '<rootDir>/src/config/environment.test.ts',
+    // Workspace package: jest's node resolution doesn't follow the
+    // package.json "exports"-to-TS-source arrangement, so map directly.
+    '^@wealthai/core$': '<rootDir>/packages/core/src/index.ts',
     '^@/(.*)$': '<rootDir>/src/$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '\\.(jpg|jpeg|png|gif|svg)$': '<rootDir>/src/test/__mocks__/fileMock.js',

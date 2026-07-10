@@ -9,8 +9,13 @@ RUN echo "Installing build dependencies..." && \
     apk add --no-cache python3 make g++ && \
     echo "Build dependencies installed successfully"
 
-# Copy package files
+# Copy package files.
+# packages/ must be present BEFORE npm install: the web app depends on the
+# @wealthai/core workspace (npm links node_modules/@wealthai/core ->
+# ../packages/core at install time). apps/ (the Expo mobile app) stays
+# excluded via .dockerignore — its workspace glob matching nothing is fine.
 COPY package.json package-lock.json* ./
+COPY packages ./packages
 
 # Debug: Show package.json content
 RUN echo "Package.json contents:" && cat package.json | head -20
