@@ -1,0 +1,21 @@
+{
+  "name": "@wealthai/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Platform-agnostic shared core for wealthaiagent web + mobile: types, API client, stores, business logic. MUST NOT import DOM or React Native APIs.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "zustand": "^5.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2"
+  }
+}

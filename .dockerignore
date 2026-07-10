@@ -1,0 +1,19 @@
+# Keep the web Docker image build context lean and — critically — keep the
+# monorepo additions (Expo mobile app, shared core package) OUT of the web
+# image build. The Dockerfile runs `npm install` from package.json before
+# `COPY . .`; because the workspace globs in package.json match nothing
+# inside the Docker context, the web image builds exactly as it did before
+# the monorepo split. When Phase 1 makes the web app depend on
+# @wealthai/core, remove `packages` from this list and reorder the
+# Dockerfile COPY steps deliberately.
+node_modules
+dist
+apps
+packages
+.git
+.github
+.playwright-mcp
+e2e/screenshots
+test-results
+ios
+*.log

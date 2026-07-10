@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    // Deliberately NO "dom" lib: this package must stay platform-agnostic.
+    // If a file here needs `window`/`document`/`localStorage`, it does not
+    // belong in core — inject a platform adapter instead.
+    "lib": ["ES2022"]
+  },
+  "include": ["src"]
+}

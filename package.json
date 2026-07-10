@@ -1,6 +1,10 @@
 {
   "name": "wealthaiagent",
   "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "version": "0.0.0",
   "type": "module",
   "scripts": {
@@ -16,7 +20,7 @@
     "deploy:local": "./scripts/deploy-local.sh",
     "deploy:production": "./scripts/deploy-production.sh",
     "deploy:gcp": "./deployprod.sh",
-    "env:init": "cp config/env.example .env.local && echo '✅ Created .env.local - Please update with your values'",
+    "env:init": "cp config/env.example .env.local && echo '\u2705 Created .env.local - Please update with your values'",
     "env:check": "node scripts/check-env.js",
     "test:e2e": "npx playwright test",
     "test:e2e:headed": "npx playwright test --headed",
