@@ -59,7 +59,11 @@ export function ChatInput({
       // Native streaming upload — see lib/upload.ts for why FormData
       // approaches are dead ends on SDK 57.
       const uploaded = await uploadFileNative(token, asset);
-      setFiles((fs) => [...fs, uploaded]);
+      // Preview from the LOCAL file uri: the uploaded URL is behind auth
+      // on prod (401 for a bare <Image>), which rendered blank thumbnails
+      // on-device. localUri never leaves this component; the message
+      // itself carries the backend URL.
+      setFiles((fs) => [...fs, { ...uploaded, localUri: asset.uri } as any]);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
       Alert.alert('Upload failed', e?.message || 'Try again.');
@@ -136,7 +140,7 @@ export function ChatInput({
           {files.map((f, i) => (
             <View key={`${f.url}-${i}`} style={styles.preview}>
               {f.type.startsWith('image/') ? (
-                <Image source={{ uri: f.url }} style={styles.previewImage} />
+                <Image source={{ uri: (f as any).localUri || f.url }} style={styles.previewImage} />
               ) : (
                 <View style={[styles.previewDoc, { backgroundColor: colors.backgroundElement }]}>
                   <ThemedText type="small" numberOfLines={2}>📄 {f.name}</ThemedText>

@@ -6,7 +6,7 @@
 // UIs arrive in Phase 4 — until then each renders as a labeled chip so
 // the reply's structure stays visible instead of silently dropping data.
 
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Image, StyleSheet, useColorScheme, View } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import type { ContentBlock, Message } from '@wealthai/core';
@@ -14,6 +14,23 @@ import type { ContentBlock, Message } from '@wealthai/core';
 import { ThemedText } from '@/components/themed-text';
 import { WidgetView } from '@/components/chat/widget-view';
 import { Colors, Spacing } from '@/constants/theme';
+import { getToken } from '@/lib/auth';
+
+/** Backend file URLs require a Bearer token — a bare <Image> gets a 401
+ *  and renders blank on prod. RN's Image supports per-request headers;
+ *  fetch a fresh token per mount (cheap: cached by Firebase). */
+function AuthImage({ uri, style }: { uri: string; style: any }) {
+  const [headers, setHeaders] = useState<Record<string, string> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    getToken().then((t) => {
+      if (alive) setHeaders(t ? { Authorization: `Bearer ${t}` } : {});
+    });
+    return () => { alive = false; };
+  }, [uri]);
+  if (!headers) return <View style={style} />;
+  return <Image source={{ uri, headers }} style={style} />;
+}
 
 
 // ```some_widget_type\n{...json...}\n``` → widget block. Anything that
@@ -55,7 +72,7 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
       <View style={styles.userRow}>
         <View style={styles.userStack}>
           {images.map((f, i) => (
-            <Image key={`${f.url}-${i}`} source={{ uri: f.url }} style={styles.userImage} />
+            <AuthImage key={`${f.url}-${i}`} uri={f.url} style={styles.userImage} />
           ))}
           {docs.map((f, i) => (
             <View key={`${f.url}-${i}`} style={[styles.userBubble, { backgroundColor: colors.backgroundElement }]}>
