@@ -501,3 +501,63 @@ export function mapHistoryMessage(msg: ChatMessage): {
     contentBlocks,
   };
 }
+
+// ── Agents + file upload ───────────────────────────────────────────
+
+export interface AgentOption {
+  id: string;
+  name: string;
+  icon?: string | null;
+  description?: string | null;
+}
+
+/** GET /agents/available — the selectable agent list (token optional,
+ *  matching the web selector's behavior). */
+export const fetchAvailableAgents = async (jwt?: string | null): Promise<AgentOption[]> => {
+  const { fetch, getApiUrl } = getPlatform();
+  const headers: Record<string, string> = {};
+  if (jwt) headers['Authorization'] = `Bearer ${jwt}`;
+  const response = await fetch(getApiUrl('/agents/available'), { headers });
+  if (!response.ok) return [];
+  const data = await response.json().catch(() => ({}));
+  return (data as any).agents || [];
+};
+
+/** Web passes a File/Blob; React Native passes { uri, name, type }. */
+export type UploadableFile = Blob | { uri: string; name: string; type: string };
+
+/** POST /files/upload (multipart, field name `files`) → MessageFile.
+ *  Matches the web chat-input's contract: response {files:[{url,fileName}]},
+ *  url is backend-relative and gets absolutized via getApiUrl. */
+export const uploadFileCore = async (
+  jwt: string,
+  file: UploadableFile,
+  fallbackName = 'upload',
+): Promise<MessageFile> => {
+  const { fetch, getApiUrl } = getPlatform();
+  const form = new FormData();
+  const name = (file as any).name || fallbackName;
+  // RN FormData accepts {uri,name,type} descriptors; DOM types only know
+  // Blob — same documented seam as bug-report screenshots.
+  form.append('files', file as Blob, name);
+
+  const response = await fetch(getApiUrl('/files/upload'), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${jwt}`, Accept: 'application/json' },
+    body: form,
+  });
+  if (!response.ok) {
+    throw new Error(`Upload failed for ${name}: ${response.status}`);
+  }
+  const result: any = await response.json();
+  const uploaded = result?.files?.[0];
+  if (!uploaded?.url) {
+    throw new Error(`Invalid upload response for ${name}`);
+  }
+  return {
+    name: uploaded.fileName || name,
+    url: getApiUrl(uploaded.url),
+    type: (file as any).type || '',
+    size: (file as any).size || 0,
+  };
+};

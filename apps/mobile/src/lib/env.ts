@@ -29,10 +29,9 @@ export const FIREBASE_CONFIG = {
 export const FIREBASE_WEB_CLIENT_ID =
   '388592327571-onpvgba3j318162sqm5h7brd4ackpl07.apps.googleusercontent.com';
 
-// iOS OAuth client id for native Google Sign-In. NOT CREATED YET —
-// requires a one-time console step (Google Cloud Console → Credentials →
-// Create OAuth client ID → iOS, bundle id com.yourfinadvisor.app), then
-// paste the client id here AND add the google-signin config plugin with
-// its reversed-scheme in app.json. Until then, signInWithGoogle() throws
-// a friendly "not configured" error and the login screen hides the button.
-export const GOOGLE_IOS_CLIENT_ID: string | null = null;
+// iOS OAuth client id for native Google Sign-In (created in Google Cloud
+// Console 2026-07-10, bundle id com.yourfinadvisor.app). Its reversed form
+// is registered as a URL scheme via the google-signin config plugin in
+// app.json — both must move together.
+export const GOOGLE_IOS_CLIENT_ID: string | null =
+  '388592327571-f23fuufpir7c1g7op9i4cearl23ihvs9.apps.googleusercontent.com';

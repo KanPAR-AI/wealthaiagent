@@ -23,6 +23,7 @@ import {
   sendChatMessage,
   useChatStore,
   type ContentBlock,
+  type MessageFile,
 } from '@wealthai/core';
 
 import { getToken } from '@/lib/auth';
@@ -58,9 +59,9 @@ export function useSendMessage(
   }, []);
 
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, files: MessageFile[] = []) => {
       const trimmed = text.trim();
-      if (!trimmed || state.isSending || state.isCreatingChat) return;
+      if ((!trimmed && files.length === 0) || state.isSending || state.isCreatingChat) return;
 
       const token = await getToken();
       if (!token) {
@@ -74,7 +75,7 @@ export function useSendMessage(
       if (!activeChatId) {
         setState({ isSending: true, isCreatingChat: true });
         try {
-          const { chatId: newChatId } = await createChatSession(token, 'New Chat', trimmed, []);
+          const { chatId: newChatId } = await createChatSession(token, 'New Chat', trimmed, files);
           activeChatId = newChatId;
           isFirstMessage = true;
           onChatCreated(newChatId);
@@ -93,6 +94,7 @@ export function useSendMessage(
         message: trimmed,
         sender: 'user',
         timestamp: new Date().toISOString(),
+        files: files.length > 0 ? files : undefined,
       });
 
       let aiMessageIdLive = nanoid();
@@ -157,7 +159,7 @@ export function useSendMessage(
         // POST here and get their backend uuid back.
         if (!isFirstMessage) {
           const backendUserId = await sendChatMessage(
-            token, activeChatId, trimmed, [], controller.signal,
+            token, activeChatId, trimmed, files, controller.signal,
           );
           if (backendUserId && backendUserId !== userMessageIdLive) {
             updateMessage(activeChatId, userMessageIdLive, { id: backendUserId });

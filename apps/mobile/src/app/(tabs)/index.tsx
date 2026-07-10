@@ -6,11 +6,15 @@
 // same chat client, and the same backend the web app uses.
 
 import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { getPlatform, useChatStore, type MessageFile } from '@wealthai/core';
+
 import { ChatInput } from '@/components/chat/chat-input';
+import { QUICK_REPLY_EVENT } from '@/components/chat/widget-view';
 import { MessageList } from '@/components/chat/message-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -33,8 +37,19 @@ export default function ChatScreen() {
   const setChatId = useUiStore((st) => st.setCurrentChatId);
   const newChat = useUiStore((st) => st.newChat);
   const { send, cancel, isSending, isCreatingChat } = useSendMessage(chatId, setChatId);
+  const selectedAgent = useChatStore((st) => st.selectedAgent);
 
   const busy = isSending || isCreatingChat;
+
+  // Widget quick-replies (action tiles, specialist picker, multi-select)
+  // arrive over the platform event bus — the mobile analogue of the web's
+  // `chat-quick-reply` CustomEvent.
+  useEffect(() => {
+    return getPlatform().events.on(QUICK_REPLY_EVENT, (payload) => {
+      const text = (payload as any)?.text;
+      if (typeof text === 'string' && text.trim()) send(text, []);
+    });
+  }, [send]);
 
   return (
     <ThemedView style={styles.container}>
@@ -47,12 +62,16 @@ export default function ChatScreen() {
             accessibilityLabel="Chat history">
             <ThemedText type="title" style={styles.headerIcon}>☰</ThemedText>
           </Pressable>
-          <View style={styles.headerCenter}>
+          <Pressable
+            style={styles.headerCenter}
+            onPress={() => router.push('/agents')}
+            hitSlop={8}
+            accessibilityLabel="Choose agent">
             <ThemedText type="smallBold">YourFinAdvisor</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Smart routing
+              {selectedAgent ? selectedAgent.replace(/_/g, ' ') : 'Smart routing'} ▾
             </ThemedText>
-          </View>
+          </Pressable>
           <Pressable
             onPress={newChat}
             hitSlop={12}
@@ -74,7 +93,7 @@ export default function ChatScreen() {
                   <Pressable
                     key={s}
                     disabled={busy}
-                    onPress={() => send(s)}
+                    onPress={() => send(s, [])}
                     style={({ pressed }) => [
                       styles.suggestion,
                       { backgroundColor: colors.backgroundElement, opacity: pressed ? 0.7 : 1 },

@@ -7,35 +7,37 @@
 // the reply's structure stays visible instead of silently dropping data.
 
 import { memo } from 'react';
-import { StyleSheet, useColorScheme, View } from 'react-native';
+import { Image, StyleSheet, useColorScheme, View } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import type { ContentBlock, Message } from '@wealthai/core';
 
 import { ThemedText } from '@/components/themed-text';
+import { WidgetView } from '@/components/chat/widget-view';
 import { Colors, Spacing } from '@/constants/theme';
-
-function WidgetChip({ type }: { type: string }) {
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
-  const colors = Colors[scheme];
-  const label = type.replace(/^widget_/, '').replace(/_/g, ' ');
-  return (
-    <View style={[styles.widgetChip, { backgroundColor: colors.backgroundElement }]}>
-      <ThemedText type="small" themeColor="textSecondary">
-        ✦ {label} — interactive view coming to mobile soon
-      </ThemedText>
-    </View>
-  );
-}
 
 export const MessageBubble = memo(function MessageBubble({ message }: { message: Message }) {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const colors = Colors[scheme];
 
   if (message.sender === 'user') {
+    const images = (message.files || []).filter((f) => f.type.startsWith('image/') || /\.(png|jpe?g|webp|heic)($|\?)/i.test(f.url));
+    const docs = (message.files || []).filter((f) => !images.includes(f));
     return (
       <View style={styles.userRow}>
-        <View style={[styles.userBubble, { backgroundColor: colors.backgroundElement }]}>
-          <ThemedText>{message.message}</ThemedText>
+        <View style={styles.userStack}>
+          {images.map((f, i) => (
+            <Image key={`${f.url}-${i}`} source={{ uri: f.url }} style={styles.userImage} />
+          ))}
+          {docs.map((f, i) => (
+            <View key={`${f.url}-${i}`} style={[styles.userBubble, { backgroundColor: colors.backgroundElement }]}>
+              <ThemedText type="small">📄 {f.name}</ThemedText>
+            </View>
+          ))}
+          {message.message ? (
+            <View style={[styles.userBubble, { backgroundColor: colors.backgroundElement }]}>
+              <ThemedText>{message.message}</ThemedText>
+            </View>
+          ) : null}
         </View>
       </View>
     );
@@ -94,7 +96,7 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
               : block.content}
           </Markdown>
         ) : (
-          <WidgetChip key={`w${i}`} type={block.widget.type} />
+          <WidgetView key={`w${i}`} widget={block.widget} />
         ),
       )}
       {message.isStreaming && blocks.length === 0 && (
@@ -111,8 +113,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     marginVertical: Spacing.two,
   },
+  userStack: { maxWidth: '82%', alignItems: 'flex-end', gap: Spacing.one },
+  userImage: { width: 180, height: 180, borderRadius: 14 },
   userBubble: {
-    maxWidth: '82%',
+    maxWidth: '100%',
     borderRadius: 20,
     borderBottomRightRadius: 6,
     paddingHorizontal: Spacing.three,
@@ -121,13 +125,6 @@ const styles = StyleSheet.create({
   assistantRow: {
     paddingHorizontal: Spacing.four,
     marginVertical: Spacing.two,
-  },
-  widgetChip: {
-    borderRadius: 10,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    marginVertical: Spacing.two,
-    alignSelf: 'flex-start',
   },
   error: { color: '#e5484d', marginBottom: Spacing.one },
 });
