@@ -145,6 +145,13 @@ export function useSendMessage(
         });
       };
 
+      // Set by the stream's complete/error callbacks. If the user taps
+      // STOP, the SSE reader resolves WITHOUT calling either (caller-
+      // cancellation is deliberately not an error in core) — the guard
+      // after the await finalizes the bubble with whatever text arrived,
+      // mirroring ChatGPT's stop behavior.
+      let settled = false;
+
       try {
         // Message #1 was persisted by createChatSession; later messages
         // POST here and get their backend uuid back.
@@ -183,10 +190,21 @@ export function useSendMessage(
             }
           },
           () => {
+            settled = true;
             finalFlush({});
             setState({ isSending: false, isCreatingChat: false });
           },
           (error) => {
+            settled = true;
+            // User tapped STOP: the abort surfaces here on platforms whose
+            // fetch rejects with a name other than 'AbortError' (expo/fetch
+            // does) — core's silent-cancel check misses it. A stop is a
+            // success, not an error: freeze the partial text, no banner.
+            if (controller.signal.aborted) {
+              finalFlush({});
+              setState({ isSending: false, isCreatingChat: false });
+              return;
+            }
             const isTimeout = error?.name === 'TimeoutError' || /timed out/i.test(error?.message || '');
             finalFlush({
               error: isTimeout
@@ -206,10 +224,18 @@ export function useSendMessage(
             },
           },
         );
+        // User tapped stop (or unmount aborted): the reader returned
+        // without settling. Freeze the partial reply as a normal message.
+        if (!settled) {
+          finalFlush({});
+          setState({ isSending: false, isCreatingChat: false });
+        }
       } catch (error: any) {
         if (error?.name !== 'AbortError') {
           console.error('[useSendMessage] send failed:', error);
           finalFlush({ error: "Couldn't get a response. Tap to retry." });
+        } else if (!settled) {
+          finalFlush({});
         }
         setState({ isSending: false, isCreatingChat: false });
       }

@@ -28,7 +28,7 @@ export default function ChatScreen() {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const colors = Colors[scheme];
   const [chatId, setChatId] = useState<string | null>(null);
-  const { send, isSending, isCreatingChat } = useSendMessage(chatId, setChatId);
+  const { send, cancel, isSending, isCreatingChat } = useSendMessage(chatId, setChatId);
 
   const busy = isSending || isCreatingChat;
 
@@ -67,7 +67,7 @@ export default function ChatScreen() {
               </View>
             </View>
           )}
-          <ChatInput onSend={send} busy={busy} />
+          <ChatInput onSend={send} onStop={cancel} busy={busy} />
         </KeyboardAvoidingView>
       </SafeAreaView>
     </ThemedView>

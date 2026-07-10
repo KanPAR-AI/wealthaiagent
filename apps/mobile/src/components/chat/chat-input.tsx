@@ -1,14 +1,19 @@
-// Chat input bar — auto-growing multiline field + send button.
+// Chat input bar — auto-growing multiline field + send/stop button.
 //
-// Keyboard behavior comes from react-native-keyboard-controller's
-// KeyboardAvoidingView wrapping this bar in the screen (not stock RN's —
-// the controller version tracks the keyboard frame natively, giving the
-// smooth inset animation and interactive-dismiss the quality bar demands).
+// ChatGPT-parity behaviors (the quality bar):
+//   - The field is NEVER disabled. Setting editable={false} on a focused
+//     TextInput dismisses the keyboard — which is exactly what users
+//     don't want after hitting send. Keyboard stays up; the user can
+//     compose their next message while the reply streams.
+//   - While streaming, the send button becomes a STOP button (ChatGPT
+//     pattern) wired to the AbortController behind the SSE reader.
+//
+// Keyboard inset animation comes from react-native-keyboard-controller's
+// KeyboardAvoidingView wrapping this bar in the screen.
 
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   TextInput,
@@ -23,9 +28,11 @@ const MAX_INPUT_HEIGHT = 120;
 
 export function ChatInput({
   onSend,
+  onStop,
   busy,
 }: {
   onSend: (text: string) => void;
+  onStop: () => void;
   busy: boolean;
 }) {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
@@ -34,7 +41,12 @@ export function ChatInput({
 
   const canSend = !busy && text.trim().length > 0;
 
-  const handleSend = () => {
+  const handlePress = () => {
+    if (busy) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onStop();
+      return;
+    }
     if (!canSend) return;
     const value = text.trim();
     setText('');
@@ -52,27 +64,23 @@ export function ChatInput({
           placeholderTextColor={colors.textSecondary}
           multiline
           style={[styles.input, { color: colors.text }]}
-          editable={!busy}
           submitBehavior="newline"
         />
         <Pressable
-          onPress={handleSend}
-          disabled={!canSend}
+          onPress={handlePress}
+          disabled={!busy && !canSend}
           hitSlop={8}
+          accessibilityLabel={busy ? 'Stop response' : 'Send message'}
           style={({ pressed }) => [
             styles.sendButton,
             {
-              backgroundColor: canSend ? colors.text : colors.backgroundSelected,
+              backgroundColor: busy || canSend ? colors.text : colors.backgroundSelected,
               opacity: pressed ? 0.7 : 1,
             },
           ]}>
-          {busy ? (
-            <ActivityIndicator size="small" color={colors.background} />
-          ) : (
-            <ThemedText type="smallBold" style={{ color: colors.background, lineHeight: 18 }}>
-              ↑
-            </ThemedText>
-          )}
+          <ThemedText type="smallBold" style={{ color: colors.background, lineHeight: 18 }}>
+            {busy ? '■' : '↑'}
+          </ThemedText>
         </Pressable>
       </View>
     </View>
