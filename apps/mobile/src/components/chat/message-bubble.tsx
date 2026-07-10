@@ -7,7 +7,7 @@
 // the reply's structure stays visible instead of silently dropping data.
 
 import { memo, useEffect, useState } from 'react';
-import { Image, StyleSheet, useColorScheme, View } from 'react-native';
+import { Image, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import type { ContentBlock, Message } from '@wealthai/core';
 
@@ -15,6 +15,10 @@ import { ThemedText } from '@/components/themed-text';
 import { WidgetView } from '@/components/chat/widget-view';
 import { Colors, Spacing } from '@/constants/theme';
 import { getToken } from '@/lib/auth';
+import { getPlatform } from '@wealthai/core';
+import { RETRY_EVENT } from '@/lib/events';
+
+export { RETRY_EVENT } from '@/lib/events';
 
 /** Backend file URLs require a Bearer token — a bare <Image> gets a 401
  *  and renders blank on prod. RN's Image supports per-request headers;
@@ -134,9 +138,15 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
   return (
     <View style={styles.assistantRow}>
       {message.error ? (
-        <ThemedText type="small" style={styles.error}>
-          {message.error}
-        </ThemedText>
+        <Pressable
+          onPress={() => getPlatform().events.emit(RETRY_EVENT, {})}
+          style={styles.errorRow}
+          accessibilityLabel="Retry">
+          <ThemedText type="small" style={styles.error}>
+            {message.error}
+          </ThemedText>
+          <ThemedText type="smallBold" style={styles.retry}>↻ Retry</ThemedText>
+        </Pressable>
       ) : null}
       {blocks.map((block, i) =>
         block.type === 'text' ? (
@@ -177,5 +187,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     marginVertical: Spacing.two,
   },
-  error: { color: '#e5484d', marginBottom: Spacing.one },
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginBottom: Spacing.one },
+  error: { color: '#e5484d' },
+  retry: { color: '#e5484d', textDecorationLine: 'underline' },
 });

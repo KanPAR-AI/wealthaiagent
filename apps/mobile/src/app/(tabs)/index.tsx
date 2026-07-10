@@ -15,6 +15,7 @@ import { getPlatform, submitBugReportCore, useChatStore, type MessageFile } from
 
 import { ChatInput } from '@/components/chat/chat-input';
 import { ChatDrawer } from '@/components/drawer/chat-drawer';
+import { RETRY_EVENT } from '@/components/chat/message-bubble';
 import { QUICK_REPLY_EVENT } from '@/components/chat/widget-view';
 import { MessageList } from '@/components/chat/message-list';
 import { ThemedText } from '@/components/themed-text';
@@ -82,6 +83,17 @@ export default function ChatScreen() {
       if (typeof text === 'string' && text.trim()) send(text, []);
     });
   }, [send]);
+
+  // ↻ Retry on an errored reply: resend the last user message (with its
+  // attachments) — ChatGPT semantics.
+  useEffect(() => {
+    return getPlatform().events.on(RETRY_EVENT, () => {
+      if (!chatId) return;
+      const msgs = useChatStore.getState().chats[chatId]?.messages || [];
+      const lastUser = [...msgs].reverse().find((m) => m.sender === 'user');
+      if (lastUser) send(lastUser.message, lastUser.files || []);
+    });
+  }, [chatId, send]);
 
   return (
     <ThemedView style={styles.container}>

@@ -16,10 +16,13 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import { getPlatform, type Widget } from '@wealthai/core';
 
+import { OnboardingForm } from '@/components/chat/onboarding-form';
+import { PalmView } from '@/components/chat/palm-view';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
 
-export const QUICK_REPLY_EVENT = 'chat-quick-reply';
+export { QUICK_REPLY_EVENT } from '@/lib/events';
+import { QUICK_REPLY_EVENT } from '@/lib/events';
 
 function quickReply(text: string) {
   getPlatform().events.emit(QUICK_REPLY_EVENT, { text });
@@ -102,13 +105,13 @@ function MultiSelect({ data }: { data: any }) {
   );
 }
 
-function Chip({ label }: { label: string }) {
+function Chip({ label, plain }: { label: string; plain?: boolean }) {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const colors = Colors[scheme];
   return (
     <View style={[styles.chip, { backgroundColor: colors.backgroundElement }]}>
       <ThemedText type="small" themeColor="textSecondary">
-        ✦ {label} — interactive view coming to mobile soon
+        ✦ {label}{plain ? '' : ' — interactive view coming to mobile soon'}
       </ThemedText>
     </View>
   );
@@ -138,6 +141,20 @@ export function WidgetView({ widget }: { widget: Widget }) {
 
   if (type === 'multi_select' && Array.isArray(data.options) && data.options.length) {
     return <MultiSelect data={data} />;
+  }
+
+  if (type === 'onboarding_form' && Array.isArray(data.fields) && data.fields.length) {
+    return <OnboardingForm data={data} />;
+  }
+
+  if (type === 'palm_analysis') {
+    return <PalmView data={data} />;
+  }
+
+  // Transient status marker streamed while the vision pass runs; the
+  // palm_analysis widget follows it in the same message.
+  if (type === 'palm_scanning') {
+    return <Chip label="Scanning palm…" plain />;
   }
 
   return <Chip label={type.replace(/_/g, ' ')} />;
