@@ -10,6 +10,14 @@ export interface PlatformAdapter {
    *  mobile: `fetch` from `expo/fetch`. */
   fetch: typeof globalThis.fetch;
 
+  /** OPTIONAL: fetch used for multipart uploads. React Native's built-in
+   *  fetch accepts {uri,name,type} FormData parts (native file streaming),
+   *  which expo/fetch — WinterCG-strict — rejects with "Unsupported
+   *  FormDataPart implementation". Mobile passes globalThis.fetch here
+   *  while keeping expo/fetch (streaming) for everything else; web omits
+   *  it. Core upload helpers use `uploadFetch ?? fetch`. */
+  uploadFetch?: typeof globalThis.fetch;
+
   /** Build a full API URL from an endpoint path ("/chats/123/stream").
    *  Injected as a function (not baseUrl+version fields) so each app keeps
    *  its existing URL semantics — web reuses config/environment.getApiUrl

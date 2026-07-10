@@ -25,11 +25,12 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
-import { uploadFileCore, type MessageFile } from '@wealthai/core';
+import { type MessageFile } from '@wealthai/core';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
 import { getToken } from '@/lib/auth';
+import { uploadFileNative } from '@/lib/upload';
 
 const MAX_INPUT_HEIGHT = 120;
 
@@ -55,12 +56,10 @@ export function ChatInput({
     try {
       const token = await getToken();
       if (!token) throw new Error('Not signed in');
-      const uploaded = await uploadFileCore(token, {
-        uri: asset.uri,
-        name: asset.name,
-        type: asset.type,
-      });
-      setFiles((fs) => [...fs, { ...uploaded, size: asset.size ?? uploaded.size }]);
+      // Native streaming upload — see lib/upload.ts for why FormData
+      // approaches are dead ends on SDK 57.
+      const uploaded = await uploadFileNative(token, asset);
+      setFiles((fs) => [...fs, uploaded]);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
       Alert.alert('Upload failed', e?.message || 'Try again.');

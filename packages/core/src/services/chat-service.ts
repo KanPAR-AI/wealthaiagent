@@ -534,7 +534,11 @@ export const uploadFileCore = async (
   file: UploadableFile,
   fallbackName = 'upload',
 ): Promise<MessageFile> => {
-  const { fetch, getApiUrl } = getPlatform();
+  const platform = getPlatform();
+  const { getApiUrl } = platform;
+  // See PlatformAdapter.uploadFetch — RN needs its native-fetch for
+  // {uri} multipart parts; expo/fetch rejects them.
+  const fetch = platform.uploadFetch ?? platform.fetch;
   const form = new FormData();
   const name = (file as any).name || fallbackName;
   // RN FormData accepts {uri,name,type} descriptors; DOM types only know

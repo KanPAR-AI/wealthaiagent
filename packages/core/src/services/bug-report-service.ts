@@ -65,7 +65,10 @@ export async function submitBugReportCore(
   },
   context: BugReportContext,
 ): Promise<BugReport> {
-  const { fetch, getApiUrl } = getPlatform();
+  const platform = getPlatform();
+  const { getApiUrl } = platform;
+  // Multipart: prefer the adapter's uploadFetch (RN-native {uri} parts).
+  const fetch = platform.uploadFetch ?? platform.fetch;
 
   const form = new FormData();
   form.append("description", input.description);

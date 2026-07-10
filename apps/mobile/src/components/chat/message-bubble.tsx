@@ -15,6 +15,35 @@ import { ThemedText } from '@/components/themed-text';
 import { WidgetView } from '@/components/chat/widget-view';
 import { Colors, Spacing } from '@/constants/theme';
 
+
+// ```some_widget_type\n{...json...}\n``` → widget block. Anything that
+// isn't a JSON object with a fence language stays as text (real code
+// blocks render as code).
+const FENCE_RE = /```([a-z_][a-z0-9_]*)\s*\n([\s\S]*?)```/g;
+
+function splitFencedWidgets(block: ContentBlock): ContentBlock[] {
+  if (block.type !== 'text') return [block];
+  const text = block.content;
+  const out: ContentBlock[] = [];
+  let last = 0;
+  for (const m of text.matchAll(FENCE_RE)) {
+    const [whole, lang, body] = m;
+    const start = m.index ?? 0;
+    let widgetData: any = null;
+    try {
+      const parsed = JSON.parse(body.trim());
+      if (parsed && typeof parsed === 'object') widgetData = parsed;
+    } catch { /* not JSON — leave the fence as text/code */ }
+    if (!widgetData) continue;
+    if (start > last) out.push({ type: 'text', content: text.slice(last, start) });
+    out.push({ type: 'widget', widget: { ...widgetData, type: widgetData.type || lang } });
+    last = start + whole.length;
+  }
+  if (last === 0) return [block];
+  if (last < text.length) out.push({ type: 'text', content: text.slice(last) });
+  return out;
+}
+
 export const MessageBubble = memo(function MessageBubble({ message }: { message: Message }) {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const colors = Colors[scheme];
@@ -45,12 +74,17 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
 
   // Assistant. Prefer contentBlocks (streaming order, widget-aware); fall
   // back to the flat message string for history rows that predate blocks.
-  const blocks: ContentBlock[] =
+  const rawBlocks: ContentBlock[] =
     message.contentBlocks?.length
       ? message.contentBlocks
       : message.message
         ? [{ type: 'text', content: message.message }]
         : [];
+  // MysticAI (and some other agents) emit widgets as fenced JSON inside
+  // the TEXT stream (```palm_analysis {...}```), not as widget_ SSE
+  // events — the web parses these fences out of markdown; do the same
+  // here so mobile renders widget chips/views instead of raw JSON.
+  const blocks = rawBlocks.flatMap(splitFencedWidgets);
 
   const markdownStyles = {
     body: { color: colors.text, fontSize: 16, lineHeight: 24 },

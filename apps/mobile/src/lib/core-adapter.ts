@@ -43,6 +43,12 @@ const mobileAdapter: PlatformAdapter = {
   // string URL, so the cast is safe; the seam is documented here.
   fetch: expoFetch as unknown as typeof globalThis.fetch,
 
+  // Multipart uploads go through RN's built-in fetch: its FormData
+  // accepts {uri,name,type} descriptors and streams files natively —
+  // expo/fetch (WinterCG-strict) rejects those parts outright.
+  // (Typed via cast: RN's fetch typings predate the URL-input overload.)
+  uploadFetch: ((input: any, init?: any) => globalThis.fetch(input, init)) as typeof globalThis.fetch,
+
   getApiUrl,
 
   storage: {
