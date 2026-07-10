@@ -6,14 +6,15 @@
 // same chat client, and the same backend the web app uses.
 
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
-import { Alert, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Pressable, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getPlatform, submitBugReportCore, useChatStore, type MessageFile } from '@wealthai/core';
 
 import { ChatInput } from '@/components/chat/chat-input';
+import { ChatDrawer } from '@/components/drawer/chat-drawer';
 import { QUICK_REPLY_EVENT } from '@/components/chat/widget-view';
 import { MessageList } from '@/components/chat/message-list';
 import { ThemedText } from '@/components/themed-text';
@@ -33,6 +34,8 @@ export default function ChatScreen() {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const colors = Colors[scheme];
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const chatId = useUiStore((st) => st.currentChatId);
   const setChatId = useUiStore((st) => st.setCurrentChatId);
   const newChat = useUiStore((st) => st.newChat);
@@ -86,7 +89,7 @@ export default function ChatScreen() {
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.backgroundElement }]}>
           <Pressable
-            onPress={() => router.push('/history')}
+            onPress={() => setDrawerOpen(true)}
             hitSlop={12}
             accessibilityLabel="Chat history">
             <ThemedText type="title" style={styles.headerIcon}>☰</ThemedText>
@@ -144,6 +147,11 @@ export default function ChatScreen() {
           <ChatInput onSend={send} onStop={cancel} busy={busy} />
         </KeyboardAvoidingView>
       </SafeAreaView>
+      <ChatDrawer
+        open={drawerOpen}
+        width={Math.min(screenWidth * 0.84, 360)}
+        onClose={() => setDrawerOpen(false)}
+      />
     </ThemedView>
   );
 }
