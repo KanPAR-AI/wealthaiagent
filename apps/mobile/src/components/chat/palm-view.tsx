@@ -21,6 +21,65 @@ import { Colors, Spacing } from '@/constants/theme';
 import { getToken } from '@/lib/auth';
 import { API_BASE_URL, API_VERSION } from '@/lib/env';
 
+// Viral prediction chips — same specs as web PREDICTION_CHIPS.
+const PREDICTION_CHIPS: Array<{
+  key: string;
+  emoji: string;
+  label: string;
+  format: (v: number) => string;
+  color: string;
+}> = [
+  { key: 'lifespan_years', emoji: '⏳', label: 'LIFESPAN', format: (v) => `${v} years`, color: '#a64dff' },
+  { key: 'marriage_age', emoji: '❤️', label: 'LOVE', format: (v) => `married at ${v}`, color: '#ff4d6d' },
+  { key: 'children_count', emoji: '👨‍👩‍👧', label: 'FAMILY', format: (v) => (v === 0 ? 'no children' : v === 1 ? '1 kid' : `${v} kids`), color: '#9333ea' },
+  { key: 'career_peak_age', emoji: '💼', label: 'CAREER PEAK', format: (v) => `age ${v}`, color: '#4dd0ff' },
+  { key: 'wealth_peak_age', emoji: '💰', label: 'WEALTH PEAK', format: (v) => `age ${v}`, color: '#ffd700' },
+];
+
+export function PredictionChips({ predictions, keys }: { predictions: any; keys?: string[] }) {
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const colors = Colors[scheme];
+  const chips = PREDICTION_CHIPS
+    .filter((c) => !keys || keys.includes(c.key))
+    .map((c) => {
+      const p = predictions?.[c.key];
+      if (!p || p.value == null) return null;
+      return { ...c, value: p.value as number };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+  if (!chips.length) return null;
+  return (
+    <View style={styles.chipGrid}>
+      {chips.map((chip) => (
+        <View
+          key={chip.key}
+          style={[styles.chipCell, { borderColor: `${chip.color}55`, backgroundColor: colors.backgroundElement }]}>
+          <ThemedText style={styles.chipEmoji}>{chip.emoji}</ThemedText>
+          <ThemedText type="small" style={{ color: chip.color, fontWeight: '700', fontSize: 10, letterSpacing: 1 }}>
+            {chip.label}
+          </ThemedText>
+          <ThemedText type="smallBold">{chip.format(chip.value)}</ThemedText>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// Chip-only sibling pinned atop holistic follow-ups (web PalmPredictionsCard).
+export function PalmPredictionsView({ data }: { data: any }) {
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const colors = Colors[scheme];
+  if (!data?.predictions) return null;
+  return (
+    <View style={[styles.card, { borderColor: colors.backgroundSelected }]}>
+      <ThemedText type="small" themeColor="textSecondary" style={styles.snapshotTitle}>
+        ✦ YOUR PALM SNAPSHOT ✦
+      </ThemedText>
+      <PredictionChips predictions={data.predictions} keys={Array.isArray(data.chips) ? data.chips : undefined} />
+    </View>
+  );
+}
+
 function absolutize(url?: string): string | null {
   if (!url) return null;
   if (url.startsWith('http')) return url;
@@ -148,6 +207,8 @@ export function PalmView({ data }: { data: any }) {
         </View>
       ))}
 
+      {data.predictions ? <PredictionChips predictions={data.predictions} /> : null}
+
       {data.overall_reading ? (
         <ThemedText type="small" style={styles.overall}>{data.overall_reading}</ThemedText>
       ) : null}
@@ -179,4 +240,22 @@ const styles = StyleSheet.create({
   reading: { gap: 2 },
   readingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   overall: { fontStyle: 'italic', marginTop: Spacing.one },
+  chipGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+    justifyContent: 'center',
+    marginTop: Spacing.one,
+  },
+  chipCell: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: Spacing.two,
+    alignItems: 'center',
+    gap: 1,
+    minWidth: 96,
+  },
+  chipEmoji: { fontSize: 16, lineHeight: 20 },
+  snapshotTitle: { textAlign: 'center', letterSpacing: 2, fontSize: 10 },
 });

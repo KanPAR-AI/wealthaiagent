@@ -23,7 +23,7 @@ export { RETRY_EVENT } from '@/lib/events';
 /** Backend file URLs require a Bearer token — a bare <Image> gets a 401
  *  and renders blank on prod. RN's Image supports per-request headers;
  *  fetch a fresh token per mount (cheap: cached by Firebase). */
-function AuthImage({ uri, style }: { uri: string; style: any }) {
+function AuthImage({ uri, style, onError }: { uri: string; style: any; onError?: () => void }) {
   const [headers, setHeaders] = useState<Record<string, string> | null>(null);
   useEffect(() => {
     let alive = true;
@@ -33,7 +33,7 @@ function AuthImage({ uri, style }: { uri: string; style: any }) {
     return () => { alive = false; };
   }, [uri]);
   if (!headers) return <View style={style} />;
-  return <Image source={{ uri, headers }} style={style} />;
+  return <Image source={{ uri, headers }} style={style} onError={onError} />;
 }
 
 
@@ -68,15 +68,31 @@ function splitFencedWidgets(block: ContentBlock): ContentBlock[] {
 export const MessageBubble = memo(function MessageBubble({ message }: { message: Message }) {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const colors = Colors[scheme];
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const markImageFailed = (url: string) =>
+    setFailedImages((prev) => new Set(prev).add(url));
 
   if (message.sender === 'user') {
-    const images = (message.files || []).filter((f) => f.type.startsWith('image/') || /\.(png|jpe?g|webp|heic)($|\?)/i.test(f.url));
+    // History attachments arrive as bare /files/<id>/download URLs — no
+    // mime, no extension (web solves this by sniffing the blob's magic
+    // bytes). Render those optimistically as images and demote any that
+    // fail to load to a doc chip.
+    const isImage = (f: { type: string; url: string }) =>
+      f.type.startsWith('image/') ||
+      /\.(png|jpe?g|webp|heic)($|\?)/i.test(f.url) ||
+      (!f.type && /\/files\/[^/]+\/download/.test(f.url) && !failedImages.has(f.url));
+    const images = (message.files || []).filter(isImage);
     const docs = (message.files || []).filter((f) => !images.includes(f));
     return (
       <View style={styles.userRow}>
         <View style={styles.userStack}>
           {images.map((f, i) => (
-            <AuthImage key={`${f.url}-${i}`} uri={f.url} style={styles.userImage} />
+            <AuthImage
+              key={`${f.url}-${i}`}
+              uri={f.url}
+              style={styles.userImage}
+              onError={() => markImageFailed(f.url)}
+            />
           ))}
           {docs.map((f, i) => (
             <View key={`${f.url}-${i}`} style={[styles.userBubble, { backgroundColor: colors.backgroundElement }]}>

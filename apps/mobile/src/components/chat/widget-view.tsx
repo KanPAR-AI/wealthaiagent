@@ -17,7 +17,7 @@ import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import { getPlatform, type Widget } from '@wealthai/core';
 
 import { OnboardingForm } from '@/components/chat/onboarding-form';
-import { PalmView } from '@/components/chat/palm-view';
+import { PalmPredictionsView, PalmView } from '@/components/chat/palm-view';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
 
@@ -155,6 +155,17 @@ export function WidgetView({ widget }: { widget: Widget }) {
   // palm_analysis widget follows it in the same message.
   if (type === 'palm_scanning') {
     return <Chip label="Scanning palm…" plain />;
+  }
+
+  // Chip-only snapshot pinned atop holistic follow-ups.
+  if (type === 'palm_predictions') {
+    return <PalmPredictionsView data={data} />;
+  }
+
+  // Web parity: these JSON blocks are data for the formatted markdown that
+  // follows them — never shown raw, never chipped.
+  if (type === 'natal_chart' || type === 'muhurta_results') {
+    return null;
   }
 
   return <Chip label={type.replace(/_/g, ' ')} />;
