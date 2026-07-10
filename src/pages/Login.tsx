@@ -3,10 +3,11 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
 import { auth } from "@/config/firebase";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, signInViaServerExchange } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isNativePlatform } from "@/lib/capacitor";
+import { renderGoogleSignInButton } from "@/lib/google-identity-services";
 
 type AuthMode = "choose" | "email" | "phone" | "otp";
 
@@ -26,6 +27,60 @@ export default function LoginPage() {
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const recaptchaRef = useRef<HTMLDivElement>(null);
   const recaptchaVerifier = useRef<RecaptchaVerifier | null>(null);
+  // Callback-ref (not useRef) so we get a re-run the moment the DOM node
+  // mounts. Login renders a "Loading..." spinner while auth resolves;
+  // during that phase the container div doesn't exist, and a useRef-
+  // based effect would fire once against `null` and never re-run once
+  // the real tree commits. Storing the node in state fixes that: the
+  // callback fires on attach → state update → effect below re-runs
+  // with a real node.
+  const [googleBtnEl, setGoogleBtnEl] = useState<HTMLDivElement | null>(null);
+  const [gisButtonFailed, setGisButtonFailed] = useState(false);
+
+  // Render Google's native "Sign in with Google" button. This is the
+  // ITP-safe path — the click opens a FIRST-PARTY accounts.google.com
+  // popup that returns the credential via JS callback, never touching
+  // *.firebaseapp.com. Bug report: new mobile signups couldn't complete
+  // Google sign-in even after enabling popups, because Firebase's
+  // popup → firebaseapp.com/__/auth/handler → back-to-app roundtrip
+  // depends on a cross-site session cookie that iOS ITP blocks. The
+  // GIS button skips that roundtrip entirely.
+  //
+  // Falls back to the custom "Continue with Google" button if the GIS
+  // script is blocked or fails to load (e.g. ad-blocker).
+  useEffect(() => {
+    if (isNativePlatform || mode !== "choose") return;
+    if (!googleBtnEl) return;
+    let cancelled = false;
+    let cleanup: (() => void) | null = null;
+    (async () => {
+      try {
+        cleanup = await renderGoogleSignInButton(
+          googleBtnEl,
+          async (idToken) => {
+            setError(null);
+            setLoading(true);
+            try {
+              await signInViaServerExchange(idToken);
+            } catch (e: any) {
+              console.error("[AUTH/GIS-BUTTON] exchange failed:", e);
+              setError(e?.message || "Google sign-in failed. Try again.");
+            } finally {
+              setLoading(false);
+            }
+          },
+        );
+        if (cancelled && cleanup) cleanup();
+      } catch (e) {
+        console.warn("[AUTH/GIS-BUTTON] render failed, using fallback:", e);
+        if (!cancelled) setGisButtonFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (cleanup) cleanup();
+    };
+  }, [mode, googleBtnEl]);
 
   // Redirect if already signed in (non-anonymous)
   useEffect(() => {
@@ -248,8 +303,18 @@ export default function LoginPage() {
           {/* Main chooser */}
           {mode === "choose" && (
             <div className="space-y-3">
-              {/* Google — not available in native WebView (no popup support) */}
-              {!isNativePlatform && (
+              {/* Google — via GIS-rendered native button (ITP-safe on iOS).
+                  Not available in native WebView (no popup support). */}
+              {!isNativePlatform && !gisButtonFailed && (
+                <div
+                  ref={setGoogleBtnEl}
+                  className="w-full flex justify-center min-h-[44px]"
+                  aria-label="Sign in with Google"
+                />
+              )}
+              {/* Fallback: shown only if GIS failed to render (script blocked,
+                  ad-blocker, offline, etc.). Uses the old popup/redirect path. */}
+              {!isNativePlatform && gisButtonFailed && (
                 <Button
                   variant="outline"
                   className="w-full h-12 gap-3 text-sm font-medium rounded-xl border-border/50 hover:bg-accent/50 transition-all"

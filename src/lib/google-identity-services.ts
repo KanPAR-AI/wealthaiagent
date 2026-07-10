@@ -40,6 +40,7 @@ declare global {
         id?: {
           initialize: (config: GisIdConfig) => void;
           prompt: (cb?: (notification: GisPromptNotification) => void) => void;
+          renderButton: (parent: HTMLElement, options: GisButtonOptions) => void;
           cancel: () => void;
         };
         oauth2?: {
@@ -49,6 +50,17 @@ declare global {
     };
   }
 }
+
+type GisButtonOptions = {
+  type?: "standard" | "icon";
+  theme?: "outline" | "filled_blue" | "filled_black";
+  size?: "large" | "medium" | "small";
+  text?: "signin_with" | "signup_with" | "continue_with" | "signin";
+  shape?: "rectangular" | "pill" | "circle" | "square";
+  logo_alignment?: "left" | "center";
+  width?: number | string;
+  locale?: string;
+};
 
 type GisIdConfig = {
   client_id: string;
@@ -119,6 +131,62 @@ function loadGisScript(): Promise<void> {
  *   - rejects only on truly exceptional errors (script load failure,
  *     bad client config)
  */
+/**
+ * Render Google's native "Sign in with Google" button into `container`.
+ * When the user clicks it, GIS opens a FIRST-PARTY accounts.google.com
+ * consent popup and returns the ID token via `onCredential`. Unlike
+ * `signInWithGoogleViaGIS()` (which uses One Tap and only appears when
+ * the browser has an existing Google session), this button ALWAYS shows
+ * for new signups — the exact case where One Tap silently returns null.
+ *
+ * The popup here is user-triggered (click on Google's own button
+ * element) so mobile browsers don't block it. The credential comes
+ * back via the same `initialize()` callback and never crosses
+ * *.firebaseapp.com, so it's immune to iOS ITP.
+ *
+ * Returns a cleanup fn that removes the initialized callback state.
+ */
+export async function renderGoogleSignInButton(
+  container: HTMLElement,
+  onCredential: (idToken: string) => void,
+  options: GisButtonOptions = {},
+): Promise<() => void> {
+  await loadGisScript();
+  const gis = window.google?.accounts?.id;
+  if (!gis) {
+    throw new Error("GIS unavailable after script load");
+  }
+
+  gis.initialize({
+    client_id: FIREBASE_WEB_CLIENT_ID,
+    callback: (resp) => {
+      if (resp?.credential) onCredential(resp.credential);
+    },
+    ux_mode: "popup",
+    use_fedcm_for_prompt: true,
+    itp_support: true,
+    auto_select: false,
+    cancel_on_tap_outside: true,
+  });
+
+  gis.renderButton(container, {
+    type: "standard",
+    theme: "outline",
+    size: "large",
+    text: "continue_with",
+    shape: "rectangular",
+    logo_alignment: "left",
+    // The GIS button ignores CSS width past its internal min. Passing an
+    // explicit width in px makes it fill the container up to 400 (GIS max).
+    width: Math.min(container.clientWidth || 320, 400),
+    ...options,
+  });
+
+  return () => {
+    container.innerHTML = "";
+  };
+}
+
 export async function signInWithGoogleViaGIS(): Promise<string | null> {
   await loadGisScript();
 

@@ -51,7 +51,7 @@ import { getApiUrl } from "@/config/environment";
  * Google (via GIS, first-party accounts.google.com) and Firebase auth
  * happens via a same-origin call to chatbackend.yourfinadvisor.com,
  * which mints a custom token from Firebase Admin SDK. */
-async function signInViaServerExchange(idToken: string): Promise<void> {
+export async function signInViaServerExchange(idToken: string): Promise<void> {
   const res = await fetch(getApiUrl("/auth/google-token-exchange"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
