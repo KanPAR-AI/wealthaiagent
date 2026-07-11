@@ -21,19 +21,21 @@ import { Colors, Spacing } from '@/constants/theme';
 import { getToken } from '@/lib/auth';
 import { API_BASE_URL, API_VERSION } from '@/lib/env';
 
-// Viral prediction chips — same specs as web PREDICTION_CHIPS.
+// Viral prediction chips — same specs as web PREDICTION_CHIPS, but ranges
+// where the backend provides low/high: "29–32" reads as a palm reading,
+// "married at 28" reads as false precision (bug ec6a2481 feedback).
 const PREDICTION_CHIPS: Array<{
   key: string;
   emoji: string;
   label: string;
-  format: (v: number) => string;
+  format: (v: number, lo?: number, hi?: number) => string;
   color: string;
 }> = [
-  { key: 'lifespan_years', emoji: '⏳', label: 'LIFESPAN', format: (v) => `${v} years`, color: '#a64dff' },
-  { key: 'marriage_age', emoji: '❤️', label: 'LOVE', format: (v) => `married at ${v}`, color: '#ff4d6d' },
+  { key: 'lifespan_years', emoji: '⏳', label: 'LIFESPAN', format: (v, lo, hi) => (lo && hi && lo !== hi ? `${lo}–${hi} years` : `${v} years`), color: '#a64dff' },
+  { key: 'marriage_age', emoji: '❤️', label: 'LOVE', format: (v, lo, hi) => (lo && hi && lo !== hi ? `married ${lo}–${hi}` : `married at ${v}`), color: '#ff4d6d' },
   { key: 'children_count', emoji: '👨‍👩‍👧', label: 'FAMILY', format: (v) => (v === 0 ? 'no children' : v === 1 ? '1 kid' : `${v} kids`), color: '#9333ea' },
-  { key: 'career_peak_age', emoji: '💼', label: 'CAREER PEAK', format: (v) => `age ${v}`, color: '#4dd0ff' },
-  { key: 'wealth_peak_age', emoji: '💰', label: 'WEALTH PEAK', format: (v) => `age ${v}`, color: '#ffd700' },
+  { key: 'career_peak_age', emoji: '💼', label: 'CAREER PEAK', format: (v, lo, hi) => (lo && hi && lo !== hi ? `${lo}–${hi}` : `age ${v}`), color: '#4dd0ff' },
+  { key: 'wealth_peak_age', emoji: '💰', label: 'WEALTH PEAK', format: (v, lo, hi) => (lo && hi && lo !== hi ? `${lo}–${hi}` : `age ${v}`), color: '#ffd700' },
 ];
 
 export function PredictionChips({ predictions, keys }: { predictions: any; keys?: string[] }) {
@@ -44,7 +46,7 @@ export function PredictionChips({ predictions, keys }: { predictions: any; keys?
     .map((c) => {
       const p = predictions?.[c.key];
       if (!p || p.value == null) return null;
-      return { ...c, value: p.value as number };
+      return { ...c, value: p.value as number, low: p.low as number | undefined, high: p.high as number | undefined };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
   if (!chips.length) return null;
@@ -58,7 +60,7 @@ export function PredictionChips({ predictions, keys }: { predictions: any; keys?
           <ThemedText type="small" style={{ color: chip.color, fontWeight: '700', fontSize: 10, letterSpacing: 1 }}>
             {chip.label}
           </ThemedText>
-          <ThemedText type="smallBold">{chip.format(chip.value)}</ThemedText>
+          <ThemedText type="smallBold">{chip.format(chip.value, chip.low, chip.high)}</ThemedText>
         </View>
       ))}
     </View>

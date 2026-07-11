@@ -66,18 +66,20 @@ export function tryParsePalmPayload(raw: string): PalmAnalysisPayload | null {
   return null;
 }
 
+// Ranges where the backend provides low/high — "29–32" reads as a palm
+// reading, "married at 28" reads as false precision (bug ec6a2481 feedback).
 const PREDICTION_CHIPS: Array<{
   key: keyof NonNullable<PalmAnalysisPayload['predictions']>;
   emoji: string;
   label: string;
-  format: (v: number) => string;
+  format: (v: number, lo?: number | null, hi?: number | null) => string;
   color: string;
 }> = [
-  { key: 'lifespan_years',  emoji: '⏳',  label: 'LIFESPAN',     format: (v) => `${v} years`,        color: '#a64dff' },
-  { key: 'marriage_age',    emoji: '❤️',  label: 'LOVE',         format: (v) => `married at ${v}`,  color: '#ff4d6d' },
+  { key: 'lifespan_years',  emoji: '⏳',  label: 'LIFESPAN',     format: (v, lo, hi) => lo && hi && lo !== hi ? `${lo}–${hi} years` : `${v} years`, color: '#a64dff' },
+  { key: 'marriage_age',    emoji: '❤️',  label: 'LOVE',         format: (v, lo, hi) => lo && hi && lo !== hi ? `married ${lo}–${hi}` : `married at ${v}`, color: '#ff4d6d' },
   { key: 'children_count',  emoji: '👨‍👩‍👧', label: 'FAMILY',     format: (v) => v === 0 ? 'no children' : v === 1 ? '1 kid' : `${v} kids`, color: '#9333ea' },
-  { key: 'career_peak_age', emoji: '💼',  label: 'CAREER PEAK',  format: (v) => `age ${v}`,          color: '#4dd0ff' },
-  { key: 'wealth_peak_age', emoji: '💰',  label: 'WEALTH PEAK',  format: (v) => `age ${v}`,          color: '#ffd700' },
+  { key: 'career_peak_age', emoji: '💼',  label: 'CAREER PEAK',  format: (v, lo, hi) => lo && hi && lo !== hi ? `${lo}–${hi}` : `age ${v}`, color: '#4dd0ff' },
+  { key: 'wealth_peak_age', emoji: '💰',  label: 'WEALTH PEAK',  format: (v, lo, hi) => lo && hi && lo !== hi ? `${lo}–${hi}` : `age ${v}`, color: '#ffd700' },
 ];
 
 function buildPath(points: number[][], w: number, h: number): string {
@@ -149,7 +151,7 @@ export function PalmReadingWidget({ payload }: { payload: PalmAnalysisPayload })
   const chips = PREDICTION_CHIPS.map((c) => {
     const p = preds[c.key];
     if (!p || p.value == null) return null;
-    return { ...c, value: p.value };
+    return { ...c, value: p.value, low: p.low, high: p.high };
   }).filter((x): x is NonNullable<typeof x> => x !== null);
 
   return (
@@ -258,7 +260,7 @@ export function PalmReadingWidget({ payload }: { payload: PalmAnalysisPayload })
                   <span>{chip.label}</span>
                 </div>
                 <div className="text-sm sm:text-base font-semibold text-white mt-0.5">
-                  {chip.format(chip.value)}
+                  {chip.format(chip.value, chip.low, chip.high)}
                 </div>
               </div>
             ))}
@@ -303,7 +305,7 @@ export function PalmPredictionsCard({ payload }: { payload: PalmPredictionsPaylo
       const spec = PREDICTION_CHIPS.find((c) => c.key === key);
       const p = payload.predictions[key];
       if (!spec || !p || p.value == null) return null;
-      return { ...spec, value: p.value };
+      return { ...spec, value: p.value, low: p.low, high: p.high };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
   if (chips.length === 0) return null;
@@ -330,7 +332,7 @@ export function PalmPredictionsCard({ payload }: { payload: PalmPredictionsPaylo
               <span>{chip.label}</span>
             </div>
             <div className="text-xs sm:text-sm font-semibold text-white mt-0.5">
-              {chip.format(chip.value)}
+              {chip.format(chip.value, chip.low, chip.high)}
             </div>
           </div>
         ))}
