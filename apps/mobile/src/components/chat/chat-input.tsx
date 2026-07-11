@@ -48,17 +48,19 @@ export function ChatInput({
   const [text, setText] = useState('');
   const [files, setFiles] = useState<MessageFile[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const canSend = !busy && !uploading && (text.trim().length > 0 || files.length > 0);
 
   const uploadAsset = async (asset: { uri: string; name: string; type: string; size?: number }) => {
     setUploading(true);
+    setUploadProgress(0);
     try {
       const token = await getToken();
       if (!token) throw new Error('Not signed in');
       // Native streaming upload — see lib/upload.ts for why FormData
       // approaches are dead ends on SDK 57.
-      const uploaded = await uploadFileNative(token, asset);
+      const uploaded = await uploadFileNative(token, asset, setUploadProgress);
       // Preview from the LOCAL file uri: the uploaded URL is behind auth
       // on prod (401 for a bare <Image>), which rendered blank thumbnails
       // on-device. localUri never leaves this component; the message
@@ -167,7 +169,7 @@ export function ChatInput({
 
   return (
     <View style={[styles.bar, { backgroundColor: colors.background, borderTopColor: colors.backgroundElement }]}>
-      {files.length > 0 && (
+      {(files.length > 0 || uploading) && (
         <View style={styles.previews}>
           {files.map((f, i) => (
             <View key={`${f.url}-${i}`} style={styles.preview}>
@@ -187,8 +189,19 @@ export function ChatInput({
             </View>
           ))}
           {uploading && (
-            <View style={[styles.previewDoc, { backgroundColor: colors.backgroundElement }]}>
+            <View style={[styles.previewDoc, styles.uploadingTile, { backgroundColor: colors.backgroundElement }]}>
               <ActivityIndicator size="small" color={colors.textSecondary} />
+              <View style={[styles.progressTrack, { backgroundColor: colors.backgroundSelected }]}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      backgroundColor: colors.text,
+                      width: `${Math.max(6, Math.round(uploadProgress * 100))}%`,
+                    },
+                  ]}
+                />
+              </View>
             </View>
           )}
         </View>
@@ -235,6 +248,14 @@ export function ChatInput({
 }
 
 const styles = StyleSheet.create({
+  uploadingTile: { justifyContent: 'center', alignItems: 'center', gap: 6 },
+  progressTrack: {
+    width: '70%',
+    height: 3,
+    borderRadius: 1.5,
+    overflow: 'hidden',
+  },
+  progressFill: { height: '100%', borderRadius: 1.5 },
   bar: {
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: Spacing.three,

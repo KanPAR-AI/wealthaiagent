@@ -26,14 +26,28 @@ function apiUrl(endpoint: string): string {
 export async function uploadFileNative(
   token: string,
   asset: { uri: string; name: string; type: string; size?: number },
+  onProgress?: (fraction: number) => void,
 ): Promise<MessageFile> {
-  const res = await FileSystem.uploadAsync(apiUrl('/files/upload'), asset.uri, {
-    httpMethod: 'POST',
-    uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-    fieldName: 'files',
-    mimeType: asset.type || 'application/octet-stream',
-    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-  });
+  // createUploadTask (vs uploadAsync) exposes native upload progress —
+  // the subtle bar in the composer runs off this callback.
+  const task = FileSystem.createUploadTask(
+    apiUrl('/files/upload'),
+    asset.uri,
+    {
+      httpMethod: 'POST',
+      uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+      fieldName: 'files',
+      mimeType: asset.type || 'application/octet-stream',
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    },
+    (p) => {
+      if (onProgress && p.totalBytesExpectedToSend > 0) {
+        onProgress(p.totalBytesSent / p.totalBytesExpectedToSend);
+      }
+    },
+  );
+  const res = await task.uploadAsync();
+  if (!res) throw new Error(`Upload cancelled for ${asset.name}`);
   if (res.status < 200 || res.status >= 300) {
     throw new Error(`Upload failed (${res.status}) for ${asset.name}`);
   }
