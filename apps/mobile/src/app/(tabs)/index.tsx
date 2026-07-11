@@ -7,12 +7,13 @@
 
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getPlatform, submitBugReportCore, useChatStore, type MessageFile } from '@wealthai/core';
+import { getPlatform, useChatStore, type MessageFile } from '@wealthai/core';
 
+import { BugReportSheet } from '@/components/bug-report-sheet';
 import { ChatInput } from '@/components/chat/chat-input';
 import { ChatDrawer } from '@/components/drawer/chat-drawer';
 import { RETRY_EVENT } from '@/components/chat/message-bubble';
@@ -45,33 +46,24 @@ export default function ChatScreen() {
 
   const busy = isSending || isCreatingChat;
 
-  // Report-a-bug: same core service + backend as the web header button.
-  // iOS-native prompt keeps it dependency-free; the backend snapshots the
-  // chat transcript server-side from chat_id.
-  const reportBug = () => {
-    Alert.prompt(
-      'Report an issue',
-      'What went wrong? The current chat is attached for our team.',
-      async (description) => {
-        if (!description?.trim()) return;
-        try {
-          const { getToken } = await import('@/lib/auth');
-          const token = await getToken();
-          await submitBugReportCore(
-            token ?? undefined,
-            { description: description.trim(), chatId },
-            {
-              url: 'app://mobile/chat',
-              selected_agent: selectedAgent || undefined,
-              user_agent: 'YourFinAdvisor iOS (Expo dev)',
-            },
-          );
-          Alert.alert('Thanks!', 'Your report was sent to the team.');
-        } catch (e: any) {
-          Alert.alert('Could not send report', e?.message || 'Try again later.');
-        }
-      },
-    );
+  // Report-a-bug: sheet with description + image attachment (library pick
+  // or a screenshot of the current screen). The capture happens BEFORE the
+  // sheet opens — the user is reporting about what they're looking at, and
+  // the sheet itself must never be in the shot.
+  const [bugSheetOpen, setBugSheetOpen] = useState(false);
+  const [bugScreenshot, setBugScreenshot] = useState<string | null>(null);
+  const reportBug = async () => {
+    let shot: string | null = null;
+    try {
+      const { captureScreen } = await import('react-native-view-shot');
+      shot = await captureScreen({ format: 'jpg', quality: 0.85 });
+    } catch (e) {
+      // Capture can fail (fresh binary missing the native module, odd GPU
+      // states) — the sheet still works, just without the pre-attached shot.
+      console.warn('[reportBug] screen capture failed:', e);
+    }
+    setBugScreenshot(shot);
+    setBugSheetOpen(true);
   };
 
   // Widget quick-replies (action tiles, specialist picker, multi-select)
@@ -163,6 +155,13 @@ export default function ChatScreen() {
         open={drawerOpen}
         width={Math.min(screenWidth * 0.84, 360)}
         onClose={() => setDrawerOpen(false)}
+      />
+      <BugReportSheet
+        visible={bugSheetOpen}
+        onClose={() => setBugSheetOpen(false)}
+        screenShotUri={bugScreenshot}
+        chatId={chatId}
+        selectedAgent={selectedAgent}
       />
     </ThemedView>
   );
