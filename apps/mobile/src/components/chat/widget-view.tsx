@@ -164,7 +164,7 @@ export function WidgetView({ widget }: { widget: Widget }) {
 
   // Web parity: these JSON blocks are data for the formatted markdown that
   // follows them — never shown raw, never chipped.
-  if (type === 'natal_chart' || type === 'muhurta_results') {
+  if (type === 'natal_chart' || type === 'muhurta_results' || type === 'match_report') {
     return null;
   }
 

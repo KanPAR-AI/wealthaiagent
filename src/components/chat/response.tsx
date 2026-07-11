@@ -128,7 +128,7 @@ function buildMdComponents(
 
       // Hide muhurta_results, natal_chart JSON blocks for now (rendered as
       // formatted markdown below the block; raw JSON is noise).
-      if (lang && ["muhurta_results", "natal_chart"].includes(lang)) {
+      if (lang && ["muhurta_results", "natal_chart", "match_report"].includes(lang)) {
         return null;
       }
 
