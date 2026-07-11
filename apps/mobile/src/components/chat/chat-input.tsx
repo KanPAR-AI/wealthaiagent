@@ -87,6 +87,36 @@ export function ChatInput({
     });
   };
 
+  const takePhoto = async () => {
+    // Palm readings / X-rays are usually shot in the moment — going via
+    // the library forces a detour through the Camera app. Ask lazily for
+    // permission; simulators have no camera, so fail soft with a hint.
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(
+        'Camera access needed',
+        'Enable camera access in Settings to take a photo.',
+      );
+      return;
+    }
+    try {
+      const res = await ImagePicker.launchCameraAsync({
+        mediaTypes: 'images',
+        quality: 0.85,
+      });
+      const asset = res.assets?.[0];
+      if (!asset) return;
+      await uploadAsset({
+        uri: asset.uri,
+        name: asset.fileName || `camera_${Date.now()}.jpg`,
+        type: asset.mimeType || 'image/jpeg',
+        size: asset.fileSize,
+      });
+    } catch (e: any) {
+      Alert.alert('Camera unavailable', e?.message || 'Try the photo library instead.');
+    }
+  };
+
   const pickDocument = async () => {
     const res = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
     const asset = res.assets?.[0];
@@ -103,14 +133,16 @@ export function ChatInput({
     if (busy || uploading) return;
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Cancel', 'Photo Library', 'Document'], cancelButtonIndex: 0 },
+        { options: ['Cancel', 'Take Photo', 'Photo Library', 'Document'], cancelButtonIndex: 0 },
         (i) => {
-          if (i === 1) pickImage();
-          if (i === 2) pickDocument();
+          if (i === 1) takePhoto();
+          if (i === 2) pickImage();
+          if (i === 3) pickDocument();
         },
       );
     } else {
       Alert.alert('Attach', undefined, [
+        { text: 'Take Photo', onPress: takePhoto },
         { text: 'Photo Library', onPress: pickImage },
         { text: 'Document', onPress: pickDocument },
         { text: 'Cancel', style: 'cancel' },
