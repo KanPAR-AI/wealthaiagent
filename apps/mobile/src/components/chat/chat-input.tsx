@@ -9,6 +9,7 @@
 //     as removable thumbnails above the field. MysticAI's palm reading
 //     is exactly this path: attach palm photo → send.
 
+import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
@@ -31,6 +32,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
 import { getToken } from '@/lib/auth';
 import { uploadFileNative } from '@/lib/upload';
+import { transcribeAudioFile } from '@/lib/voice';
 
 const MAX_INPUT_HEIGHT = 120;
 
@@ -49,6 +51,51 @@ export function ChatInput({
   const [files, setFiles] = useState<MessageFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  // Voice input — record with expo-audio, transcribe on the backend
+  // (whisper-1 via /audio/transcribe, same as web). Tap mic to start,
+  // tap again to stop; the transcript appends to whatever is typed.
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+
+  const toggleVoice = async () => {
+    if (transcribing) return;
+    if (!recording) {
+      const perm = await AudioModule.requestRecordingPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Microphone access needed', 'Enable microphone access in Settings to use voice input.');
+        return;
+      }
+      try {
+        await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+        await recorder.prepareToRecordAsync();
+        recorder.record();
+        setRecording(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch (e: any) {
+        Alert.alert('Could not start recording', e?.message || 'Try again.');
+      }
+      return;
+    }
+    // stop → transcribe → append
+    setRecording(false);
+    setTranscribing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await recorder.stop();
+      await setAudioModeAsync({ allowsRecording: false });
+      const uri = recorder.uri;
+      if (!uri) throw new Error('No recording captured');
+      const token = await getToken();
+      if (!token) throw new Error('Not signed in');
+      const transcript = await transcribeAudioFile(token, uri);
+      if (transcript) setText((prev) => (prev ? prev + ' ' : '') + transcript);
+    } catch (e: any) {
+      Alert.alert('Transcription failed', e?.message || 'Try again.');
+    } finally {
+      setTranscribing(false);
+    }
+  };
 
   const canSend = !busy && !uploading && (text.trim().length > 0 || files.length > 0);
 
@@ -227,6 +274,26 @@ export function ChatInput({
           submitBehavior="newline"
         />
         <Pressable
+          onPress={toggleVoice}
+          disabled={busy || uploading}
+          hitSlop={8}
+          accessibilityLabel={recording ? 'Stop recording' : 'Voice input'}
+          style={styles.micButton}>
+          {transcribing ? (
+            <ActivityIndicator size="small" color={colors.textSecondary} />
+          ) : (
+            <ThemedText
+              type="title"
+              style={{
+                color: recording ? '#e5484d' : colors.textSecondary,
+                fontSize: 18,
+                lineHeight: 22,
+              }}>
+              {recording ? '◉' : '🎙'}
+            </ThemedText>
+          )}
+        </Pressable>
+        <Pressable
           onPress={handlePress}
           disabled={!busy && !canSend}
           hitSlop={8}
@@ -248,6 +315,12 @@ export function ChatInput({
 }
 
 const styles = StyleSheet.create({
+  micButton: {
+    width: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 2,
+  },
   uploadingTile: { justifyContent: 'center', alignItems: 'center', gap: 6 },
   progressTrack: {
     width: '70%',
