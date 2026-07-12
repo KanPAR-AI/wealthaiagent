@@ -11,7 +11,10 @@
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.yourfinadvisor.app",
       "usesAppleSignIn": true,
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -53,7 +56,19 @@
           "iosUrlScheme": "com.googleusercontent.apps.388592327571-f23fuufpir7c1g7op9i4cearl23ihvs9"
         }
       ],
-      "expo-audio"
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "YourFinAdvisor uses the microphone so you can dictate messages by voice."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "YourFinAdvisor accesses your photos so you can attach images to a chat.",
+          "cameraPermission": "YourFinAdvisor uses the camera so you can take a photo to attach to a chat."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
