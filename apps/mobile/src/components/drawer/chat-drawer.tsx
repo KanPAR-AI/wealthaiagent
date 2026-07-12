@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   TextInput,
@@ -30,6 +31,7 @@ import { fetchChatList, useChatStore, type ChatListItem } from '@wealthai/core';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
 import { getToken, signOut } from '@/lib/auth';
+import { PROD_BASE_URL, getBaseUrl, setBaseUrl } from '@/lib/server-config';
 import { loadChatIntoStore } from '@/lib/load-chat';
 import { useUiStore } from '@/store/ui';
 import { useAuth } from '@/hooks/use-auth';
@@ -144,6 +146,43 @@ export function ChatDrawer({
     router.replace('/login');
   }, [resetChats, newChat, onClose, router]);
 
+  // Server switcher — runtime backend selection (no rebuild): Production
+  // or a custom local URL (e.g. http://192.168.68.52:8080). Switching
+  // resets the chat store; sessions/chats live per-backend.
+  const [serverUrl, setServerUrl] = useState(getBaseUrl());
+  const applyServer = useCallback(async (url: string) => {
+    await setBaseUrl(url);
+    setServerUrl(getBaseUrl());
+    resetChats();
+    newChat();
+  }, [resetChats, newChat]);
+
+  const chooseServer = useCallback(() => {
+    Alert.alert('Backend server', `Current: ${serverUrl}`, [
+      {
+        text: 'Production',
+        onPress: () => { void applyServer(PROD_BASE_URL); },
+      },
+      {
+        text: 'Local (enter address)',
+        onPress: () => {
+          Alert.prompt(
+            'Local server address',
+            'e.g. http://192.168.68.52:8080',
+            (value) => { if (value?.trim()) void applyServer(value); },
+            'plain-text',
+            serverUrl.startsWith('http://') ? serverUrl : 'http://192.168.68.52:8080',
+          );
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [serverUrl, applyServer]);
+
+  const serverLabel = serverUrl === PROD_BASE_URL
+    ? 'Production'
+    : serverUrl.replace(/^https?:\/\//, '');
+
   const initial = (user?.displayName || user?.email || 'A')[0].toUpperCase();
   const who = user?.isAnonymous ? 'Guest' : (user?.displayName || user?.email || '');
 
@@ -229,6 +268,18 @@ export function ChatDrawer({
                 />
               )}
             </View>
+
+            {/* Server switcher */}
+            <Pressable
+              onPress={chooseServer}
+              style={({ pressed }) => [
+                styles.serverRow,
+                pressed && { backgroundColor: colors.backgroundElement },
+              ]}>
+              <ThemedText type="small" themeColor="textSecondary">
+                ⚙︎ Server: {serverLabel}
+              </ThemedText>
+            </Pressable>
 
             {/* Profile footer */}
             <View style={[styles.footer, { borderTopColor: colors.backgroundElement }]}>
@@ -322,6 +373,12 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.two,
   },
   chatRowText: { flex: 1 },
+  serverRow: {
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two,
+    borderRadius: 10,
+    marginHorizontal: Spacing.two,
+  },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',

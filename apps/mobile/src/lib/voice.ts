@@ -7,14 +7,14 @@
 
 import { uploadAsync, FileSystemUploadType } from 'expo-file-system/legacy';
 
-import { API_BASE_URL, API_VERSION } from './env';
+import { apiUrl } from './server-config';
 
 export async function transcribeAudioFile(
   token: string,
   fileUri: string,
 ): Promise<string> {
   const res = await uploadAsync(
-    `${API_BASE_URL}/api/${API_VERSION}/audio/transcribe`,
+    apiUrl('/audio/transcribe'),
     fileUri,
     {
       httpMethod: 'POST',

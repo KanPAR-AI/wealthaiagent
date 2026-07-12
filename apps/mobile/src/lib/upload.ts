@@ -15,13 +15,9 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import type { MessageFile } from '@wealthai/core';
 
-import { API_BASE_URL, API_VERSION } from './env';
+import { apiUrl as serverApiUrl } from './server-config';
 
-function apiUrl(endpoint: string): string {
-  const clean = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  if (clean.startsWith(`/api/${API_VERSION}`)) return `${API_BASE_URL}${clean}`;
-  return `${API_BASE_URL}/api/${API_VERSION}${clean}`;
-}
+const apiUrl = serverApiUrl;
 
 export async function uploadFileNative(
   token: string,

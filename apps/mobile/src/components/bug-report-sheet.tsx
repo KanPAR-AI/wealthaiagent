@@ -33,7 +33,7 @@ import { submitBugReportCore } from '@wealthai/core';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
 import { getToken } from '@/lib/auth';
-import { API_BASE_URL, API_VERSION } from '@/lib/env';
+import { apiUrl } from '@/lib/server-config';
 
 export interface BugReportSheetProps {
   visible: boolean;
@@ -105,7 +105,7 @@ export function BugReportSheet({
       const token = await getToken();
       if (attachmentUri) {
         const result = await uploadAsync(
-          `${API_BASE_URL}/api/${API_VERSION}/bug-reports`,
+          apiUrl('/bug-reports'),
           attachmentUri,
           {
             httpMethod: 'POST',

@@ -19,7 +19,7 @@ import Svg, { Circle, G, Polyline } from 'react-native-svg';
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
 import { getToken } from '@/lib/auth';
-import { API_BASE_URL, API_VERSION } from '@/lib/env';
+import { apiUrl } from '@/lib/server-config';
 
 // Viral prediction chips — same specs as web PREDICTION_CHIPS, but ranges
 // where the backend provides low/high: "29–32" reads as a palm reading,
@@ -86,8 +86,7 @@ function absolutize(url?: string): string | null {
   if (!url) return null;
   if (url.startsWith('http')) return url;
   const clean = url.startsWith('/') ? url : `/${url}`;
-  if (clean.startsWith(`/api/${API_VERSION}`)) return `${API_BASE_URL}${clean}`;
-  return `${API_BASE_URL}/api/${API_VERSION}${clean}`;
+  return apiUrl(clean);
 }
 
 export function PalmView({ data }: { data: any }) {

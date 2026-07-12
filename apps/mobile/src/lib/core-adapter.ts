@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetch as expoFetch } from 'expo/fetch';
 import { initCore, isCoreInitialized, type PlatformAdapter } from '@wealthai/core';
 
-import { API_BASE_URL, API_VERSION } from './env';
+import { initServerConfig, apiUrl as serverApiUrl } from './server-config';
 
 type Handler = (payload?: unknown) => void;
 
@@ -27,14 +27,10 @@ function createEmitter() {
   };
 }
 
-// Same URL formula as the web app's config/environment.getApiUrl — keep
-// these in lockstep (the backend has exactly one URL shape).
+// URL building delegates to server-config so the runtime backend
+// switcher (Production ↔ local) applies to every core request.
 function getApiUrl(endpoint: string): string {
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  if (cleanEndpoint.startsWith(`/api/${API_VERSION}`)) {
-    return `${API_BASE_URL}${cleanEndpoint}`;
-  }
-  return `${API_BASE_URL}/api/${API_VERSION}${cleanEndpoint}`;
+  return serverApiUrl(endpoint);
 }
 
 const mobileAdapter: PlatformAdapter = {
@@ -63,5 +59,8 @@ const mobileAdapter: PlatformAdapter = {
 export function ensureCoreInitialized(): void {
   if (!isCoreInitialized()) {
     initCore(mobileAdapter);
+    // Load the persisted server override (Production ↔ local switcher).
+    // Fire-and-forget: resolves long before the first user-driven request.
+    void initServerConfig();
   }
 }
