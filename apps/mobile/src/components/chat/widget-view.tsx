@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import { getPlatform, type Widget } from '@wealthai/core';
 
+import { ChartWidget, TableWidget } from '@/components/chat/chart-widgets';
 import { OnboardingForm } from '@/components/chat/onboarding-form';
 import { PalmPredictionsView, PalmView } from '@/components/chat/palm-view';
 import { ThemedText } from '@/components/themed-text';
@@ -160,6 +161,21 @@ export function WidgetView({ widget }: { widget: Widget }) {
   // Chip-only snapshot pinned atop holistic follow-ups.
   if (type === 'palm_predictions') {
     return <PalmPredictionsView data={data} />;
+  }
+
+  // Charts + tables — native SVG renders (bug aef2e65d: these piled up
+  // as "coming soon" chips at the end of every IRR analysis).
+  if (type === 'table') {
+    return <TableWidget widget={widget} />;
+  }
+  if (type === 'line_chart') {
+    return <ChartWidget widget={widget} kind="line" />;
+  }
+  if (type === 'bar_chart') {
+    return <ChartWidget widget={widget} kind="bar" />;
+  }
+  if (type === 'composed_chart') {
+    return <ChartWidget widget={widget} kind="composed" />;
   }
 
   // Web parity: these JSON blocks are data for the formatted markdown that

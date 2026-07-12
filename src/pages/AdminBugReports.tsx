@@ -17,6 +17,9 @@ import { useEffect, useMemo, useState } from "react";
 import { ExternalLink, Loader2, RefreshCw } from "lucide-react";
 
 import { AdminHeader } from "@/components/admin/admin-header";
+import { getApiUrl } from "@/config/environment";
+import { useAuth } from "@/hooks/use-auth";
+import { useCachedFile } from "@/hooks/use-cached-file";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -277,25 +280,7 @@ function DetailPanel({
       </div>
 
       {/* Screenshot */}
-      {report.screenshot_url && (
-        <div>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-            Screenshot
-          </div>
-          <a
-            href={report.screenshot_url}
-            target="_blank"
-            rel="noreferrer"
-            className="block border border-border rounded-md overflow-hidden bg-muted/40"
-          >
-            <img
-              src={report.screenshot_url}
-              alt="User screenshot"
-              className="max-h-72 w-full object-contain"
-            />
-          </a>
-        </div>
-      )}
+      {report.screenshot_url && <BugScreenshot url={report.screenshot_url} />}
 
       {/* Environment */}
       {report.context && (
@@ -413,6 +398,48 @@ function DetailPanel({
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Screenshot preview with authentication.
+ *
+ * `screenshot_url` is a RELATIVE backend path (/api/v1/files/…/download):
+ * a bare <img src> resolved it against the FRONTEND origin (Vite dev server
+ * or the /chataiagent/ base in prod) and carried no Bearer token — broken
+ * in both environments. Route through getApiUrl + useCachedFile (token
+ * fetch → blob URL), the same seam every chat attachment uses.
+ */
+function BugScreenshot({ url }: { url: string }) {
+  const { idToken } = useAuth();
+  const absolute = url.startsWith("http")
+    ? url
+    : getApiUrl(url.replace(/^\/api\/v1/, ""));
+  const { blobUrl, error } = useCachedFile(
+    { name: "bug-screenshot", type: "image/jpeg", url: absolute, size: 0 },
+    idToken,
+  );
+  return (
+    <div>
+      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+        Screenshot
+      </div>
+      {error ? (
+        <div className="text-sm text-destructive">Screenshot failed to load.</div>
+      ) : !blobUrl ? (
+        <div className="h-24 flex items-center justify-center border border-border rounded-md bg-muted/40">
+          <Loader2 className="size-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <a
+          href={blobUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="block border border-border rounded-md overflow-hidden bg-muted/40"
+        >
+          <img src={blobUrl} alt="User screenshot" className="max-h-72 w-full object-contain" />
+        </a>
+      )}
     </div>
   );
 }
