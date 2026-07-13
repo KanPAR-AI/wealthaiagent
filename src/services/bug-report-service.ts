@@ -13,9 +13,11 @@ import {
   getBugReportCore,
   getNewBugCountCore,
   updateBugStatusCore,
+  clusterBugReportsCore,
   type BugReport,
   type BugReportContext,
   type BugReportStatus,
+  type BugClusterResponse,
 } from '@wealthai/core';
 import { ensureCoreInitialized } from '@/lib/core-adapter';
 import { auth } from '@/config/firebase';
@@ -88,3 +90,13 @@ export async function updateBugStatus(
 ): Promise<BugReport> {
   return updateBugStatusCore(await getToken(), id, patch);
 }
+
+export async function clusterBugReports(input: {
+  report_ids?: string[];
+  agent?: string;
+  status?: BugReportStatus;
+}): Promise<BugClusterResponse> {
+  return clusterBugReportsCore(await getToken(), input);
+}
+
+export type { BugCluster, BugClusterResponse } from '@wealthai/core';

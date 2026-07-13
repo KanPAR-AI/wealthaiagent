@@ -54,12 +54,15 @@ export {
   getBugReportCore,
   getNewBugCountCore,
   updateBugStatusCore,
+  clusterBugReportsCore,
   type BugReport,
   type BugReportStatus,
   type BugReportContext,
   type BugReportMessage,
   type BugReportChatSnapshot,
   type BugReportScreenshot,
+  type BugCluster,
+  type BugClusterResponse,
 } from './services/bug-report-service';
 
 export { useChatStore } from './store/chat';

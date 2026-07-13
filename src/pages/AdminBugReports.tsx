@@ -26,6 +26,8 @@ import { toast } from "sonner";
 import {
   BugReport,
   BugReportStatus,
+  BugCluster,
+  clusterBugReports,
   listBugReports,
   updateBugStatus,
 } from "@/services/bug-report-service";
@@ -61,29 +63,27 @@ function reportAgent(r: BugReport): string | null {
   return r.chat_snapshot?.last_agent_type || r.context?.selected_agent || null;
 }
 
-/** Build the codified batch-fix instruction for the selected reports.
- *  Phase 0 bridge: this text is what you hand to a Claude Code session
- *  (or, once Phase 2 lands, the background fixer) — it points at the
- *  SKILLS/fix-bug-report.md playbook and lists the bugs grouped by agent
- *  so related ones are fixed as one cluster. */
-function buildFixInstruction(items: BugReport[]): string {
-  const byAgent = new Map<string, BugReport[]>();
-  for (const r of items) {
-    const a = reportAgent(r) || "unknown";
-    if (!byAgent.has(a)) byAgent.set(a, []);
-    byAgent.get(a)!.push(r);
-  }
-  const blocks: string[] = [];
-  for (const [agent, rs] of byAgent) {
-    const lines = rs
-      .map((r) => `- ${r.id} — ${r.description.replace(/\s+/g, " ").slice(0, 120)}`)
+/** Build the codified batch-fix instruction from root-cause clusters.
+ *  This text is what you hand to a Claude Code session (or, once Phase 2
+ *  lands, the background fixer): it points at SKILLS/fix-bug-report.md and
+ *  lists the bugs grouped into clusters so each cluster is one coherent fix. */
+function buildClusterInstruction(clusters: BugCluster[], byId: Map<string, BugReport>): string {
+  const blocks = clusters.map((c, i) => {
+    const lines = c.report_ids
+      .map((id) => {
+        const r = byId.get(id);
+        const desc = r ? r.description.replace(/\s+/g, " ").slice(0, 120) : "";
+        return `- ${id} — ${desc}`;
+      })
       .join("\n");
-    blocks.push(`Agent: ${agent}\n${lines}`);
-  }
+    const area = c.suspected_area ? `\nSuspected area: ${c.suspected_area}` : "";
+    return `Cluster ${i + 1}: ${c.title}\nRoot cause: ${c.root_cause}${area}\n${lines}`;
+  });
   return (
-    "Fix these bug reports as a batch, following SKILLS/fix-bug-report.md. " +
-    "Cluster by root cause, write a failing repro test first, then fix, " +
-    "test, open a PR, and post a root-cause note on each report.\n\n" +
+    "Fix these bug reports following SKILLS/fix-bug-report.md. Each cluster " +
+    "below is ONE coherent fix: write a failing repro test first, then fix, " +
+    "test, open a PR, and post a root-cause note on every report in the " +
+    "cluster.\n\n" +
     blocks.join("\n\n")
   );
 }
@@ -357,10 +357,39 @@ export default function AdminBugReports() {
  * an attachable session; the instruction it sends stays identical. */
 function FixPanel({ reports, onClose }: { reports: BugReport[]; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
-  const instruction = useMemo(() => buildFixInstruction(reports), [reports]);
-  const agents = useMemo(
-    () => Array.from(new Set(reports.map((r) => reportAgent(r) || "unknown"))),
-    [reports],
+  const [clusters, setClusters] = useState<BugCluster[] | null>(null);
+  const [degraded, setDegraded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const byId = useMemo(() => new Map(reports.map((r) => [r.id, r])), [reports]);
+  const ids = useMemo(() => reports.map((r) => r.id).join(","), [reports]);
+
+  // Cluster by root cause on open (Phase 1). Falls back to a single
+  // agent-grouped block if the endpoint is unreachable.
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setError(null);
+    clusterBugReports({ report_ids: ids ? ids.split(",") : [] })
+      .then((res) => {
+        if (!alive) return;
+        setClusters(res.clusters);
+        setDegraded(res.degraded);
+      })
+      .catch((e) => {
+        if (!alive) return;
+        setError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, [ids]);
+
+  const instruction = useMemo(
+    () => (clusters ? buildClusterInstruction(clusters, byId) : ""),
+    [clusters, byId],
   );
 
   const copy = async () => {
@@ -379,11 +408,15 @@ function FixPanel({ reports, onClose }: { reports: BugReport[]; onClose: () => v
       <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-lg border border-border bg-background p-5 shadow-xl">
         <div className="flex items-start justify-between mb-3">
           <div>
-            <h3 className="text-lg font-bold">Fix {reports.length} bug{reports.length === 1 ? "" : "s"} as a batch</h3>
+            <h3 className="text-lg font-bold">
+              Fix {reports.length} bug{reports.length === 1 ? "" : "s"} as a batch
+            </h3>
             <p className="text-sm text-muted-foreground">
-              {agents.length === 1
-                ? `Agent: ${agents[0]} — related bugs fixed as one cluster.`
-                : `Spans ${agents.length} agents — grouped into clusters below.`}
+              {loading
+                ? "Grouping by root cause…"
+                : clusters
+                  ? `${clusters.length} cluster${clusters.length === 1 ? "" : "s"} — each is one coherent fix.`
+                  : "Batch fix"}
             </p>
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
@@ -391,22 +424,71 @@ function FixPanel({ reports, onClose }: { reports: BugReport[]; onClose: () => v
           </Button>
         </div>
 
-        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs p-2 mb-3">
-          Phase 0: copy this into a Claude Code session. It follows
-          <code className="mx-1">SKILLS/fix-bug-report.md</code>
-          (repro-test-first → fix → test → PR → note). The background runner
-          you can attach to arrives in Phase 2.
-        </div>
+        {degraded && (
+          <div className="rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs p-2 mb-3">
+            Root-cause model unavailable — grouped by agent instead. Review the
+            groupings before fixing.
+          </div>
+        )}
 
-        <pre className="whitespace-pre-wrap break-words text-xs bg-muted/50 rounded-md p-3 border border-border max-h-72 overflow-y-auto">
-          {instruction}
-        </pre>
+        {loading ? (
+          <div className="h-40 flex items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : error ? (
+          <div className="rounded border border-destructive/30 bg-destructive/10 text-destructive text-sm p-3">
+            Clustering failed: {error}
+          </div>
+        ) : (
+          <>
+            {/* Cluster cards */}
+            <div className="space-y-2 mb-3">
+              {clusters?.map((c, i) => (
+                <div key={c.id} className="rounded-md border border-border p-3">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="text-sm font-semibold">
+                      Cluster {i + 1}: {c.title}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground shrink-0 border border-border rounded px-1 py-0.5">
+                      {Math.round((c.confidence || 0) * 100)}% conf
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mb-1">{c.root_cause}</div>
+                  {c.suspected_area && (
+                    <div className="text-[11px] mb-1">
+                      <span className="text-muted-foreground">Suspected: </span>
+                      <code>{c.suspected_area}</code>
+                    </div>
+                  )}
+                  <ul className="text-xs space-y-0.5 mt-1">
+                    {c.report_ids.map((id) => (
+                      <li key={id} className="truncate">
+                        • {byId.get(id)?.description || id}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs p-2 mb-3">
+              Phase 1: copy this into a Claude Code session — it follows
+              <code className="mx-1">SKILLS/fix-bug-report.md</code>
+              (repro-test-first → fix → test → PR → note), one fix per cluster.
+              The background runner you can attach to arrives in Phase 2.
+            </div>
+
+            <pre className="whitespace-pre-wrap break-words text-xs bg-muted/50 rounded-md p-3 border border-border max-h-60 overflow-y-auto">
+              {instruction}
+            </pre>
+          </>
+        )}
 
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" size="sm" onClick={onClose}>
             Close
           </Button>
-          <Button size="sm" onClick={copy}>
+          <Button size="sm" onClick={copy} disabled={loading || !!error || !instruction}>
             {copied ? (
               <><Check className="h-3.5 w-3.5 mr-1" /> Copied</>
             ) : (

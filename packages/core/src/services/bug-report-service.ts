@@ -53,6 +53,21 @@ export interface BugReport {
   updated_at?: string;
 }
 
+/** A set of reports sharing one root cause (bug-fix automation, Phase 1). */
+export interface BugCluster {
+  id: string;
+  title: string;
+  root_cause: string;
+  report_ids: string[];
+  suspected_area?: string;
+  confidence: number;
+}
+
+export interface BugClusterResponse {
+  clusters: BugCluster[];
+  degraded: boolean;
+}
+
 /** Web passes a File/Blob; React Native passes { uri, name, type }. */
 export type BugReportScreenshot = Blob | { uri: string; name: string; type: string };
 
@@ -138,5 +153,21 @@ export async function updateBugStatusCore(
   return adminFetch(token, `/bug-reports/${id}/status`, {
     method: "PATCH",
     body: JSON.stringify(patch),
+  });
+}
+
+/** Group selected reports by root cause (bug-fix automation, Phase 1).
+ *  Pass explicit report_ids (the multi-selection) or an agent+status filter. */
+export async function clusterBugReportsCore(
+  token: string | undefined,
+  input: { report_ids?: string[]; agent?: string; status?: BugReportStatus },
+): Promise<BugClusterResponse> {
+  return adminFetch(token, `/bug-reports/cluster`, {
+    method: "POST",
+    body: JSON.stringify({
+      report_ids: input.report_ids ?? [],
+      agent: input.agent,
+      status: input.status,
+    }),
   });
 }
