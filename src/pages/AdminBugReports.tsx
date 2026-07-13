@@ -415,10 +415,14 @@ function BugScreenshot({ url }: { url: string }) {
   const absolute = url.startsWith("http")
     ? url
     : getApiUrl(url.replace(/^\/api\/v1/, ""));
-  const { blobUrl, error } = useCachedFile(
-    { name: "bug-screenshot", type: "image/jpeg", url: absolute, size: 0 },
-    idToken,
+  // Memoize on the URL string. useCachedFile keys its fetch effect on the
+  // file object's identity, so a fresh literal every render re-fetches and
+  // re-mints the blob URL each pass — that was the screenshot flicker.
+  const file = useMemo(
+    () => ({ name: "bug-screenshot", type: "image/jpeg", url: absolute, size: 0 }),
+    [absolute],
   );
+  const { blobUrl, error } = useCachedFile(file, idToken);
   return (
     <div>
       <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
