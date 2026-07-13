@@ -14,7 +14,7 @@
 // issue" — that's the only reliable way to reproduce.
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, ExternalLink, Loader2, RefreshCw, Wrench, X } from "lucide-react";
+import { Check, Copy, ExternalLink, Loader2, Rocket, RefreshCw, Wrench, X } from "lucide-react";
 
 import { AdminHeader } from "@/components/admin/admin-header";
 import { getApiUrl } from "@/config/environment";
@@ -27,7 +27,11 @@ import {
   BugReport,
   BugReportStatus,
   BugCluster,
+  FixJob,
+  FixTask,
   clusterBugReports,
+  launchFixBatch,
+  getFixJob,
   listBugReports,
   updateBugStatus,
 } from "@/services/bug-report-service";
@@ -361,6 +365,8 @@ function FixPanel({ reports, onClose }: { reports: BugReport[]; onClose: () => v
   const [degraded, setDegraded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [launching, setLaunching] = useState(false);
+  const [launchedJobId, setLaunchedJobId] = useState<string | null>(null);
 
   const byId = useMemo(() => new Map(reports.map((r) => [r.id, r])), [reports]);
   const ids = useMemo(() => reports.map((r) => r.id).join(","), [reports]);
@@ -402,6 +408,23 @@ function FixPanel({ reports, onClose }: { reports: BugReport[]; onClose: () => v
     }
   };
 
+  const launch = async () => {
+    setLaunching(true);
+    try {
+      const job = await launchFixBatch({ report_ids: reports.map((r) => r.id) });
+      setLaunchedJobId(job.id);
+      toast.success("Fixer launched", {
+        description: "Start the runner (tools/bug_fix_runner.py) to process the queue.",
+      });
+    } catch (e) {
+      toast.error("Launch failed", {
+        description: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setLaunching(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
@@ -431,7 +454,9 @@ function FixPanel({ reports, onClose }: { reports: BugReport[]; onClose: () => v
           </div>
         )}
 
-        {loading ? (
+        {launchedJobId ? (
+          <FixJobView jobId={launchedJobId} />
+        ) : loading ? (
           <div className="h-40 flex items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
@@ -488,15 +513,139 @@ function FixPanel({ reports, onClose }: { reports: BugReport[]; onClose: () => v
           <Button variant="outline" size="sm" onClick={onClose}>
             Close
           </Button>
-          <Button size="sm" onClick={copy} disabled={loading || !!error || !instruction}>
-            {copied ? (
-              <><Check className="h-3.5 w-3.5 mr-1" /> Copied</>
-            ) : (
-              <><Copy className="h-3.5 w-3.5 mr-1" /> Copy instruction</>
-            )}
-          </Button>
+          {!launchedJobId && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={copy}
+                disabled={loading || !!error || !instruction}
+              >
+                {copied ? (
+                  <><Check className="h-3.5 w-3.5 mr-1" /> Copied</>
+                ) : (
+                  <><Copy className="h-3.5 w-3.5 mr-1" /> Copy instruction</>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                onClick={launch}
+                disabled={loading || !!error || !clusters?.length || launching}
+              >
+                {launching ? (
+                  <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Launching…</>
+                ) : (
+                  <><Rocket className="h-3.5 w-3.5 mr-1" /> Launch fixer</>
+                )}
+              </Button>
+            </>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Live view of a launched fix job — polls the backend so you can attach to
+ *  each cluster's Claude Code transcript, watch status, and jump to its PR. */
+function FixJobView({ jobId }: { jobId: string }) {
+  const [job, setJob] = useState<FixJob | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      try {
+        const j = await getFixJob(jobId);
+        if (!alive) return;
+        setJob(j);
+        // Keep polling while any task is still open.
+        const open = j.tasks.some((t) => t.status === "queued" || t.status === "running");
+        if (open) timer = setTimeout(poll, 2000);
+      } catch (e) {
+        if (alive) setErr(e instanceof Error ? e.message : String(e));
+      }
+    };
+    poll();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [jobId]);
+
+  if (err) {
+    return <div className="text-sm text-destructive">Job poll failed: {err}</div>;
+  }
+  if (!job) {
+    return (
+      <div className="h-40 flex items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const anyOpen = job.tasks.some((t) => t.status === "queued" || t.status === "running");
+
+  return (
+    <div className="space-y-2">
+      <div className="rounded-md border border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs p-2">
+        Job <code>{job.id.slice(0, 8)}…</code> — {job.status}.{" "}
+        {anyOpen
+          ? "Start the runner to process the queue: python tools/bug_fix_runner.py --live"
+          : "All tasks finished."}
+      </div>
+      {job.tasks.map((t) => (
+        <FixTaskCard key={t.cluster_id} task={t} />
+      ))}
+    </div>
+  );
+}
+
+const TASK_STYLES: Record<string, string> = {
+  queued: "bg-zinc-500/10 text-zinc-500 border-zinc-500/30",
+  running: "bg-blue-500/10 text-blue-500 border-blue-500/30",
+  pr_open: "bg-amber-500/10 text-amber-600 border-amber-500/30",
+  done: "bg-green-500/10 text-green-600 border-green-500/30",
+  failed: "bg-red-500/10 text-red-500 border-red-500/30",
+};
+
+function FixTaskCard({ task }: { task: FixTask }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="rounded-md border border-border p-3">
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          className="text-sm font-semibold text-left truncate"
+          onClick={() => setOpen((o) => !o)}
+        >
+          {task.title}
+        </button>
+        <span
+          className={`text-[10px] font-medium uppercase tracking-wider border rounded-full px-1.5 py-0.5 shrink-0 ${
+            TASK_STYLES[task.status] || ""
+          }`}
+        >
+          {task.status}
+        </span>
+      </div>
+      {task.pr_url && (
+        <a
+          href={task.pr_url}
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs text-blue-600 inline-flex items-center gap-1 mt-1"
+        >
+          View PR <ExternalLink className="h-3 w-3" />
+        </a>
+      )}
+      {task.error && <div className="text-xs text-destructive mt-1">{task.error}</div>}
+      {open && task.events.length > 0 && (
+        <pre className="whitespace-pre-wrap break-words text-[11px] bg-muted/50 rounded-md p-2 border border-border max-h-48 overflow-y-auto mt-2">
+          {task.events.map((e, i) => `${e.kind === "error" ? "⚠ " : ""}${e.text}`).join("\n")}
+        </pre>
+      )}
     </div>
   );
 }

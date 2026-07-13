@@ -68,6 +68,41 @@ export interface BugClusterResponse {
   degraded: boolean;
 }
 
+// ── Batched bug-fix runner (Phase 2) ────────────────────────────────
+
+export type FixTaskStatus = "queued" | "running" | "pr_open" | "done" | "failed";
+export type FixJobStatus = "queued" | "running" | "completed" | "failed";
+
+export interface FixTaskEvent {
+  ts: string;
+  kind: string;
+  text: string;
+}
+
+export interface FixTask {
+  cluster_id: string;
+  title: string;
+  root_cause: string;
+  report_ids: string[];
+  suspected_area?: string;
+  instruction: string;
+  status: FixTaskStatus;
+  branch?: string;
+  pr_url?: string;
+  error?: string;
+  events: FixTaskEvent[];
+  updated_at?: string;
+}
+
+export interface FixJob {
+  id: string;
+  created_by: string;
+  status: FixJobStatus;
+  tasks: FixTask[];
+  created_at: string;
+  updated_at?: string;
+}
+
 /** Web passes a File/Blob; React Native passes { uri, name, type }. */
 export type BugReportScreenshot = Blob | { uri: string; name: string; type: string };
 
@@ -170,4 +205,31 @@ export async function clusterBugReportsCore(
       status: input.status,
     }),
   });
+}
+
+/** Cluster the selected reports and enqueue a fix job (Phase 2). */
+export async function launchFixBatchCore(
+  token: string | undefined,
+  input: { report_ids?: string[]; agent?: string; status?: BugReportStatus },
+): Promise<FixJob> {
+  return adminFetch(token, `/bug-reports/fix-batch`, {
+    method: "POST",
+    body: JSON.stringify({
+      report_ids: input.report_ids ?? [],
+      agent: input.agent,
+      status: input.status,
+    }),
+  });
+}
+
+/** Poll one fix job to attach to its live transcript (Phase 2). */
+export async function getFixJobCore(token: string | undefined, id: string): Promise<FixJob> {
+  return adminFetch(token, `/fix-jobs/${id}`);
+}
+
+export async function listFixJobsCore(
+  token: string | undefined,
+  limit = 50,
+): Promise<{ jobs: FixJob[] }> {
+  return adminFetch(token, `/fix-jobs?limit=${limit}`);
 }

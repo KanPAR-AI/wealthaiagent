@@ -14,10 +14,14 @@ import {
   getNewBugCountCore,
   updateBugStatusCore,
   clusterBugReportsCore,
+  launchFixBatchCore,
+  getFixJobCore,
+  listFixJobsCore,
   type BugReport,
   type BugReportContext,
   type BugReportStatus,
   type BugClusterResponse,
+  type FixJob,
 } from '@wealthai/core';
 import { ensureCoreInitialized } from '@/lib/core-adapter';
 import { auth } from '@/config/firebase';
@@ -99,4 +103,21 @@ export async function clusterBugReports(input: {
   return clusterBugReportsCore(await getToken(), input);
 }
 
+export async function launchFixBatch(input: {
+  report_ids?: string[];
+  agent?: string;
+  status?: BugReportStatus;
+}): Promise<FixJob> {
+  return launchFixBatchCore(await getToken(), input);
+}
+
+export async function getFixJob(id: string): Promise<FixJob> {
+  return getFixJobCore(await getToken(), id);
+}
+
+export async function listFixJobs(limit = 50): Promise<{ jobs: FixJob[] }> {
+  return listFixJobsCore(await getToken(), limit);
+}
+
 export type { BugCluster, BugClusterResponse } from '@wealthai/core';
+export type { FixJob, FixTask, FixTaskEvent, FixJobStatus, FixTaskStatus } from '@wealthai/core';

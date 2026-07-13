@@ -55,6 +55,9 @@ export {
   getNewBugCountCore,
   updateBugStatusCore,
   clusterBugReportsCore,
+  launchFixBatchCore,
+  getFixJobCore,
+  listFixJobsCore,
   type BugReport,
   type BugReportStatus,
   type BugReportContext,
@@ -63,6 +66,11 @@ export {
   type BugReportScreenshot,
   type BugCluster,
   type BugClusterResponse,
+  type FixJob,
+  type FixTask,
+  type FixTaskEvent,
+  type FixJobStatus,
+  type FixTaskStatus,
 } from './services/bug-report-service';
 
 export { useChatStore } from './store/chat';
