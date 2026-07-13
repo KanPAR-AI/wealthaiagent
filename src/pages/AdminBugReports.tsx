@@ -14,7 +14,7 @@
 // issue" — that's the only reliable way to reproduce.
 
 import { useEffect, useMemo, useState } from "react";
-import { ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { Check, Copy, ExternalLink, Loader2, RefreshCw, Wrench, X } from "lucide-react";
 
 import { AdminHeader } from "@/components/admin/admin-header";
 import { getApiUrl } from "@/config/environment";
@@ -54,18 +54,56 @@ function formatRelative(iso?: string) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
+/** Which agent a report belongs to. The frozen snapshot's last_agent_type
+ *  is the reliable signal (context.selected_agent is often null on mobile);
+ *  fall back to it. Used for the agent filter + batch grouping. */
+function reportAgent(r: BugReport): string | null {
+  return r.chat_snapshot?.last_agent_type || r.context?.selected_agent || null;
+}
+
+/** Build the codified batch-fix instruction for the selected reports.
+ *  Phase 0 bridge: this text is what you hand to a Claude Code session
+ *  (or, once Phase 2 lands, the background fixer) — it points at the
+ *  SKILLS/fix-bug-report.md playbook and lists the bugs grouped by agent
+ *  so related ones are fixed as one cluster. */
+function buildFixInstruction(items: BugReport[]): string {
+  const byAgent = new Map<string, BugReport[]>();
+  for (const r of items) {
+    const a = reportAgent(r) || "unknown";
+    if (!byAgent.has(a)) byAgent.set(a, []);
+    byAgent.get(a)!.push(r);
+  }
+  const blocks: string[] = [];
+  for (const [agent, rs] of byAgent) {
+    const lines = rs
+      .map((r) => `- ${r.id} — ${r.description.replace(/\s+/g, " ").slice(0, 120)}`)
+      .join("\n");
+    blocks.push(`Agent: ${agent}\n${lines}`);
+  }
+  return (
+    "Fix these bug reports as a batch, following SKILLS/fix-bug-report.md. " +
+    "Cluster by root cause, write a failing repro test first, then fix, " +
+    "test, open a PR, and post a root-cause note on each report.\n\n" +
+    blocks.join("\n\n")
+  );
+}
+
 export default function AdminBugReports() {
   const [reports, setReports] = useState<BugReport[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<BugReportStatus | "all">("all");
+  const [agentFilter, setAgentFilter] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showFixPanel, setShowFixPanel] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = async () => {
     setLoading(true);
     setError(null);
     try {
-      const opts = statusFilter === "all" ? {} : { status: statusFilter };
+      // Pull a wide window so the client-side agent filter isn't starved.
+      const opts = statusFilter === "all" ? { limit: 300 } : { status: statusFilter, limit: 300 };
       const { reports } = await listBugReports(opts);
       setReports(reports);
       // Preserve selection if the report is still in the filtered list
@@ -86,15 +124,62 @@ export default function AdminBugReports() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
-  const selected = useMemo(
+  const selectedReport = useMemo(
     () => reports.find((r) => r.id === selectedId) || null,
     [reports, selectedId],
   );
 
+  // Distinct agents present in the loaded reports → filter dropdown options.
+  const availableAgents = useMemo(() => {
+    const s = new Set<string>();
+    reports.forEach((r) => {
+      const a = reportAgent(r);
+      if (a) s.add(a);
+    });
+    return Array.from(s).sort();
+  }, [reports]);
+
+  // Client-side agent filter (Phase 0 — server-side query lands in Phase 2).
+  const visibleReports = useMemo(
+    () => (agentFilter === "all" ? reports : reports.filter((r) => reportAgent(r) === agentFilter)),
+    [reports, agentFilter],
+  );
+
+  // Reports backing the current multi-selection (may include some now hidden
+  // by a filter change — the fix panel shows exactly what's checked).
+  const selectedReports = useMemo(
+    () => reports.filter((r) => selected.has(r.id)),
+    [reports, selected],
+  );
+
+  const toggleSelect = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const allVisibleSelected =
+    visibleReports.length > 0 && visibleReports.every((r) => selected.has(r.id));
+
+  const toggleSelectAllVisible = () =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) visibleReports.forEach((r) => next.delete(r.id));
+      else visibleReports.forEach((r) => next.add(r.id));
+      return next;
+    });
+
+  // Clearing filters shouldn't leave phantom selections; reset on change.
+  useEffect(() => {
+    setSelected(new Set());
+  }, [statusFilter, agentFilter]);
+
   const handlePatch = async (status: BugReportStatus, admin_notes?: string) => {
-    if (!selected) return;
+    if (!selectedReport) return;
     try {
-      const updated = await updateBugStatus(selected.id, {
+      const updated = await updateBugStatus(selectedReport.id, {
         status,
         admin_notes,
       });
@@ -121,6 +206,18 @@ export default function AdminBugReports() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <select
+              value={agentFilter}
+              onChange={(e) => setAgentFilter(e.target.value)}
+              className="h-8 rounded-md border border-border bg-background px-3 text-sm"
+            >
+              <option value="all">All agents</option>
+              {availableAgents.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </select>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as BugReportStatus | "all")}
@@ -150,20 +247,52 @@ export default function AdminBugReports() {
           <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
             {/* List */}
             <div className="border border-border rounded-md overflow-hidden">
-              {reports.length === 0 ? (
+              {/* Batch action bar */}
+              <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border bg-muted/30">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    className="size-3.5 accent-foreground"
+                    checked={allVisibleSelected}
+                    onChange={toggleSelectAllVisible}
+                  />
+                  {selected.size > 0 ? `${selected.size} selected` : "Select"}
+                </label>
+                <Button
+                  size="sm"
+                  className="h-7"
+                  disabled={selected.size === 0}
+                  onClick={() => setShowFixPanel(true)}
+                >
+                  <Wrench className="h-3.5 w-3.5 mr-1" />
+                  Fix selected{selected.size > 0 ? ` (${selected.size})` : ""}
+                </Button>
+              </div>
+
+              {visibleReports.length === 0 ? (
                 <div className="text-sm text-muted-foreground p-4 text-center">
                   {loading ? "Loading…" : "No reports."}
                 </div>
               ) : (
                 <ul className="divide-y divide-border">
-                  {reports.map((r) => {
+                  {visibleReports.map((r) => {
                     const isSel = r.id === selectedId;
+                    const isChecked = selected.has(r.id);
+                    const agent = reportAgent(r);
                     return (
-                      <li key={r.id}>
+                      <li key={r.id} className="flex items-stretch">
+                        <label className="flex items-center pl-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="size-3.5 accent-foreground"
+                            checked={isChecked}
+                            onChange={() => toggleSelect(r.id)}
+                          />
+                        </label>
                         <button
                           type="button"
                           onClick={() => setSelectedId(r.id)}
-                          className={`w-full text-left px-3 py-2.5 space-y-1 transition-colors ${
+                          className={`flex-1 min-w-0 text-left px-3 py-2.5 space-y-1 transition-colors ${
                             isSel ? "bg-accent" : "hover:bg-muted/40"
                           }`}
                         >
@@ -180,8 +309,15 @@ export default function AdminBugReports() {
                             </span>
                           </div>
                           <div className="text-sm line-clamp-2">{r.description}</div>
-                          <div className="text-[11px] text-muted-foreground">
-                            {r.user_email || r.user_display_name || r.user_id.slice(0, 10) + "…"}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-muted-foreground truncate">
+                              {r.user_email || r.user_display_name || r.user_id.slice(0, 10) + "…"}
+                            </span>
+                            {agent && (
+                              <span className="text-[10px] text-muted-foreground shrink-0 border border-border rounded px-1 py-0.5">
+                                {agent}
+                              </span>
+                            )}
                           </div>
                         </button>
                       </li>
@@ -193,8 +329,8 @@ export default function AdminBugReports() {
 
             {/* Detail */}
             <div className="border border-border rounded-md min-h-[60vh]">
-              {selected ? (
-                <DetailPanel report={selected} onPatch={handlePatch} />
+              {selectedReport ? (
+                <DetailPanel report={selectedReport} onPatch={handlePatch} />
               ) : (
                 <div className="text-sm text-muted-foreground p-8 text-center">
                   Select a report on the left.
@@ -203,6 +339,81 @@ export default function AdminBugReports() {
             </div>
           </div>
         )}
+      </div>
+
+      {showFixPanel && (
+        <FixPanel reports={selectedReports} onClose={() => setShowFixPanel(false)} />
+      )}
+    </div>
+  );
+}
+
+/** Batch-fix hand-off panel (Phase 0).
+ *
+ * With no background runner yet, the honest bridge is to emit the codified
+ * instruction — grouped by agent so related bugs form one cluster — that a
+ * human pastes into a Claude Code session running SKILLS/fix-bug-report.md.
+ * Phase 2 replaces the copy button with a "Launch fixer" call that streams
+ * an attachable session; the instruction it sends stays identical. */
+function FixPanel({ reports, onClose }: { reports: BugReport[]; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const instruction = useMemo(() => buildFixInstruction(reports), [reports]);
+  const agents = useMemo(
+    () => Array.from(new Set(reports.map((r) => reportAgent(r) || "unknown"))),
+    [reports],
+  );
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(instruction);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error("Copy failed — select the text manually.");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-lg border border-border bg-background p-5 shadow-xl">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h3 className="text-lg font-bold">Fix {reports.length} bug{reports.length === 1 ? "" : "s"} as a batch</h3>
+            <p className="text-sm text-muted-foreground">
+              {agents.length === 1
+                ? `Agent: ${agents[0]} — related bugs fixed as one cluster.`
+                : `Spans ${agents.length} agents — grouped into clusters below.`}
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs p-2 mb-3">
+          Phase 0: copy this into a Claude Code session. It follows
+          <code className="mx-1">SKILLS/fix-bug-report.md</code>
+          (repro-test-first → fix → test → PR → note). The background runner
+          you can attach to arrives in Phase 2.
+        </div>
+
+        <pre className="whitespace-pre-wrap break-words text-xs bg-muted/50 rounded-md p-3 border border-border max-h-72 overflow-y-auto">
+          {instruction}
+        </pre>
+
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="outline" size="sm" onClick={onClose}>
+            Close
+          </Button>
+          <Button size="sm" onClick={copy}>
+            {copied ? (
+              <><Check className="h-3.5 w-3.5 mr-1" /> Copied</>
+            ) : (
+              <><Copy className="h-3.5 w-3.5 mr-1" /> Copy instruction</>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
