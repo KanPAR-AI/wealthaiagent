@@ -89,6 +89,7 @@ export interface FixTask {
   status: FixTaskStatus;
   branch?: string;
   pr_url?: string;
+  pr_urls?: string[];
   error?: string;
   events: FixTaskEvent[];
   updated_at?: string;

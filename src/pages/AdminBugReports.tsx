@@ -630,16 +630,20 @@ function FixTaskCard({ task }: { task: FixTask }) {
           {task.status}
         </span>
       </div>
-      {task.pr_url && (
-        <a
-          href={task.pr_url}
-          target="_blank"
-          rel="noreferrer"
-          className="text-xs text-blue-600 inline-flex items-center gap-1 mt-1"
-        >
-          View PR <ExternalLink className="h-3 w-3" />
-        </a>
-      )}
+      {(task.pr_urls?.length ? task.pr_urls : task.pr_url ? [task.pr_url] : []).map((url) => {
+        const repo = url.match(/github\.com\/[^/]+\/([^/]+)\/pull/)?.[1];
+        return (
+          <a
+            key={url}
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs text-blue-600 inline-flex items-center gap-1 mt-1 mr-3"
+          >
+            View PR{repo ? ` (${repo})` : ""} <ExternalLink className="h-3 w-3" />
+          </a>
+        );
+      })}
       {task.error && <div className="text-xs text-destructive mt-1">{task.error}</div>}
       {open && task.events.length > 0 && (
         <pre className="whitespace-pre-wrap break-words text-[11px] bg-muted/50 rounded-md p-2 border border-border max-h-48 overflow-y-auto mt-2">
