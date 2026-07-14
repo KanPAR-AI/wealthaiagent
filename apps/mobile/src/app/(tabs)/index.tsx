@@ -7,7 +7,7 @@
 
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -93,7 +93,12 @@ export default function ChatScreen() {
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.backgroundElement }]}>
           <Pressable
-            onPress={() => setDrawerOpen(true)}
+            onPress={() => {
+              // Dismiss the composer keyboard first — otherwise it stays
+              // floating over the drawer when opened from inside a chat.
+              Keyboard.dismiss();
+              setDrawerOpen(true);
+            }}
             hitSlop={12}
             accessibilityLabel="Chat history">
             <ThemedText type="title" style={styles.headerIcon}>☰</ThemedText>
