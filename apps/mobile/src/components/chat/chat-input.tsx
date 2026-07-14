@@ -107,7 +107,19 @@ export function ChatInput({
       if (!token) throw new Error('Not signed in');
       // Native streaming upload — see lib/upload.ts for why FormData
       // approaches are dead ends on SDK 57.
-      const uploaded = await uploadFileNative(token, asset, setUploadProgress);
+      // Time-box it: if the native upload task never settles (stalled
+      // connection), `uploading` would stay true forever — a perpetual
+      // spinner "blank image" tile with the send button stuck disabled
+      // (bug d4e66e82). Fail after 60s so the user can retry.
+      const uploaded = await Promise.race([
+        uploadFileNative(token, asset, setUploadProgress),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Upload timed out — check your connection and try again.')),
+            60000,
+          ),
+        ),
+      ]);
       // Preview from the LOCAL file uri: the uploaded URL is behind auth
       // on prod (401 for a bare <Image>), which rendered blank thumbnails
       // on-device. localUri never leaves this component; the message
