@@ -12,6 +12,7 @@
 import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Haptics from 'expo-haptics';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import {
@@ -99,12 +100,32 @@ export function ChatInput({
 
   const canSend = !busy && !uploading && (text.trim().length > 0 || files.length > 0);
 
-  const uploadAsset = async (asset: { uri: string; name: string; type: string; size?: number }) => {
+  const uploadAsset = async (
+    asset: { uri: string; name: string; type: string; size?: number; width?: number },
+  ) => {
     setUploading(true);
     setUploadProgress(0);
     try {
       const token = await getToken();
       if (!token) throw new Error('Not signed in');
+      // Downscale large photos before uploading. A full-res palm/X-ray photo
+      // is several MB, and uploads can take "forever" on a slow / LAN
+      // connection (bug af85427f). Cap the width at 1600px + JPEG 0.7 — vision
+      // models downscale internally anyway, so no analysis quality is lost.
+      // Non-images (PDFs) and any failure fall back to the original.
+      let up = asset;
+      if (asset.type.startsWith('image/') && (!asset.width || asset.width > 1600)) {
+        try {
+          const r = await manipulateAsync(
+            asset.uri,
+            [{ resize: { width: 1600 } }],
+            { compress: 0.7, format: SaveFormat.JPEG },
+          );
+          up = { ...asset, uri: r.uri, type: 'image/jpeg' };
+        } catch {
+          /* keep the original on any manipulation failure */
+        }
+      }
       // Native streaming upload — see lib/upload.ts for why FormData
       // approaches are dead ends on SDK 57.
       // Time-box it: if the native upload task never settles (stalled
@@ -112,7 +133,7 @@ export function ChatInput({
       // spinner "blank image" tile with the send button stuck disabled
       // (bug d4e66e82). Fail after 60s so the user can retry.
       const uploaded = await Promise.race([
-        uploadFileNative(token, asset, setUploadProgress),
+        uploadFileNative(token, up, setUploadProgress),
         new Promise<never>((_, reject) =>
           setTimeout(
             () => reject(new Error('Upload timed out — check your connection and try again.')),
@@ -124,7 +145,7 @@ export function ChatInput({
       // on prod (401 for a bare <Image>), which rendered blank thumbnails
       // on-device. localUri never leaves this component; the message
       // itself carries the backend URL.
-      setFiles((fs) => [...fs, { ...uploaded, localUri: asset.uri } as any]);
+      setFiles((fs) => [...fs, { ...uploaded, localUri: up.uri } as any]);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
       Alert.alert('Upload failed', e?.message || 'Try again.');
@@ -145,6 +166,7 @@ export function ChatInput({
       name: asset.fileName || `photo_${Date.now()}.jpg`,
       type: asset.mimeType || 'image/jpeg',
       size: asset.fileSize,
+      width: asset.width,
     });
   };
 
@@ -172,6 +194,7 @@ export function ChatInput({
         name: asset.fileName || `camera_${Date.now()}.jpg`,
         type: asset.mimeType || 'image/jpeg',
         size: asset.fileSize,
+        width: asset.width,
       });
     } catch (e: any) {
       Alert.alert('Camera unavailable', e?.message || 'Try the photo library instead.');
