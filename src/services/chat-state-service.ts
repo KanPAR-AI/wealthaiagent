@@ -10,11 +10,15 @@ export interface StateSlot {
   value: unknown;
   label: string;
   source?: string | null;
+  stale?: boolean;
+  age_days?: number | null;
 }
 
 export interface StateDomain {
   domain: string;
   version: number;
+  overlay?: Record<string, unknown> | null;
+  overlay_label?: string | null;
   slots: StateSlot[];
 }
 

@@ -50,6 +50,13 @@ function domainLabel(d: string): string {
   return d.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function ageLabel(days?: number | null): string {
+  if (days == null) return "";
+  if (days >= 60) return `${Math.round(days / 30)}mo`;
+  if (days >= 1) return `${days}d`;
+  return "today";
+}
+
 interface Props {
   chatId: string;
   token: string | null;
@@ -132,6 +139,12 @@ export function ChatStatePanel({ chatId, token, refreshSignal }: Props) {
                 <div className="uppercase tracking-wide text-[10px] text-muted-foreground/70">
                   {domainLabel(d.domain)}
                 </div>
+                {d.overlay && Object.keys(d.overlay).length > 0 && (
+                  <div className="rounded px-2 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[11px]">
+                    ⚡ Active what-if{d.overlay_label ? ` (${d.overlay_label})` : ""}:{" "}
+                    {Object.entries(d.overlay).map(([k, v]) => `${k} = ${fmtValue(v)}`).join(", ")}
+                  </div>
+                )}
                 {d.slots.map((s) => {
                   const kind = kinds[`${d.domain}|${s.key}`] || "asserted";
                   return (
@@ -141,6 +154,14 @@ export function ChatStatePanel({ chatId, token, refreshSignal }: Props) {
                       <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase ${KIND_STYLE[kind] || KIND_STYLE.asserted}`}>
                         {kind}
                       </span>
+                      {s.stale && (
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[9px] bg-orange-500/15 text-orange-600 dark:text-orange-400"
+                          title={`Last confirmed ${ageLabel(s.age_days)} ago — may be worth re-checking`}
+                        >
+                          ⚠ {ageLabel(s.age_days)}
+                        </span>
+                      )}
                       <button
                         onClick={() => onForgetSlot(d.domain, s.key)}
                         disabled={busy}
