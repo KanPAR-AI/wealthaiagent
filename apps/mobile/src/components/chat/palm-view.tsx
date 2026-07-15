@@ -82,6 +82,14 @@ export function PalmPredictionsView({ data }: { data: any }) {
   );
 }
 
+// The line overlay is drawn from the vision model's 2–4 coordinate guesses,
+// which render as crude straight polylines that don't trace the real creases
+// (bug f85f0c1e — user: "≥90% accurate or don't show at all"). Until a real
+// palm-crease segmentation model lands, hide the overlay + legend and keep the
+// photo + per-line readings. Coords still ship in the payload so a future CV
+// model can light these back up by flipping this flag.
+const SHOW_PALM_LINE_OVERLAY = false;
+
 function absolutize(url?: string): string | null {
   if (!url) return null;
   if (url.startsWith('http')) return url;
@@ -139,7 +147,7 @@ export function PalmView({ data }: { data: any }) {
             style={{ width: viewW, height: viewH }}
             resizeMode="stretch"
           />
-          {lines.length > 0 && (
+          {SHOW_PALM_LINE_OVERLAY && lines.length > 0 && (
             <Svg
               style={StyleSheet.absoluteFill}
               viewBox={`0 0 ${viewW} ${viewH}`}
@@ -182,7 +190,7 @@ export function PalmView({ data }: { data: any }) {
       )}
 
       {/* legend */}
-      {lines.length > 0 && (
+      {SHOW_PALM_LINE_OVERLAY && lines.length > 0 && (
         <View style={styles.legend}>
           {lines.map((l, i) => (
             <View key={`lg-${i}`} style={styles.legendItem}>

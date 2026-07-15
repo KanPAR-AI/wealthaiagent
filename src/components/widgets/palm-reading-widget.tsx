@@ -82,6 +82,14 @@ const PREDICTION_CHIPS: Array<{
   { key: 'wealth_peak_age', emoji: '💰',  label: 'WEALTH PEAK',  format: (v, lo, hi) => lo && hi && lo !== hi ? `${lo}–${hi}` : `age ${v}`, color: '#ffd700' },
 ];
 
+// The line overlay is drawn from the vision model's 2–4 coordinate guesses,
+// which render as crude straight polylines that don't trace the real creases
+// (bug f85f0c1e — user: "≥90% accurate or don't show at all"). Until a real
+// palm-crease segmentation model lands, hide the overlay + line labels and keep
+// the photo + prediction chips + reading. Coords still ship in the payload so a
+// future CV model can light these back up by flipping this flag.
+const SHOW_PALM_LINE_OVERLAY = false;
+
 function buildPath(points: number[][], w: number, h: number): string {
   if (!points || points.length === 0) return '';
   if (points.length === 1) {
@@ -165,7 +173,7 @@ export function PalmReadingWidget({ payload }: { payload: PalmAnalysisPayload })
             className="w-full block select-none"
             draggable={false}
           />
-          {dims && lines.length > 0 && (
+          {SHOW_PALM_LINE_OVERLAY && dims && lines.length > 0 && (
             <svg
               className="absolute inset-0 pointer-events-none"
               width={dims.w}
