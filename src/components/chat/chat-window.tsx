@@ -19,6 +19,7 @@ import { AgentSelector } from "./agent-selector";
 import { SuggestionTiles } from './chat-suggestion-tiles';
 import { FilePreviewModal } from './file-preview-modal';
 import { ChatLoadingSkeleton } from './chat-loading-skeleton';
+import { ChatStatePanel } from './chat-state-panel';
 
 // Custom hooks
 import { useChatWindowState } from './hooks/use-chat-window-state';
@@ -341,6 +342,16 @@ export default function ChatWindow({
         ) : (
           // Chat with messages - flex layout
           <>
+            {/* Debug/control panel: what the assistant has learned this chat.
+                Refetches after each turn (messages.length) and when a send
+                settles (isSending) so it stays live. */}
+            {chatId && (
+              <ChatStatePanel
+                chatId={chatId}
+                token={token}
+                refreshSignal={messages.length + (isSending ? 0 : 1000)}
+              />
+            )}
             <div className="flex-1 min-h-0 overflow-hidden chat-content relative">
               <ScrollArea ref={scrollAreaRef} className="h-full" type="scroll">
                 <div className="p-3 pr-4 sm:p-4 md:p-6 space-y-4 sm:space-y-6 min-w-0 overflow-x-hidden">
