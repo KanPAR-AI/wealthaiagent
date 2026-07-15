@@ -101,7 +101,10 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
           ))}
           {message.message ? (
             <View style={[styles.userBubble, { backgroundColor: colors.backgroundElement }]}>
-              <ThemedText>{message.message}</ThemedText>
+              {/* selectable → native long-press "Copy" menu. RN Text isn't
+                  copyable by default, so users couldn't copy what they sent
+                  (bug 522f3a6e). */}
+              <ThemedText selectable>{message.message}</ThemedText>
             </View>
           ) : null}
         </View>

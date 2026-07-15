@@ -311,20 +311,18 @@ export function ChatInput({
         <Pressable
           onPress={toggleVoice}
           disabled={busy || uploading}
-          hitSlop={8}
+          hitSlop={16}
           accessibilityLabel={recording ? 'Stop recording' : 'Voice input'}
           style={styles.micButton}>
           {transcribing ? (
             <ActivityIndicator size="small" color={colors.textSecondary} />
+          ) : recording ? (
+            // A clear, large stop target — the small red-dot glyph was hard to
+            // tap to stop (bug 49c7b247). A filled red square in a 40x40 button.
+            <View style={styles.stopRecording} />
           ) : (
-            <ThemedText
-              type="title"
-              style={{
-                color: recording ? '#e5484d' : colors.textSecondary,
-                fontSize: 18,
-                lineHeight: 22,
-              }}>
-              {recording ? '◉' : '🎙'}
+            <ThemedText type="title" style={{ color: colors.textSecondary, fontSize: 20, lineHeight: 24 }}>
+              🎙
             </ThemedText>
           )}
         </Pressable>
@@ -351,10 +349,18 @@ export function ChatInput({
 
 const styles = StyleSheet.create({
   micButton: {
-    width: 30,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 2,
+  },
+  // Filled red rounded square = "stop recording"; big enough to tap reliably.
+  stopRecording: {
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    backgroundColor: '#e5484d',
   },
   uploadingTile: { justifyContent: 'center', alignItems: 'center', gap: 6 },
   progressTrack: {
