@@ -19,6 +19,7 @@ import { ChatDrawer } from '@/components/drawer/chat-drawer';
 import { RETRY_EVENT } from '@/components/chat/message-bubble';
 import { QUICK_REPLY_EVENT } from '@/components/chat/widget-view';
 import { MessageList } from '@/components/chat/message-list';
+import { StatePanel } from '@/components/chat/state-panel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
@@ -43,6 +44,8 @@ export default function ChatScreen() {
   const newChat = useUiStore((st) => st.newChat);
   const { send, cancel, isSending, isCreatingChat } = useSendMessage(chatId, setChatId);
   const selectedAgent = useChatStore((st) => st.selectedAgent);
+  // Refetch the debug panel when a turn settles (message added / send finishes).
+  const msgCount = useChatStore((st) => (chatId ? st.chats[chatId]?.messages?.length ?? 0 : 0));
 
   const busy = isSending || isCreatingChat;
 
@@ -130,6 +133,9 @@ export default function ChatScreen() {
         </View>
 
         <KeyboardAvoidingView behavior="padding" style={styles.body}>
+          {chatId ? (
+            <StatePanel chatId={chatId} refreshSignal={msgCount + (busy ? 0 : 1000)} />
+          ) : null}
           {chatId ? (
             <MessageList chatId={chatId} />
           ) : (

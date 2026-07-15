@@ -35,6 +35,10 @@ export interface BugReportChatSnapshot {
   chat_title?: string;
   last_agent_type?: string;
   messages: BugReportMessage[];
+  // Conversation state frozen at report time (slots/belief/overlay/events/
+  // staleness) + the user's memory facts — the context a fixer needs.
+  state?: Record<string, unknown> | null;
+  user_memory?: Record<string, unknown> | null;
 }
 
 export interface BugReport {
