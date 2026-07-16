@@ -133,9 +133,9 @@ export default function ChatScreen() {
         </View>
 
         <KeyboardAvoidingView behavior="padding" style={styles.body}>
-          {chatId ? (
-            <StatePanel chatId={chatId} refreshSignal={msgCount + (busy ? 0 : 1000)} />
-          ) : null}
+          {/* Always mounted (even with no chatId) so a brand-new chat still
+              shows "About you" + the personalization toggle. */}
+          <StatePanel chatId={chatId} refreshSignal={msgCount + (busy ? 0 : 1000)} />
           {chatId ? (
             <MessageList chatId={chatId} />
           ) : (

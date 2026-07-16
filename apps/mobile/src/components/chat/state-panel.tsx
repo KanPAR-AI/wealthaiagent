@@ -4,16 +4,19 @@
 // full wipe. Collapsed by default; hidden until there's something to show.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Switch, useColorScheme, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
 import {
   ChatState,
   StateEvent,
+  UserMemory,
   fetchChatState,
+  fetchUserMemory,
   forgetAllState,
   forgetSlot,
+  setPersonalization,
 } from '@/lib/chat-state';
 
 const KIND_COLOR: Record<string, string> = {
@@ -53,14 +56,33 @@ function domainLabel(d: string): string {
   return d.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Flatten the user's cross-chat memory (all collections) into label/value rows.
+function userFactsFlat(um: UserMemory | null): Array<{ label: string; value: string }> {
+  if (!um) return [];
+  const out: Array<{ label: string; value: string }> = [];
+  for (const facts of Object.values(um.memory || {})) {
+    for (const f of facts) {
+      const label = String((f.key ?? f.category ?? 'fact') as string);
+      const raw = f.value;
+      const value = raw == null ? '' : typeof raw === 'object' ? JSON.stringify(raw) : String(raw);
+      out.push({ label, value: value.length > 70 ? value.slice(0, 67) + '…' : value });
+    }
+  }
+  return out;
+}
+
 export function StatePanel({ chatId, refreshSignal }: { chatId: string | null; refreshSignal: number }) {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const colors = Colors[scheme];
   const [state, setState] = useState<ChatState | null>(null);
+  const [userMem, setUserMem] = useState<UserMemory | null>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
+    // User-level memory is not chat-scoped — load it even on a brand-new chat
+    // so a fresh chat still shows what the assistant knows about YOU.
+    fetchUserMemory().then(setUserMem).catch(() => {});
     if (!chatId) {
       setState(null);
       return;
@@ -71,6 +93,16 @@ export function StatePanel({ chatId, refreshSignal }: { chatId: string | null; r
       /* non-fatal — panel just stays hidden */
     }
   }, [chatId]);
+
+  const onTogglePersonalization = async (enabled: boolean) => {
+    // optimistic
+    setUserMem((m) => (m ? { ...m, personalization_enabled: enabled } : m));
+    try {
+      await setPersonalization(enabled);
+    } catch {
+      setUserMem((m) => (m ? { ...m, personalization_enabled: !enabled } : m));
+    }
+  };
 
   useEffect(() => {
     load();
@@ -110,22 +142,68 @@ export function StatePanel({ chatId, refreshSignal }: { chatId: string | null; r
   const slotCount = state?.domains.reduce((n, d) => n + d.slots.length, 0) ?? 0;
   const belief = state?.belief as { intent?: string } | null | undefined;
   const hasBelief = Boolean(belief?.intent && belief.intent !== 'general');
-  if (!state || (slotCount === 0 && !hasBelief)) return null;
+  const aboutYou = userFactsFlat(userMem);
+  const personalizationOff = userMem ? !userMem.personalization_enabled : false;
 
-  const kinds = latestKinds(state.events);
+  // Show if there's chat state, user-level memory, or personalization is off
+  // (so the toggle stays reachable). Hidden on a truly empty fresh account.
+  if (slotCount === 0 && !hasBelief && aboutYou.length === 0 && !personalizationOff) return null;
+
+  const kinds = latestKinds(state?.events ?? []);
+  const summary =
+    [slotCount ? `${slotCount} in chat` : '', aboutYou.length ? `${aboutYou.length} about you` : '']
+      .filter(Boolean)
+      .join(' · ') || (personalizationOff ? 'personalization off' : '');
 
   return (
     <View style={[styles.wrap, { borderBottomColor: colors.backgroundSelected }]}>
       <Pressable style={styles.header} onPress={() => setOpen((o) => !o)}>
         <ThemedText type="small" themeColor="textSecondary">
-          {open ? '▾' : '▸'} 🧠 What I've learned · {slotCount} value{slotCount === 1 ? '' : 's'}
-          {hasBelief ? ` · ${belief?.intent}` : ''}
+          {open ? '▾' : '▸'} 🧠 What I've learned{summary ? ` · ${summary}` : ''}
         </ThemedText>
       </Pressable>
 
       {open && (
         <View style={styles.body}>
-          {state.domains.map((d) => (
+          {/* Personalization toggle — controls whether the assistant uses any
+              of your stored memory across chats. */}
+          {userMem && (
+            <View style={styles.toggleRow}>
+              <View style={{ flex: 1 }}>
+                <ThemedText type="small">Personalization</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary" style={{ fontSize: 11 }}>
+                  {userMem.personalization_enabled
+                    ? 'Using what I know about you across chats'
+                    : 'Off — every chat starts fresh'}
+                </ThemedText>
+              </View>
+              <Switch
+                value={userMem.personalization_enabled}
+                onValueChange={onTogglePersonalization}
+              />
+            </View>
+          )}
+
+          {/* About you — cross-chat learned facts (visible even on new chats) */}
+          {aboutYou.length > 0 && (
+            <View style={styles.domain}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.domainTitle}>
+                About you
+              </ThemedText>
+              {aboutYou.map((f, i) => (
+                <View key={`u${i}`} style={styles.row}>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.slotLabel}>
+                    {f.label}
+                  </ThemedText>
+                  <ThemedText type="small" style={styles.slotValue}>
+                    {f.value}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {(state?.domains ?? []).map((d) => (
             <View key={d.domain} style={styles.domain}>
               <ThemedText type="small" themeColor="textSecondary" style={styles.domainTitle}>
                 {domainLabel(d.domain)}
@@ -177,11 +255,13 @@ export function StatePanel({ chatId, refreshSignal }: { chatId: string | null; r
             </View>
           ))}
 
-          <Pressable onPress={onWipe} disabled={busy} style={styles.wipe}>
-            <ThemedText type="small" style={{ color: '#e5484d' }}>
-              ↺ Forget everything
-            </ThemedText>
-          </Pressable>
+          {(slotCount > 0 || hasBelief) && chatId ? (
+            <Pressable onPress={onWipe} disabled={busy} style={styles.wipe}>
+              <ThemedText type="small" style={{ color: '#e5484d' }}>
+                ↺ Forget this chat's info
+              </ThemedText>
+            </Pressable>
+          ) : null}
         </View>
       )}
     </View>
@@ -192,6 +272,7 @@ const styles = StyleSheet.create({
   wrap: { borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.four },
   header: { paddingVertical: Spacing.two },
   body: { paddingBottom: Spacing.three, gap: Spacing.two },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.one },
   domain: { gap: 2 },
   domainTitle: { textTransform: 'uppercase', fontSize: 10, letterSpacing: 1 },
   overlay: { paddingVertical: 2 },

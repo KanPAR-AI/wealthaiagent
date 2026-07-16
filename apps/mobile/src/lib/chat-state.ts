@@ -64,3 +64,27 @@ export async function forgetAllState(chatId: string): Promise<void> {
   });
   if (!res.ok && res.status !== 204) throw new Error(`wipe ${res.status}`);
 }
+
+// ── User-level "learned about you" + personalization toggle ──────────────
+
+export interface UserMemory {
+  personalization_enabled: boolean;
+  fact_count: number;
+  // { collectionId: [ {key,value,category,...}, … ] }
+  memory: Record<string, Array<Record<string, unknown>>>;
+}
+
+export async function fetchUserMemory(): Promise<UserMemory> {
+  const res = await fetch(apiUrl('/users/me/memory'), { headers: await authHeaders() });
+  if (!res.ok) throw new Error(`memory ${res.status}`);
+  return res.json();
+}
+
+export async function setPersonalization(enabled: boolean): Promise<void> {
+  const res = await fetch(apiUrl('/users/me/personalization'), {
+    method: 'PUT',
+    headers: { ...(await authHeaders()), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  });
+  if (!res.ok) throw new Error(`personalization ${res.status}`);
+}
