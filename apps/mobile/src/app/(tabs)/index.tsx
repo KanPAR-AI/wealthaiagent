@@ -7,7 +7,7 @@
 
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Pressable, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -138,6 +138,15 @@ export default function ChatScreen() {
           <StatePanel chatId={chatId} refreshSignal={msgCount + (busy ? 0 : 1000)} />
           {chatId ? (
             <MessageList chatId={chatId} />
+          ) : busy ? (
+            // New-chat creation in flight — show immediate feedback instead of
+            // the stale suggestions screen (bug e6797e57: looked frozen).
+            <View style={[styles.empty, { justifyContent: 'center' }]}>
+              <ActivityIndicator color={colors.textSecondary} />
+              <ThemedText type="small" themeColor="textSecondary" style={{ marginTop: Spacing.two }}>
+                Starting your chat…
+              </ThemedText>
+            </View>
           ) : (
             <View style={styles.empty}>
               <ThemedText type="title" style={styles.emptyTitle}>
