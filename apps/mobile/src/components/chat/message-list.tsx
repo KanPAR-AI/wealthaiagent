@@ -14,6 +14,7 @@
 
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useCallback, useEffect, useRef } from 'react';
+import { Keyboard } from 'react-native';
 import { useChatStore, type Message } from '@wealthai/core';
 
 import { MessageBubble } from './message-bubble';
@@ -54,6 +55,17 @@ export function MessageList({ chatId }: { chatId: string }) {
       seenUserCount.current = userCount;
     }
   }, [userCount, messages]);
+
+  // When the keyboard opens (input focused), bring the latest message above it.
+  // Without this, `behavior="padding"` shrinks the list and the last message is
+  // left hidden under the keyboard (bug 0e4bd715). Interactive dismiss still lets
+  // the user drag back up to read history.
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidShow', () => {
+      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+    });
+    return () => sub.remove();
+  }, []);
 
   const renderItem = useCallback(
     ({ item }: { item: Message }) => <MessageBubble message={item} />,
