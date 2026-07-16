@@ -145,15 +145,14 @@ export function StatePanel({ chatId, refreshSignal }: { chatId: string | null; r
   const aboutYou = userFactsFlat(userMem);
   const personalizationOff = userMem ? !userMem.personalization_enabled : false;
 
-  // Show if there's chat state, user-level memory, or personalization is off
-  // (so the toggle stays reachable). Hidden on a truly empty fresh account.
-  if (slotCount === 0 && !hasBelief && aboutYou.length === 0 && !personalizationOff) return null;
-
+  // Always show the bar so it's discoverable — even a fresh, empty chat shows
+  // the personalization control + "nothing yet" (bug 1535e81b: user couldn't
+  // find the bar on a new chat because it returned null when empty).
   const kinds = latestKinds(state?.events ?? []);
   const summary =
     [slotCount ? `${slotCount} in chat` : '', aboutYou.length ? `${aboutYou.length} about you` : '']
       .filter(Boolean)
-      .join(' · ') || (personalizationOff ? 'personalization off' : '');
+      .join(' · ') || (personalizationOff ? 'personalization off' : 'nothing yet');
 
   return (
     <View style={[styles.wrap, { borderBottomColor: colors.backgroundSelected }]}>
@@ -182,6 +181,13 @@ export function StatePanel({ chatId, refreshSignal }: { chatId: string | null; r
                 onValueChange={onTogglePersonalization}
               />
             </View>
+          )}
+
+          {/* Empty state so the expanded bar is never blank. */}
+          {aboutYou.length === 0 && slotCount === 0 && !hasBelief && (
+            <ThemedText type="small" themeColor="textSecondary" style={{ fontStyle: 'italic' }}>
+              Nothing learned yet — as you chat, what I pick up about you appears here.
+            </ThemedText>
           )}
 
           {/* About you — cross-chat learned facts (visible even on new chats) */}
