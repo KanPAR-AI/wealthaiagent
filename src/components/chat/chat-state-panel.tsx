@@ -13,9 +13,12 @@ import { Brain, ChevronDown, ChevronRight, RotateCcw, Trash2 } from "lucide-reac
 import {
   ChatState,
   StateEvent,
+  UserMemory,
   fetchChatState,
+  fetchUserMemory,
   forgetAllState,
   forgetSlot,
+  setPersonalization,
 } from "@/services/chat-state-service";
 
 function fmtValue(v: unknown): string {
@@ -57,8 +60,24 @@ function ageLabel(days?: number | null): string {
   return "today";
 }
 
+// Flatten the user's cross-chat memory (all collections) into label/value rows.
+function userFactsFlat(um: UserMemory | null): Array<{ label: string; value: string }> {
+  if (!um) return [];
+  const out: Array<{ label: string; value: string }> = [];
+  for (const facts of Object.values(um.memory || {})) {
+    for (const f of facts) {
+      const label = String((f.key ?? f.category ?? "fact") as string);
+      const raw = f.value;
+      const value = raw == null ? "" : typeof raw === "object" ? JSON.stringify(raw) : String(raw);
+      out.push({ label, value: value.length > 90 ? value.slice(0, 87) + "…" : value });
+    }
+  }
+  return out;
+}
+
 interface Props {
-  chatId: string;
+  /** May be undefined on a brand-new chat — the panel still shows "About you". */
+  chatId?: string;
   token: string | null;
   /** Bump to trigger a refetch (e.g. messages.length after each turn). */
   refreshSignal: number;
@@ -66,26 +85,39 @@ interface Props {
 
 export function ChatStatePanel({ chatId, token, refreshSignal }: Props) {
   const [state, setState] = useState<ChatState | null>(null);
+  const [userMem, setUserMem] = useState<UserMemory | null>(null);
   const [open, setOpen] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    if (!chatId || !token) return;
+    if (!token) return;
+    // User-level memory isn't chat-scoped — load it even on a brand-new chat.
+    fetchUserMemory(token).then(setUserMem).catch(() => {});
+    if (!chatId) return;
     try {
       setState(await fetchChatState(chatId, token));
     } catch (e) {
-      // Non-fatal: the panel just stays hidden if state can't load.
       console.warn("[ChatStatePanel] load failed:", e);
     }
   }, [chatId, token]);
+
+  const onTogglePersonalization = async (enabled: boolean) => {
+    if (!token) return;
+    setUserMem((m) => (m ? { ...m, personalization_enabled: enabled } : m)); // optimistic
+    try {
+      await setPersonalization(enabled, token);
+    } catch {
+      setUserMem((m) => (m ? { ...m, personalization_enabled: !enabled } : m));
+    }
+  };
 
   useEffect(() => {
     load();
   }, [load, refreshSignal]);
 
   const onForgetSlot = async (domain: string, slot: string) => {
-    if (!token) return;
+    if (!token || !chatId) return;
     setBusy(true);
     try {
       await forgetSlot(chatId, domain, slot, token);
@@ -96,7 +128,7 @@ export function ChatStatePanel({ chatId, token, refreshSignal }: Props) {
   };
 
   const onForgetAll = async () => {
-    if (!token) return;
+    if (!token || !chatId) return;
     if (!window.confirm("Forget everything this chat has learned? This clears all saved values and their history for this conversation.")) return;
     setBusy(true);
     try {
@@ -109,11 +141,18 @@ export function ChatStatePanel({ chatId, token, refreshSignal }: Props) {
 
   const slotCount = state?.domains.reduce((n, d) => n + d.slots.length, 0) ?? 0;
   const hasBelief = Boolean(state?.belief && (state.belief as any).intent && (state.belief as any).intent !== "general");
+  const aboutYou = userFactsFlat(userMem);
+  const personalizationOff = userMem ? !userMem.personalization_enabled : false;
 
-  // Don't clutter fresh/empty chats — only render once there's something learned.
-  if (!state || (slotCount === 0 && !hasBelief)) return null;
+  // Show once we know the user's personalization state (userMem loaded) OR there
+  // is chat state — so a fresh/empty chat still shows "About you" + the toggle.
+  if (!userMem && slotCount === 0 && !hasBelief) return null;
 
-  const kinds = latestKinds(state.events);
+  const kinds = latestKinds(state?.events ?? []);
+  const summary =
+    [slotCount ? `${slotCount} in chat` : "", aboutYou.length ? `${aboutYou.length} about you` : ""]
+      .filter(Boolean)
+      .join(" · ") || (personalizationOff ? "personalization off" : "nothing yet");
 
   return (
     <div className="border-b border-border/60 bg-muted/30 dark:bg-zinc-900/40 text-xs">
@@ -126,15 +165,61 @@ export function ChatStatePanel({ chatId, token, refreshSignal }: Props) {
           {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           <Brain className="h-3.5 w-3.5" />
           <span className="font-medium">What I've learned</span>
-          <span className="text-muted-foreground/70">
-            · {slotCount} value{slotCount === 1 ? "" : "s"}
-            {hasBelief ? ` · ${String((state.belief as any).intent)}` : ""}
-          </span>
+          <span className="text-muted-foreground/70">· {summary}</span>
         </button>
 
         {open && (
           <div className="pb-3 space-y-3">
-            {state.domains.map((d) => (
+            {/* Personalization toggle — controls whether the assistant uses any
+                of your stored memory across chats. */}
+            {userMem && (
+              <div className="flex items-center gap-2 py-1">
+                <div className="flex-1">
+                  <div className="text-foreground">Personalization</div>
+                  <div className="text-[11px] text-muted-foreground/70">
+                    {userMem.personalization_enabled
+                      ? "Using what I know about you across chats"
+                      : "Off — every chat starts fresh"}
+                  </div>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={userMem.personalization_enabled}
+                  onClick={() => onTogglePersonalization(!userMem.personalization_enabled)}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                    userMem.personalization_enabled ? "bg-emerald-500" : "bg-zinc-400/50"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      userMem.personalization_enabled ? "translate-x-4" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
+
+            {/* Empty state so the expanded panel is never blank. */}
+            {aboutYou.length === 0 && slotCount === 0 && !hasBelief && (
+              <div className="italic text-muted-foreground/70">
+                Nothing learned yet — as you chat, what I pick up about you appears here.
+              </div>
+            )}
+
+            {/* About you — cross-chat learned facts (visible even on new chats). */}
+            {aboutYou.length > 0 && (
+              <div className="space-y-1">
+                <div className="uppercase tracking-wide text-[10px] text-muted-foreground/70">About you</div>
+                {aboutYou.map((f, i) => (
+                  <div key={`u${i}`} className="flex items-center gap-2">
+                    <span className="text-muted-foreground min-w-0 truncate">{f.label}</span>
+                    <span className="font-mono text-foreground truncate">{f.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(state?.domains ?? []).map((d) => (
               <div key={d.domain} className="space-y-1">
                 <div className="uppercase tracking-wide text-[10px] text-muted-foreground/70">
                   {domainLabel(d.domain)}
@@ -177,18 +262,18 @@ export function ChatStatePanel({ chatId, token, refreshSignal }: Props) {
               </div>
             ))}
 
-            {state.events.length > 0 && (
+            {(state?.events?.length ?? 0) > 0 && (
               <div>
                 <button
                   onClick={() => setShowEvents((v) => !v)}
                   className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground/70 hover:text-foreground"
                 >
                   {showEvents ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                  Event log ({state.events.length})
+                  Event log ({state?.events.length ?? 0})
                 </button>
                 {showEvents && (
                   <div className="mt-1 space-y-0.5 max-h-40 overflow-y-auto font-mono text-[11px] text-muted-foreground">
-                    {state.events.map((e, i) => (
+                    {(state?.events ?? []).map((e, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <span className="text-muted-foreground/50">
                           {e.source_seq != null ? `#${e.source_seq}` : "·"}
@@ -206,14 +291,16 @@ export function ChatStatePanel({ chatId, token, refreshSignal }: Props) {
               </div>
             )}
 
-            <button
-              onClick={onForgetAll}
-              disabled={busy}
-              className="flex items-center gap-1.5 text-red-500/90 hover:text-red-500 disabled:opacity-40"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Forget everything
-            </button>
+            {(slotCount > 0 || hasBelief) && chatId && (
+              <button
+                onClick={onForgetAll}
+                disabled={busy}
+                className="flex items-center gap-1.5 text-red-500/90 hover:text-red-500 disabled:opacity-40"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Forget this chat&apos;s info
+              </button>
+            )}
           </div>
         )}
       </div>

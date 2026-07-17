@@ -72,3 +72,26 @@ export async function forgetAllState(chatId: string, token: string): Promise<voi
   });
   if (!res.ok && res.status !== 204) throw new Error(`Failed to wipe state: ${res.status}`);
 }
+
+// ── User-level "learned about you" + personalization toggle ──────────────
+
+export interface UserMemory {
+  personalization_enabled: boolean;
+  fact_count: number;
+  memory: Record<string, Array<Record<string, unknown>>>;
+}
+
+export async function fetchUserMemory(token: string): Promise<UserMemory> {
+  const res = await fetch(getApiUrl("/users/me/memory"), { headers: authHeaders(token) });
+  if (!res.ok) throw new Error(`Failed to load user memory: ${res.status}`);
+  return res.json();
+}
+
+export async function setPersonalization(enabled: boolean, token: string): Promise<void> {
+  const res = await fetch(getApiUrl("/users/me/personalization"), {
+    method: "PUT",
+    headers: { ...authHeaders(token), "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+  if (!res.ok) throw new Error(`Failed to set personalization: ${res.status}`);
+}

@@ -306,6 +306,13 @@ export default function ChatWindow({
         file={selectedFile}
       />
       <div className={`flex flex-col h-full bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
+        {/* "What I've learned" panel — shown on every chat (incl. a fresh one,
+            where it surfaces cross-chat "About you" + the personalization toggle). */}
+        <ChatStatePanel
+          chatId={chatId}
+          token={token}
+          refreshSignal={messages.length + (isSending ? 0 : 1000)}
+        />
         {messages.length === 0 && !isHistoryLoading ? (
           // Empty state with centered input
           <div className="flex flex-col items-center justify-center flex-1 px-4 md:px-6 space-y-8">
@@ -342,16 +349,6 @@ export default function ChatWindow({
         ) : (
           // Chat with messages - flex layout
           <>
-            {/* Debug/control panel: what the assistant has learned this chat.
-                Refetches after each turn (messages.length) and when a send
-                settles (isSending) so it stays live. */}
-            {chatId && (
-              <ChatStatePanel
-                chatId={chatId}
-                token={token}
-                refreshSignal={messages.length + (isSending ? 0 : 1000)}
-              />
-            )}
             <div className="flex-1 min-h-0 overflow-hidden chat-content relative">
               <ScrollArea ref={scrollAreaRef} className="h-full" type="scroll">
                 <div className="p-3 pr-4 sm:p-4 md:p-6 space-y-4 sm:space-y-6 min-w-0 overflow-x-hidden">
