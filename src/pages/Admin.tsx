@@ -34,6 +34,7 @@ import { AgentBuilderChat } from "@/components/admin/agent-builder/agent-builder
 import { SandboxPanel } from "@/components/admin/agent-builder/sandbox-panel";
 import { useAdminStore } from "@/store/admin";
 import { fetchAgents } from "@/services/admin-service";
+import { LoopsView } from "@/components/admin/loops/loops-view";
 
 type Tab =
   | "videos"
@@ -83,6 +84,9 @@ export default function Admin() {
   // detail. Lets admins triage / delete without committing to a single
   // agent's tab UI first.
   const [view, setView] = useState<"manage" | "detail">("manage");
+  // Top-level section: Agents (existing) vs Loops (Verified Procedures —
+  // org-level, not per-agent, so it sits beside the agent list).
+  const [section, setSection] = useState<"agents" | "loops">("agents");
 
   const refreshAgents = () =>
     fetchAgents()
@@ -123,22 +127,45 @@ export default function Admin() {
 
       {view === "manage" ? (
         <div className="max-w-6xl mx-auto px-6 py-6">
-          <div className="mb-4">
-            <h2 className="text-xl font-bold">Agents</h2>
-            <p className="text-sm text-muted-foreground">
-              Browse, filter, and manage all agents. Click a name to edit, or
-              select rows for bulk actions.
-            </p>
+          {/* Section switcher: Agents | Loops */}
+          <div className="flex gap-1 mb-5 border-b border-border">
+            {(["agents", "loops"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSection(s)}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+                  section === s
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {s === "agents" ? "Agents" : "Verified Procedures"}
+              </button>
+            ))}
           </div>
-          <AgentManagementView
-            agents={agents}
-            onSelectAgent={(id) => {
-              setSelectedAgentId(id);
-              setView("detail");
-            }}
-            onCreate={() => setShowCreateWizard(true)}
-            onRefresh={refreshAgents}
-          />
+
+          {section === "loops" ? (
+            <LoopsView />
+          ) : (
+            <>
+              <div className="mb-4">
+                <h2 className="text-xl font-bold">Agents</h2>
+                <p className="text-sm text-muted-foreground">
+                  Browse, filter, and manage all agents. Click a name to edit, or
+                  select rows for bulk actions.
+                </p>
+              </div>
+              <AgentManagementView
+                agents={agents}
+                onSelectAgent={(id) => {
+                  setSelectedAgentId(id);
+                  setView("detail");
+                }}
+                onCreate={() => setShowCreateWizard(true)}
+                onRefresh={refreshAgents}
+              />
+            </>
+          )}
         </div>
       ) : selectedAgent ? (
         <div className="max-w-4xl mx-auto px-6 py-6">
