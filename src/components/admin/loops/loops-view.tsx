@@ -5,9 +5,9 @@
 //   approve gates as they park → see the VERDICT with per-check evidence →
 //   eval suite scorecard (pass^k gate).
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  CheckCircle2, ChevronLeft, History, Loader2, Pencil, Play, Plus, RefreshCw,
+  CheckCircle2, ChevronLeft, Circle, History, Loader2, Pencil, Play, Plus, RefreshCw,
   RotateCcw, Save, ShieldCheck, ThumbsDown, ThumbsUp, Trash2, X, XCircle,
 } from "lucide-react";
 
@@ -17,7 +17,7 @@ import {
   addCase, approveRun, compileSop, createLoop, createSuite, deleteCase,
   deleteLoop, getLoop, getRun, getSuite, listEvalRuns, listLoops, listRuns,
   listSuites, listVersions, rejectRun, restoreVersion, runSuite, setLoopStatus,
-  startRun, updateCase, updateLoopSpec, updateSuiteSettings,
+  startRun, streamRun, updateCase, updateLoopSpec, updateSuiteSettings,
 } from "@/services/loops-service";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -124,27 +124,30 @@ export function LoopsView() {
 
 function CompilePanel({ onDone }: { onDone: (loopId?: string) => void }) {
   const [sop, setSop] = useState("");
-  const [busy, setBusy] = useState<"compile" | "save" | null>(null);
-  const [result, setResult] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const compile = async () => {
-    setBusy("compile"); setErr(null);
-    try { setResult(await compileSop(sop)); }
-    catch (e: any) { setErr(e.message); }
-    finally { setBusy(null); }
-  };
-
-  const save = async () => {
-    setBusy("save"); setErr(null);
+  // Compile AND persist as a draft in one step. Previously "Compile" only
+  // produced an in-memory preview and a reload before the separate "Save"
+  // click lost the whole spec. Persisting immediately means a compiled
+  // procedure always survives reload (it's a draft — reviewable + deletable).
+  const compileAndSave = async () => {
+    setBusy(true); setErr(null);
     try {
-      await createLoop(result.spec);
+      const result = await compileSop(sop);
+      const loopId = result.spec.loop_id;
+      try {
+        await createLoop(result.spec);
+      } catch (e: any) {
+        // Recompiling the same SOP yields the same loop_id → 409; just open it.
+        if (!String(e?.message || "").toLowerCase().includes("already exists")) throw e;
+      }
       // Seed the eval suite from the compiler's spec-derived cases.
       if (result.eval_cases?.length) {
-        await createSuite(result.spec.loop_id, result.eval_cases, 2, 0.8).catch(() => {});
+        await createSuite(loopId, result.eval_cases, 2, 0.8).catch(() => {});
       }
-      onDone(result.spec.loop_id);
-    } catch (e: any) { setErr(e.message); setBusy(null); }
+      onDone(loopId);   // navigates to the (persisted) detail view
+    } catch (e: any) { setErr(e.message); setBusy(false); }
   };
 
   return (
@@ -158,31 +161,16 @@ function CompilePanel({ onDone }: { onDone: (loopId?: string) => void }) {
         className="w-full rounded-md border border-border bg-background p-3 text-sm"
       />
       <div className="flex gap-2 mt-2">
-        <Button size="sm" onClick={compile} disabled={sop.trim().length < 20 || busy !== null}>
-          {busy === "compile" ? <Loader2 size={14} className="mr-1 animate-spin" /> : null}
-          {busy === "compile" ? "Compiling (≈1 min)…" : "Compile"}
+        <Button size="sm" onClick={compileAndSave} disabled={sop.trim().length < 20 || busy}>
+          {busy ? <Loader2 size={14} className="mr-1 animate-spin" /> : null}
+          {busy ? "Compiling & saving (≈1 min)…" : "Compile & save draft"}
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => onDone()}>Cancel</Button>
+        <Button size="sm" variant="ghost" onClick={() => onDone()} disabled={busy}>Cancel</Button>
       </div>
+      <p className="text-[11px] text-muted-foreground mt-1">
+        Saved as a draft the moment it compiles — it won’t vanish on reload. Review, edit, then Activate (or delete) from the detail view.
+      </p>
       {err && <p className="text-sm text-destructive mt-2">{err}</p>}
-
-      {result && (
-        <div className="mt-4 space-y-3">
-          <div className="text-sm font-medium">
-            Compiled: <span className="font-mono">{result.spec.loop_id}</span> —{" "}
-            {result.spec.steps.length} steps, {result.spec.exit.checks.length} checks,{" "}
-            {result.eval_cases.length} eval cases
-            {result.problems.length === 0
-              ? <span className="text-emerald-600"> · no problems</span>
-              : <span className="text-destructive"> · {result.problems.join("; ")}</span>}
-          </div>
-          <SpecSummary spec={result.spec} />
-          <Button size="sm" onClick={save} disabled={busy !== null}>
-            {busy === "save" ? <Loader2 size={14} className="mr-1 animate-spin" /> : null}
-            Save as draft (+ eval suite)
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
@@ -226,6 +214,7 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
   const [openRun, setOpenRun] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [watching, setWatching] = useState(false);
 
   const refresh = useCallback(() => {
     getLoop(loopId).then(setDetail).catch((e) => setErr(e.message));
@@ -273,9 +262,13 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
               Deactivate
             </Button>
           )}
+          <Button size="sm" disabled={busy || watching}
+                  onClick={() => setWatching(true)}>
+            <Play size={14} className="mr-1" /> Run &amp; watch
+          </Button>
           <Button size="sm" variant="outline" disabled={busy}
                   onClick={() => act(() => startRun(loopId, true))}>
-            <Play size={14} className="mr-1" /> Dry run
+            Dry run (background)
           </Button>
           <Button size="sm" variant="ghost" className="text-destructive" disabled={busy}
                   onClick={() => { if (confirm("Delete this procedure?")) act(async () => { await deleteLoop(loopId); onBack(); }); }}>
@@ -288,6 +281,10 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
         <p className="text-sm text-destructive mt-2">Blocking activation: {detail.problems.join("; ")}</p>
       )}
       {err && <p className="text-sm text-destructive mt-2">{err}</p>}
+
+      {watching && (
+        <RunWatch loopId={loopId} onClose={() => { setWatching(false); refresh(); }} />
+      )}
 
       <ProcedureSection loop={loop} loopId={loopId} onChanged={refresh} />
 
@@ -416,6 +413,175 @@ function RunDetail({ loopId, runId, onChanged }: { loopId: string; runId: string
           <pre className="mt-1 text-[11px] text-red-600/90 whitespace-pre-wrap break-words font-mono">{h.note}</pre>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ── Run & watch: live per-step progress ────────────────────────────────
+
+type StepPhase = "pending" | "active" | "done" | "failed";
+
+function RunWatch({ loopId, onClose }: { loopId: string; onClose: () => void }) {
+  const [steps, setSteps] = useState<any[]>([]);
+  const [phase, setPhase] = useState<Record<string, StepPhase>>({});
+  const [status, setStatus] = useState<string>("starting");
+  const [cost, setCost] = useState(0);
+  const [checks, setChecks] = useState<any[]>([]);
+  const [verdict, setVerdict] = useState<string | null>(null);
+  const [approval, setApproval] = useState<{ prompt: string; runId: string } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [finished, setFinished] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const apply = useCallback((ev: any) => {
+    switch (ev.type) {
+      case "run_started":
+        setSteps(ev.steps || []);
+        setPhase(Object.fromEntries((ev.steps || []).map((s: any) => [s.id, "pending"])));
+        break;
+      case "step":
+        setPhase((p) => ({
+          ...p,
+          [ev.step_id]:
+            ev.phase === "finished" ? "done"
+            : ev.phase === "failed" ? "failed"
+            : ev.phase === "started" ? "active"
+            : p[ev.step_id] || "pending",
+        }));
+        if (typeof ev.cost_usd === "number") setCost(ev.cost_usd);
+        break;
+      case "status": setStatus(ev.status); break;
+      case "check": setChecks((c) => [...c, ev]); break;
+      case "awaiting_approval":
+        setStatus("awaiting_approval");
+        setApproval({ prompt: ev.prompt, runId: ev.run_id });
+        break;
+      case "done":
+        setStatus(ev.status); setVerdict(ev.verdict ?? null);
+        if (typeof ev.cost_usd === "number") setCost(ev.cost_usd);
+        setFinished(true);
+        break;
+      case "error": setErr(ev.message); setFinished(true); break;
+    }
+  }, []);
+
+  useEffect(() => {
+    const ac = new AbortController();
+    abortRef.current = ac;
+    streamRun(loopId, true, apply, ac.signal).catch((e) => {
+      if (!ac.signal.aborted) { setErr(e.message); setFinished(true); }
+    });
+    return () => ac.abort();
+  }, [loopId, apply]);
+
+  const gate = async (approve: boolean) => {
+    if (!approval) return;
+    setBusy(true);
+    try {
+      await (approve ? approveRun(loopId, approval.runId) : rejectRun(loopId, approval.runId));
+      setApproval(null);
+      if (!approve) { setStatus("cancelled"); setFinished(true); return; }
+      // Approved: the run resumes in the background — poll it to completion.
+      setStatus("running");
+      for (let i = 0; i < 150; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const { run } = await getRun(loopId, approval.runId);
+        setCost(Number(run.cost_usd || 0));
+        setPhase((p) => {
+          const next = { ...p };
+          for (const h of run.history || []) {
+            next[h.step_id] = h.phase === "failed" ? "failed" : h.phase === "finished" ? "done" : h.phase === "started" ? "active" : next[h.step_id];
+          }
+          return next;
+        });
+        setChecks(run.check_results || []);
+        setStatus(run.status);
+        if (["completed", "failed", "cancelled"].includes(run.status)) {
+          setVerdict(run.verdict ?? null); setFinished(true); break;
+        }
+      }
+    } catch (e: any) { setErr(e.message); }
+    finally { setBusy(false); }
+  };
+
+  const icon = (ph: StepPhase) =>
+    ph === "done" ? <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+    : ph === "failed" ? <XCircle size={16} className="text-red-600 shrink-0" />
+    : ph === "active" ? <Loader2 size={16} className="text-blue-600 animate-spin shrink-0" />
+    : <Circle size={16} className="text-muted-foreground/40 shrink-0" />;
+
+  const doneCount = Object.values(phase).filter((p) => p === "done").length;
+
+  return (
+    <div className="mt-4 border border-border rounded-lg p-4 bg-muted/20">
+      <div className="flex items-center gap-2 mb-3">
+        <h3 className="font-semibold">Live run</h3>
+        <Badge text={status} />
+        {steps.length > 0 && (
+          <span className="text-xs text-muted-foreground">{doneCount}/{steps.length} steps</span>
+        )}
+        <span className="text-xs text-muted-foreground">· ${cost.toFixed(4)}</span>
+        {!finished && !approval && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
+        <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={() => { abortRef.current?.abort(); onClose(); }}>
+          {finished ? "Close" : "Stop watching"}
+        </Button>
+      </div>
+
+      {steps.length === 0 && !err && (
+        <p className="text-sm text-muted-foreground flex items-center gap-2">
+          <Loader2 size={14} className="animate-spin" /> compiling run…
+        </p>
+      )}
+
+      <ol className="space-y-1.5">
+        {steps.map((s) => {
+          const ph = phase[s.id] || "pending";
+          return (
+            <li key={s.id} className="flex items-center gap-2 text-sm">
+              {icon(ph)}
+              <span className={ph === "pending" ? "text-muted-foreground" : ""}>{s.name}</span>
+              <span className="text-[10px] text-muted-foreground">({s.kind}{s.guard ? " 🔒" : ""})</span>
+              {ph === "active" && <span className="text-xs text-blue-600">working…</span>}
+            </li>
+          );
+        })}
+      </ol>
+
+      {approval && (
+        <div className="mt-3 border border-amber-500/40 bg-amber-500/10 rounded-md p-3">
+          <p className="text-sm mb-2">🔔 {approval.prompt}</p>
+          <div className="flex gap-2">
+            <Button size="sm" disabled={busy} onClick={() => gate(true)}>
+              <ThumbsUp size={14} className="mr-1" /> Approve
+            </Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => gate(false)}>
+              <ThumbsDown size={14} className="mr-1" /> Reject
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {checks.length > 0 && (
+        <div className="mt-3">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Verdict evidence</p>
+          <ul className="space-y-1">
+            {checks.map((c, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm">
+                {c.verdict === "pass" ? <CheckCircle2 size={14} className="text-emerald-600 mt-0.5 shrink-0" />
+                  : c.verdict === "fail" ? <XCircle size={14} className="text-red-600 mt-0.5 shrink-0" />
+                  : <span className="text-amber-600 text-xs mt-0.5">◐</span>}
+                <span><span className="font-medium">{c.label}</span> <span className="text-muted-foreground">— {c.reason}</span></span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {verdict && (
+        <div className="mt-3"><VerdictBadge verdict={verdict} /></div>
+      )}
+      {err && <p className="text-sm text-destructive mt-2">{err}</p>}
     </div>
   );
 }

@@ -88,6 +88,40 @@ export const startRun = (loopId: string, dryRun: boolean) =>
 export const listRuns = (loopId: string): Promise<{ runs: RunSummary[] }> =>
   loopsFetch(`/loops/${loopId}/runs`);
 
+// Live per-step progress over SSE. EventSource can't do POST+auth, so we read
+// the fetch body stream and parse `data:` frames ourselves. onEvent gets each
+// decoded event: run_started | step | status | check | awaiting_approval | done | error.
+export async function streamRun(
+  loopId: string,
+  dryRun: boolean,
+  onEvent: (ev: any) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const token = await auth.currentUser?.getIdToken();
+  const res = await fetch(getApiUrl(`/admin/loops/${loopId}/runs/stream`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ initial_state: {}, dry_run: dryRun }),
+    signal,
+  });
+  if (!res.ok || !res.body) throw new Error(`Stream failed: ${res.status}`);
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const frames = buf.split("\n\n");
+    buf = frames.pop() || "";
+    for (const frame of frames) {
+      const line = frame.split("\n").find((l) => l.startsWith("data:"));
+      if (!line) continue;
+      try { onEvent(JSON.parse(line.slice(5).trim())); } catch { /* skip partial */ }
+    }
+  }
+}
+
 export const getRun = (loopId: string, runId: string) =>
   loopsFetch(`/loops/${loopId}/runs/${runId}`);
 
