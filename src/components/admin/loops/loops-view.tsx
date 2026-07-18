@@ -7,16 +7,17 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  CheckCircle2, ChevronLeft, Loader2, Play, Plus, RefreshCw,
-  ShieldCheck, ThumbsDown, ThumbsUp, Trash2, XCircle,
+  CheckCircle2, ChevronLeft, History, Loader2, Pencil, Play, Plus, RefreshCw,
+  RotateCcw, Save, ShieldCheck, ThumbsDown, ThumbsUp, Trash2, X, XCircle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
-  LoopSummary, RunSummary,
-  approveRun, compileSop, createLoop, createSuite, deleteLoop, getLoop,
-  getRun, listEvalRuns, listLoops, listRuns, listSuites, rejectRun,
-  runSuite, setLoopStatus, startRun,
+  EvalCase, LoopSummary, LoopVersion, RunSummary,
+  addCase, approveRun, compileSop, createLoop, createSuite, deleteCase,
+  deleteLoop, getLoop, getRun, getSuite, listEvalRuns, listLoops, listRuns,
+  listSuites, listVersions, rejectRun, restoreVersion, runSuite, setLoopStatus,
+  startRun, updateCase, updateLoopSpec, updateSuiteSettings,
 } from "@/services/loops-service";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -288,11 +289,9 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
       )}
       {err && <p className="text-sm text-destructive mt-2">{err}</p>}
 
-      <div className="mt-4 border border-border rounded-lg p-4 bg-muted/20">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">The procedure (source of truth)</p>
-        <p className="text-sm whitespace-pre-wrap">{loop.source_sop}</p>
-        <div className="mt-3"><SpecSummary spec={loop} /></div>
-      </div>
+      <ProcedureSection loop={loop} loopId={loopId} onChanged={refresh} />
+
+      <VersionHistory loopId={loopId} currentVersion={loop.version} onChanged={refresh} />
 
       <EvalSection loopId={loopId} />
 
@@ -409,6 +408,174 @@ function RunDetail({ loopId, runId, onChanged }: { loopId: string; runId: string
           ))}
         </div>
       </div>
+
+      {/* Why a run failed — the exception note from the failing step. */}
+      {(run.history || []).filter((h: any) => h.phase === "failed" && h.note).map((h: any, i: number) => (
+        <div key={i} className="border border-red-400/40 bg-red-500/10 rounded-md p-2.5">
+          <p className="text-xs font-medium text-red-600">✗ {h.step_id} failed</p>
+          <pre className="mt-1 text-[11px] text-red-600/90 whitespace-pre-wrap break-words font-mono">{h.note}</pre>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Procedure: view / edit prose SOP + recompile ───────────────────────
+
+function ProcedureSection(
+  { loop, loopId, onChanged }: { loop: any; loopId: string; onChanged: () => void },
+) {
+  const [editing, setEditing] = useState(false);
+  const [sop, setSop] = useState(loop.source_sop || "");
+  const [busy, setBusy] = useState<"recompile" | "prose" | null>(null);
+  const [preview, setPreview] = useState<any>(null);   // recompiled spec awaiting save
+  const [err, setErr] = useState<string | null>(null);
+
+  const startEdit = () => { setSop(loop.source_sop || ""); setPreview(null); setErr(null); setEditing(true); };
+  const cancel = () => { setEditing(false); setPreview(null); setErr(null); };
+
+  // Recompile: prose → fresh spec, shown for review before saving a new version.
+  const recompile = async () => {
+    setBusy("recompile"); setErr(null);
+    try { setPreview(await compileSop(sop)); }
+    catch (e: any) { setErr(e.message); }
+    finally { setBusy(null); }
+  };
+
+  // Save the recompiled spec as a new version (loop_id is pinned server-side).
+  const saveRecompiled = async () => {
+    setBusy("recompile"); setErr(null);
+    try {
+      await updateLoopSpec(loopId, preview.spec, "Edited prose → recompiled");
+      cancel(); onChanged();
+    } catch (e: any) { setErr(e.message); setBusy(null); }
+  };
+
+  // Prose-only edit: keep the existing compiled spec, just update the SOP text.
+  const saveProseOnly = async () => {
+    setBusy("prose"); setErr(null);
+    try {
+      // Send the current compiled spec unchanged except the prose; the server
+      // pins loop_id and re-stamps status/version/timestamps.
+      await updateLoopSpec(loopId, { ...loop, source_sop: sop }, "Prose edit (no recompile)");
+      cancel(); onChanged();
+    } catch (e: any) { setErr(e.message); setBusy(null); }
+  };
+
+  return (
+    <div className="mt-4 border border-border rounded-lg p-4 bg-muted/20">
+      <div className="flex items-center gap-2 mb-1">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">The procedure (source of truth)</p>
+        {!editing && (
+          <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={startEdit}>
+            <Pencil size={12} className="mr-1" /> Edit
+          </Button>
+        )}
+      </div>
+
+      {!editing ? (
+        <>
+          <p className="text-sm whitespace-pre-wrap">{loop.source_sop}</p>
+          <div className="mt-3"><SpecSummary spec={loop} /></div>
+        </>
+      ) : (
+        <div className="space-y-2">
+          <textarea
+            value={sop}
+            onChange={(e) => setSop(e.target.value)}
+            rows={6}
+            className="w-full rounded-md border border-border bg-background p-3 text-sm"
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={recompile} disabled={sop.trim().length < 20 || busy !== null}>
+              {busy === "recompile" && !preview ? <Loader2 size={14} className="mr-1 animate-spin" /> : <RefreshCw size={14} className="mr-1" />}
+              Recompile (≈1 min)
+            </Button>
+            <Button size="sm" variant="outline" onClick={saveProseOnly} disabled={busy !== null}>
+              {busy === "prose" ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Save size={14} className="mr-1" />}
+              Save prose only
+            </Button>
+            <Button size="sm" variant="ghost" onClick={cancel} disabled={busy !== null}>Cancel</Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            “Recompile” rebuilds the steps &amp; checks from your prose; “Save prose only” keeps the current compiled spec. Either way a new version is recorded.
+          </p>
+          {err && <p className="text-sm text-destructive">{err}</p>}
+
+          {preview && (
+            <div className="mt-2 border border-border rounded-md p-3 bg-background space-y-2">
+              <div className="text-sm font-medium">
+                Recompiled preview — {preview.spec.steps.length} steps, {preview.spec.exit.checks.length} checks
+                {preview.problems.length === 0
+                  ? <span className="text-emerald-600"> · no problems</span>
+                  : <span className="text-destructive"> · {preview.problems.join("; ")}</span>}
+              </div>
+              <SpecSummary spec={preview.spec} />
+              <Button size="sm" onClick={saveRecompiled} disabled={busy !== null}>
+                {busy === "recompile" ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Save size={14} className="mr-1" />}
+                Save recompiled as new version
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Version history + restore ──────────────────────────────────────────
+
+function VersionHistory(
+  { loopId, currentVersion, onChanged }:
+  { loopId: string; currentVersion: number; onChanged: () => void },
+) {
+  const [open, setOpen] = useState(false);
+  const [versions, setVersions] = useState<LoopVersion[]>([]);
+  const [busy, setBusy] = useState<number | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    listVersions(loopId).then((d) => setVersions(d.versions)).catch((e) => setErr(e.message));
+  }, [loopId]);
+  useEffect(() => { if (open) load(); }, [open, load, currentVersion]);
+
+  const restore = async (v: number) => {
+    if (!confirm(`Restore version ${v}? This creates a new version from that snapshot.`)) return;
+    setBusy(v); setErr(null);
+    try { await restoreVersion(loopId, v); onChanged(); load(); }
+    catch (e: any) { setErr(e.message); }
+    finally { setBusy(null); }
+  };
+
+  return (
+    <div className="mt-4">
+      <Button variant="ghost" size="sm" className="text-muted-foreground -ml-2"
+              onClick={() => setOpen((o) => !o)}>
+        <History size={14} className="mr-1" /> Version history (currently v{currentVersion})
+      </Button>
+      {open && (
+        <div className="mt-2 border border-border rounded-lg divide-y divide-border">
+          {err && <p className="p-3 text-sm text-destructive">{err}</p>}
+          {versions.length === 0 && !err && (
+            <p className="p-3 text-sm text-muted-foreground">Loading…</p>
+          )}
+          {versions.map((v) => (
+            <div key={v.version} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+              <span className={`font-mono ${v.version === currentVersion ? "font-semibold" : "text-muted-foreground"}`}>
+                v{v.version}{v.version === currentVersion ? " (current)" : ""}
+              </span>
+              <span className="flex-1 min-w-0 truncate text-muted-foreground">{v.change_note}</span>
+              {v.version !== currentVersion && (
+                <Button size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={busy !== null}
+                        onClick={() => restore(v.version)}>
+                  {busy === v.version ? <Loader2 size={12} className="mr-1 animate-spin" /> : <RotateCcw size={12} className="mr-1" />}
+                  Restore
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -419,6 +586,7 @@ function EvalSection({ loopId }: { loopId: string }) {
   const [suites, setSuites] = useState<any[]>([]);
   const [latest, setLatest] = useState<any>(null);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -447,11 +615,20 @@ function EvalSection({ loopId }: { loopId: string }) {
         <span className="text-xs text-muted-foreground">
           {suite.cases} cases × {suite.trials_per_case} trials
         </span>
-        <Button size="sm" variant="outline" className="ml-auto" disabled={busy}
-                onClick={async () => { setBusy(true); try { await runSuite(loopId, suite.suite_id); await load(); } finally { setBusy(false); } }}>
-          <Play size={14} className="mr-1" /> Run suite
-        </Button>
+        <div className="ml-auto flex gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setEditing((e) => !e)}>
+            <Pencil size={14} className="mr-1" /> {editing ? "Done editing" : "Edit cases"}
+          </Button>
+          <Button size="sm" variant="outline" disabled={busy}
+                  onClick={async () => { setBusy(true); try { await runSuite(loopId, suite.suite_id); await load(); } finally { setBusy(false); } }}>
+            <Play size={14} className="mr-1" /> Run suite
+          </Button>
+        </div>
       </div>
+
+      {editing && (
+        <CaseEditor loopId={loopId} suiteId={suite.suite_id} onChanged={load} />
+      )}
       {latest && (
         <div className="mt-3 text-sm">
           {latest.status === "running" ? (
@@ -473,6 +650,166 @@ function EvalSection({ loopId }: { loopId: string }) {
           ) : null}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Eval case editor: add / edit / delete cases + suite settings ────────
+
+const BLANK_CASE: EvalCase = { input: {}, expected: "", focus: "" };
+
+function CaseEditor(
+  { loopId, suiteId, onChanged }:
+  { loopId: string; suiteId: string; onChanged: () => void },
+) {
+  const [cases, setCases] = useState<EvalCase[]>([]);
+  const [trials, setTrials] = useState(2);
+  const [threshold, setThreshold] = useState(0.8);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [edit, setEdit] = useState<{ index: number | null; draft: EvalCase } | null>(null);
+
+  const load = useCallback(() => {
+    getSuite(loopId, suiteId).then((d) => {
+      setCases(d.suite.cases || []);
+      setTrials(d.suite.trials_per_case ?? 2);
+      setThreshold(d.suite.pass_threshold ?? 0.8);
+    }).catch((e) => setErr(e.message));
+  }, [loopId, suiteId]);
+  useEffect(() => { load(); }, [load]);
+
+  const refreshAll = () => { load(); onChanged(); };
+
+  const saveCase = async (draft: EvalCase, index: number | null, inputJson: string) => {
+    let input: Record<string, any>;
+    try { input = inputJson.trim() ? JSON.parse(inputJson) : {}; }
+    catch { setErr("Initial state must be valid JSON"); return; }
+    setBusy(true); setErr(null);
+    const payload = { ...draft, input };
+    try {
+      if (index === null) await addCase(loopId, suiteId, payload);
+      else await updateCase(loopId, suiteId, index, payload);
+      setEdit(null); refreshAll();
+    } catch (e: any) { setErr(e.message); }
+    finally { setBusy(false); }
+  };
+
+  const remove = async (index: number) => {
+    if (!confirm("Delete this eval case?")) return;
+    setBusy(true); setErr(null);
+    try { await deleteCase(loopId, suiteId, index); refreshAll(); }
+    catch (e: any) { setErr(e.message); }
+    finally { setBusy(false); }
+  };
+
+  const saveSettings = async () => {
+    setBusy(true); setErr(null);
+    try {
+      await updateSuiteSettings(loopId, suiteId, {
+        trials_per_case: trials, pass_threshold: threshold,
+      });
+      refreshAll();
+    } catch (e: any) { setErr(e.message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="mt-3 border-t border-border pt-3 space-y-3">
+      {err && <p className="text-sm text-destructive">{err}</p>}
+
+      {/* Suite settings */}
+      <div className="flex flex-wrap items-end gap-3 text-xs">
+        <label className="flex flex-col gap-1">
+          <span className="text-muted-foreground">Trials / case (pass^k)</span>
+          <input type="number" min={1} max={10} value={trials}
+                 onChange={(e) => setTrials(Number(e.target.value))}
+                 className="w-20 rounded-md border border-border bg-background px-2 py-1" />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-muted-foreground">Pass threshold (0–1)</span>
+          <input type="number" min={0} max={1} step={0.05} value={threshold}
+                 onChange={(e) => setThreshold(Number(e.target.value))}
+                 className="w-24 rounded-md border border-border bg-background px-2 py-1" />
+        </label>
+        <Button size="sm" variant="outline" disabled={busy} onClick={saveSettings}>
+          <Save size={14} className="mr-1" /> Save settings
+        </Button>
+      </div>
+
+      {/* Cases */}
+      <div className="space-y-2">
+        {cases.map((c, i) => (
+          edit?.index === i ? (
+            <CaseForm key={i} draft={edit.draft} busy={busy}
+                      onCancel={() => setEdit(null)}
+                      onSave={(d, json) => saveCase(d, i, json)} />
+          ) : (
+            <div key={i} className="flex items-start gap-2 border border-border rounded-md p-2.5 text-sm bg-background">
+              <span className="text-xs font-mono text-muted-foreground mt-0.5">#{i + 1}</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium truncate">{c.focus || <span className="text-muted-foreground">(no focus label)</span>}</div>
+                {c.expected && <div className="text-xs text-muted-foreground truncate">expects: {c.expected}</div>}
+                {Object.keys(c.input || {}).length > 0 && (
+                  <div className="text-[11px] font-mono text-muted-foreground truncate">{JSON.stringify(c.input)}</div>
+                )}
+              </div>
+              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" disabled={busy}
+                      onClick={() => setEdit({ index: i, draft: c })}>
+                <Pencil size={13} />
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" disabled={busy}
+                      onClick={() => remove(i)}>
+                <Trash2 size={13} />
+              </Button>
+            </div>
+          )
+        ))}
+      </div>
+
+      {edit?.index === null ? (
+        <CaseForm draft={edit.draft} busy={busy}
+                  onCancel={() => setEdit(null)}
+                  onSave={(d, json) => saveCase(d, null, json)} />
+      ) : (
+        <Button size="sm" variant="outline"
+                onClick={() => setEdit({ index: null, draft: { ...BLANK_CASE } })}>
+          <Plus size={14} className="mr-1" /> Add case
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function CaseForm(
+  { draft, busy, onSave, onCancel }:
+  { draft: EvalCase; busy: boolean;
+    onSave: (draft: EvalCase, inputJson: string) => void; onCancel: () => void },
+) {
+  const [focus, setFocus] = useState(draft.focus || "");
+  const [expected, setExpected] = useState(draft.expected || "");
+  const [inputJson, setInputJson] = useState(
+    Object.keys(draft.input || {}).length ? JSON.stringify(draft.input, null, 2) : "",
+  );
+
+  return (
+    <div className="border border-primary/40 rounded-md p-3 bg-background space-y-2">
+      <input value={focus} onChange={(e) => setFocus(e.target.value)}
+             placeholder="Focus — what this case probes (e.g. 'no unpaid invoices → no-op')"
+             className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
+      <input value={expected} onChange={(e) => setExpected(e.target.value)}
+             placeholder="Expected outcome (optional, plain English)"
+             className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
+      <textarea value={inputJson} onChange={(e) => setInputJson(e.target.value)}
+                rows={3} placeholder={'Initial state as JSON (optional), e.g.\n{ "clients": [] }'}
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm font-mono" />
+      <div className="flex gap-2">
+        <Button size="sm" disabled={busy} onClick={() => onSave({ focus, expected, input: {} }, inputJson)}>
+          {busy ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Save size={14} className="mr-1" />} Save case
+        </Button>
+        <Button size="sm" variant="ghost" disabled={busy} onClick={onCancel}>
+          <X size={14} className="mr-1" /> Cancel
+        </Button>
+      </div>
     </div>
   );
 }
