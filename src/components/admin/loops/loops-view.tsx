@@ -13,11 +13,12 @@ import {
 
 import { Button } from "@/components/ui/button";
 import {
-  EvalCase, LoopSummary, LoopVersion, RunSummary,
-  addCase, approveRun, compileSop, createLoop, createSuite, deleteCase,
-  deleteLoop, getLoop, getRun, getSuite, listEvalRuns, listLoops, listRuns,
-  listSuites, listVersions, rejectRun, restoreVersion, runSuite, setLoopStatus,
-  startRun, streamRun, updateCase, updateLoopSpec, updateSuiteSettings,
+  EditReview, EvalCase, LoopSummary, LoopVersion, RegressionReport, RunSummary,
+  addCase, approveRun, compareEvalRuns, compileSop, createLoop, createSuite,
+  deleteCase, deleteLoop, getEvalRun, getLoop, getRun, getSuite, listEvalRuns,
+  listLoops, listRuns, listSuites, listVersions, rejectRun, restoreVersion,
+  reviewEdit, runCandidateSuite, runSuite, setLoopStatus, startRun, streamRun,
+  updateCase, updateLoopSpec, updateSuiteSettings,
 } from "@/services/loops-service";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -287,6 +288,8 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
       )}
 
       <ProcedureSection loop={loop} loopId={loopId} onChanged={refresh} />
+
+      <PromptLab loop={loop} loopId={loopId} onChanged={refresh} />
 
       <VersionHistory loopId={loopId} currentVersion={loop.version} onChanged={refresh} />
 
@@ -593,12 +596,20 @@ function ProcedureSection(
 ) {
   const [editing, setEditing] = useState(false);
   const [sop, setSop] = useState(loop.source_sop || "");
-  const [busy, setBusy] = useState<"recompile" | "prose" | null>(null);
+  const [busy, setBusy] = useState<"recompile" | "prose" | "review" | null>(null);
   const [preview, setPreview] = useState<any>(null);   // recompiled spec awaiting save
+  const [sopReview, setSopReview] = useState<EditReview | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const startEdit = () => { setSop(loop.source_sop || ""); setPreview(null); setErr(null); setEditing(true); };
-  const cancel = () => { setEditing(false); setPreview(null); setErr(null); };
+  const startEdit = () => { setSop(loop.source_sop || ""); setPreview(null); setSopReview(null); setErr(null); setEditing(true); };
+  const cancel = () => { setEditing(false); setPreview(null); setSopReview(null); setErr(null); };
+
+  const askSopReview = async () => {
+    setBusy("review"); setErr(null);
+    try { setSopReview(await reviewEdit(loopId, { kind: "sop", text: sop })); }
+    catch (e: any) { setErr(e.message); }
+    finally { setBusy(null); }
+  };
 
   // Recompile: prose → fresh spec, shown for review before saving a new version.
   const recompile = async () => {
@@ -653,6 +664,10 @@ function ProcedureSection(
             className="w-full rounded-md border border-border bg-background p-3 text-sm"
           />
           <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={askSopReview} disabled={sop.trim().length < 20 || busy !== null}>
+              {busy === "review" ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Pencil size={14} className="mr-1" />}
+              AI review
+            </Button>
             <Button size="sm" onClick={recompile} disabled={sop.trim().length < 20 || busy !== null}>
               {busy === "recompile" && !preview ? <Loader2 size={14} className="mr-1 animate-spin" /> : <RefreshCw size={14} className="mr-1" />}
               Recompile (≈1 min)
@@ -663,6 +678,27 @@ function ProcedureSection(
             </Button>
             <Button size="sm" variant="ghost" onClick={cancel} disabled={busy !== null}>Cancel</Button>
           </div>
+
+          {sopReview && (
+            <div className="border border-border rounded-md p-3 bg-background space-y-2 text-sm">
+              <p><span className="font-medium">AI assessment:</span> {sopReview.assessment}</p>
+              {sopReview.issues.length > 0 && (
+                <ul className="list-disc pl-5 space-y-0.5 text-amber-600">
+                  {sopReview.issues.map((i, k) => <li key={k}>{i}</li>)}
+                </ul>
+              )}
+              {sopReview.improved_text && sopReview.improved_text !== sop && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Suggested rewrite</p>
+                  <p className="text-xs whitespace-pre-wrap bg-muted/30 border border-border rounded p-2">{sopReview.improved_text}</p>
+                  <Button size="sm" variant="outline" className="mt-2"
+                          onClick={() => setSop(sopReview.improved_text)}>
+                    Use this version
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
           <p className="text-[11px] text-muted-foreground">
             “Recompile” rebuilds the steps &amp; checks from your prose; “Save prose only” keeps the current compiled spec. Either way a new version is recorded.
           </p>
@@ -683,6 +719,253 @@ function ProcedureSection(
               </Button>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Prompt lab: edit a step prompt → AI review → prove vs evals → save ──
+//
+// The regression-gated edit flow. Saving is always possible, but:
+//   - evals verdict "regression" → explicit override confirm
+//   - no eval proof at all       → explicit "unproven" confirm
+// Candidate eval runs are flagged server-side so they never pollute the
+// suite's headline scorecard.
+
+function PromptLab(
+  { loop, loopId, onChanged }: { loop: any; loopId: string; onChanged: () => void },
+) {
+  const llmSteps = (loop.steps || []).filter((s: any) => s.kind === "llm");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [text, setText] = useState("");
+  const [review, setReview] = useState<EditReview | null>(null);
+  const [proof, setProof] = useState<
+    | { state: "running"; note: string }
+    | { state: "done"; report: RegressionReport }
+    | null
+  >(null);
+  const [busy, setBusy] = useState<"review" | "prove" | "save" | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  if (llmSteps.length === 0) return null;
+
+  const startEdit = (s: any) => {
+    setEditing(s.id); setText(s.config?.prompt || "");
+    setReview(null); setProof(null); setErr(null);
+  };
+  const cancel = () => { setEditing(null); setReview(null); setProof(null); setErr(null); };
+
+  // The candidate = current spec with ONLY this prompt replaced.
+  const candidateSpec = () => {
+    const spec = JSON.parse(JSON.stringify(loop));
+    const st = spec.steps.find((x: any) => x.id === editing);
+    if (st) st.config = { ...st.config, prompt: text };
+    return spec;
+  };
+
+  const askReview = async () => {
+    setBusy("review"); setErr(null);
+    try {
+      setReview(await reviewEdit(loopId, { kind: "prompt", step_id: editing!, text }));
+    } catch (e: any) { setErr(e.message); }
+    finally { setBusy(null); }
+  };
+
+  // Poll one eval-run doc to completion; it checkpoints per case, so we can
+  // narrate real progress ("case 3/10") instead of a dumb spinner.
+  const pollRun = async (suiteId: string, id: string, cases: number, phase: string) => {
+    for (let i = 0; i < 360; i++) {                      // ≤ ~12 min
+      await new Promise((r) => setTimeout(r, 2000));
+      const { eval_run } = await getEvalRun(loopId, suiteId, id);
+      if (eval_run?.status === "completed") return eval_run;
+      const done = (eval_run?.per_case || []).length;
+      setProof({ state: "running", note: `${phase} — case ${Math.min(done + 1, cases)}/${cases}` });
+    }
+    return null;
+  };
+
+  const prove = async () => {
+    setBusy("prove"); setErr(null);
+    setProof({ state: "running", note: "preparing…" });
+    try {
+      const s = await listSuites(loopId);
+      const suite = s.suites[0];
+      if (!suite) throw new Error("No eval suite exists for this loop — create one first.");
+      const nCases = suite.cases || 0;
+
+      // Baseline = latest completed NON-candidate run; if none, honestly run
+      // the suite on the CURRENT spec first.
+      const runs = await listEvalRuns(loopId, suite.suite_id);
+      let baselineId: string | null =
+        (runs.eval_runs || []).find((r: any) => !r.candidate && r.status === "completed")
+          ?.eval_run_id || null;
+      if (!baselineId) {
+        setProof({ state: "running", note: "no baseline yet — evaluating the CURRENT version first" });
+        const started = await runSuite(loopId, suite.suite_id);
+        const base = await pollRun(suite.suite_id, started.eval_run_id, nCases, "baseline");
+        if (!base) throw new Error("Baseline eval did not complete in time");
+        baselineId = base.eval_run_id as string;
+      }
+      if (!baselineId) throw new Error("No baseline eval run available");
+
+      setProof({ state: "running", note: "evaluating your edited version…" });
+      const cand = await runCandidateSuite(
+        loopId, suite.suite_id, candidateSpec(), `prompt edit: ${editing}`,
+      );
+      const done = await pollRun(suite.suite_id, cand.eval_run_id, nCases, "your edit");
+      if (!done) throw new Error("Candidate eval did not complete in time");
+
+      const report = await compareEvalRuns(loopId, suite.suite_id, baselineId, cand.eval_run_id);
+      setProof({ state: "done", report });
+    } catch (e: any) { setProof(null); setErr(e.message); }
+    finally { setBusy(null); }
+  };
+
+  const save = async () => {
+    const report = proof?.state === "done" ? proof.report : null;
+    if (report?.verdict === "regression") {
+      if (!confirm(
+        `This edit BROKE ${report.broke.length} eval case(s):\n` +
+        report.broke.map((b) => `  • ${b.focus || `case ${b.case_index + 1}`}`).join("\n") +
+        `\n\nOverride and save anyway?`,
+      )) return;
+    } else if (!report) {
+      if (!confirm("This edit has NOT been proven against the evals. Save anyway?")) return;
+    }
+    setBusy("save"); setErr(null);
+    try {
+      const note = `Prompt edit on '${editing}'` +
+        (report ? ` (evals: ${report.verdict})` : " (unproven)");
+      await updateLoopSpec(loopId, candidateSpec(), note);
+      cancel(); onChanged();
+    } catch (e: any) { setErr(e.message); }
+    finally { setBusy(null); }
+  };
+
+  const dirty = editing !== null &&
+    text !== (llmSteps.find((s: any) => s.id === editing)?.config?.prompt || "");
+
+  return (
+    <div className="mt-4 border border-border rounded-lg p-4">
+      <h3 className="font-semibold mb-1">Step prompts</h3>
+      <p className="text-xs text-muted-foreground mb-3">
+        Edit what a step asks the AI to do — get an AI review, prove the change against the
+        eval suite, then save (regressions need an explicit override).
+      </p>
+
+      <div className="space-y-2">
+        {llmSteps.map((s: any) => (
+          editing === s.id ? (
+            <div key={s.id} className="border border-primary/40 rounded-md p-3 space-y-2">
+              <p className="text-xs font-mono text-muted-foreground">{s.id}</p>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={5}
+                className="w-full rounded-md border border-border bg-background p-2.5 text-sm font-mono"
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" disabled={busy !== null} onClick={askReview}>
+                  {busy === "review" ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Pencil size={14} className="mr-1" />}
+                  AI review
+                </Button>
+                <Button size="sm" variant="outline" disabled={busy !== null || !dirty} onClick={prove}>
+                  {busy === "prove" ? <Loader2 size={14} className="mr-1 animate-spin" /> : <ShieldCheck size={14} className="mr-1" />}
+                  Prove against evals
+                </Button>
+                <Button size="sm" disabled={busy !== null || !dirty} onClick={save}>
+                  {busy === "save" ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Save size={14} className="mr-1" />}
+                  Save
+                </Button>
+                <Button size="sm" variant="ghost" disabled={busy !== null} onClick={cancel}>Cancel</Button>
+              </div>
+
+              {err && <p className="text-sm text-destructive">{err}</p>}
+
+              {review && (
+                <div className="border border-border rounded-md p-3 bg-muted/20 space-y-2 text-sm">
+                  <p><span className="font-medium">AI assessment:</span> {review.assessment}</p>
+                  {review.issues.length > 0 && (
+                    <ul className="list-disc pl-5 space-y-0.5 text-amber-600">
+                      {review.issues.map((i, k) => <li key={k}>{i}</li>)}
+                    </ul>
+                  )}
+                  {review.improved_text && review.improved_text !== text && (
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Suggested rewrite</p>
+                      <pre className="text-xs font-mono whitespace-pre-wrap bg-background border border-border rounded p-2">{review.improved_text}</pre>
+                      <Button size="sm" variant="outline" className="mt-2"
+                              onClick={() => setText(review.improved_text)}>
+                        Use this version
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {proof?.state === "running" && (
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 size={14} className="animate-spin" /> {proof.note}
+                </p>
+              )}
+              {proof?.state === "done" && (
+                <RegressionReportView report={proof.report} />
+              )}
+            </div>
+          ) : (
+            <div key={s.id} className="flex items-start gap-2 border border-border rounded-md p-2.5 text-sm bg-background">
+              <span className="text-xs font-mono text-muted-foreground mt-0.5 shrink-0">{s.id}</span>
+              <p className="flex-1 min-w-0 text-xs text-muted-foreground line-clamp-2 font-mono">
+                {s.config?.prompt || "(no prompt)"}
+              </p>
+              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" disabled={editing !== null}
+                      onClick={() => startEdit(s)}>
+                <Pencil size={13} />
+              </Button>
+            </div>
+          )
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RegressionReportView({ report }: { report: RegressionReport }) {
+  const style =
+    report.verdict === "regression" ? "bg-red-500/15 text-red-600"
+    : report.verdict === "improved" ? "bg-emerald-500/15 text-emerald-600"
+    : "bg-zinc-500/15 text-zinc-500";
+  const gate = (s: any) => s?.gate ?? "—";
+  return (
+    <div className="border border-border rounded-md p-3 bg-muted/20 text-sm space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className={`px-2 py-0.5 rounded text-[11px] font-semibold uppercase ${style}`}>
+          {report.verdict === "no_change" ? "no change" : report.verdict}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          gate {gate(report.baseline_summary)} → {gate(report.candidate_summary)} ·
+          {" "}{report.still_passing} still passing · {report.still_failing} still failing
+        </span>
+      </div>
+      {report.broke.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-red-600 mb-1">✗ Broke ({report.broke.length})</p>
+          <ul className="text-xs space-y-0.5">
+            {report.broke.map((b) => (
+              <li key={b.case_index}>• {b.focus || `case ${b.case_index + 1}`}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {report.fixed.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-emerald-600 mb-1">✓ Fixed ({report.fixed.length})</p>
+          <ul className="text-xs space-y-0.5">
+            {report.fixed.map((f) => (
+              <li key={f.case_index}>• {f.focus || `case ${f.case_index + 1}`}</li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
@@ -760,7 +1043,9 @@ function EvalSection({ loopId }: { loopId: string }) {
       setSuites(s.suites);
       if (s.suites[0]) {
         const r = await listEvalRuns(loopId, s.suites[0].suite_id);
-        setLatest(r.eval_runs[0] || null);
+        // Candidate runs are edit-flow experiments on UNSAVED specs — the
+        // headline scorecard must reflect the saved spec only.
+        setLatest((r.eval_runs || []).filter((x: any) => !x.candidate)[0] || null);
       }
     } catch { /* none yet */ }
   }, [loopId]);

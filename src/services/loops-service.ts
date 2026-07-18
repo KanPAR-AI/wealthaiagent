@@ -202,3 +202,52 @@ export const runSuite = (loopId: string, suiteId: string) =>
 
 export const listEvalRuns = (loopId: string, suiteId: string) =>
   loopsFetch(`/loops/${loopId}/eval-suites/${suiteId}/runs`);
+
+export const getEvalRun = (loopId: string, suiteId: string, evalRunId: string) =>
+  loopsFetch(`/loops/${loopId}/eval-suites/${suiteId}/runs/${evalRunId}`);
+
+// ── Regression-gated edit flow ────────────────────────────────────────────
+
+export interface EditReview {
+  assessment: string;
+  issues: string[];
+  improved_text: string;
+  current_text: string;
+}
+
+export const reviewEdit = (
+  loopId: string,
+  body: { kind: "sop" | "prompt"; step_id?: string; text: string },
+): Promise<EditReview> =>
+  loopsFetch(`/loops/${loopId}/edit/review`, { method: "POST", body: JSON.stringify(body) });
+
+export const runCandidateSuite = (
+  loopId: string,
+  suiteId: string,
+  spec: Record<string, any>,
+  label = "candidate",
+): Promise<{ eval_run_id: string }> =>
+  loopsFetch(`/loops/${loopId}/eval-suites/${suiteId}/run-candidate`, {
+    method: "POST",
+    body: JSON.stringify({ spec, label }),
+  });
+
+export interface RegressionReport {
+  verdict: "regression" | "improved" | "no_change";
+  fixed: { case_index: number; focus: string }[];
+  broke: { case_index: number; focus: string }[];
+  still_passing: number;
+  still_failing: number;
+  baseline_summary: any;
+  candidate_summary: any;
+}
+
+export const compareEvalRuns = (
+  loopId: string,
+  suiteId: string,
+  baseline: string,
+  candidate: string,
+): Promise<RegressionReport> =>
+  loopsFetch(
+    `/loops/${loopId}/eval-suites/${suiteId}/compare?baseline=${baseline}&candidate=${candidate}`,
+  );
