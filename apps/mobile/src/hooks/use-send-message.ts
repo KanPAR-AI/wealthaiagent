@@ -53,6 +53,7 @@ export function useSendMessage(
   const controllerRef = useRef<AbortController | null>(null);
   const addMessage = useChatStore((s) => s.addMessage);
   const updateMessage = useChatStore((s) => s.updateMessage);
+  const migrateChat = useChatStore((s) => s.migrateChat);
   const selectedAgent = useChatStore((s) => s.selectedAgent);
 
   const cancel = useCallback(() => {
@@ -71,24 +72,15 @@ export function useSendMessage(
         return;
       }
 
-      // ── Session bootstrap (first message) ─────────────────────────
-      let activeChatId = chatId;
-      let isFirstMessage = false;
-      if (!activeChatId) {
-        setState({ isSending: true, isCreatingChat: true });
-        try {
-          const { chatId: newChatId } = await createChatSession(token, 'New Chat', trimmed, files);
-          activeChatId = newChatId;
-          isFirstMessage = true;
-          onChatCreated(newChatId);
-        } catch (e) {
-          console.error('[useSendMessage] createChatSession failed:', e);
-          setState({ isSending: false, isCreatingChat: false });
-          throw e;
-        }
-      }
-
-      setState({ isSending: true, isCreatingChat: false });
+      // ── Optimistic render FIRST (bug 95290c92) ────────────────────
+      // The user's bubble + a streaming placeholder must appear INSTANTLY —
+      // like ChatGPT/Gemini — not after the ~1-2s session-create round trip.
+      // A brand-new chat has no backend id yet, so we render under a temp
+      // local id and migrate to the real one when createChatSession returns.
+      const isFirstMessage = !chatId;
+      let activeChatId = chatId ?? nanoid();
+      if (isFirstMessage) onChatCreated(activeChatId);   // switch to chat view now
+      setState({ isSending: true, isCreatingChat: isFirstMessage });
 
       let userMessageIdLive = nanoid();
       addMessage(activeChatId, {
@@ -108,6 +100,29 @@ export function useSendMessage(
         isStreaming: true,
         streamingContent: '',
       });
+
+      // ── Session bootstrap (first message) ─────────────────────────
+      // Create the backend session in the background, then migrate the
+      // already-visible optimistic bubbles onto the real chat id.
+      if (isFirstMessage) {
+        try {
+          const { chatId: newChatId } = await createChatSession(token, 'New Chat', trimmed, files);
+          if (newChatId && newChatId !== activeChatId) {
+            migrateChat(activeChatId, newChatId);
+            activeChatId = newChatId;
+            onChatCreated(newChatId);
+          }
+          setState({ isSending: true, isCreatingChat: false });
+        } catch (e) {
+          console.error('[useSendMessage] createChatSession failed:', e);
+          updateMessage(activeChatId, aiMessageIdLive, {
+            isStreaming: false,
+            error: "Couldn't start the chat. Tap to retry.",
+          });
+          setState({ isSending: false, isCreatingChat: false });
+          throw e;
+        }
+      }
 
       const controller = new AbortController();
       controllerRef.current = controller;

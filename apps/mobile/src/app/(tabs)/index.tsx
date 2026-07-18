@@ -6,7 +6,7 @@
 // same chat client, and the same backend the web app uses.
 
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Keyboard, Pressable, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -55,14 +55,24 @@ export default function ChatScreen() {
   // the sheet itself must never be in the shot.
   const [bugSheetOpen, setBugSheetOpen] = useState(false);
   const [bugScreenshot, setBugScreenshot] = useState<string | null>(null);
+  const screenRef = useRef<View>(null);
   const reportBug = async () => {
     let shot: string | null = null;
     try {
-      const { captureScreen } = await import('react-native-view-shot');
-      shot = await captureScreen({ format: 'jpg', quality: 0.85 });
+      const vs = await import('react-native-view-shot');
+      // captureRef on the mounted screen view is far more reliable than
+      // captureScreen (which flakes on new-arch / static frameworks and was
+      // silently returning null → no auto-attached screenshot). Fall back to
+      // captureScreen only if the ref capture is unavailable.
+      if (screenRef.current && vs.captureRef) {
+        shot = await vs.captureRef(screenRef, { format: 'jpg', quality: 0.85 });
+      } else if (vs.captureScreen) {
+        shot = await vs.captureScreen({ format: 'jpg', quality: 0.85 });
+      }
     } catch (e) {
-      // Capture can fail (fresh binary missing the native module, odd GPU
-      // states) — the sheet still works, just without the pre-attached shot.
+      // Capture can still fail (native module unregistered, odd GPU states) —
+      // the sheet works without a pre-attached shot; the user can pick from
+      // the library. Surfaced so the on-device console shows the real cause.
       console.warn('[reportBug] screen capture failed:', e);
     }
     setBugScreenshot(shot);
@@ -92,7 +102,7 @@ export default function ChatScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <SafeAreaView ref={screenRef} collapsable={false} style={styles.safeArea} edges={['top', 'bottom']}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.backgroundElement }]}>
           <Pressable

@@ -13,6 +13,7 @@
 // form fields. With no image we use the shared submitBugReportCore.
 
 import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -104,14 +105,32 @@ export function BugReportSheet({
     try {
       const token = await getToken();
       if (attachmentUri) {
+        // Downscale + compress before upload. A full-resolution screen capture
+        // (or library photo) is several MB, so "send report" took forever (the
+        // upload was the bottleneck, not the request). Cap width at 1200px +
+        // JPEG 0.6 — plenty for a legible bug screenshot. Fall back to the
+        // original on any failure.
+        let uploadUri = attachmentUri;
+        let uploadMime = attachmentUri.endsWith('.png') ? 'image/png' : 'image/jpeg';
+        try {
+          const shrunk = await manipulateAsync(
+            attachmentUri,
+            [{ resize: { width: 1200 } }],
+            { compress: 0.6, format: SaveFormat.JPEG },
+          );
+          uploadUri = shrunk.uri;
+          uploadMime = 'image/jpeg';
+        } catch {
+          /* keep the original on any manipulation failure */
+        }
         const result = await uploadAsync(
           apiUrl('/bug-reports'),
-          attachmentUri,
+          uploadUri,
           {
             httpMethod: 'POST',
             uploadType: FileSystemUploadType.MULTIPART,
             fieldName: 'screenshot',
-            mimeType: attachmentUri.endsWith('.png') ? 'image/png' : 'image/jpeg',
+            mimeType: uploadMime,
             parameters: {
               description: desc,
               ...(chatId ? { chat_id: chatId } : {}),

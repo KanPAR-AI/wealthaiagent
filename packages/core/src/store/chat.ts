@@ -16,6 +16,10 @@ interface ChatState {
   // Message management
   addMessage: (chatId: string, message: Message) => void;
   updateMessage: (chatId: string, messageId: string, updates: Partial<Message>) => void;
+  // Move a chat's messages from one id to another. Used for the optimistic
+  // first message: the user's bubble renders instantly under a temp local id,
+  // then migrates to the real backend chat id once the session is created.
+  migrateChat: (fromChatId: string, toChatId: string) => void;
   clearChat: (chatId: string) => void;
   getMessages: (chatId: string) => Message[];
 
@@ -134,6 +138,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
           },
         },
       };
+    });
+  },
+
+  // Move messages from a temp/local chat id to the real one (first-message flow).
+  migrateChat: (fromChatId, toChatId) => {
+    if (fromChatId === toChatId) return;
+    set((state) => {
+      const moving = state.chats[fromChatId];
+      if (!moving) return state;
+      const chats = { ...state.chats };
+      delete chats[fromChatId];
+      const existing = chats[toChatId]?.messages || [];
+      const merged = [...existing, ...moving.messages].sort((a, b) =>
+        (a.timestamp || '').localeCompare(b.timestamp || ''),
+      );
+      chats[toChatId] = { messages: merged };
+      return { chats };
     });
   },
 
