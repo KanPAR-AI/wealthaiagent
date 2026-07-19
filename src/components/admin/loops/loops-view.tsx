@@ -683,6 +683,7 @@ function RunWatch({ loopId, onClose }: { loopId: string; onClose: () => void }) 
         await new Promise((r) => setTimeout(r, 2000));
         const { run } = await getRun(loopId, approval.runId);
         setCost(Number(run.cost_usd || 0));
+        setTokens((run.tokens_in || 0) + (run.tokens_out || 0));
         setPhase((p) => {
           const next = { ...p };
           for (const h of run.history || []) {
@@ -692,6 +693,12 @@ function RunWatch({ loopId, onClose }: { loopId: string; onClose: () => void }) 
         });
         setChecks(run.check_results || []);
         setStatus(run.status);
+        // A loop can gate MORE than once (approve the drafts, then a guarded
+        // send). Re-surface the next gate instead of polling into the void.
+        if (run.status === "awaiting_approval" && run.pending_approval) {
+          setApproval({ prompt: run.pending_approval.prompt, runId: approval.runId });
+          return;
+        }
         if (["completed", "failed", "cancelled"].includes(run.status)) {
           setVerdict(run.verdict ?? null); setFinished(true); break;
         }
