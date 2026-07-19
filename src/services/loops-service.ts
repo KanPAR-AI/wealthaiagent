@@ -206,6 +206,12 @@ export const listEvalRuns = (loopId: string, suiteId: string) =>
 export const getEvalRun = (loopId: string, suiteId: string, evalRunId: string) =>
   loopsFetch(`/loops/${loopId}/eval-suites/${suiteId}/runs/${evalRunId}`);
 
+// Continue a stalled eval run from its per-case checkpoint (durable evals).
+export const resumeEvalRun = (loopId: string, suiteId: string, evalRunId: string) =>
+  loopsFetch(`/loops/${loopId}/eval-suites/${suiteId}/runs/${evalRunId}/resume`, {
+    method: "POST",
+  });
+
 // ── Regression-gated edit flow ────────────────────────────────────────────
 
 export interface EditReview {

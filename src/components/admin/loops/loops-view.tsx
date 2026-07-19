@@ -18,9 +18,9 @@ import {
   addCase, addRunToSuite, approveRun, compareEvalRuns, compileSop, createLoop,
   createSuite, deleteCase, deleteIntegration, deleteLoop, getEvalRun, getLoop,
   getOverview, getRun, getSuite, listEvalRuns, listIntegrations, listLoops,
-  listRuns, listSuites, listVersions, rejectRun, restoreVersion, reviewEdit,
-  runCandidateSuite, runSuite, setIntegration, setLoopStatus, startRun,
-  streamRun, updateCase, updateLoopSpec, updateSuiteSettings,
+  listRuns, listSuites, listVersions, rejectRun, restoreVersion, resumeEvalRun,
+  reviewEdit, runCandidateSuite, runSuite, setIntegration, setLoopStatus,
+  startRun, streamRun, updateCase, updateLoopSpec, updateSuiteSettings,
 } from "@/services/loops-service";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -943,12 +943,21 @@ function PromptLab(
   };
 
   // Poll one eval-run doc to completion; it checkpoints per case, so we can
-  // narrate real progress ("case 3/10") instead of a dumb spinner.
+  // narrate real progress ("case 3/10") instead of a dumb spinner. If the
+  // backend marks it "stalled" (background task died), auto-resume ONCE from
+  // the checkpoint — completed cases are never re-run.
   const pollRun = async (suiteId: string, id: string, cases: number, phase: string) => {
+    let resumed = false;
     for (let i = 0; i < 360; i++) {                      // ≤ ~12 min
       await new Promise((r) => setTimeout(r, 2000));
       const { eval_run } = await getEvalRun(loopId, suiteId, id);
       if (eval_run?.status === "completed") return eval_run;
+      if (eval_run?.status === "stalled" && !resumed) {
+        resumed = true;
+        setProof({ state: "running", note: `${phase} — stalled, resuming from checkpoint…` });
+        await resumeEvalRun(loopId, suiteId, id).catch(() => {});
+        continue;
+      }
       const done = (eval_run?.per_case || []).length;
       setProof({ state: "running", note: `${phase} — case ${Math.min(done + 1, cases)}/${cases}` });
     }
@@ -1381,6 +1390,14 @@ function EvalSection({ loopId }: { loopId: string }) {
           {latest.status === "running" ? (
             <span className="flex items-center gap-2 text-muted-foreground">
               <Loader2 size={14} className="animate-spin" /> running trials…
+            </span>
+          ) : latest.status === "stalled" ? (
+            <span className="flex items-center gap-2 text-amber-600">
+              ⚠ eval stalled (worker died)
+              <Button size="sm" variant="outline" className="h-7 px-2 text-xs"
+                      onClick={async () => { await resumeEvalRun(loopId, suite.suite_id, latest.eval_run_id).catch(() => {}); await load(); }}>
+                Resume from checkpoint
+              </Button>
             </span>
           ) : s ? (
             <div className="flex items-center gap-3 flex-wrap">
