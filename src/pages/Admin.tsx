@@ -34,6 +34,7 @@ import { AgentBuilderChat } from "@/components/admin/agent-builder/agent-builder
 import { SandboxPanel } from "@/components/admin/agent-builder/sandbox-panel";
 import { useAdminStore } from "@/store/admin";
 import { fetchAgents } from "@/services/admin-service";
+import { OperationsView } from "@/components/admin/ops/operations-view";
 import { LoopsView } from "@/components/admin/loops/loops-view";
 
 type Tab =
@@ -86,7 +87,7 @@ export default function Admin() {
   const [view, setView] = useState<"manage" | "detail">("manage");
   // Top-level section: Agents (existing) vs Loops (Verified Procedures —
   // org-level, not per-agent, so it sits beside the agent list).
-  const [section, setSection] = useState<"agents" | "loops">("agents");
+  const [section, setSection] = useState<"agents" | "loops" | "ops">("agents");
 
   const refreshAgents = () =>
     fetchAgents()
@@ -129,7 +130,7 @@ export default function Admin() {
         <div className="max-w-6xl mx-auto px-6 py-6">
           {/* Section switcher: Agents | Loops */}
           <div className="flex gap-1 mb-5 border-b border-border">
-            {(["agents", "loops"] as const).map((s) => (
+            {(["agents", "loops", "ops"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setSection(s)}
@@ -139,13 +140,15 @@ export default function Admin() {
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {s === "agents" ? "Agents" : "Verified Procedures"}
+                {s === "agents" ? "Agents" : s === "loops" ? "Verified Procedures" : "Operations"}
               </button>
             ))}
           </div>
 
           {section === "loops" ? (
             <LoopsView />
+          ) : section === "ops" ? (
+            <OperationsView />
           ) : (
             <>
               <div className="mb-4">

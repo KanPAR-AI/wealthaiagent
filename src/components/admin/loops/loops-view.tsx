@@ -230,7 +230,7 @@ function CompilePanel({ onDone }: { onDone: (loopId?: string) => void }) {
 // HTTP endpoint. On a LIVE run, the step's params are POSTed as JSON and the
 // hook's JSON response becomes the step's result. Dry-run still sends nothing.
 
-function IntegrationsPanel({ onClose }: { onClose: () => void }) {
+export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
   const [rows, setRows] = useState<Record<string, { url: string; has_secret: boolean }>>({});
   const [tool, setTool] = useState("");
   const [url, setUrl] = useState("");
@@ -263,7 +263,7 @@ function IntegrationsPanel({ onClose }: { onClose: () => void }) {
     <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
       <div className="flex items-center gap-2 mb-1">
         <h3 className="font-semibold">Tool integrations</h3>
-        <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={onClose}>Close</Button>
+        {onClose && <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={onClose}>Close</Button>}
       </div>
       <p className="text-xs text-muted-foreground mb-3">
         Map a tool id (e.g. <span className="font-mono">whatsapp_send_message</span>) to a webhook —
