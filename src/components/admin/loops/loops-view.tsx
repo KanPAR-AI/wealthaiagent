@@ -13,12 +13,14 @@ import {
 
 import { Button } from "@/components/ui/button";
 import {
-  EditReview, EvalCase, LoopSummary, LoopVersion, RegressionReport, RunSummary,
-  addCase, approveRun, compareEvalRuns, compileSop, createLoop, createSuite,
-  deleteCase, deleteLoop, getEvalRun, getLoop, getRun, getSuite, listEvalRuns,
-  listLoops, listRuns, listSuites, listVersions, rejectRun, restoreVersion,
-  reviewEdit, runCandidateSuite, runSuite, setLoopStatus, startRun, streamRun,
-  updateCase, updateLoopSpec, updateSuiteSettings,
+  EditReview, EvalCase, LoopSummary, LoopVersion, LoopsOverview, RegressionReport,
+  RunSummary,
+  addCase, addRunToSuite, approveRun, compareEvalRuns, compileSop, createLoop,
+  createSuite, deleteCase, deleteIntegration, deleteLoop, getEvalRun, getLoop,
+  getOverview, getRun, getSuite, listEvalRuns, listIntegrations, listLoops,
+  listRuns, listSuites, listVersions, rejectRun, restoreVersion, reviewEdit,
+  runCandidateSuite, runSuite, setIntegration, setLoopStatus, startRun,
+  streamRun, updateCase, updateLoopSpec, updateSuiteSettings,
 } from "@/services/loops-service";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -56,18 +58,23 @@ function VerdictBadge({ verdict }: { verdict?: string | null }) {
 
 export function LoopsView() {
   const [loops, setLoops] = useState<LoopSummary[]>([]);
+  const [overview, setOverview] = useState<LoopsOverview | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showCompile, setShowCompile] = useState(false);
+  const [showIntegrations, setShowIntegrations] = useState(false);
 
   const refresh = useCallback(() => {
     listLoops().then((d) => setLoops(d.loops)).catch((e) => setError(e.message));
+    getOverview().then(setOverview).catch(() => {});
   }, []);
   useEffect(() => { refresh(); }, [refresh]);
 
   if (selected) {
     return <LoopDetailView loopId={selected} onBack={() => { setSelected(null); refresh(); }} />;
   }
+
+  const ovByLoop = Object.fromEntries((overview?.loops || []).map((l) => [l.loop_id, l]));
 
   return (
     <div>
@@ -79,12 +86,36 @@ export function LoopsView() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowIntegrations((s) => !s)}>
+            Integrations
+          </Button>
           <Button variant="outline" size="sm" onClick={refresh}><RefreshCw size={14} /></Button>
           <Button size="sm" onClick={() => setShowCompile(true)}>
             <Plus size={14} className="mr-1" /> New from SOP
           </Button>
         </div>
       </div>
+
+      {/* Operational overview: activity, the approval inbox, metered spend. */}
+      {overview && (
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="border border-border rounded-lg p-3">
+            <p className="text-2xl font-bold">{overview.totals.active_runs}</p>
+            <p className="text-xs text-muted-foreground">runs in flight</p>
+          </div>
+          <div className={`border rounded-lg p-3 ${overview.totals.awaiting_approval > 0
+            ? "border-amber-500/50 bg-amber-500/10" : "border-border"}`}>
+            <p className="text-2xl font-bold">{overview.totals.awaiting_approval}</p>
+            <p className="text-xs text-muted-foreground">waiting on YOUR approval</p>
+          </div>
+          <div className="border border-border rounded-lg p-3">
+            <p className="text-2xl font-bold">${overview.totals.recent_cost_usd.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">recent spend (last 50 runs/loop)</p>
+          </div>
+        </div>
+      )}
+
+      {showIntegrations && <IntegrationsPanel onClose={() => setShowIntegrations(false)} />}
 
       {error && <p className="text-sm text-destructive mb-3">{error}</p>}
 
@@ -100,22 +131,36 @@ export function LoopsView() {
             No loops yet — click “New from SOP” and describe a procedure.
           </p>
         )}
-        {loops.map((l) => (
-          <button
-            key={l.loop_id}
-            onClick={() => setSelected(l.loop_id)}
-            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 text-left"
-          >
-            <ShieldCheck size={16} className="text-muted-foreground shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="font-medium truncate">{l.name}</div>
-              <div className="text-xs text-muted-foreground">
-                {l.loop_id} · v{l.version} · trigger: {l.trigger}
+        {loops.map((l) => {
+          const ov = ovByLoop[l.loop_id];
+          return (
+            <button
+              key={l.loop_id}
+              onClick={() => setSelected(l.loop_id)}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 text-left"
+            >
+              <ShieldCheck size={16} className="text-muted-foreground shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="font-medium truncate">{l.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {l.loop_id} · v{l.version} · trigger: {l.trigger}
+                  {ov ? <> · ${ov.recent_cost_usd.toFixed(3)}</> : null}
+                </div>
               </div>
-            </div>
-            <Badge text={l.status} />
-          </button>
-        ))}
+              {ov && ov.awaiting_approval.length > 0 && (
+                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-500/15 text-amber-600">
+                  🔔 {ov.awaiting_approval.length} to approve
+                </span>
+              )}
+              {ov && ov.active_runs > 0 && (
+                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-500/15 text-blue-600">
+                  {ov.active_runs} running
+                </span>
+              )}
+              <Badge text={l.status} />
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -171,6 +216,86 @@ function CompilePanel({ onDone }: { onDone: (loopId?: string) => void }) {
       <p className="text-[11px] text-muted-foreground mt-1">
         Saved as a draft the moment it compiles — it won’t vanish on reload. Review, edit, then Activate (or delete) from the detail view.
       </p>
+      {err && <p className="text-sm text-destructive mt-2">{err}</p>}
+    </div>
+  );
+}
+
+// ── Integrations: tool → webhook mapping ───────────────────────────────
+//
+// "A clear way to write integrations" without waiting for first-class
+// connectors: map a tool id to a Zapier Catch Hook / Make webhook / your own
+// HTTP endpoint. On a LIVE run, the step's params are POSTed as JSON and the
+// hook's JSON response becomes the step's result. Dry-run still sends nothing.
+
+function IntegrationsPanel({ onClose }: { onClose: () => void }) {
+  const [rows, setRows] = useState<Record<string, { url: string; has_secret: boolean }>>({});
+  const [tool, setTool] = useState("");
+  const [url, setUrl] = useState("");
+  const [secret, setSecret] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    listIntegrations().then((d) => setRows(d.integrations)).catch((e) => setErr(e.message));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const save = async () => {
+    setBusy(true); setErr(null);
+    try {
+      await setIntegration(tool.trim(), url.trim(), secret.trim());
+      setTool(""); setUrl(""); setSecret(""); load();
+    } catch (e: any) { setErr(e.message); }
+    finally { setBusy(false); }
+  };
+
+  const remove = async (t: string) => {
+    if (!confirm(`Remove the integration for '${t}'? Live runs using it will fail loudly.`)) return;
+    setBusy(true);
+    try { await deleteIntegration(t); load(); } catch (e: any) { setErr(e.message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
+      <div className="flex items-center gap-2 mb-1">
+        <h3 className="font-semibold">Tool integrations</h3>
+        <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={onClose}>Close</Button>
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        Map a tool id (e.g. <span className="font-mono">whatsapp_send_message</span>) to a webhook —
+        a Zapier Catch Hook, a Make webhook, or your own endpoint. Live runs POST the step&apos;s
+        params as JSON; the hook&apos;s JSON response becomes the step&apos;s output. Dry runs never send.
+      </p>
+
+      {Object.keys(rows).length > 0 && (
+        <div className="space-y-1.5 mb-3">
+          {Object.entries(rows).map(([t, v]) => (
+            <div key={t} className="flex items-center gap-2 text-sm border border-border rounded-md px-2.5 py-1.5 bg-background">
+              <span className="font-mono text-xs shrink-0">{t}</span>
+              <span className="flex-1 min-w-0 truncate text-xs text-muted-foreground">{v.url}</span>
+              {v.has_secret && <span className="text-[10px] text-muted-foreground shrink-0">🔒 secret</span>}
+              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive shrink-0"
+                      disabled={busy} onClick={() => remove(t)}>
+                <Trash2 size={12} />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <input value={tool} onChange={(e) => setTool(e.target.value)} placeholder="tool id (whatsapp_send_message)"
+               className="rounded-md border border-border bg-background px-2 py-1.5 text-sm font-mono w-64" />
+        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://hooks.zapier.com/…"
+               className="flex-1 min-w-48 rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
+        <input value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="secret (optional)"
+               className="rounded-md border border-border bg-background px-2 py-1.5 text-sm w-40" />
+        <Button size="sm" disabled={busy || tool.trim().length < 2 || !url.startsWith("http")} onClick={save}>
+          <Save size={14} className="mr-1" /> Save
+        </Button>
+      </div>
       {err && <p className="text-sm text-destructive mt-2">{err}</p>}
     </div>
   );
@@ -291,6 +416,8 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
 
       <PromptLab loop={loop} loopId={loopId} onChanged={refresh} />
 
+      <SpecOps loop={loop} loopId={loopId} onChanged={refresh} />
+
       <VersionHistory loopId={loopId} currentVersion={loop.version} onChanged={refresh} />
 
       <EvalSection loopId={loopId} />
@@ -350,6 +477,26 @@ function RunDetail({ loopId, runId, onChanged }: { loopId: string; runId: string
     finally { setBusy(false); }
   };
 
+  // Flywheel: turn THIS run into a regression case. Especially valuable for
+  // failed/rejected runs — every future edit must then keep this scenario ok.
+  const toSuite = async () => {
+    const expected = prompt(
+      "What SHOULD have happened on this input? (plain English — used by the judge; optional)",
+    );
+    if (expected === null) return;   // cancelled
+    setBusy(true);
+    try {
+      const r = await addRunToSuite(loopId, runId, { expected: expected || "" });
+      alert(`Added as eval case #${r.cases} (${r.focus}).`);
+    } catch (e: any) { alert(`Could not add: ${e.message}`); }
+    finally { setBusy(false); }
+  };
+
+  const tokens = (run.tokens_in || 0) + (run.tokens_out || 0);
+  const wallClock = run.created_at && run.finished_at
+    ? Math.max(0, (Date.parse(run.finished_at) - Date.parse(run.created_at)) / 1000)
+    : null;
+
   return (
     <div className="px-4 py-3 bg-muted/20 border-t border-border text-sm space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
@@ -357,8 +504,14 @@ function RunDetail({ loopId, runId, onChanged }: { loopId: string; runId: string
         <VerdictBadge verdict={run.verdict} />
         {run.exit_reason && <span className="text-xs text-muted-foreground">{run.exit_reason}</span>}
         <span className="text-xs text-muted-foreground ml-auto">
-          ${Number(run.cost_usd || 0).toFixed(4)} metered
+          ${Number(run.cost_usd || 0).toFixed(4)}
+          {tokens > 0 && <> · {tokens.toLocaleString()} tokens</>}
+          {wallClock !== null && <> · {wallClock.toFixed(0)}s</>}
         </span>
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={busy}
+                onClick={toSuite}>
+          <Plus size={12} className="mr-1" /> Add to eval suite
+        </Button>
       </div>
 
       {run.pending_approval && (
@@ -399,13 +552,26 @@ function RunDetail({ loopId, runId, onChanged }: { loopId: string; runId: string
       <div>
         <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Steps</p>
         <div className="flex flex-wrap gap-1">
-          {(run.history || []).map((h: any, i: number) => (
-            <span key={i}
-              className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
-                h.phase === "failed" ? "border-red-400 text-red-600" : "border-border text-muted-foreground"}`}>
-              {h.step_id}:{h.phase}
-            </span>
-          ))}
+          {(() => {
+            // Duration per step = finished.at − started.at (history stamps `at`).
+            const started: Record<string, number> = {};
+            return (run.history || []).map((h: any, i: number) => {
+              let dur = "";
+              const t = h.at ? Date.parse(h.at) : NaN;
+              if (h.phase === "started" && !isNaN(t)) started[h.step_id] = t;
+              if ((h.phase === "finished" || h.phase === "failed") && !isNaN(t)
+                  && started[h.step_id]) {
+                dur = ` ${((t - started[h.step_id]) / 1000).toFixed(1)}s`;
+              }
+              return (
+                <span key={i}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
+                    h.phase === "failed" ? "border-red-400 text-red-600" : "border-border text-muted-foreground"}`}>
+                  {h.step_id}:{h.phase}{dur}
+                </span>
+              );
+            });
+          })()}
         </div>
       </div>
 
@@ -429,6 +595,7 @@ function RunWatch({ loopId, onClose }: { loopId: string; onClose: () => void }) 
   const [phase, setPhase] = useState<Record<string, StepPhase>>({});
   const [status, setStatus] = useState<string>("starting");
   const [cost, setCost] = useState(0);
+  const [tokens, setTokens] = useState(0);
   const [checks, setChecks] = useState<any[]>([]);
   const [verdict, setVerdict] = useState<string | null>(null);
   const [approval, setApproval] = useState<{ prompt: string; runId: string } | null>(null);
@@ -453,6 +620,7 @@ function RunWatch({ loopId, onClose }: { loopId: string; onClose: () => void }) 
             : p[ev.step_id] || "pending",
         }));
         if (typeof ev.cost_usd === "number") setCost(ev.cost_usd);
+        if (typeof ev.tokens === "number") setTokens(ev.tokens);
         break;
       case "status": setStatus(ev.status); break;
       case "check": setChecks((c) => [...c, ev]); break;
@@ -524,7 +692,9 @@ function RunWatch({ loopId, onClose }: { loopId: string; onClose: () => void }) 
         {steps.length > 0 && (
           <span className="text-xs text-muted-foreground">{doneCount}/{steps.length} steps</span>
         )}
-        <span className="text-xs text-muted-foreground">· ${cost.toFixed(4)}</span>
+        <span className="text-xs text-muted-foreground">
+          · ${cost.toFixed(4)}{tokens > 0 ? ` · ${tokens.toLocaleString()} tok` : ""}
+        </span>
         {!finished && !approval && <Loader2 size={14} className="animate-spin text-muted-foreground" />}
         <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={() => { abortRef.current?.abort(); onClose(); }}>
           {finished ? "Close" : "Stop watching"}
@@ -968,6 +1138,132 @@ function RegressionReportView({ report }: { report: RegressionReport }) {
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Ops & advanced spec editing (everything is editable) ───────────────
+//
+// Quick-edit the operational knobs (budgets, trigger/schedule) inline, and an
+// advanced JSON editor for the FULL spec (steps, tools+params, checks,
+// state_schema, on_exit — everything). Both save through PUT /spec, so every
+// change is versioned, re-validated, and auto-proven against the eval suite
+// (the flywheel's post-save run).
+
+function SpecOps(
+  { loop, loopId, onChanged }: { loop: any; loopId: string; onChanged: () => void },
+) {
+  const [maxIter, setMaxIter] = useState<number>(loop.budgets?.max_iterations ?? 10);
+  const [maxCost, setMaxCost] = useState<number>(loop.budgets?.max_cost_usd ?? 2);
+  const [trigType, setTrigType] = useState<string>(loop.trigger?.type ?? "manual");
+  const [cron, setCron] = useState<string>(loop.trigger?.cron ?? "");
+  const [showJson, setShowJson] = useState(false);
+  const [jsonText, setJsonText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const opsDirty =
+    maxIter !== (loop.budgets?.max_iterations ?? 10) ||
+    maxCost !== (loop.budgets?.max_cost_usd ?? 2) ||
+    trigType !== (loop.trigger?.type ?? "manual") ||
+    (cron || "") !== (loop.trigger?.cron || "");
+
+  const saveOps = async () => {
+    setBusy(true); setErr(null);
+    try {
+      const spec = JSON.parse(JSON.stringify(loop));
+      spec.budgets = { ...spec.budgets, max_iterations: maxIter, max_cost_usd: maxCost };
+      spec.trigger = { ...spec.trigger, type: trigType, cron: trigType === "schedule" ? cron : null };
+      await updateLoopSpec(loopId, spec, "Budgets/trigger edit");
+      onChanged();
+    } catch (e: any) { setErr(e.message); }
+    finally { setBusy(false); }
+  };
+
+  const openJson = () => {
+    // Strip server-managed fields; PUT /spec re-stamps them anyway.
+    const spec = { ...loop };
+    for (const k of ["created_at", "updated_at", "created_by", "org_id", "status", "version"]) {
+      delete spec[k];
+    }
+    setJsonText(JSON.stringify(spec, null, 2));
+    setShowJson(true); setErr(null);
+  };
+
+  const saveJson = async () => {
+    let parsed: any;
+    try { parsed = JSON.parse(jsonText); }
+    catch { setErr("Not valid JSON"); return; }
+    setBusy(true); setErr(null);
+    try {
+      await updateLoopSpec(loopId, parsed, "Advanced spec edit (JSON)");
+      setShowJson(false); onChanged();
+    } catch (e: any) { setErr(e.message); }   // server 422s on invalid specs
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div className="mt-4 border border-border rounded-lg p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <h3 className="font-semibold">Operations</h3>
+        <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={showJson ? () => setShowJson(false) : openJson}>
+          {showJson ? "Close advanced editor" : "Advanced: edit full spec (JSON)"}
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3 text-xs">
+        <label className="flex flex-col gap-1">
+          <span className="text-muted-foreground">Max steps / run</span>
+          <input type="number" min={1} max={1000} value={maxIter}
+                 onChange={(e) => setMaxIter(Number(e.target.value))}
+                 className="w-24 rounded-md border border-border bg-background px-2 py-1" />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-muted-foreground">Max cost / run ($)</span>
+          <input type="number" min={0.01} step={0.5} value={maxCost}
+                 onChange={(e) => setMaxCost(Number(e.target.value))}
+                 className="w-24 rounded-md border border-border bg-background px-2 py-1" />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-muted-foreground">Trigger</span>
+          <select value={trigType} onChange={(e) => setTrigType(e.target.value)}
+                  className="rounded-md border border-border bg-background px-2 py-1">
+            <option value="manual">manual</option>
+            <option value="api">api</option>
+            <option value="schedule">schedule</option>
+            <option value="chat">chat</option>
+          </select>
+        </label>
+        {trigType === "schedule" && (
+          <label className="flex flex-col gap-1">
+            <span className="text-muted-foreground">Cron</span>
+            <input value={cron} onChange={(e) => setCron(e.target.value)}
+                   placeholder="0 9 * * *"
+                   className="w-32 rounded-md border border-border bg-background px-2 py-1 font-mono" />
+          </label>
+        )}
+        <Button size="sm" variant="outline" disabled={busy || !opsDirty} onClick={saveOps}>
+          {busy ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Save size={14} className="mr-1" />}
+          Save
+        </Button>
+      </div>
+
+      {showJson && (
+        <div className="mt-3 space-y-2">
+          <p className="text-[11px] text-muted-foreground">
+            The FULL spec — steps, tools &amp; params, checks, state schema, on_exit. Saving
+            validates server-side, records a new version, and re-runs the eval suite.
+          </p>
+          <textarea value={jsonText} onChange={(e) => setJsonText(e.target.value)} rows={18}
+                    spellCheck={false}
+                    className="w-full rounded-md border border-border bg-background p-2.5 text-xs font-mono" />
+          <Button size="sm" disabled={busy} onClick={saveJson}>
+            {busy ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Save size={14} className="mr-1" />}
+            Validate &amp; save as new version
+          </Button>
+        </div>
+      )}
+      {err && <p className="text-sm text-destructive mt-2">{err}</p>}
     </div>
   );
 }

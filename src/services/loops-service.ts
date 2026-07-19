@@ -242,6 +242,44 @@ export interface RegressionReport {
   candidate_summary: any;
 }
 
+// ── Dashboard / flywheel / integrations ──────────────────────────────────
+
+export interface LoopsOverview {
+  loops: {
+    loop_id: string; name: string; status: string; version: number; trigger: string;
+    active_runs: number;
+    awaiting_approval: { run_id: string; created_at?: string }[];
+    recent_cost_usd: number;
+    last_run: { status: string; exit_reason?: string; created_at?: string } | null;
+  }[];
+  totals: { awaiting_approval: number; active_runs: number; recent_cost_usd: number };
+}
+
+export const getOverview = (): Promise<LoopsOverview> => loopsFetch(`/loops/overview`);
+
+export const addRunToSuite = (
+  loopId: string,
+  runId: string,
+  body: { suite_id?: string; expected?: string; focus?: string } = {},
+): Promise<{ suite_id: string; cases: number; focus: string }> =>
+  loopsFetch(`/loops/${loopId}/runs/${runId}/add-to-suite`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const listIntegrations = (): Promise<{
+  integrations: Record<string, { url: string; has_secret: boolean }>;
+}> => loopsFetch(`/loops/integrations`);
+
+export const setIntegration = (tool: string, url: string, secret = "") =>
+  loopsFetch(`/loops/integrations`, {
+    method: "PUT",
+    body: JSON.stringify({ tool, url, secret }),
+  });
+
+export const deleteIntegration = (tool: string) =>
+  loopsFetch(`/loops/integrations/${encodeURIComponent(tool)}`, { method: "DELETE" });
+
 export const compareEvalRuns = (
   loopId: string,
   suiteId: string,
