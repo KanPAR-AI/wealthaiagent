@@ -18,7 +18,7 @@ import {
   addCase, addRunToSuite, approveRun, compareEvalRuns, compileSop, createLoop,
   createSuite, deleteCase, deleteIntegration, deleteLoop, getEvalRun, getLoop,
   getOverview, getRun, getSuite, listEvalRuns, listIntegrations, listLoops,
-  listRuns, listSuites, listVersions, rejectRun, restoreVersion, resumeEvalRun,
+  listRuns, listSuites, listVersions, rejectRun, restoreVersion, resumeEvalRun, signalEvent,
   reviewEdit, runCandidateSuite, runSuite, setIntegration, setLoopStatus,
   startRun, streamRun, updateCase, updateLoopSpec, updateSuiteSettings,
 } from "@/services/loops-service";
@@ -30,6 +30,8 @@ const STATUS_COLORS: Record<string, string> = {
   running: "bg-blue-500/15 text-blue-600",
   verifying: "bg-purple-500/15 text-purple-600",
   awaiting_approval: "bg-amber-500/15 text-amber-600",
+  awaiting_event: "bg-purple-500/15 text-purple-600",
+  stalled: "bg-amber-500/15 text-amber-600",
   completed: "bg-emerald-500/15 text-emerald-600",
   failed: "bg-red-500/15 text-red-600",
   cancelled: "bg-zinc-500/15 text-zinc-500",
@@ -513,6 +515,28 @@ function RunDetail({ loopId, runId, onChanged }: { loopId: string; runId: string
           <Plus size={12} className="mr-1" /> Add to eval suite
         </Button>
       </div>
+
+      {run.pending_event && (
+        <div className="border border-purple-500/40 bg-purple-500/10 rounded-md p-3">
+          <p className="text-sm mb-2">
+            📡 Waiting for external event <span className="font-mono">{run.pending_event.event_key}</span>
+            {" "}(webhook callback / reply). The run holds durably — no process is waiting.
+          </p>
+          <Button size="sm" variant="outline" disabled={busy}
+                  onClick={async () => {
+                    const raw = prompt("Deliver event payload as JSON (optional):", "{}");
+                    if (raw === null) return;
+                    let payload = {};
+                    try { payload = raw.trim() ? JSON.parse(raw) : {}; }
+                    catch { alert("Not valid JSON"); return; }
+                    setBusy(true);
+                    try { await signalEvent(loopId, runId, run.pending_event.event_key, payload); load(); onChanged(); }
+                    finally { setBusy(false); }
+                  }}>
+            Deliver event now
+          </Button>
+        </div>
+      )}
 
       {run.pending_approval && (
         <div className="border border-amber-500/40 bg-amber-500/10 rounded-md p-3">

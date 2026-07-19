@@ -273,6 +273,15 @@ export const addRunToSuite = (
     body: JSON.stringify(body),
   });
 
+// Deliver an external event to a run (event-driven resume).
+export const signalEvent = (
+  loopId: string, runId: string, eventKey: string, payload: Record<string, any> = {},
+) =>
+  loopsFetch(`/loops/${loopId}/runs/${runId}/events/${encodeURIComponent(eventKey)}`, {
+    method: "POST",
+    body: JSON.stringify({ payload }),
+  });
+
 export const listIntegrations = (): Promise<{
   integrations: Record<string, { url: string; has_secret: boolean }>;
 }> => loopsFetch(`/loops/integrations`);
