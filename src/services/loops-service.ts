@@ -273,6 +273,16 @@ export const addRunToSuite = (
     body: JSON.stringify(body),
   });
 
+// AI fixer: validator problems → corrected spec preview (apply via updateLoopSpec).
+export interface FixResult {
+  spec: Record<string, any>;
+  changes: string[];
+  remaining_problems: string[];
+}
+
+export const fixLoop = (loopId: string): Promise<FixResult> =>
+  loopsFetch(`/loops/${loopId}/fix`, { method: "POST" });
+
 // Deliver an external event to a run (event-driven resume).
 export const signalEvent = (
   loopId: string, runId: string, eventKey: string, payload: Record<string, any> = {},

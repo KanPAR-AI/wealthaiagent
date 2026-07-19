@@ -18,7 +18,7 @@ import {
   addCase, addRunToSuite, approveRun, compareEvalRuns, compileSop, createLoop,
   createSuite, deleteCase, deleteIntegration, deleteLoop, getEvalRun, getLoop,
   getOverview, getRun, getSuite, listEvalRuns, listIntegrations, listLoops,
-  listRuns, listSuites, listVersions, rejectRun, restoreVersion, resumeEvalRun, signalEvent,
+  listRuns, listSuites, listVersions, rejectRun, restoreVersion, resumeEvalRun, signalEvent, fixLoop, FixResult,
   reviewEdit, runCandidateSuite, runSuite, setIntegration, setLoopStatus,
   startRun, streamRun, updateCase, updateLoopSpec, updateSuiteSettings,
 } from "@/services/loops-service";
@@ -343,6 +343,8 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [watching, setWatching] = useState(false);
+  const [fix, setFix] = useState<FixResult | null>(null);
+  const [fixBusy, setFixBusy] = useState(false);
 
   const refresh = useCallback(() => {
     getLoop(loopId).then(setDetail).catch((e) => setErr(e.message));
@@ -406,12 +408,54 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
       </div>
 
       {detail.problems.length > 0 && (
-        <p className="text-sm text-destructive mt-2">Blocking activation: {detail.problems.join("; ")}</p>
+        <div className="mt-2 border border-destructive/40 bg-destructive/5 rounded-md p-3">
+          <p className="text-sm text-destructive">Blocking activation: {detail.problems.join("; ")}</p>
+          {!fix && (
+            <Button size="sm" variant="outline" className="mt-2" disabled={fixBusy}
+                    onClick={async () => {
+                      setFixBusy(true); setErr(null);
+                      try { setFix(await fixLoop(loopId)); }
+                      catch (e: any) { setErr(e.message); }
+                      finally { setFixBusy(false); }
+                    }}>
+              {fixBusy ? <Loader2 size={14} className="mr-1 animate-spin" /> : <ShieldCheck size={14} className="mr-1" />}
+              {fixBusy ? "AI is repairing the spec…" : "Fix with AI"}
+            </Button>
+          )}
+          {fix && (
+            <div className="mt-3 text-sm space-y-2">
+              <p className="font-medium">Proposed fix — {fix.changes.length} change(s):</p>
+              <ul className="list-disc pl-5 text-xs font-mono space-y-0.5">
+                {fix.changes.map((c, i) => <li key={i}>{c}</li>)}
+              </ul>
+              {fix.remaining_problems.length > 0 && (
+                <p className="text-xs text-amber-600">
+                  Still unresolved: {fix.remaining_problems.join("; ")}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <Button size="sm" disabled={fixBusy}
+                        onClick={async () => {
+                          setFixBusy(true); setErr(null);
+                          try {
+                            await updateLoopSpec(loopId, fix.spec,
+                              `AI fix: ${fix.changes.length} change(s) for activation problems`);
+                            setFix(null); refresh();
+                          } catch (e: any) { setErr(e.message); }
+                          finally { setFixBusy(false); }
+                        }}>
+                  <Save size={14} className="mr-1" /> Apply fix (new version + auto-eval)
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setFix(null)}>Discard</Button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
       {err && <p className="text-sm text-destructive mt-2">{err}</p>}
 
       {watching && (
-        <RunWatch loopId={loopId} onClose={() => { setWatching(false); refresh(); }} />
+        <RunWatch loopId={loopId} loop={loop} onClose={() => { setWatching(false); refresh(); }} />
       )}
 
       <ProcedureSection loop={loop} loopId={loopId} onChanged={refresh} />
@@ -444,7 +488,7 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
                 </span>
               </button>
               {openRun === r.run_id && (
-                <RunDetail loopId={loopId} runId={r.run_id} onChanged={refresh} />
+                <RunDetail loopId={loopId} runId={r.run_id} loop={loop} onChanged={refresh} />
               )}
             </div>
           ))}
@@ -456,7 +500,64 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
 
 // ── Run detail: gates + check evidence ─────────────────────────────────
 
-function RunDetail({ loopId, runId, onChanged }: { loopId: string; runId: string; onChanged: () => void }) {
+// What am I approving? Render the gated step's ACTUAL payload — its params
+// with {field} templates substituted from run state — plus the material state
+// fields (the drafted report, the reminders). An approval without evidence is
+// a rubber stamp (user finding: "I don't see any other data — how to verify?").
+function ApprovalReview({ loop, run }: { loop: any; run: any }) {
+  const state: Record<string, any> = run.state || {};
+  const render = (t: string) =>
+    t.replace(/\{([a-z_][a-z0-9_]*)\}/g, (m, f) =>
+      state[f] !== undefined && state[f] !== null ? String(state[f]) : m);
+
+  const stepId = run.pending_approval?.step_id || "";
+  const step = (loop?.steps || []).find((s: any) => s.id === stepId);
+  const materialState = Object.entries(state).filter(
+    ([, v]) => v !== null && v !== "" && !(Array.isArray(v) && v.length === 0),
+  );
+
+  return (
+    <div className="mt-2 mb-3 space-y-2 text-sm">
+      {step?.kind === "tool" && (
+        <div className="border border-border rounded-md bg-background p-2.5">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+            Approving will execute: <span className="font-mono text-foreground">{step.config?.tool}</span>
+          </p>
+          {Object.entries(step.config?.params || {}).map(([k, v]) => (
+            <div key={k} className="mt-1">
+              <p className="text-[11px] font-mono text-muted-foreground">{k}:</p>
+              <pre className="text-xs whitespace-pre-wrap break-words bg-muted/30 border border-border rounded p-2 max-h-56 overflow-y-auto">
+                {typeof v === "string" ? render(v) : JSON.stringify(v, null, 1)}
+              </pre>
+            </div>
+          ))}
+        </div>
+      )}
+      {materialState.length > 0 && (
+        <details open={!step || step.kind !== "tool"}>
+          <summary className="text-xs uppercase tracking-wide text-muted-foreground cursor-pointer">
+            Review the run&apos;s data ({materialState.length} field{materialState.length > 1 ? "s" : ""})
+          </summary>
+          <div className="mt-1 space-y-1.5">
+            {materialState.map(([k, v]) => (
+              <div key={k}>
+                <p className="text-[11px] font-mono text-muted-foreground">{k}:</p>
+                <pre className="text-xs whitespace-pre-wrap break-words bg-muted/30 border border-border rounded p-2 max-h-56 overflow-y-auto">
+                  {typeof v === "string" ? v : JSON.stringify(v, null, 1)}
+                </pre>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+      {materialState.length === 0 && !step && (
+        <p className="text-xs text-muted-foreground">No run data captured yet for review.</p>
+      )}
+    </div>
+  );
+}
+
+function RunDetail({ loopId, runId, loop, onChanged }: { loopId: string; runId: string; loop?: any; onChanged: () => void }) {
   const [run, setRun] = useState<any>(null);
   const [busy, setBusy] = useState(false);
 
@@ -540,7 +641,8 @@ function RunDetail({ loopId, runId, onChanged }: { loopId: string; runId: string
 
       {run.pending_approval && (
         <div className="border border-amber-500/40 bg-amber-500/10 rounded-md p-3">
-          <p className="text-sm mb-2">🔔 {run.pending_approval.prompt}</p>
+          <p className="text-sm mb-1">🔔 {run.pending_approval.prompt}</p>
+          <ApprovalReview loop={loop} run={run} />
           <div className="flex gap-2">
             <Button size="sm" disabled={busy} onClick={() => gate(true)}>
               <ThumbsUp size={14} className="mr-1" /> Approve
@@ -614,7 +716,7 @@ function RunDetail({ loopId, runId, onChanged }: { loopId: string; runId: string
 
 type StepPhase = "pending" | "active" | "done" | "failed";
 
-function RunWatch({ loopId, onClose }: { loopId: string; onClose: () => void }) {
+function RunWatch({ loopId, loop, onClose }: { loopId: string; loop?: any; onClose: () => void }) {
   const [steps, setSteps] = useState<any[]>([]);
   const [phase, setPhase] = useState<Record<string, StepPhase>>({});
   const [status, setStatus] = useState<string>("starting");
@@ -622,7 +724,7 @@ function RunWatch({ loopId, onClose }: { loopId: string; onClose: () => void }) 
   const [tokens, setTokens] = useState(0);
   const [checks, setChecks] = useState<any[]>([]);
   const [verdict, setVerdict] = useState<string | null>(null);
-  const [approval, setApproval] = useState<{ prompt: string; runId: string } | null>(null);
+  const [approval, setApproval] = useState<{ prompt: string; runId: string; stepId?: string; state?: Record<string, any> } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -650,7 +752,8 @@ function RunWatch({ loopId, onClose }: { loopId: string; onClose: () => void }) 
       case "check": setChecks((c) => [...c, ev]); break;
       case "awaiting_approval":
         setStatus("awaiting_approval");
-        setApproval({ prompt: ev.prompt, runId: ev.run_id });
+        setApproval({ prompt: ev.prompt, runId: ev.run_id,
+                      stepId: ev.step_id, state: ev.state });
         break;
       case "done":
         setStatus(ev.status); setVerdict(ev.verdict ?? null);
@@ -696,7 +799,8 @@ function RunWatch({ loopId, onClose }: { loopId: string; onClose: () => void }) 
         // A loop can gate MORE than once (approve the drafts, then a guarded
         // send). Re-surface the next gate instead of polling into the void.
         if (run.status === "awaiting_approval" && run.pending_approval) {
-          setApproval({ prompt: run.pending_approval.prompt, runId: approval.runId });
+          setApproval({ prompt: run.pending_approval.prompt, runId: approval.runId,
+                        stepId: run.pending_approval.step_id, state: run.state });
           return;
         }
         if (["completed", "failed", "cancelled"].includes(run.status)) {
@@ -754,7 +858,9 @@ function RunWatch({ loopId, onClose }: { loopId: string; onClose: () => void }) 
 
       {approval && (
         <div className="mt-3 border border-amber-500/40 bg-amber-500/10 rounded-md p-3">
-          <p className="text-sm mb-2">🔔 {approval.prompt}</p>
+          <p className="text-sm mb-1">🔔 {approval.prompt}</p>
+          <ApprovalReview loop={loop}
+            run={{ state: approval.state || {}, pending_approval: { step_id: approval.stepId } }} />
           <div className="flex gap-2">
             <Button size="sm" disabled={busy} onClick={() => gate(true)}>
               <ThumbsUp size={14} className="mr-1" /> Approve
