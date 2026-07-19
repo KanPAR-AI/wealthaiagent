@@ -296,10 +296,18 @@ export const listIntegrations = (): Promise<{
   integrations: Record<string, { url: string; has_secret: boolean }>;
 }> => loopsFetch(`/loops/integrations`);
 
-export const setIntegration = (tool: string, url: string, secret = "") =>
+export const setIntegration = (tool: string, url: string, secret = "", composioAction = "") =>
   loopsFetch(`/loops/integrations`, {
     method: "PUT",
-    body: JSON.stringify({ tool, url, secret }),
+    body: JSON.stringify({ tool, url, secret, composio_action: composioAction }),
+  });
+
+export const suggestIntegration = (tool: string): Promise<{
+  transport: "composio" | "webhook"; composio_action: string;
+  rationale: string; field_notes: string;
+}> =>
+  loopsFetch(`/loops/integrations/suggest`, {
+    method: "POST", body: JSON.stringify({ tool }),
   });
 
 export const deleteIntegration = (tool: string) =>

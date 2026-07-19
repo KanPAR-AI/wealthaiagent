@@ -18,7 +18,7 @@ import {
   addCase, addRunToSuite, approveRun, compareEvalRuns, compileSop, createLoop,
   createSuite, deleteCase, deleteIntegration, deleteLoop, getEvalRun, getLoop,
   getOverview, getRun, getSuite, listEvalRuns, listIntegrations, listLoops,
-  listRuns, listSuites, listVersions, rejectRun, restoreVersion, resumeEvalRun, signalEvent, fixLoop, FixResult,
+  listRuns, listSuites, listVersions, rejectRun, restoreVersion, resumeEvalRun, signalEvent, fixLoop, FixResult, suggestIntegration,
   reviewEdit, runCandidateSuite, runSuite, setIntegration, setLoopStatus,
   startRun, streamRun, updateCase, updateLoopSpec, updateSuiteSettings,
 } from "@/services/loops-service";
@@ -235,10 +235,13 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
   const [discovered, setDiscovered] = useState<Record<string, { used_by: string[]; example_params: Record<string, any> | null }>>({});
   const [orgId, setOrgId] = useState("platform");
   const [tool, setTool] = useState("");
+  const [kind, setKind] = useState<"webhook" | "composio">("webhook");
   const [url, setUrl] = useState("");
+  const [action, setAction] = useState("");
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
 
   const load = useCallback(() => {
     listIntegrations().then((d: any) => {
@@ -252,8 +255,9 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
   const save = async () => {
     setBusy(true); setErr(null);
     try {
-      await setIntegration(tool.trim(), url.trim(), secret.trim());
-      setTool(""); setUrl(""); setSecret(""); load();
+      await setIntegration(tool.trim(), kind === "webhook" ? url.trim() : "",
+                           secret.trim(), kind === "composio" ? action.trim() : "");
+      setTool(""); setUrl(""); setAction(""); setSecret(""); load();
     } catch (e: any) { setErr(e.message); }
     finally { setBusy(false); }
   };
@@ -314,7 +318,18 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
                   )}
                   <span className="flex-1 min-w-0 truncate text-muted-foreground">used by: {d.used_by.join(", ")}</span>
                   {!rows[t] && (
-                    <button className="text-[11px] underline shrink-0" onClick={() => setTool(t)}>map it</button>
+                    <button className="text-[11px] underline shrink-0" disabled={busy}
+                      onClick={async () => {
+                        setTool(t); setBusy(true); setHint("✨ asking the AI for the right wiring…");
+                        try {
+                          const s = await suggestIntegration(t);
+                          if (s.transport === "composio" && s.composio_action) {
+                            setKind("composio"); setAction(s.composio_action);
+                          } else { setKind("webhook"); }
+                          setHint(`✨ ${s.transport.toUpperCase()}${s.composio_action ? ` · ${s.composio_action}` : ""} — ${s.rationale} ${s.field_notes || ""}`);
+                        } catch (e: any) { setHint(`Suggestion failed: ${e.message}`); }
+                        finally { setBusy(false); }
+                      }}>✨ suggest mapping</button>
                   )}
                 </div>
                 {d.example_params && Object.keys(d.example_params).length > 0 && (
@@ -334,7 +349,11 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
           {Object.entries(rows).map(([t, v]) => (
             <div key={t} className="flex items-center gap-2 text-sm border border-border rounded-md px-2.5 py-1.5 bg-background">
               <span className="font-mono text-xs shrink-0">{t}</span>
-              <span className="flex-1 min-w-0 truncate text-xs text-muted-foreground">{v.url}</span>
+              <span className="flex-1 min-w-0 truncate text-xs text-muted-foreground">
+                {(v as any).type === "composio"
+                  ? <>composio: <span className="font-mono">{(v as any).action}</span> (owner&apos;s OAuth)</>
+                  : v.url}
+              </span>
               {v.has_secret && <span className="text-[10px] text-muted-foreground shrink-0">🔒 secret</span>}
               <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive shrink-0"
                       disabled={busy} onClick={() => remove(t)}>
@@ -345,14 +364,31 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
         </div>
       )}
 
+      {hint && <p className="text-xs text-muted-foreground mb-2 whitespace-pre-wrap">{hint}</p>}
       <div className="flex flex-wrap gap-2">
         <input value={tool} onChange={(e) => setTool(e.target.value)} placeholder="tool id (whatsapp_send_message)"
                className="rounded-md border border-border bg-background px-2 py-1.5 text-sm font-mono w-64" />
-        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://hooks.zapier.com/…"
-               className="flex-1 min-w-48 rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
-        <input value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="secret (optional)"
-               className="rounded-md border border-border bg-background px-2 py-1.5 text-sm w-40" />
-        <Button size="sm" disabled={busy || tool.trim().length < 2 || !url.startsWith("http")} onClick={save}>
+        <select value={kind} onChange={(e) => setKind(e.target.value as any)}
+                className="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
+          <option value="webhook">webhook</option>
+          <option value="composio">composio (owner&apos;s OAuth)</option>
+        </select>
+        {kind === "webhook" ? (
+          <>
+            <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://hooks.zapier.com/…"
+                   className="flex-1 min-w-48 rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
+            <input value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="secret (optional)"
+                   className="rounded-md border border-border bg-background px-2 py-1.5 text-sm w-40" />
+          </>
+        ) : (
+          <input value={action} onChange={(e) => setAction(e.target.value)}
+                 placeholder="Composio action slug (GMAIL_SEND_EMAIL)"
+                 className="flex-1 min-w-48 rounded-md border border-border bg-background px-2 py-1.5 text-sm font-mono" />
+        )}
+        <Button size="sm"
+                disabled={busy || tool.trim().length < 2 ||
+                          (kind === "webhook" ? !url.startsWith("http") : action.trim().length < 3)}
+                onClick={save}>
           <Save size={14} className="mr-1" /> Save
         </Button>
       </div>
