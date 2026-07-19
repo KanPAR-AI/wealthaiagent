@@ -232,6 +232,8 @@ function CompilePanel({ onDone }: { onDone: (loopId?: string) => void }) {
 
 export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
   const [rows, setRows] = useState<Record<string, { url: string; has_secret: boolean }>>({});
+  const [discovered, setDiscovered] = useState<Record<string, { used_by: string[]; example_params: Record<string, any> | null }>>({});
+  const [orgId, setOrgId] = useState("platform");
   const [tool, setTool] = useState("");
   const [url, setUrl] = useState("");
   const [secret, setSecret] = useState("");
@@ -239,7 +241,11 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
   const [err, setErr] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    listIntegrations().then((d) => setRows(d.integrations)).catch((e) => setErr(e.message));
+    listIntegrations().then((d: any) => {
+      setRows(d.integrations);
+      setDiscovered(d.discovered || {});
+      setOrgId(d.org_id || "platform");
+    }).catch((e) => setErr(e.message));
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -265,11 +271,63 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
         <h3 className="font-semibold">Tool integrations</h3>
         {onClose && <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={onClose}>Close</Button>}
       </div>
-      <p className="text-xs text-muted-foreground mb-3">
-        Map a tool id (e.g. <span className="font-mono">whatsapp_send_message</span>) to a webhook —
-        a Zapier Catch Hook, a Make webhook, or your own endpoint. Live runs POST the step&apos;s
-        params as JSON; the hook&apos;s JSON response becomes the step&apos;s output. Dry runs never send.
+      <p className="text-xs text-muted-foreground mb-1">
+        Map a tool id to a webhook — a Zapier Catch Hook, a Make webhook, or your own endpoint.
+        Live runs POST the step&apos;s params as JSON; the hook&apos;s JSON response becomes the
+        step&apos;s output. Dry runs never send.
       </p>
+      <p className="text-[11px] mb-3">
+        <span className="px-1.5 py-0.5 rounded bg-muted font-mono">org: {orgId}</span>
+        <span className="text-muted-foreground"> — mappings are per-organization; each tenant
+        configures its own. Composio-native tools (per-user OAuth, as in chat) are the Phase-4
+        backend; webhooks are today&apos;s transport.</span>
+      </p>
+
+      <details className="mb-3 border border-border rounded-md">
+        <summary className="cursor-pointer px-3 py-2 text-xs font-medium">📖 How to connect a tool (2-minute Zapier walkthrough)</summary>
+        <div className="px-3 pb-3 text-xs text-muted-foreground space-y-1.5">
+          <p>1. In Zapier: create a Zap with trigger <b>Webhooks by Zapier → Catch Hook</b>. Copy the hook URL.</p>
+          <p>2. Add an action (e.g. <b>WhatsApp Business → Send Message</b>) and map fields from the caught JSON:
+             the POST body is <span className="font-mono">{"{tool, params: {…}, invoked_by, idempotency_key}"}</span>.</p>
+          <p>3. <b>Sender, group, message text are NOT set here</b> — they come from the procedure&apos;s step params
+             (edit them in the loop&apos;s Operations → Advanced JSON, or at compile time). This panel is only the transport.</p>
+          <p>4. Paste the hook URL below with the tool id, add a secret (sent as <span className="font-mono">X-Loop-Secret</span> —
+             verify it in Zapier with a Filter step). The Zap&apos;s returned JSON becomes the step&apos;s output.</p>
+          <p>5. Test safely: dry runs never call the hook; run one LIVE run on an activated loop and check the Zap history.</p>
+        </div>
+      </details>
+
+      {Object.keys(discovered).length > 0 && (
+        <div className="mb-3">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">
+            Tools your procedures use ({Object.keys(discovered).length})
+          </p>
+          <div className="space-y-1.5">
+            {Object.entries(discovered).map(([t, d]) => (
+              <div key={t} className="border border-border rounded-md px-2.5 py-1.5 bg-background text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono">{t}</span>
+                  {rows[t] ? (
+                    <span className="px-1.5 rounded text-[10px] bg-emerald-500/15 text-emerald-600">mapped</span>
+                  ) : (
+                    <span className="px-1.5 rounded text-[10px] bg-amber-500/15 text-amber-600">unmapped — live runs will fail loudly</span>
+                  )}
+                  <span className="flex-1 min-w-0 truncate text-muted-foreground">used by: {d.used_by.join(", ")}</span>
+                  {!rows[t] && (
+                    <button className="text-[11px] underline shrink-0" onClick={() => setTool(t)}>map it</button>
+                  )}
+                </div>
+                {d.example_params && Object.keys(d.example_params).length > 0 && (
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-[10px] text-muted-foreground">payload your hook will receive</summary>
+                    <pre className="mt-1 text-[10px] bg-muted/30 border border-border rounded p-1.5 overflow-x-auto">{JSON.stringify({ tool: t, params: d.example_params, idempotency_key: "run:step:n" }, null, 1)}</pre>
+                  </details>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {Object.keys(rows).length > 0 && (
         <div className="space-y-1.5 mb-3">
