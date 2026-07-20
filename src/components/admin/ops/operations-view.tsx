@@ -14,6 +14,7 @@ import { History, Loader2, Pencil, RefreshCw, RotateCcw, Save } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { IntegrationsPanel } from "@/components/admin/loops/loops-view";
 import { JarvisChip } from "@/components/admin/jarvis/jarvis-panel";
+import { WhatsAppSetup } from "@/components/admin/whatsapp/whatsapp-setup";
 import {
   LoopJob, PromptSummary,
   getPrompt, listJobs, listPrompts, listPromptVersions, reloadPrompts,
@@ -27,13 +28,16 @@ const JOB_COLORS: Record<string, string> = {
   failed: "bg-red-500/15 text-red-600",
 };
 
+type OpsTab = "prompts" | "integrations" | "whatsapp" | "jobs";
+const OPS_TABS: OpsTab[] = ["prompts", "integrations", "whatsapp", "jobs"];
+
 export function OperationsView({ initialTab }: { initialTab?: string }) {
-  const [tab, setTab] = useState<"prompts" | "integrations" | "jobs">("prompts");
+  const [tab, setTab] = useState<OpsTab>("prompts");
   // Deep-link support: /admin?section=ops&tab=integrations (Jarvis answers
   // navigate here).
   useEffect(() => {
-    if (initialTab === "prompts" || initialTab === "integrations" || initialTab === "jobs") {
-      setTab(initialTab);
+    if (initialTab && (OPS_TABS as string[]).includes(initialTab)) {
+      setTab(initialTab as OpsTab);
     }
   }, [initialTab]);
 
@@ -47,11 +51,11 @@ export function OperationsView({ initialTab }: { initialTab?: string }) {
           </p>
         </div>
         <div className="flex gap-1 border border-border rounded-lg p-1">
-          {(["prompts", "integrations", "jobs"] as const).map((t) => (
+          {OPS_TABS.map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-3 py-1.5 rounded-md text-sm capitalize ${
                 tab === t ? "bg-muted font-medium" : "text-muted-foreground hover:bg-muted/50"}`}>
-              {t}
+              {t === "whatsapp" ? "WhatsApp" : t}
             </button>
           ))}
         </div>
@@ -59,6 +63,7 @@ export function OperationsView({ initialTab }: { initialTab?: string }) {
 
       {tab === "prompts" && <PromptsTab />}
       {tab === "integrations" && <IntegrationsPanel />}
+      {tab === "whatsapp" && <WhatsAppSetup />}
       {tab === "jobs" && <JobsTab />}
     </div>
   );
