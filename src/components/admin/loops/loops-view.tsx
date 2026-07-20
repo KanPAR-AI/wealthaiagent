@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { JarvisChip } from "@/components/admin/jarvis/jarvis-panel";
 import {
   EditReview, EvalCase, LoopSummary, LoopVersion, LoopsOverview, RegressionReport,
   RunSummary,
@@ -58,10 +59,13 @@ function VerdictBadge({ verdict }: { verdict?: string | null }) {
   );
 }
 
-export function LoopsView() {
+export function LoopsView({ initialLoopId }: { initialLoopId?: string } = {}) {
   const [loops, setLoops] = useState<LoopSummary[]>([]);
   const [overview, setOverview] = useState<LoopsOverview | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  // Deep-link support: /admin?section=loops&loop=<id> (Jarvis answers
+  // navigate here).
+  useEffect(() => { if (initialLoopId) setSelected(initialLoopId); }, [initialLoopId]);
   const [error, setError] = useState<string | null>(null);
   const [showCompile, setShowCompile] = useState(false);
   const [showIntegrations, setShowIntegrations] = useState(false);
@@ -273,6 +277,10 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
     <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
       <div className="flex items-center gap-2 mb-1">
         <h3 className="font-semibold">Tool integrations</h3>
+        <JarvisChip
+          question="How do I map a tool my procedure uses to Zapier or Composio?"
+          context={{ page: "integrations", section: "loops", tab: "integrations" }}
+        />
         {onClose && <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={onClose}>Close</Button>}
       </div>
       <p className="text-xs text-muted-foreground mb-1">
@@ -503,7 +511,14 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
 
       {detail.problems.length > 0 && (
         <div className="mt-2 border border-destructive/40 bg-destructive/5 rounded-md p-3">
-          <p className="text-sm text-destructive">Blocking activation: {detail.problems.join("; ")}</p>
+          <div className="flex items-start gap-2">
+            <p className="flex-1 text-sm text-destructive">Blocking activation: {detail.problems.join("; ")}</p>
+            <JarvisChip
+              question="Why is my procedure blocked from activating, and how do I fix these problems?"
+              context={{ page: "loop_detail", section: "loops", loop_id: loopId,
+                         visible_problems: detail.problems }}
+            />
+          </div>
           {!fix && (
             <Button size="sm" variant="outline" className="mt-2" disabled={fixBusy}
                     onClick={async () => {

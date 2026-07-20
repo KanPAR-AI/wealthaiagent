@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Film,
   Cpu,
@@ -36,6 +37,7 @@ import { useAdminStore } from "@/store/admin";
 import { fetchAgents } from "@/services/admin-service";
 import { OperationsView } from "@/components/admin/ops/operations-view";
 import { LoopsView } from "@/components/admin/loops/loops-view";
+import { JarvisPanel } from "@/components/admin/jarvis/jarvis-panel";
 
 type Tab =
   | "videos"
@@ -87,7 +89,16 @@ export default function Admin() {
   const [view, setView] = useState<"manage" | "detail">("manage");
   // Top-level section: Agents (existing) vs Loops (Verified Procedures —
   // org-level, not per-agent, so it sits beside the agent list).
+  // Deep-linkable: /admin?section=ops&tab=integrations, ?section=loops&loop=<id>
+  // — Jarvis answers navigate here, and the URL stays shareable.
+  const [searchParams, setSearchParams] = useSearchParams();
   const [section, setSection] = useState<"agents" | "loops" | "ops">("agents");
+  useEffect(() => {
+    const s = searchParams.get("section");
+    if (s === "agents" || s === "loops" || s === "ops") setSection(s);
+  }, [searchParams]);
+  const opsTab = searchParams.get("tab") || undefined;
+  const deepLinkLoopId = searchParams.get("loop") || undefined;
 
   const refreshAgents = () =>
     fetchAgents()
@@ -133,7 +144,7 @@ export default function Admin() {
             {(["agents", "loops", "ops"] as const).map((s) => (
               <button
                 key={s}
-                onClick={() => setSection(s)}
+                onClick={() => { setSection(s); setSearchParams({ section: s }); }}
                 className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
                   section === s
                     ? "border-primary text-foreground"
@@ -146,9 +157,9 @@ export default function Admin() {
           </div>
 
           {section === "loops" ? (
-            <LoopsView />
+            <LoopsView initialLoopId={deepLinkLoopId} />
           ) : section === "ops" ? (
-            <OperationsView />
+            <OperationsView initialTab={opsTab} />
           ) : (
             <>
               <div className="mb-4">
@@ -289,6 +300,16 @@ export default function Admin() {
           }}
         />
       )}
+
+      {/* "Ask Jarvis" — available on every admin surface */}
+      <JarvisPanel
+        baseContext={{
+          page: "admin",
+          section,
+          tab: opsTab || "",
+          loop_id: deepLinkLoopId || null,
+        }}
+      />
     </div>
   );
 }

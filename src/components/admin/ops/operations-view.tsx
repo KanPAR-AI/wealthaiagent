@@ -13,6 +13,7 @@ import { History, Loader2, Pencil, RefreshCw, RotateCcw, Save } from "lucide-rea
 
 import { Button } from "@/components/ui/button";
 import { IntegrationsPanel } from "@/components/admin/loops/loops-view";
+import { JarvisChip } from "@/components/admin/jarvis/jarvis-panel";
 import {
   LoopJob, PromptSummary,
   getPrompt, listJobs, listPrompts, listPromptVersions, reloadPrompts,
@@ -26,8 +27,15 @@ const JOB_COLORS: Record<string, string> = {
   failed: "bg-red-500/15 text-red-600",
 };
 
-export function OperationsView() {
+export function OperationsView({ initialTab }: { initialTab?: string }) {
   const [tab, setTab] = useState<"prompts" | "integrations" | "jobs">("prompts");
+  // Deep-link support: /admin?section=ops&tab=integrations (Jarvis answers
+  // navigate here).
+  useEffect(() => {
+    if (initialTab === "prompts" || initialTab === "integrations" || initialTab === "jobs") {
+      setTab(initialTab);
+    }
+  }, [initialTab]);
 
   return (
     <div>
@@ -78,6 +86,10 @@ function PromptsTab() {
           Edits go live everywhere within {ttl}s (cache TTL). Contract-checked: a save
           that drops or invents a {"{variable}"} is refused.
         </p>
+        <JarvisChip
+          question="How does editing a platform prompt work — versions, contract checks, and when do edits go live?"
+          context={{ page: "prompts", section: "ops", tab: "prompts" }}
+        />
         <Button size="sm" variant="outline" className="ml-auto"
                 onClick={async () => {
                   const r = await reloadPrompts().catch((e) => ({ cleared: 0, note: e.message }));
