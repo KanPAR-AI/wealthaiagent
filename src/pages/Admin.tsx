@@ -37,7 +37,7 @@ import { useAdminStore } from "@/store/admin";
 import { fetchAgents } from "@/services/admin-service";
 import { OperationsView } from "@/components/admin/ops/operations-view";
 import { LoopsView } from "@/components/admin/loops/loops-view";
-import { JarvisPanel } from "@/components/admin/jarvis/jarvis-panel";
+import { JarvisChip, JarvisPanel } from "@/components/admin/jarvis/jarvis-panel";
 
 type Tab =
   | "videos"
@@ -96,7 +96,12 @@ export default function Admin() {
   useEffect(() => {
     const s = searchParams.get("section");
     if (s === "agents" || s === "loops" || s === "ops") setSection(s);
-  }, [searchParams]);
+    const agentId = searchParams.get("agent");
+    if (agentId) {
+      setSelectedAgentId(agentId);
+      setView("detail");
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
   const opsTab = searchParams.get("tab") || undefined;
   const deepLinkLoopId = searchParams.get("loop") || undefined;
 
@@ -174,6 +179,7 @@ export default function Admin() {
                 onSelectAgent={(id) => {
                   setSelectedAgentId(id);
                   setView("detail");
+                  setSearchParams({ section: "agents", agent: id });
                 }}
                 onCreate={() => setShowCreateWizard(true)}
                 onRefresh={refreshAgents}
@@ -188,7 +194,7 @@ export default function Admin() {
             variant="ghost"
             size="sm"
             className="mb-3 -ml-2 text-muted-foreground"
-            onClick={() => setView("manage")}
+            onClick={() => { setView("manage"); setSearchParams({ section: "agents" }); }}
           >
             <ArrowLeft size={14} className="mr-1" />
             Back to all agents
@@ -200,6 +206,11 @@ export default function Admin() {
               {selectedAgent.is_dynamic && selectedAgent.status && (
                 <AgentStatusBadge status={selectedAgent.status} />
               )}
+              <JarvisChip
+                question={`Help me with the "${activeTab}" tab for this agent — what does it do and how do I use it?`}
+                context={{ page: "agent_detail", section: "agents",
+                           tab: activeTab, agent_id: selectedAgentId }}
+              />
             </div>
             <p className="text-sm text-muted-foreground">
               {selectedAgent.description}
@@ -304,10 +315,11 @@ export default function Admin() {
       {/* "Ask Jarvis" — available on every admin surface */}
       <JarvisPanel
         baseContext={{
-          page: "admin",
+          page: view === "detail" ? "agent_detail" : "admin",
           section,
-          tab: opsTab || "",
+          tab: view === "detail" ? activeTab : opsTab || "",
           loop_id: deepLinkLoopId || null,
+          agent_id: view === "detail" ? selectedAgentId : null,
         }}
       />
     </div>

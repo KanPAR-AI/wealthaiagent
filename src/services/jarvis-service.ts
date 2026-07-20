@@ -26,6 +26,7 @@ export interface JarvisContext {
   section?: string;
   tab?: string;
   loop_id?: string | null;
+  agent_id?: string | null;
   visible_problems?: string[];
 }
 

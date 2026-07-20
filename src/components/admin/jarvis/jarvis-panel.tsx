@@ -30,6 +30,20 @@ export function openJarvis(detail: OpenJarvisDetail = {}) {
   window.dispatchEvent(new CustomEvent(OPEN_JARVIS_EVENT, { detail }));
 }
 
+// Screen-context registry: views with state worth Jarvis knowing (the loop
+// detail's blocking problems, the selected agent) publish it here so a
+// FREEFORM question typed into the floating panel ("why am I blocked??")
+// still carries what the user is looking at — not only chip-seeded ones.
+let screenContext: JarvisContext = {};
+
+export function publishJarvisScreenContext(ctx: JarvisContext) {
+  screenContext = ctx;
+}
+
+export function clearJarvisScreenContext() {
+  screenContext = {};
+}
+
 export function JarvisPanel({ baseContext }: { baseContext: JarvisContext }) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -66,7 +80,7 @@ export function JarvisPanel({ baseContext }: { baseContext: JarvisContext }) {
     const history = messages;
     setMessages((m) => [...m, { role: "user", content: question }]);
     try {
-      const ctx = { ...baseContext, ...(chipContext || {}) };
+      const ctx = { ...baseContext, ...screenContext, ...(chipContext || {}) };
       const r = await askJarvis(question, ctx, history);
       setMessages((m) => [...m, { role: "assistant", content: r.answer }]);
     } catch (e: any) {

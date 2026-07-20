@@ -12,7 +12,9 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { JarvisChip } from "@/components/admin/jarvis/jarvis-panel";
+import {
+  JarvisChip, clearJarvisScreenContext, publishJarvisScreenContext,
+} from "@/components/admin/jarvis/jarvis-panel";
 import {
   EditReview, EvalCase, LoopSummary, LoopVersion, LoopsOverview, RegressionReport,
   RunSummary,
@@ -453,6 +455,16 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
     listRuns(loopId).then((d) => setRuns(d.runs)).catch(() => {});
   }, [loopId]);
   useEffect(() => { refresh(); }, [refresh]);
+
+  // Let a freeform "why am I blocked?" typed into the Jarvis panel see
+  // this loop and its blocking problems without going through a chip.
+  useEffect(() => {
+    publishJarvisScreenContext({
+      page: "loop_detail", section: "loops", loop_id: loopId,
+      visible_problems: detail?.problems || [],
+    });
+    return () => clearJarvisScreenContext();
+  }, [loopId, detail]);
 
   // Live-ish updates while anything is in flight.
   useEffect(() => {

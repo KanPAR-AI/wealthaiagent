@@ -44,6 +44,7 @@ import {
   deleteCorpusChunkById,
 } from "@/services/admin-service";
 import { TranscriptReviewPanel } from "./transcript-review-panel";
+import { JarvisChip } from "@/components/admin/jarvis/jarvis-panel";
 import type { CorpusJob, RetrievalTestResult } from "@/services/admin-service";
 import { toast } from "sonner";
 
@@ -376,6 +377,12 @@ export function CorpusPanel({ agentId }: { agentId: string }) {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end -mb-3">
+        <JarvisChip
+          question="How do I add knowledge to this agent's corpus, and how does retrieval use it?"
+          context={{ page: "rag_corpus", section: "agents", tab: "rag_corpus", agent_id: agentId }}
+        />
+      </div>
       {/* Stats cards */}
       {corpusStats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
