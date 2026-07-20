@@ -3,18 +3,10 @@ import { ArrowLeft, AlertCircle, MessageSquare, Settings, Plus } from "lucide-re
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAdminStore } from "@/store/admin";
-import { AgentStatusBadge } from "@/components/admin/agent-builder/agent-status-badge";
 import { getNewBugCount } from "@/services/bug-report-service";
 
 export function AdminHeader() {
-  const {
-    agents,
-    selectedAgentId,
-    setSelectedAgentId,
-    setShowCreateWizard,
-  } = useAdminStore();
-
-  const selectedAgent = agents.find((a) => a.id === selectedAgentId);
+  const { selectedAgentId, setShowCreateWizard } = useAdminStore();
 
   // Poll the un-triaged bug-report count so admins see a live badge.
   // 60s cadence is plenty — this isn't a paging system.
@@ -56,28 +48,6 @@ export function AdminHeader() {
         </div>
 
         <div className="flex items-center gap-3">
-          {agents.length > 0 && (
-            <div className="flex items-center gap-2">
-              <select
-                value={selectedAgentId || ""}
-                onChange={(e) => setSelectedAgentId(e.target.value)}
-                className="h-8 rounded-md border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="" disabled>
-                  Select Agent
-                </option>
-                {agents.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                    {a.is_dynamic && a.status ? ` (${a.status})` : ""}
-                  </option>
-                ))}
-              </select>
-              {selectedAgent?.is_dynamic && selectedAgent.status && (
-                <AgentStatusBadge status={selectedAgent.status} />
-              )}
-            </div>
-          )}
           <Link to="/admin/bugs">
             <Button size="sm" variant="ghost" className="relative">
               <AlertCircle size={14} className="mr-1" />
