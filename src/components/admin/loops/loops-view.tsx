@@ -15,8 +15,20 @@ import { Button } from "@/components/ui/button";
 import {
   JarvisChip, clearJarvisScreenContext, publishJarvisScreenContext,
 } from "@/components/admin/jarvis/jarvis-panel";
-import { NativeProviderSetup } from "@/components/admin/integrations/native-provider-setup";
+import { NativeProviderConnect } from "@/components/admin/integrations/native-provider-modal";
 import { NativeProvider, listNativeProviders } from "@/services/integrations-native-service";
+
+// Group a tool id under a human "app" so the panel clusters related tools
+// (all WhatsApp together, all Gmail together) instead of one flat list.
+const APP_LABELS: Record<string, string> = {
+  whatsapp: "WhatsApp", gmail: "Gmail", slack: "Slack", notion: "Notion",
+  googlesheets: "Google Sheets", googlecalendar: "Google Calendar",
+  googledocs: "Google Docs", accounting: "Accounting", telegram: "Telegram",
+};
+function appOf(tool: string): string {
+  const prefix = (tool.split("_")[0] || "").toLowerCase();
+  return APP_LABELS[prefix] || (prefix ? prefix[0].toUpperCase() + prefix.slice(1) : "Other");
+}
 import {
   EditReview, EvalCase, LoopSummary, LoopVersion, LoopsOverview, RegressionReport,
   RunSummary,
@@ -265,14 +277,6 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  // Native providers offered for the tool currently being configured.
-  const nativeForTool = (providerOptions[tool.trim()] || [])
-    .map((pid) => providers.find((p) => p.id === pid))
-    .filter(Boolean) as NativeProvider[];
-  const selectedNative = kind.startsWith("native:")
-    ? providers.find((p) => p.id === kind.slice("native:".length)) || null
-    : null;
-
   const save = async () => {
     setBusy(true); setErr(null);
     try {
@@ -307,147 +311,140 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
         {onClose && <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={onClose}>Close</Button>}
       </div>
       <p className="text-xs text-muted-foreground mb-1">
-        Bind each tool your procedures use to a <b>transport</b> of your choice: a
-        <b> webhook</b> (Zapier/Make/own URL), a <b>Composio</b> action (owner&apos;s OAuth), or a
-        <b> native provider</b> (e.g. WhatsApp&apos;s QR bridge). Live runs execute through it;
-        dry runs never send. The same tool can use a different transport in each org.
+        Connect a service once, then wire the tools your procedures use. Live runs
+        execute through the connection; dry runs never send.
       </p>
       <p className="text-[11px] mb-3">
         <span className="px-1.5 py-0.5 rounded bg-muted font-mono">org: {orgId}</span>
-        <span className="text-muted-foreground"> — every mapping and native-provider connection
-        is per-organization; each tenant configures its own.</span>
+        <span className="text-muted-foreground"> — connections are per-organization.</span>
       </p>
 
-      <details className="mb-3 border border-border rounded-md">
-        <summary className="cursor-pointer px-3 py-2 text-xs font-medium">📖 How to connect a tool (2-minute Zapier walkthrough)</summary>
-        <div className="px-3 pb-3 text-xs text-muted-foreground space-y-1.5">
-          <p>1. In Zapier: create a Zap with trigger <b>Webhooks by Zapier → Catch Hook</b>. Copy the hook URL.</p>
-          <p>2. Add an action (e.g. <b>WhatsApp Business → Send Message</b>) and map fields from the caught JSON:
-             the POST body is <span className="font-mono">{"{tool, params: {…}, invoked_by, idempotency_key}"}</span>.</p>
-          <p>3. <b>Sender, group, message text are NOT set here</b> — they come from the procedure&apos;s step params
-             (edit them in the loop&apos;s Operations → Advanced JSON, or at compile time). This panel is only the transport.</p>
-          <p>4. Paste the hook URL below with the tool id, add a secret (sent as <span className="font-mono">X-Loop-Secret</span> —
-             verify it in Zapier with a Filter step). The Zap&apos;s returned JSON becomes the step&apos;s output.</p>
-          <p>5. Test safely: dry runs never call the hook; run one LIVE run on an activated loop and check the Zap history.</p>
-        </div>
-      </details>
-
-      {Object.keys(discovered).length > 0 && (
-        <div className="mb-3">
+      {/* 1) Connect a service — one card per native provider (guided popup). */}
+      {providers.length > 0 && (
+        <div className="mb-4">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">
-            Tools your procedures use ({Object.keys(discovered).length})
+            Connect a service
           </p>
-          <div className="space-y-1.5">
-            {Object.entries(discovered).map(([t, d]) => (
-              <div key={t} className="border border-border rounded-md px-2.5 py-1.5 bg-background text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono">{t}</span>
-                  {rows[t] ? (
-                    <span className="px-1.5 rounded text-[10px] bg-emerald-500/15 text-emerald-600">mapped</span>
-                  ) : (
-                    <span className="px-1.5 rounded text-[10px] bg-amber-500/15 text-amber-600">unmapped — live runs will fail loudly</span>
-                  )}
-                  <span className="flex-1 min-w-0 truncate text-muted-foreground">used by: {d.used_by.join(", ")}</span>
-                  {!rows[t] && (
-                    <button className="text-[11px] underline shrink-0" disabled={busy}
-                      onClick={async () => {
-                        setTool(t); setBusy(true); setHint("✨ asking the AI for the right wiring…");
-                        try {
-                          const s = await suggestIntegration(t);
-                          if (s.transport === "composio" && s.composio_action) {
-                            setKind("composio"); setAction(s.composio_action);
-                          } else { setKind("webhook"); }
-                          setHint(`✨ ${s.transport.toUpperCase()}${s.composio_action ? ` · ${s.composio_action}` : ""} — ${s.rationale} ${s.field_notes || ""}`);
-                        } catch (e: any) { setHint(`Suggestion failed: ${e.message}`); }
-                        finally { setBusy(false); }
-                      }}>✨ suggest mapping</button>
-                  )}
+          <div className="grid gap-2 sm:grid-cols-2">
+            {providers.map((p) => (
+              <NativeProviderConnect key={p.id} provider={p}
+                mappedTools={Object.entries(rows)
+                  .filter(([, v]) => (v as any).provider === p.id).map(([t]) => t)}
+                onChanged={load} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 2) Tools your procedures use — GROUPED by app so related tools cluster. */}
+      {Object.keys(discovered).length > 0 && (
+        <div className="mb-4">
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">
+            Tools your procedures use
+          </p>
+          <div className="space-y-2">
+            {Object.entries(
+              Object.entries(discovered).reduce((acc, [t, d]) => {
+                (acc[appOf(t)] = acc[appOf(t)] || []).push([t, d]);
+                return acc;
+              }, {} as Record<string, [string, any][]>)
+            ).sort(([a], [b]) => a.localeCompare(b)).map(([app, tools]) => (
+              <div key={app} className="border border-border rounded-md bg-background">
+                <div className="px-2.5 py-1.5 border-b border-border flex items-center gap-2">
+                  <span className="text-xs font-semibold">{app}</span>
+                  <span className="text-[10px] text-muted-foreground">{tools.length} tool{tools.length > 1 ? "s" : ""}</span>
                 </div>
-                {d.example_params && Object.keys(d.example_params).length > 0 && (
-                  <details className="mt-1">
-                    <summary className="cursor-pointer text-[10px] text-muted-foreground">payload your hook will receive</summary>
-                    <pre className="mt-1 text-[10px] bg-muted/30 border border-border rounded p-1.5 overflow-x-auto">{JSON.stringify({ tool: t, params: d.example_params, idempotency_key: "run:step:n" }, null, 1)}</pre>
-                  </details>
-                )}
+                <div className="divide-y divide-border">
+                  {tools.map(([t, d]) => (
+                    <div key={t} className="px-2.5 py-1.5 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono">{t}</span>
+                        {rows[t] ? (
+                          <span className="px-1.5 rounded text-[10px] bg-emerald-500/15 text-emerald-600">
+                            {(rows[t] as any).type === "native"
+                              ? `via ${providers.find((p) => p.id === (rows[t] as any).provider)?.label || "provider"}`
+                              : (rows[t] as any).type === "composio" ? "via Composio" : "via webhook"}
+                          </span>
+                        ) : (
+                          <span className="px-1.5 rounded text-[10px] bg-amber-500/15 text-amber-600">not wired</span>
+                        )}
+                        <span className="flex-1 min-w-0 truncate text-muted-foreground">used by: {d.used_by.join(", ")}</span>
+                        {rows[t] && (
+                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive shrink-0"
+                                  disabled={busy} onClick={() => remove(t)} title="Unwire">
+                            <Trash2 size={11} />
+                          </Button>
+                        )}
+                        {!rows[t] && (providerOptions[t]?.length ? (
+                          <span className="text-[10px] text-muted-foreground shrink-0">
+                            connect {providers.find((p) => providerOptions[t].includes(p.id))?.label || "its provider"} above
+                          </span>
+                        ) : (
+                          <button className="text-[11px] underline shrink-0" disabled={busy}
+                            onClick={async () => {
+                              setTool(t); setBusy(true); setHint("✨ asking the AI for the right wiring…");
+                              try {
+                                const s = await suggestIntegration(t);
+                                if (s.transport === "composio" && s.composio_action) { setKind("composio"); setAction(s.composio_action); }
+                                else { setKind("webhook"); }
+                                setHint(`✨ ${s.transport.toUpperCase()}${s.composio_action ? ` · ${s.composio_action}` : ""} — ${s.rationale} ${s.field_notes || ""}. Open “Map a tool manually” below.`);
+                              } catch (e: any) { setHint(`Suggestion failed: ${e.message}`); }
+                              finally { setBusy(false); }
+                            }}>✨ suggest</button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {Object.keys(rows).length > 0 && (
-        <div className="space-y-1.5 mb-3">
-          {Object.entries(rows).map(([t, v]) => (
-            <div key={t} className="flex items-center gap-2 text-sm border border-border rounded-md px-2.5 py-1.5 bg-background">
-              <span className="font-mono text-xs shrink-0">{t}</span>
-              <span className="flex-1 min-w-0 truncate text-xs text-muted-foreground">
-                {(v as any).type === "composio"
-                  ? <>composio: <span className="font-mono">{(v as any).action}</span> (owner&apos;s OAuth)</>
-                  : (v as any).type === "native"
-                  ? <>native: <span className="font-mono">{(v as any).provider}</span> ({providers.find((p) => p.id === (v as any).provider)?.label || "provider"})</>
-                  : v.url}
-              </span>
-              {v.has_secret && <span className="text-[10px] text-muted-foreground shrink-0">🔒 secret</span>}
-              <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive shrink-0"
-                      disabled={busy} onClick={() => remove(t)}>
-                <Trash2 size={12} />
-              </Button>
-            </div>
-          ))}
+      {/* 3) Advanced — manual webhook/Composio mapping for power users. Native
+          providers use the cards above, not this. */}
+      <details className="border border-border rounded-md">
+        <summary className="cursor-pointer px-3 py-2 text-xs font-medium">
+          Map a tool manually (webhook / Composio)
+        </summary>
+        <div className="px-3 pb-3 pt-1">
+          {hint && <p className="text-xs text-muted-foreground mb-2 whitespace-pre-wrap">{hint}</p>}
+          <div className="flex flex-wrap gap-2">
+            <input value={tool} onChange={(e) => setTool(e.target.value)} placeholder="tool id (e.g. slack_post)"
+                   className="rounded-md border border-border bg-background px-2 py-1.5 text-sm font-mono w-56" />
+            <select value={kind === "webhook" || kind === "composio" ? kind : "webhook"}
+                    onChange={(e) => setKind(e.target.value)}
+                    className="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
+              <option value="webhook">Webhook (Zapier/Make/own URL)</option>
+              <option value="composio">Composio action (owner&apos;s OAuth)</option>
+            </select>
+            {kind === "composio" ? (
+              <input value={action} onChange={(e) => setAction(e.target.value)}
+                     placeholder="Composio action slug (GMAIL_SEND_EMAIL)"
+                     className="flex-1 min-w-48 rounded-md border border-border bg-background px-2 py-1.5 text-sm font-mono" />
+            ) : (
+              <>
+                <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://hooks.zapier.com/…"
+                       className="flex-1 min-w-48 rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
+                <input value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="secret (optional)"
+                       className="rounded-md border border-border bg-background px-2 py-1.5 text-sm w-36" />
+              </>
+            )}
+            <Button size="sm"
+                    disabled={busy || tool.trim().length < 2 ||
+                              (kind === "composio" ? action.trim().length < 3 : !url.startsWith("http"))}
+                    onClick={save}>
+              <Save size={14} className="mr-1" /> Save
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2">
+            Live runs POST <span className="font-mono">{"{tool, params, invoked_by, idempotency_key}"}</span>;
+            the hook&apos;s JSON response becomes the step&apos;s output. Secret is sent as
+            <span className="font-mono"> X-Loop-Secret</span>.
+          </p>
         </div>
-      )}
-
-      {hint && <p className="text-xs text-muted-foreground mb-2 whitespace-pre-wrap">{hint}</p>}
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">
-        Configure a tool — pick its transport
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <input value={tool} onChange={(e) => setTool(e.target.value)} placeholder="tool id (whatsapp_send_message)"
-               className="rounded-md border border-border bg-background px-2 py-1.5 text-sm font-mono w-64" />
-        <select value={kind} onChange={(e) => setKind(e.target.value)}
-                className="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
-          <option value="webhook">Webhook (Zapier/Make/own URL)</option>
-          <option value="composio">Composio action (owner&apos;s OAuth)</option>
-          {nativeForTool.map((p) => (
-            <option key={p.id} value={`native:${p.id}`}>Native: {p.label}</option>
-          ))}
-        </select>
-        {kind === "webhook" && (
-          <>
-            <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://hooks.zapier.com/…"
-                   className="flex-1 min-w-48 rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
-            <input value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="secret (optional)"
-                   className="rounded-md border border-border bg-background px-2 py-1.5 text-sm w-40" />
-          </>
-        )}
-        {kind === "composio" && (
-          <input value={action} onChange={(e) => setAction(e.target.value)}
-                 placeholder="Composio action slug (GMAIL_SEND_EMAIL)"
-                 className="flex-1 min-w-48 rounded-md border border-border bg-background px-2 py-1.5 text-sm font-mono" />
-        )}
-        <Button size="sm"
-                disabled={busy || tool.trim().length < 2 ||
-                          (kind === "webhook" ? !url.startsWith("http")
-                           : kind === "composio" ? action.trim().length < 3
-                           : false)}
-                onClick={save}>
-          <Save size={14} className="mr-1" /> {selectedNative ? "Map to this provider" : "Save"}
-        </Button>
-      </div>
-
-      {/* Native provider chosen → connect/test it right here. Mapping the tool
-          and pairing the provider are separate steps: map with Save above,
-          pair/test below. */}
-      {selectedNative && (
-        <>
-          {nativeForTool.length === 0 && (
-            <p className="text-[11px] text-amber-600 mt-2">
-              Type a tool this provider serves (e.g. {selectedNative.tools.join(", ")}) to map it.
-            </p>
-          )}
-          <NativeProviderSetup provider={selectedNative} />
-        </>
-      )}
+      </details>
       {err && <p className="text-sm text-destructive mt-2">{err}</p>}
     </div>
   );
