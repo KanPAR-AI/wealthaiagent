@@ -265,6 +265,8 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
+  // Inline edit of an already-mapped tool (no delete-then-readd).
+  const [editing, setEditing] = useState<string | null>(null);
 
   const load = useCallback(() => {
     listIntegrations().then((d: any) => {
@@ -305,8 +307,8 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
       <div className="flex items-center gap-2 mb-1">
         <h3 className="font-semibold">Tool Integrator</h3>
         <JarvisChip
-          question="How do I bind a tool my procedure uses to a transport — webhook, Composio, or a native provider like WhatsApp?"
-          context={{ page: "integrations", section: "loops", tab: "integrations" }}
+          question="How do I connect a service (like WhatsApp) and wire the tools my procedures use?"
+          context={{ page: "integrations", section: "integrations", tab: "" }}
         />
         {onClose && <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={onClose}>Close</Button>}
       </div>
@@ -370,29 +372,37 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
                         )}
                         <span className="flex-1 min-w-0 truncate text-muted-foreground">used by: {d.used_by.join(", ")}</span>
                         {rows[t] && (
-                          <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive shrink-0"
-                                  disabled={busy} onClick={() => remove(t)} title="Unwire">
-                            <Trash2 size={11} />
-                          </Button>
+                          <>
+                            <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] shrink-0"
+                                    disabled={busy} onClick={() => setEditing(editing === t ? null : t)}>
+                              <Pencil size={11} className="mr-1" /> Edit
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive shrink-0"
+                                    disabled={busy} onClick={() => remove(t)} title="Unwire">
+                              <Trash2 size={11} />
+                            </Button>
+                          </>
                         )}
                         {!rows[t] && (providerOptions[t]?.length ? (
                           <span className="text-[10px] text-muted-foreground shrink-0">
                             connect {providers.find((p) => providerOptions[t].includes(p.id))?.label || "its provider"} above
                           </span>
                         ) : (
-                          <button className="text-[11px] underline shrink-0" disabled={busy}
-                            onClick={async () => {
-                              setTool(t); setBusy(true); setHint("✨ asking the AI for the right wiring…");
-                              try {
-                                const s = await suggestIntegration(t);
-                                if (s.transport === "composio" && s.composio_action) { setKind("composio"); setAction(s.composio_action); }
-                                else { setKind("webhook"); }
-                                setHint(`✨ ${s.transport.toUpperCase()}${s.composio_action ? ` · ${s.composio_action}` : ""} — ${s.rationale} ${s.field_notes || ""}. Open “Map a tool manually” below.`);
-                              } catch (e: any) { setHint(`Suggestion failed: ${e.message}`); }
-                              finally { setBusy(false); }
-                            }}>✨ suggest</button>
+                          <Button size="sm" variant="outline" className="h-6 px-2 text-[11px] shrink-0"
+                                  disabled={busy} onClick={() => setEditing(editing === t ? null : t)}>
+                            <Pencil size={11} className="mr-1" /> Wire
+                          </Button>
                         ))}
                       </div>
+                      {editing === t && (
+                        <MappedToolEditor
+                          tool={t} current={rows[t]} providers={providers}
+                          nativeProviderIds={providerOptions[t] || []}
+                          exampleParams={d.example_params}
+                          onSaved={() => { setEditing(null); load(); }}
+                          onCancel={() => setEditing(null)}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -446,6 +456,92 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
         </div>
       </details>
       {err && <p className="text-sm text-destructive mt-2">{err}</p>}
+    </div>
+  );
+}
+
+// Inline editor for an already-mapped (or to-be-wired) tool — change its
+// transport in place, no delete-then-readd. Pre-filled from the current
+// mapping.
+function MappedToolEditor({
+  tool, current, providers, nativeProviderIds, exampleParams, onSaved, onCancel,
+}: {
+  tool: string;
+  current?: { url: string; has_secret: boolean; type?: string; action?: string; provider?: string };
+  providers: NativeProvider[];
+  nativeProviderIds: string[];
+  exampleParams: Record<string, any> | null;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const initialKind = current?.type === "native" ? `native:${current.provider}`
+    : current?.type === "composio" ? "composio" : "webhook";
+  const [kind, setKind] = useState<string>(initialKind);
+  const [url, setUrl] = useState(current?.url || "");
+  const [action, setAction] = useState(current?.action || "");
+  const [secret, setSecret] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const nativeProviders = nativeProviderIds
+    .map((id) => providers.find((p) => p.id === id)).filter(Boolean) as NativeProvider[];
+  const isNative = kind.startsWith("native:");
+
+  const save = async () => {
+    setBusy(true); setErr(null);
+    try {
+      const np = isNative ? kind.slice("native:".length) : "";
+      await setIntegration(tool, isNative ? "" : (kind === "webhook" ? url.trim() : ""),
+        secret.trim(), kind === "composio" ? action.trim() : "", np);
+      onSaved();
+    } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="mt-2 rounded-md border border-border bg-muted/20 p-2.5 space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[11px] text-muted-foreground">Transport</span>
+        <select value={kind} onChange={(e) => setKind(e.target.value)}
+                className="rounded-md border border-border bg-background px-2 py-1 text-xs">
+          <option value="webhook">Webhook (Zapier/Make/own URL)</option>
+          <option value="composio">Composio action</option>
+          {nativeProviders.map((p) => (
+            <option key={p.id} value={`native:${p.id}`}>Native: {p.label}</option>
+          ))}
+        </select>
+        {kind === "webhook" && (
+          <>
+            <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://hooks.zapier.com/…"
+                   className="flex-1 min-w-40 rounded-md border border-border bg-background px-2 py-1 text-xs" />
+            <input value={secret} onChange={(e) => setSecret(e.target.value)}
+                   placeholder={current?.has_secret ? "secret (leave blank to keep)" : "secret (optional)"}
+                   className="rounded-md border border-border bg-background px-2 py-1 text-xs w-44" />
+          </>
+        )}
+        {kind === "composio" && (
+          <input value={action} onChange={(e) => setAction(e.target.value)} placeholder="GMAIL_SEND_EMAIL"
+                 className="flex-1 min-w-40 rounded-md border border-border bg-background px-2 py-1 text-xs font-mono" />
+        )}
+      </div>
+      {isNative && (
+        <p className="text-[11px] text-muted-foreground">
+          Pair &amp; test this provider from its card at the top (Connect / Manage).
+        </p>
+      )}
+      {exampleParams && Object.keys(exampleParams).length > 0 && kind === "webhook" && (
+        <details>
+          <summary className="cursor-pointer text-[10px] text-muted-foreground">payload your hook will receive</summary>
+          <pre className="mt-1 text-[10px] bg-muted/30 border border-border rounded p-1.5 overflow-x-auto">{JSON.stringify({ tool, params: exampleParams, idempotency_key: "run:step:n" }, null, 1)}</pre>
+        </details>
+      )}
+      <div className="flex items-center gap-2">
+        <Button size="sm" className="h-7"
+                disabled={busy || (kind === "webhook" ? !url.startsWith("http") : kind === "composio" ? action.trim().length < 3 : false)}
+                onClick={save}>
+          {busy ? <Loader2 size={13} className="mr-1 animate-spin" /> : <Save size={13} className="mr-1" />} Save
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7" onClick={onCancel}>Cancel</Button>
+        {err && <span className="text-xs text-destructive">{err}</span>}
+      </div>
     </div>
   );
 }

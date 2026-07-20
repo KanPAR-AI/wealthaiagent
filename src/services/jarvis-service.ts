@@ -35,11 +35,16 @@ export interface JarvisMessage {
   content: string;
 }
 
+export interface JarvisAction {
+  type: "clear_conversation" | "report_bug";
+  draft?: string;
+}
+
 export const askJarvis = (
   question: string,
   context: JarvisContext = {},
   history: JarvisMessage[] = [],
-): Promise<{ answer: string }> =>
+): Promise<{ answer: string; actions?: JarvisAction[] }> =>
   jarvisFetch(`/assistant`, {
     method: "POST",
     body: JSON.stringify({ question, context, history }),

@@ -10,12 +10,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Loader2, RefreshCw, Send, Sparkles, X } from "lucide-react";
+import { Bug, Loader2, Paperclip, RefreshCw, Send, Sparkles, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
-  askJarvis, refreshKb, JarvisContext, JarvisMessage,
+  askJarvis, refreshKb, JarvisAction, JarvisContext, JarvisMessage,
 } from "@/services/jarvis-service";
+import { submitBugReport } from "@/services/bug-report-service";
+
+type PanelMessage = JarvisMessage & { actions?: JarvisAction[] };
 
 const OPEN_JARVIS_EVENT = "open-jarvis";
 const BASENAME = "/chataiagent";
@@ -47,9 +51,11 @@ export function clearJarvisScreenContext() {
 export function JarvisPanel({ baseContext }: { baseContext: JarvisContext }) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<JarvisMessage[]>([]);
+  const [messages, setMessages] = useState<PanelMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  // Bug-report form state: null = closed, string = prefilled draft.
+  const [bugDraft, setBugDraft] = useState<string | null>(null);
   // Context from the chip that summoned us (richer than the page default).
   const [chipContext, setChipContext] = useState<JarvisContext | null>(null);
   const navigate = useNavigate();
@@ -82,13 +88,20 @@ export function JarvisPanel({ baseContext }: { baseContext: JarvisContext }) {
     try {
       const ctx = { ...baseContext, ...screenContext, ...(chipContext || {}) };
       const r = await askJarvis(question, ctx, history);
-      setMessages((m) => [...m, { role: "assistant", content: r.answer }]);
+      setMessages((m) => [...m, { role: "assistant", content: r.answer, actions: r.actions }]);
     } catch (e: any) {
       setMessages((m) => [...m, { role: "assistant", content: `_(${e.message})_` }]);
     } finally {
       setBusy(false);
     }
   }, [input, busy, messages, baseContext, chipContext]);
+
+  const clearConversation = () => { setMessages([]); setBugDraft(null); };
+
+  const runAction = (a: JarvisAction) => {
+    if (a.type === "clear_conversation") clearConversation();
+    else if (a.type === "report_bug") setBugDraft(a.draft || "");
+  };
 
   if (!open) {
     return (
@@ -112,6 +125,15 @@ export function JarvisPanel({ baseContext }: { baseContext: JarvisContext }) {
             Help with loops, integrations, prompts, evals — knows this screen.
           </p>
         </div>
+        <Button size="sm" variant="ghost" className="h-7 px-2" title="Report a bug"
+                onClick={() => setBugDraft("")}>
+          <Bug size={13} />
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-2" title="Clear this conversation"
+                disabled={messages.length === 0}
+                onClick={() => { if (confirm("Clear this conversation?")) clearConversation(); }}>
+          <Trash2 size={13} />
+        </Button>
         <Button size="sm" variant="ghost" className="h-7 px-2" title="Refresh knowledge (after a feature ship)"
                 onClick={async () => {
                   const r = await refreshKb().catch((e) => ({ cleared: 0, note: e.message }));
@@ -124,6 +146,14 @@ export function JarvisPanel({ baseContext }: { baseContext: JarvisContext }) {
           <X size={14} />
         </Button>
       </div>
+
+      {bugDraft !== null && (
+        <BugForm
+          initial={bugDraft}
+          context={{ ...baseContext, ...screenContext, ...(chipContext || {}) }}
+          onClose={() => setBugDraft(null)}
+        />
+      )}
       {note && <p className="px-4 py-1.5 text-[11px] text-emerald-600 border-b border-border">{note}</p>}
 
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
@@ -167,6 +197,18 @@ export function JarvisPanel({ baseContext }: { baseContext: JarvisContext }) {
               >
                 {m.content}
               </ReactMarkdown>
+              {m.actions && m.actions.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {m.actions.map((a, ai) => (
+                    <Button key={ai} size="sm" variant="outline" className="h-7 text-xs"
+                            onClick={() => runAction(a)}>
+                      {a.type === "clear_conversation"
+                        ? <><Trash2 size={12} className="mr-1" /> Clear this conversation</>
+                        : <><Bug size={12} className="mr-1" /> File this bug</>}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </div>
           ),
         )}
@@ -195,6 +237,65 @@ export function JarvisPanel({ baseContext }: { baseContext: JarvisContext }) {
             <Send size={14} />
           </Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Bug-report form inside the Jarvis panel. Jarvis pre-fills a description
+// (drafted from the problem + screen context); the user can edit it, attach a
+// screenshot, and submit to the existing bug_reports entity. The screen context
+// rides along in the description so a triager sees exactly where it happened.
+function BugForm({ initial, context, onClose }: {
+  initial: string;
+  context: JarvisContext;
+  onClose: () => void;
+}) {
+  const ctxLine = [
+    context.page && `page: ${context.page}`,
+    context.section && `section: ${context.section}`,
+    context.tab && `tab: ${context.tab}`,
+    context.loop_id && `loop: ${context.loop_id}`,
+    context.agent_id && `agent: ${context.agent_id}`,
+    context.visible_problems?.length && `problems: ${context.visible_problems.join("; ")}`,
+  ].filter(Boolean).join(" · ");
+  const [desc, setDesc] = useState(
+    initial + (initial && ctxLine ? "\n\n" : "") + (ctxLine ? `— context: ${ctxLine}` : ""));
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (desc.trim().length < 3) return;
+    setBusy(true);
+    try {
+      await submitBugReport({ description: desc.trim(), screenshot: file, chatId: null });
+      toast.success("Bug reported — thank you!");
+      onClose();
+    } catch (e: any) {
+      toast.error(e.message || "Could not file the bug");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="border-b border-border bg-muted/20 p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <Bug size={14} className="text-primary" />
+        <p className="text-sm font-medium">Report a bug</p>
+        <Button size="sm" variant="ghost" className="ml-auto h-6 px-2 text-xs" onClick={onClose}>Cancel</Button>
+      </div>
+      <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={4}
+                placeholder="What went wrong?"
+                className="w-full rounded-md border border-border bg-background p-2 text-sm" />
+      <div className="flex items-center gap-2">
+        <label className="inline-flex items-center gap-1 text-xs text-muted-foreground cursor-pointer">
+          <Paperclip size={13} />
+          {file ? file.name.slice(0, 24) : "Attach screenshot"}
+          <input type="file" accept="image/*" className="hidden"
+                 onChange={(e) => setFile(e.target.files?.[0] || null)} />
+        </label>
+        <Button size="sm" className="ml-auto h-7" disabled={busy || desc.trim().length < 3} onClick={submit}>
+          {busy ? <Loader2 size={13} className="mr-1 animate-spin" /> : <Bug size={13} className="mr-1" />} Submit bug
+        </Button>
       </div>
     </div>
   );

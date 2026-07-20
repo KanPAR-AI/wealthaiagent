@@ -12,7 +12,6 @@ import { useCallback, useEffect, useState } from "react";
 import { History, Loader2, Pencil, RefreshCw, RotateCcw, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { IntegrationsPanel } from "@/components/admin/loops/loops-view";
 import { JarvisChip } from "@/components/admin/jarvis/jarvis-panel";
 import {
   LoopJob, PromptSummary,
@@ -27,8 +26,9 @@ const JOB_COLORS: Record<string, string> = {
   failed: "bg-red-500/15 text-red-600",
 };
 
-type OpsTab = "prompts" | "integrations" | "jobs";
-const OPS_TABS: OpsTab[] = ["prompts", "integrations", "jobs"];
+// Integrations moved to its own top-level admin section (beside Operations).
+type OpsTab = "prompts" | "jobs";
+const OPS_TABS: OpsTab[] = ["prompts", "jobs"];
 
 export function OperationsView({ initialTab }: { initialTab?: string }) {
   const [tab, setTab] = useState<OpsTab>("prompts");
@@ -61,7 +61,6 @@ export function OperationsView({ initialTab }: { initialTab?: string }) {
       </div>
 
       {tab === "prompts" && <PromptsTab />}
-      {tab === "integrations" && <IntegrationsPanel />}
       {tab === "jobs" && <JobsTab />}
     </div>
   );

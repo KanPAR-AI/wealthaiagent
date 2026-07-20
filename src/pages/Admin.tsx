@@ -36,7 +36,7 @@ import { SandboxPanel } from "@/components/admin/agent-builder/sandbox-panel";
 import { useAdminStore } from "@/store/admin";
 import { fetchAgents } from "@/services/admin-service";
 import { OperationsView } from "@/components/admin/ops/operations-view";
-import { LoopsView } from "@/components/admin/loops/loops-view";
+import { LoopsView, IntegrationsPanel } from "@/components/admin/loops/loops-view";
 import { JarvisChip, JarvisPanel } from "@/components/admin/jarvis/jarvis-panel";
 
 type Tab =
@@ -92,10 +92,10 @@ export default function Admin() {
   // Deep-linkable: /admin?section=ops&tab=integrations, ?section=loops&loop=<id>
   // — Jarvis answers navigate here, and the URL stays shareable.
   const [searchParams, setSearchParams] = useSearchParams();
-  const [section, setSection] = useState<"agents" | "loops" | "ops">("agents");
+  const [section, setSection] = useState<"agents" | "loops" | "ops" | "integrations">("agents");
   useEffect(() => {
     const s = searchParams.get("section");
-    if (s === "agents" || s === "loops" || s === "ops") setSection(s);
+    if (s === "agents" || s === "loops" || s === "ops" || s === "integrations") setSection(s);
     const agentId = searchParams.get("agent");
     if (agentId) {
       setSelectedAgentId(agentId);
@@ -144,9 +144,9 @@ export default function Admin() {
 
       {view === "manage" ? (
         <div className="max-w-6xl mx-auto px-6 py-6">
-          {/* Section switcher: Agents | Loops */}
+          {/* Section switcher: Agents | Verified Procedures | Operations | Integrations */}
           <div className="flex gap-1 mb-5 border-b border-border">
-            {(["agents", "loops", "ops"] as const).map((s) => (
+            {(["agents", "loops", "ops", "integrations"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => { setSection(s); setSearchParams({ section: s }); }}
@@ -156,12 +156,15 @@ export default function Admin() {
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {s === "agents" ? "Agents" : s === "loops" ? "Verified Procedures" : "Operations"}
+                {s === "agents" ? "Agents" : s === "loops" ? "Verified Procedures"
+                  : s === "ops" ? "Operations" : "Integrations"}
               </button>
             ))}
           </div>
 
-          {section === "loops" ? (
+          {section === "integrations" ? (
+            <IntegrationsPanel />
+          ) : section === "loops" ? (
             <LoopsView initialLoopId={deepLinkLoopId} />
           ) : section === "ops" ? (
             <OperationsView initialTab={opsTab} />
