@@ -293,13 +293,21 @@ export const signalEvent = (
   });
 
 export const listIntegrations = (): Promise<{
-  integrations: Record<string, { url: string; has_secret: boolean }>;
+  integrations: Record<string, { url: string; has_secret: boolean; type?: string; action?: string; provider?: string }>;
+  discovered?: Record<string, { used_by: string[]; example_params: Record<string, any> | null }>;
+  provider_options?: Record<string, string[]>;
+  org_id?: string;
 }> => loopsFetch(`/loops/integrations`);
 
-export const setIntegration = (tool: string, url: string, secret = "", composioAction = "") =>
+export const setIntegration = (
+  tool: string, url: string, secret = "", composioAction = "", nativeProvider = "",
+) =>
   loopsFetch(`/loops/integrations`, {
     method: "PUT",
-    body: JSON.stringify({ tool, url, secret, composio_action: composioAction }),
+    body: JSON.stringify({
+      tool, url, secret,
+      composio_action: composioAction, native_provider: nativeProvider,
+    }),
   });
 
 export const suggestIntegration = (tool: string): Promise<{

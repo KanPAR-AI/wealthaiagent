@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import {
   JarvisChip, clearJarvisScreenContext, publishJarvisScreenContext,
 } from "@/components/admin/jarvis/jarvis-panel";
+import { NativeProviderSetup } from "@/components/admin/integrations/native-provider-setup";
+import { NativeProvider, listNativeProviders } from "@/services/integrations-native-service";
 import {
   EditReview, EvalCase, LoopSummary, LoopVersion, LoopsOverview, RegressionReport,
   RunSummary,
@@ -237,11 +239,14 @@ function CompilePanel({ onDone }: { onDone: (loopId?: string) => void }) {
 // hook's JSON response becomes the step's result. Dry-run still sends nothing.
 
 export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
-  const [rows, setRows] = useState<Record<string, { url: string; has_secret: boolean }>>({});
+  const [rows, setRows] = useState<Record<string, { url: string; has_secret: boolean; type?: string; action?: string; provider?: string }>>({});
   const [discovered, setDiscovered] = useState<Record<string, { used_by: string[]; example_params: Record<string, any> | null }>>({});
+  const [providerOptions, setProviderOptions] = useState<Record<string, string[]>>({});
+  const [providers, setProviders] = useState<NativeProvider[]>([]);
   const [orgId, setOrgId] = useState("platform");
   const [tool, setTool] = useState("");
-  const [kind, setKind] = useState<"webhook" | "composio">("webhook");
+  // kind is "webhook" | "composio" | "native:<providerId>"
+  const [kind, setKind] = useState<string>("webhook");
   const [url, setUrl] = useState("");
   const [action, setAction] = useState("");
   const [secret, setSecret] = useState("");
@@ -253,17 +258,33 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
     listIntegrations().then((d: any) => {
       setRows(d.integrations);
       setDiscovered(d.discovered || {});
+      setProviderOptions(d.provider_options || {});
       setOrgId(d.org_id || "platform");
     }).catch((e) => setErr(e.message));
+    listNativeProviders().then((d) => setProviders(d.providers)).catch(() => {});
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  // Native providers offered for the tool currently being configured.
+  const nativeForTool = (providerOptions[tool.trim()] || [])
+    .map((pid) => providers.find((p) => p.id === pid))
+    .filter(Boolean) as NativeProvider[];
+  const selectedNative = kind.startsWith("native:")
+    ? providers.find((p) => p.id === kind.slice("native:".length)) || null
+    : null;
 
   const save = async () => {
     setBusy(true); setErr(null);
     try {
-      await setIntegration(tool.trim(), kind === "webhook" ? url.trim() : "",
-                           secret.trim(), kind === "composio" ? action.trim() : "");
-      setTool(""); setUrl(""); setAction(""); setSecret(""); load();
+      const nativeProvider = kind.startsWith("native:") ? kind.slice("native:".length) : "";
+      await setIntegration(
+        tool.trim(),
+        kind === "webhook" ? url.trim() : "",
+        secret.trim(),
+        kind === "composio" ? action.trim() : "",
+        nativeProvider,
+      );
+      setTool(""); setUrl(""); setAction(""); setSecret(""); setKind("webhook"); load();
     } catch (e: any) { setErr(e.message); }
     finally { setBusy(false); }
   };
@@ -278,23 +299,23 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
   return (
     <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
       <div className="flex items-center gap-2 mb-1">
-        <h3 className="font-semibold">Tool integrations</h3>
+        <h3 className="font-semibold">Tool Integrator</h3>
         <JarvisChip
-          question="How do I map a tool my procedure uses to Zapier or Composio?"
+          question="How do I bind a tool my procedure uses to a transport — webhook, Composio, or a native provider like WhatsApp?"
           context={{ page: "integrations", section: "loops", tab: "integrations" }}
         />
         {onClose && <Button size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs" onClick={onClose}>Close</Button>}
       </div>
       <p className="text-xs text-muted-foreground mb-1">
-        Map a tool id to a webhook — a Zapier Catch Hook, a Make webhook, or your own endpoint.
-        Live runs POST the step&apos;s params as JSON; the hook&apos;s JSON response becomes the
-        step&apos;s output. Dry runs never send.
+        Bind each tool your procedures use to a <b>transport</b> of your choice: a
+        <b> webhook</b> (Zapier/Make/own URL), a <b>Composio</b> action (owner&apos;s OAuth), or a
+        <b> native provider</b> (e.g. WhatsApp&apos;s QR bridge). Live runs execute through it;
+        dry runs never send. The same tool can use a different transport in each org.
       </p>
       <p className="text-[11px] mb-3">
         <span className="px-1.5 py-0.5 rounded bg-muted font-mono">org: {orgId}</span>
-        <span className="text-muted-foreground"> — mappings are per-organization; each tenant
-        configures its own. Composio-native tools (per-user OAuth, as in chat) are the Phase-4
-        backend; webhooks are today&apos;s transport.</span>
+        <span className="text-muted-foreground"> — every mapping and native-provider connection
+        is per-organization; each tenant configures its own.</span>
       </p>
 
       <details className="mb-3 border border-border rounded-md">
@@ -362,6 +383,8 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
               <span className="flex-1 min-w-0 truncate text-xs text-muted-foreground">
                 {(v as any).type === "composio"
                   ? <>composio: <span className="font-mono">{(v as any).action}</span> (owner&apos;s OAuth)</>
+                  : (v as any).type === "native"
+                  ? <>native: <span className="font-mono">{(v as any).provider}</span> ({providers.find((p) => p.id === (v as any).provider)?.label || "provider"})</>
                   : v.url}
               </span>
               {v.has_secret && <span className="text-[10px] text-muted-foreground shrink-0">🔒 secret</span>}
@@ -375,33 +398,56 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
       )}
 
       {hint && <p className="text-xs text-muted-foreground mb-2 whitespace-pre-wrap">{hint}</p>}
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">
+        Configure a tool — pick its transport
+      </p>
       <div className="flex flex-wrap gap-2">
         <input value={tool} onChange={(e) => setTool(e.target.value)} placeholder="tool id (whatsapp_send_message)"
                className="rounded-md border border-border bg-background px-2 py-1.5 text-sm font-mono w-64" />
-        <select value={kind} onChange={(e) => setKind(e.target.value as any)}
+        <select value={kind} onChange={(e) => setKind(e.target.value)}
                 className="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
-          <option value="webhook">webhook</option>
-          <option value="composio">composio (owner&apos;s OAuth)</option>
+          <option value="webhook">Webhook (Zapier/Make/own URL)</option>
+          <option value="composio">Composio action (owner&apos;s OAuth)</option>
+          {nativeForTool.map((p) => (
+            <option key={p.id} value={`native:${p.id}`}>Native: {p.label}</option>
+          ))}
         </select>
-        {kind === "webhook" ? (
+        {kind === "webhook" && (
           <>
             <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://hooks.zapier.com/…"
                    className="flex-1 min-w-48 rounded-md border border-border bg-background px-2 py-1.5 text-sm" />
             <input value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="secret (optional)"
                    className="rounded-md border border-border bg-background px-2 py-1.5 text-sm w-40" />
           </>
-        ) : (
+        )}
+        {kind === "composio" && (
           <input value={action} onChange={(e) => setAction(e.target.value)}
                  placeholder="Composio action slug (GMAIL_SEND_EMAIL)"
                  className="flex-1 min-w-48 rounded-md border border-border bg-background px-2 py-1.5 text-sm font-mono" />
         )}
         <Button size="sm"
                 disabled={busy || tool.trim().length < 2 ||
-                          (kind === "webhook" ? !url.startsWith("http") : action.trim().length < 3)}
+                          (kind === "webhook" ? !url.startsWith("http")
+                           : kind === "composio" ? action.trim().length < 3
+                           : false)}
                 onClick={save}>
-          <Save size={14} className="mr-1" /> Save
+          <Save size={14} className="mr-1" /> {selectedNative ? "Map to this provider" : "Save"}
         </Button>
       </div>
+
+      {/* Native provider chosen → connect/test it right here. Mapping the tool
+          and pairing the provider are separate steps: map with Save above,
+          pair/test below. */}
+      {selectedNative && (
+        <>
+          {nativeForTool.length === 0 && (
+            <p className="text-[11px] text-amber-600 mt-2">
+              Type a tool this provider serves (e.g. {selectedNative.tools.join(", ")}) to map it.
+            </p>
+          )}
+          <NativeProviderSetup provider={selectedNative} />
+        </>
+      )}
       {err && <p className="text-sm text-destructive mt-2">{err}</p>}
     </div>
   );
