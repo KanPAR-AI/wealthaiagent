@@ -41,10 +41,15 @@ export function AdminHeader() {
             Back to Chat
           </Link>
           <div className="h-4 w-px bg-border" />
-          <div className="flex items-center gap-2">
+          {/* Links back to the main admin page (section tabs) so admins aren't
+              stranded on sub-routes like /admin/bugs. */}
+          <Link
+            to="/admin"
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
             <Settings size={16} className="text-muted-foreground" />
             <h1 className="text-sm font-semibold">Admin Portal</h1>
-          </div>
+          </Link>
         </div>
 
         <div className="flex items-center gap-3">
