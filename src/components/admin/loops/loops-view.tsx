@@ -588,6 +588,10 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
   const [watching, setWatching] = useState(false);
   const [fix, setFix] = useState<FixResult | null>(null);
   const [fixBusy, setFixBusy] = useState(false);
+  // The actual error text from the most recent failed run, so Jarvis can see
+  // and explain it (the failure note lives in the run's step history, not the
+  // list — without this Jarvis only knows the loop has no *activation* problem).
+  const [failureNotes, setFailureNotes] = useState<string[]>([]);
 
   const refresh = useCallback(() => {
     getLoop(loopId).then(setDetail).catch((e) => setErr(e.message));
@@ -595,15 +599,27 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
   }, [loopId]);
   useEffect(() => { refresh(); }, [refresh]);
 
-  // Let a freeform "why am I blocked?" typed into the Jarvis panel see
-  // this loop and its blocking problems without going through a chip.
+  // Pull the newest failed run's error note for Jarvis's context.
+  useEffect(() => {
+    const failed = runs.find((r) => r.status === "failed");
+    if (!failed) { setFailureNotes([]); return; }
+    getRun(loopId, failed.run_id).then((d) => {
+      const notes = (d.run?.history || [])
+        .filter((h: any) => h.phase === "failed" && h.note)
+        .map((h: any) => `run ${failed.run_id.slice(0, 8)} — ${h.step_id} failed: ${h.note}`);
+      setFailureNotes(notes.length ? notes : [`run ${failed.run_id.slice(0, 8)} failed: ${failed.exit_reason || "unknown"}`]);
+    }).catch(() => setFailureNotes([`a recent run failed: ${failed.exit_reason || "unknown"}`]));
+  }, [runs, loopId]);
+
+  // Let a freeform Jarvis question see this loop's blocking problems AND recent
+  // run failures (the on-screen red banner) without going through a chip.
   useEffect(() => {
     publishJarvisScreenContext({
       page: "loop_detail", section: "loops", loop_id: loopId,
-      visible_problems: detail?.problems || [],
+      visible_problems: [...(detail?.problems || []), ...failureNotes],
     });
     return () => clearJarvisScreenContext();
-  }, [loopId, detail]);
+  }, [loopId, detail, failureNotes]);
 
   // Live-ish updates while anything is in flight.
   useEffect(() => {
