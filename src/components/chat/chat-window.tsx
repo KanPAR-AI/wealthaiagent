@@ -15,6 +15,7 @@ import { ChatWindowProps, MessageFile, SuggestionTileData } from '@/types';
 import { AiLoadingIndicator } from './ai-loading-indicator';
 import { ChatEmptyState } from './chat-empty-state';
 import { PromptInputWithActions, PromptInputRef } from "./chat-input";
+import { getApiUrl } from "@/config/environment";
 import { AgentSelector } from "./agent-selector";
 import { SuggestionTiles } from './chat-suggestion-tiles';
 import { FilePreviewModal } from './file-preview-modal';
@@ -106,6 +107,18 @@ export default function ChatWindow({
   const clearPendingMessage = useChatStore(state => state.clearPendingMessage);
   const selectedAgent = useChatStore(state => state.selectedAgent);
   const setSelectedAgent = useChatStore(state => state.setSelectedAgent);
+
+  // WhatsApp-originated chats are read-only on web (the conversation lives on
+  // WhatsApp; editing here would confuse where a message came from).
+  const [chatSource, setChatSource] = useState<string | null>(null);
+  useEffect(() => {
+    if (!chatId || !token) { setChatSource(null); return; }
+    fetch(getApiUrl(`/chats/${chatId}`), { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setChatSource(d?.chat?.source ?? null))
+      .catch(() => {});
+  }, [chatId, token]);
+  const isReadOnly = chatSource === "whatsapp";
 
   const {
     handleCopy,
@@ -391,18 +404,26 @@ export default function ChatWindow({
             >
               <div className="w-full px-2 py-2 sm:px-4 sm:pb-4">
                 <div className="max-w-3xl mx-auto space-y-1.5">
-                  <AgentSelector
-                    value={selectedAgent}
-                    onChange={setSelectedAgent}
-                    disabled={isSending}
-                  />
-                  <PromptInputWithActions
-                    onSubmit={handleSend}
-                    // Disable input if sending, regenerating, loading token, OR if a new chat is initiating
-                    isLoading={isSending || isRegenerating || isLoadingToken || isNewChatInitiating}
-                    isInEmptyState={false}
-                    onStop={handleStop}
-                  />
+                  {isReadOnly ? (
+                    <div className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-center text-xs text-muted-foreground">
+                      💬 This conversation is from <b>WhatsApp</b> — read-only here. Reply on WhatsApp to continue it.
+                    </div>
+                  ) : (
+                    <>
+                      <AgentSelector
+                        value={selectedAgent}
+                        onChange={setSelectedAgent}
+                        disabled={isSending}
+                      />
+                      <PromptInputWithActions
+                        onSubmit={handleSend}
+                        // Disable input if sending, regenerating, loading token, OR if a new chat is initiating
+                        isLoading={isSending || isRegenerating || isLoadingToken || isNewChatInitiating}
+                        isInEmptyState={false}
+                        onStop={handleStop}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             </div>
