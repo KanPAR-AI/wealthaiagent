@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CheckCircle2, ChevronLeft, Circle, History, Loader2, Pencil, Play, Plus, RefreshCw,
-  RotateCcw, Save, ShieldCheck, ThumbsDown, ThumbsUp, Trash2, X, XCircle,
+  RotateCcw, Save, ShieldCheck, Sparkles, ThumbsDown, ThumbsUp, Trash2, X, XCircle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ function appOf(tool: string): string {
 import {
   EditReview, EvalCase, LoopSummary, LoopVersion, LoopsOverview, RegressionReport,
   RunSummary,
-  addCase, addRunToSuite, approveRun, compareEvalRuns, compileSop, createLoop,
+  addCase, addRunToSuite, approveRun, compareEvalRuns, compileSop, createLoop, draftSop,
   createSuite, deleteCase, deleteIntegration, deleteLoop, getEvalRun, getLoop,
   getOverview, getRun, getSuite, listEvalRuns, listIntegrations, listLoops,
   listRuns, listSuites, listVersions, rejectRun, restoreVersion, resumeEvalRun, signalEvent, fixLoop, FixResult, suggestIntegration,
@@ -194,6 +194,22 @@ function CompilePanel({ onDone }: { onDone: (loopId?: string) => void }) {
   const [sop, setSop] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // "Draft with AI": a one-line goal → full SOP prose written into the textarea.
+  const [goal, setGoal] = useState("");
+  const [drafting, setDrafting] = useState(false);
+
+  const draftWithAi = async () => {
+    if (goal.trim().length < 5) return;
+    setDrafting(true); setErr(null);
+    try {
+      const { sop: drafted } = await draftSop(goal.trim());
+      setSop(drafted);   // fill the editable box — the human reviews before compiling
+    } catch (e: any) {
+      setErr(e.message || "Draft failed — try rephrasing the goal.");
+    } finally {
+      setDrafting(false);
+    }
+  };
 
   // Compile AND persist as a draft in one step. Previously "Compile" only
   // produced an in-memory preview and a reload before the separate "Save"
@@ -220,11 +236,36 @@ function CompilePanel({ onDone }: { onDone: (loopId?: string) => void }) {
 
   return (
     <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
+      {/* Draft with AI: describe the goal in one line, let the assistant write
+          the full SOP into the box below (you still review + edit + compile). */}
+      <div className="mb-3 rounded-md border border-violet-500/30 bg-violet-500/5 p-3">
+        <p className="text-sm font-medium mb-1.5 flex items-center gap-1.5">
+          <Sparkles size={14} className="text-violet-500" /> Draft with AI
+        </p>
+        <div className="flex gap-2">
+          <input
+            value={goal}
+            onChange={(e) => setGoal(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") draftWithAi(); }}
+            disabled={drafting || busy}
+            placeholder='What should this procedure do? e.g. "chase overdue invoices every Friday"'
+            className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+          />
+          <Button size="sm" onClick={draftWithAi} disabled={goal.trim().length < 5 || drafting || busy}>
+            {drafting ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Sparkles size={14} className="mr-1" />}
+            {drafting ? "Drafting…" : "Draft"}
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-1.5">
+          Writes a full SOP into the box below — including trigger, approval gates, and “done”. Review &amp; edit before compiling.
+        </p>
+      </div>
+
       <p className="text-sm font-medium mb-2">Describe the procedure — include what “done” means:</p>
       <textarea
         value={sop}
         onChange={(e) => setSop(e.target.value)}
-        rows={4}
+        rows={sop ? 8 : 4}
         placeholder='e.g. "Every Friday, list clients with unpaid invoices over 30 days. Draft polite reminders. Show me for approval, then email them. Done when every such client has been emailed. Slack me a summary."'
         className="w-full rounded-md border border-border bg-background p-3 text-sm"
       />

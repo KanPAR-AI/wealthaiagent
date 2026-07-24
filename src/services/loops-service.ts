@@ -51,6 +51,10 @@ export interface RunSummary {
 export const compileSop = (sop: string) =>
   loopsFetch("/loops/compile", { method: "POST", body: JSON.stringify({ sop }) });
 
+// "Draft with AI" — expand a one-line goal into full SOP prose (pre-compile).
+export const draftSop = (goal: string): Promise<{ status: string; sop: string }> =>
+  loopsFetch("/loops/draft-sop", { method: "POST", body: JSON.stringify({ goal }) });
+
 export const createLoop = (spec: Record<string, any>) =>
   loopsFetch("/loops", { method: "POST", body: JSON.stringify({ spec }) });
 
