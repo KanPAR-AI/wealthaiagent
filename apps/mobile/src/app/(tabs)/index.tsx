@@ -27,10 +27,10 @@ import { useSendMessage } from '@/hooks/use-send-message';
 import { useUiStore } from '@/store/ui';
 
 const SUGGESTIONS = [
-  'Help me plan my finances',
-  'Analyze my portfolio performance',
-  'Build a 7-day meal plan for me',
-  'What are my top holdings?',
+  "I'm feeling overwhelmed — help me find calm 💛",
+  "Should I buy this house? Let's crunch the numbers 🏠",
+  'What do the stars have in store for me? ✨',
+  'Read my palm & reveal my destiny 🔮',
 ];
 
 export default function ChatScreen() {
