@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getPlatform, useChatStore, type MessageFile } from '@wealthai/core';
 
+import { DEFAULT_TILES, getHomeSuggestions, type HomeTile } from '@/services/home-service';
 import { BugReportSheet } from '@/components/bug-report-sheet';
 import { ChatInput } from '@/components/chat/chat-input';
 import { ChatDrawer } from '@/components/drawer/chat-drawer';
@@ -26,13 +27,6 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useSendMessage } from '@/hooks/use-send-message';
 import { useUiStore } from '@/store/ui';
 
-const SUGGESTIONS = [
-  "I'm feeling overwhelmed — help me find calm 💛",
-  "Should I buy this house? Let's crunch the numbers 🏠",
-  'What do the stars have in store for me? ✨',
-  'Read my palm & reveal my destiny 🔮',
-];
-
 export default function ChatScreen() {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const colors = Colors[scheme];
@@ -44,7 +38,28 @@ export default function ChatScreen() {
   const newChat = useUiStore((st) => st.newChat);
   const { send, cancel, isSending, isCreatingChat } = useSendMessage(chatId, setChatId);
   const selectedAgent = useChatStore((st) => st.selectedAgent);
+  const setSelectedAgent = useChatStore((st) => st.setSelectedAgent);
   const modelTier = useChatStore((st) => st.selectedModelTier) || 'auto';
+
+  // Server-configured suggestion tiles (campaigns). Fetched once on mount;
+  // falls back to bundled defaults so the home screen is never blank.
+  const [tiles, setTiles] = useState<HomeTile[]>(DEFAULT_TILES);
+  useEffect(() => {
+    let alive = true;
+    getHomeSuggestions().then((s) => {
+      if (alive && s.tiles?.length) setTiles(s.tiles);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Tapping a tile sends its text. If the tile is locked to an agent, select
+  // that agent first so the turn routes there (else smart routing decides).
+  const sendTile = (tile: HomeTile) => {
+    if (tile.agent) setSelectedAgent(tile.agent);
+    send(tile.text, []);
+  };
   const creditsUsed = useChatStore((st) => (chatId ? st.creditsConsumed[chatId] ?? 0 : 0));
   // Refetch the debug panel when a turn settles (message added / send finishes).
   const msgCount = useChatStore((st) => (chatId ? st.chats[chatId]?.messages?.length ?? 0 : 0));
@@ -177,16 +192,16 @@ export default function ChatScreen() {
                 How can I help you today?
               </ThemedText>
               <View style={styles.suggestions}>
-                {SUGGESTIONS.map((s) => (
+                {tiles.map((tile, i) => (
                   <Pressable
-                    key={s}
+                    key={`${tile.text}-${i}`}
                     disabled={busy}
-                    onPress={() => send(s, [])}
+                    onPress={() => sendTile(tile)}
                     style={({ pressed }) => [
                       styles.suggestion,
                       { backgroundColor: colors.backgroundElement, opacity: pressed ? 0.7 : 1 },
                     ]}>
-                    <ThemedText type="small">{s}</ThemedText>
+                    <ThemedText type="small">{tile.text}</ThemedText>
                   </Pressable>
                 ))}
               </View>

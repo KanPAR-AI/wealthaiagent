@@ -30,6 +30,7 @@ import { useMessageSending } from './hooks/use-message-sending';
 import { useIOSKeyboard } from '@/hooks/use-ios-keyboard';
 
 import { useIsMysticAI } from '@/lib/mysticai';
+import { getHomeSuggestions, type HomeTile } from '@/services/home-service';
 
 const mysticSuggestionTiles: SuggestionTileData[] = [
   { id: 1, title: "Find muhurta for c-section delivery", description: "Auspicious birth timing", useMockService: false },
@@ -119,6 +120,23 @@ export default function ChatWindow({
       .catch(() => {});
   }, [chatId, token]);
   const isReadOnly = chatSource === "whatsapp";
+
+  // Server-configured home tiles (campaigns). Fetched once; falls back to the
+  // bundled default tiles if unset/failed. MysticAI keeps its own white-label
+  // tiles. Change the tiles / run a campaign with no redeploy.
+  const [serverTiles, setServerTiles] = useState<HomeTile[] | null>(null);
+  useEffect(() => {
+    if (isMysticAI) return;
+    getHomeSuggestions().then((s) => { if (s.tiles?.length) setServerTiles(s.tiles); }).catch(() => {});
+  }, [isMysticAI]);
+
+  const activeTiles: SuggestionTileData[] = isMysticAI
+    ? mysticSuggestionTiles
+    : serverTiles
+      ? serverTiles.map((t, i) => ({ id: i + 1, title: t.text, description: '' }))
+      : defaultSuggestionTiles;
+  const tileAgentByTitle: Record<string, string | null> = {};
+  (serverTiles || []).forEach((t) => { tileAgentByTitle[t.text] = t.agent ?? null; });
 
   const {
     handleCopy,
@@ -351,8 +369,12 @@ export default function ChatWindow({
                     onStop={handleStop}
                   />
                   <SuggestionTiles
-                    tiles={isMysticAI ? mysticSuggestionTiles : defaultSuggestionTiles}
-                    onSuggestionClick={(title, useMockService) => handleSend(title, [], useMockService)}
+                    tiles={activeTiles}
+                    onSuggestionClick={(title, useMockService) => {
+                      const agent = tileAgentByTitle[title];
+                      if (agent) setSelectedAgent(agent);
+                      handleSend(title, [], useMockService);
+                    }}
                     // Disable suggestions if sending or regenerating OR if a new chat is initiating
                     disabled={isSending || isRegenerating || isNewChatInitiating}
                   />

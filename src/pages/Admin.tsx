@@ -39,6 +39,7 @@ import { OperationsView } from "@/components/admin/ops/operations-view";
 import { LoopsView, IntegrationsPanel } from "@/components/admin/loops/loops-view";
 import { ModelProfilesView } from "@/components/admin/models/model-profiles-view";
 import { CreditsAdminView } from "@/components/admin/credits/credits-admin-view";
+import { CampaignsAdminView } from "@/components/admin/campaigns/campaigns-admin-view";
 import { JarvisChip, JarvisPanel } from "@/components/admin/jarvis/jarvis-panel";
 
 type Tab =
@@ -94,10 +95,10 @@ export default function Admin() {
   // Deep-linkable: /admin?section=ops&tab=integrations, ?section=loops&loop=<id>
   // — Jarvis answers navigate here, and the URL stays shareable.
   const [searchParams, setSearchParams] = useSearchParams();
-  const [section, setSection] = useState<"agents" | "loops" | "ops" | "integrations" | "models" | "credits">("agents");
+  const [section, setSection] = useState<"agents" | "loops" | "ops" | "integrations" | "models" | "credits" | "campaigns">("agents");
   useEffect(() => {
     const s = searchParams.get("section");
-    if (s === "agents" || s === "loops" || s === "ops" || s === "integrations" || s === "models" || s === "credits") setSection(s);
+    if (s === "agents" || s === "loops" || s === "ops" || s === "integrations" || s === "models" || s === "credits" || s === "campaigns") setSection(s);
     const agentId = searchParams.get("agent");
     if (agentId) {
       setSelectedAgentId(agentId);
@@ -148,7 +149,7 @@ export default function Admin() {
         <div className="max-w-6xl mx-auto px-6 py-6">
           {/* Section switcher: Agents | Verified Procedures | Operations | Integrations */}
           <div className="flex gap-1 mb-5 border-b border-border">
-            {(["agents", "loops", "ops", "integrations", "models", "credits"] as const).map((s) => (
+            {(["agents", "loops", "ops", "integrations", "models", "credits", "campaigns"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => { setSection(s); setSearchParams({ section: s }); }}
@@ -160,7 +161,7 @@ export default function Admin() {
               >
                 {s === "agents" ? "Agents" : s === "loops" ? "Verified Procedures"
                   : s === "ops" ? "Operations" : s === "integrations" ? "Integrations"
-                  : s === "models" ? "Models" : "Credits"}
+                  : s === "models" ? "Models" : s === "credits" ? "Credits" : "Campaigns"}
               </button>
             ))}
           </div>
@@ -171,6 +172,8 @@ export default function Admin() {
             <ModelProfilesView />
           ) : section === "credits" ? (
             <CreditsAdminView />
+          ) : section === "campaigns" ? (
+            <CampaignsAdminView />
           ) : section === "loops" ? (
             <LoopsView initialLoopId={deepLinkLoopId} />
           ) : section === "ops" ? (
