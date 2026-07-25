@@ -35,6 +35,7 @@ import { PROD_BASE_URL, getBaseUrl, setBaseUrl } from '@/lib/server-config';
 import { loadChatIntoStore } from '@/lib/load-chat';
 import { useUiStore } from '@/store/ui';
 import { useAuth } from '@/hooks/use-auth';
+import { getCreditBalance, requestCredits, type CreditBalance } from '@/services/credits-service';
 
 const SPRING = { damping: 24, stiffness: 240, mass: 0.8 };
 
@@ -69,6 +70,25 @@ export function ChatDrawer({
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [credits, setCredits] = useState<CreditBalance | null>(null);
+  const [requesting, setRequesting] = useState(false);
+
+  // Refresh the credit balance whenever the drawer opens.
+  useEffect(() => {
+    if (open) getCreditBalance().then(setCredits).catch(() => {});
+  }, [open]);
+
+  const handleRequestCredits = useCallback(async () => {
+    setRequesting(true);
+    try {
+      await requestCredits(0, 'Requested from the app');
+      Alert.alert('Request sent', 'An admin will review your credit request shortly.');
+    } catch (e: any) {
+      Alert.alert('Could not request', e?.message ?? 'Try again later.');
+    } finally {
+      setRequesting(false);
+    }
+  }, []);
 
   // ── Animation ────────────────────────────────────────────────────
   const tx = useSharedValue(-width);
@@ -288,6 +308,20 @@ export function ChatDrawer({
               </View>
               <View style={styles.footerText}>
                 <ThemedText type="smallBold" numberOfLines={1}>{who}</ThemedText>
+                {credits && (credits.unlimited ? (
+                  <ThemedText type="small" themeColor="textSecondary">✦ Unlimited credits</ThemedText>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      ✦ {credits.balance.toLocaleString()} credits
+                    </ThemedText>
+                    <Pressable onPress={handleRequestCredits} hitSlop={6} disabled={requesting}>
+                      <ThemedText type="small" style={styles.signOut}>
+                        {requesting ? '…' : 'Request'}
+                      </ThemedText>
+                    </Pressable>
+                  </View>
+                ))}
                 <Pressable onPress={handleSignOut} hitSlop={6}>
                   <ThemedText type="small" style={styles.signOut}>Sign out</ThemedText>
                 </Pressable>
