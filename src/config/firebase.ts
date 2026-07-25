@@ -10,6 +10,11 @@ const firebaseConfig = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  // Enables Google Analytics (GA4). Set once you turn on Analytics for the
+  // Firebase project (Console → Project settings → grab the "G-XXXX" id).
+  // Analytics init is env-gated in lib/analytics.ts, so this being unset just
+  // means no events are sent (nothing breaks).
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = initializeApp(firebaseConfig);

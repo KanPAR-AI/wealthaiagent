@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getPlatform, useChatStore, type MessageFile } from '@wealthai/core';
 
 import { DEFAULT_TILES, getHomeSuggestions, type HomeTile } from '@/services/home-service';
+import { track } from '@/lib/analytics';
 import { BugReportSheet } from '@/components/bug-report-sheet';
 import { ChatInput } from '@/components/chat/chat-input';
 import { ChatDrawer } from '@/components/drawer/chat-drawer';
@@ -44,10 +45,13 @@ export default function ChatScreen() {
   // Server-configured suggestion tiles (campaigns). Fetched once on mount;
   // falls back to bundled defaults so the home screen is never blank.
   const [tiles, setTiles] = useState<HomeTile[]>(DEFAULT_TILES);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
     getHomeSuggestions().then((s) => {
-      if (alive && s.tiles?.length) setTiles(s.tiles);
+      if (!alive) return;
+      if (s.tiles?.length) setTiles(s.tiles);
+      setCampaignId(s.campaign_id);
     });
     return () => {
       alive = false;
@@ -57,6 +61,7 @@ export default function ChatScreen() {
   // Tapping a tile sends its text. If the tile is locked to an agent, select
   // that agent first so the turn routes there (else smart routing decides).
   const sendTile = (tile: HomeTile) => {
+    track('tile_tap', { campaign_id: campaignId || 'default', text: tile.text, agent: tile.agent || 'auto' });
     if (tile.agent) setSelectedAgent(tile.agent);
     send(tile.text, []);
   };

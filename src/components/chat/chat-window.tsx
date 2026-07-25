@@ -31,6 +31,7 @@ import { useIOSKeyboard } from '@/hooks/use-ios-keyboard';
 
 import { useIsMysticAI } from '@/lib/mysticai';
 import { getHomeSuggestions, type HomeTile } from '@/services/home-service';
+import { track } from '@/lib/analytics';
 
 const mysticSuggestionTiles: SuggestionTileData[] = [
   { id: 1, title: "Find muhurta for c-section delivery", description: "Auspicious birth timing", useMockService: false },
@@ -125,9 +126,13 @@ export default function ChatWindow({
   // bundled default tiles if unset/failed. MysticAI keeps its own white-label
   // tiles. Change the tiles / run a campaign with no redeploy.
   const [serverTiles, setServerTiles] = useState<HomeTile[] | null>(null);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
   useEffect(() => {
     if (isMysticAI) return;
-    getHomeSuggestions().then((s) => { if (s.tiles?.length) setServerTiles(s.tiles); }).catch(() => {});
+    getHomeSuggestions().then((s) => {
+      if (s.tiles?.length) setServerTiles(s.tiles);
+      setCampaignId(s.campaign_id);
+    }).catch(() => {});
   }, [isMysticAI]);
 
   const activeTiles: SuggestionTileData[] = isMysticAI
@@ -372,6 +377,7 @@ export default function ChatWindow({
                     tiles={activeTiles}
                     onSuggestionClick={(title, useMockService) => {
                       const agent = tileAgentByTitle[title];
+                      track('tile_tap', { campaign_id: campaignId || 'default', text: title, agent: agent || 'auto' });
                       if (agent) setSelectedAgent(agent);
                       handleSend(title, [], useMockService);
                     }}
