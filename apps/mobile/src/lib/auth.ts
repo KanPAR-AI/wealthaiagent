@@ -68,11 +68,18 @@ export async function requestEmailOtp(email: string): Promise<void> {
   }
 }
 
-/** Verify the email OTP → exchange for a Firebase custom token → sign in. */
+/** Verify the email OTP → exchange for a Firebase custom token → sign in.
+ *  If a user is already signed in (phone / anonymous), we pass their token so
+ *  the backend LINKS the email onto that account instead of creating a new one
+ *  (seamless phone↔email linking + anonymous upgrade with no data loss). */
 export async function verifyEmailOtp(email: string, code: string): Promise<void> {
+  const currentToken = await auth.currentUser?.getIdToken().catch(() => null);
   const res = await fetch(apiUrl('/auth/otp/verify'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
+    },
     body: JSON.stringify({ channel: 'email', identifier: email.trim(), code: code.trim() }),
   });
   const b = await res.json().catch(() => ({}));
