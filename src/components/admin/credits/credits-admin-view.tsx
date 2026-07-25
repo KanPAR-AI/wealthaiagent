@@ -6,7 +6,7 @@ import { Check, Loader2, RefreshCw, Search, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
-  CreditRequest, LedgerEntry, getUserCredits, grantCredits,
+  CreditRequest, ResolvedUser, grantCredits, lookupUser,
   listCreditRequests, resolveCreditRequest,
 } from "@/services/credits-admin-service";
 
@@ -110,55 +110,58 @@ function RequestRow({
 }
 
 function UserGrantPanel() {
-  const [uid, setUid] = useState("");
-  const [data, setData] = useState<{ balance: number; ledger: LedgerEntry[] } | null>(null);
+  const [query, setQuery] = useState("");
+  const [data, setData] = useState<ResolvedUser | null>(null);
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const lookup = async () => {
-    if (!uid.trim()) return;
+    if (!query.trim()) return;
     setBusy(true); setErr(null);
-    try { setData(await getUserCredits(uid.trim())); }
+    try { setData(await lookupUser(query.trim())); }
     catch (e: any) { setErr(e.message); setData(null); } finally { setBusy(false); }
   };
 
   const grant = async () => {
     const n = Number(amount);
-    if (!uid.trim() || !n) return;
+    if (!data?.uid || !n) return;
     setBusy(true); setErr(null);
     try {
-      const res = await grantCredits(uid.trim(), n, reason || "admin adjustment");
+      await grantCredits(data.uid, n, reason || "admin adjustment");
       setAmount(""); setReason("");
-      setData(await getUserCredits(uid.trim()));
-      void res;
+      setData(await lookupUser(query.trim()));
     } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   };
 
   return (
     <div>
       <p className="text-xs font-semibold uppercase text-muted-foreground mb-1.5">
-        Look up a user (by uid) &amp; grant/deduct
+        Look up a user (email · phone · uid) &amp; grant/deduct
       </p>
       <div className="flex gap-2 mb-3">
         <div className="relative flex-1">
           <Search size={14} className="absolute left-2.5 top-2.5 text-muted-foreground" />
           <input
-            value={uid} onChange={(e) => setUid(e.target.value)}
+            value={query} onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") lookup(); }}
-            placeholder="Firebase uid"
-            className="w-full rounded-md border border-border bg-background pl-8 pr-3 py-2 text-sm font-mono"
+            placeholder="email, +phone, or uid"
+            className="w-full rounded-md border border-border bg-background pl-8 pr-3 py-2 text-sm"
           />
         </div>
-        <Button size="sm" variant="outline" onClick={lookup} disabled={busy || !uid.trim()}>Look up</Button>
+        <Button size="sm" variant="outline" onClick={lookup} disabled={busy || !query.trim()}>Look up</Button>
       </div>
       {err && <p className="text-sm text-destructive mb-2">{err}</p>}
 
       {data && (
         <div className="border border-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm">Balance: <b>{data.balance.toLocaleString()}</b> credits</span>
+            <div className="min-w-0">
+              <div className="text-sm truncate">{data.email || data.phone || data.uid}</div>
+              <div className="text-xs text-muted-foreground font-mono truncate">{data.uid}</div>
+            </div>
+            <span className="text-sm shrink-0">Balance: <b>{data.balance.toLocaleString()}</b> credits</span>
           </div>
           <div className="flex gap-2 mb-3">
             <input

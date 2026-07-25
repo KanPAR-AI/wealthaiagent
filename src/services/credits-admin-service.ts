@@ -55,6 +55,18 @@ export const getUserCredits = (
 ): Promise<{ uid: string; balance: number; ledger: LedgerEntry[] }> =>
   adminFetch(`/credits/${encodeURIComponent(uid)}`);
 
+export interface ResolvedUser {
+  uid: string;
+  email?: string | null;
+  phone?: string | null;
+  balance: number;
+  ledger: LedgerEntry[];
+}
+
+/** Resolve an email / phone (E.164) / uid → user + credits. */
+export const lookupUser = (q: string): Promise<ResolvedUser> =>
+  adminFetch(`/credits/lookup?q=${encodeURIComponent(q)}`);
+
 export const grantCredits = (
   uid: string, credits: number, reason: string,
 ): Promise<{ uid: string; balance: number }> =>
