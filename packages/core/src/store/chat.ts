@@ -13,6 +13,14 @@ interface ChatState {
   selectedAgent: string | null;
   setSelectedAgent: (agentId: string | null) => void;
 
+  // Model tier: 'auto' | 'fast' | 'deep' (null/'auto' = smart default)
+  selectedModelTier: string | null;
+  setSelectedModelTier: (tier: string | null) => void;
+
+  // Credits consumed per chat (subtle awareness counter)
+  creditsConsumed: Record<string, number>;
+  addCreditsConsumed: (chatId: string, n: number) => void;
+
   // Message management
   addMessage: (chatId: string, message: Message) => void;
   updateMessage: (chatId: string, messageId: string, updates: Partial<Message>) => void;
@@ -40,6 +48,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   pendingMessage: null,
   selectedAgent: null,
   setSelectedAgent: (agentId) => set({ selectedAgent: agentId }),
+  selectedModelTier: 'auto',
+  setSelectedModelTier: (tier) => set({ selectedModelTier: tier }),
+  creditsConsumed: {},
+  addCreditsConsumed: (chatId, n) => set((s) => ({
+    creditsConsumed: { ...s.creditsConsumed, [chatId]: (s.creditsConsumed[chatId] || 0) + n },
+  })),
 
   // Add a message to a specific chat
   addMessage: (chatId, message) => {
@@ -209,6 +223,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   reset: () => {
-    set({ chats: {}, pendingMessage: null, selectedAgent: null });
+    set({ chats: {}, pendingMessage: null, selectedAgent: null, selectedModelTier: 'auto', creditsConsumed: {} });
   },
 }));

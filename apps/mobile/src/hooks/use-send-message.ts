@@ -55,6 +55,8 @@ export function useSendMessage(
   const updateMessage = useChatStore((s) => s.updateMessage);
   const migrateChat = useChatStore((s) => s.migrateChat);
   const selectedAgent = useChatStore((s) => s.selectedAgent);
+  const selectedModelTier = useChatStore((s) => s.selectedModelTier);
+  const addCreditsConsumed = useChatStore((s) => s.addCreditsConsumed);
 
   const cancel = useCallback(() => {
     controllerRef.current?.abort();
@@ -295,7 +297,9 @@ export function useSendMessage(
           },
           {
             forceAgent: selectedAgent,
+            modelTier: selectedModelTier,
             externalSignal: controller.signal,
+            onCredits: (charged) => { if (charged) addCreditsConsumed(activeChatId!, charged); },
             onAssistantId: (backendBotId) => {
               if (backendBotId && backendBotId !== aiMessageIdLive) {
                 updateMessage(activeChatId!, aiMessageIdLive, { id: backendBotId });
@@ -330,7 +334,7 @@ export function useSendMessage(
         }
       }
     },
-    [chatId, state.isSending, state.isCreatingChat, addMessage, updateMessage, selectedAgent, onChatCreated],
+    [chatId, state.isSending, state.isCreatingChat, addMessage, updateMessage, selectedAgent, selectedModelTier, addCreditsConsumed, onChatCreated],
   );
 
   return { ...state, send, cancel };

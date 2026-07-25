@@ -44,6 +44,8 @@ export default function ChatScreen() {
   const newChat = useUiStore((st) => st.newChat);
   const { send, cancel, isSending, isCreatingChat } = useSendMessage(chatId, setChatId);
   const selectedAgent = useChatStore((st) => st.selectedAgent);
+  const modelTier = useChatStore((st) => st.selectedModelTier) || 'auto';
+  const creditsUsed = useChatStore((st) => (chatId ? st.creditsConsumed[chatId] ?? 0 : 0));
   // Refetch the debug panel when a turn settles (message added / send finishes).
   const msgCount = useChatStore((st) => (chatId ? st.chats[chatId]?.messages?.length ?? 0 : 0));
 
@@ -142,6 +144,18 @@ export default function ChatScreen() {
           </View>
         </View>
 
+        {/* Sub-header: model tier picker (left) + subtle credits-used counter (right) */}
+        <Pressable
+          onPress={() => router.push('/models')}
+          style={[styles.subHeader, { borderBottomColor: colors.backgroundElement }]}>
+          <ThemedText type="small" themeColor="textSecondary">
+            ⚡ {modelTier === 'fast' ? 'Fast' : modelTier === 'deep' ? 'Deep' : 'Auto'} model ▾
+          </ThemedText>
+          {creditsUsed > 0 && (
+            <ThemedText type="small" themeColor="textSecondary">✦ {creditsUsed.toLocaleString()} used</ThemedText>
+          )}
+        </Pressable>
+
         <KeyboardAvoidingView behavior="padding" style={styles.body}>
           {/* Always mounted (even with no chatId) so a brand-new chat still
               shows "About you" + the personalization toggle. */}
@@ -206,6 +220,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.two + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  subHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.four,
+    paddingVertical: 5,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerCenter: { alignItems: 'center' },

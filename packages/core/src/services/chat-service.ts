@@ -223,8 +223,12 @@ export interface ListenToChatStreamOptions {
   /** Force a specific agent (e.g. "astrology_ai"). The web shim injects
    *  the MysticAI default here; mobile passes its own selection. */
   forceAgent?: string | null;
+  /** User's model tier: 'auto' | 'fast' | 'deep' (auto = smart default). */
+  modelTier?: string | null;
   externalSignal?: AbortSignal;
   targetUserMessageId?: string | null;
+  /** Fired when the backend reports credits charged for this turn. */
+  onCredits?: (charged: number, balance: number) => void;
   /** Called once when the backend's `message_start` event arrives, carrying
    *  the assistant message id Firestore will save under. Caller uses this
    *  to swap their local nanoid placeholder so subsequent /regenerate
@@ -258,7 +262,7 @@ export const listenToChatStreamCore = async (
   options: ListenToChatStreamOptions = {},
 ) => {
   const { fetch, getApiUrl } = getPlatform();
-  const { forceAgent, externalSignal, targetUserMessageId, onAssistantId } = options;
+  const { forceAgent, modelTier, externalSignal, targetUserMessageId, onAssistantId, onCredits } = options;
 
   // One controller for the whole stream. Aborts if any watchdog fires, the
   // external signal aborts, or fetch errors out.
@@ -301,6 +305,7 @@ export const listenToChatStreamCore = async (
 
     const params = new URLSearchParams();
     if (forceAgent) params.set('force_agent', forceAgent);
+    if (modelTier && modelTier !== 'auto') params.set('model_tier', modelTier);
     if (targetUserMessageId) params.set('target_user_message_id', targetUserMessageId);
     const qs = params.toString();
     const streamUrl = qs
@@ -367,6 +372,11 @@ export const listenToChatStreamCore = async (
               // the caller can swap their local nanoid for the real id.
               const startedId = parsedEvent.message?.id;
               if (startedId && onAssistantId) onAssistantId(startedId);
+              continue;
+            }
+
+            if (parsedEvent.type === 'credits') {
+              if (onCredits) onCredits(parsedEvent.charged || 0, parsedEvent.balance ?? 0);
               continue;
             }
 
