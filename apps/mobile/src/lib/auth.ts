@@ -21,6 +21,7 @@
 import {
   createUserWithEmailAndPassword,
   OAuthProvider,
+  sendEmailVerification,
   signInAnonymously as fbSignInAnonymously,
   signInWithCredential,
   signInWithCustomToken,
@@ -44,7 +45,13 @@ export async function signInWithEmail(email: string, password: string): Promise<
 }
 
 export async function signUpWithEmail(email: string, password: string): Promise<void> {
-  await createUserWithEmailAndPassword(auth, email, password);
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  // Fire a verification email — best-effort, don't block account creation on it.
+  try {
+    await sendEmailVerification(cred.user);
+  } catch (e) {
+    console.warn('[auth] could not send verification email', e);
+  }
 }
 
 export function isGoogleSignInAvailable(): boolean {

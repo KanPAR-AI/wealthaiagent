@@ -47,6 +47,7 @@ export default function LoginScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -174,8 +175,25 @@ export default function LoginScreen() {
                 editable={!busy}
                 style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundElement }]}
               />
+              {isSignUp && (
+                <TextInput
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Confirm password"
+                  placeholderTextColor={colors.textSecondary}
+                  secureTextEntry
+                  autoComplete="new-password"
+                  editable={!busy}
+                  style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundElement }]}
+                />
+              )}
+              {isSignUp && confirmPassword.length > 0 && password !== confirmPassword && (
+                <ThemedText type="small" style={{ color: '#e5484d' }}>
+                  Passwords don&apos;t match
+                </ThemedText>
+              )}
               <Pressable
-                disabled={busy || !email || password.length < 6}
+                disabled={busy || !email || password.length < 6 || (isSignUp && password !== confirmPassword)}
                 onPress={() =>
                   run(() => (isSignUp ? signUpWithEmail(email, password) : signInWithEmail(email, password)))
                 }
@@ -183,7 +201,7 @@ export default function LoginScreen() {
                   styles.providerButton,
                   {
                     backgroundColor: colors.text,
-                    opacity: pressed || busy || !email || password.length < 6 ? 0.6 : 1,
+                    opacity: pressed || busy || !email || password.length < 6 || (isSignUp && password !== confirmPassword) ? 0.6 : 1,
                   },
                 ]}>
                 {busy ? (
