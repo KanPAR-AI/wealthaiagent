@@ -33,6 +33,7 @@ import { getPlatform } from '@wealthai/core';
 import { ensureCoreInitialized } from './core-adapter';
 import { GOOGLE_IOS_CLIENT_ID, FIREBASE_WEB_CLIENT_ID } from './env';
 import { auth } from './firebase';
+import { apiUrl } from './server-config';
 
 ensureCoreInitialized();
 
@@ -52,6 +53,32 @@ export async function signUpWithEmail(email: string, password: string): Promise<
   } catch (e) {
     console.warn('[auth] could not send verification email', e);
   }
+}
+
+/** Passwordless email OTP: request a code sent to `email`. */
+export async function requestEmailOtp(email: string): Promise<void> {
+  const res = await fetch(apiUrl('/auth/otp/send'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel: 'email', identifier: email.trim() }),
+  });
+  if (!res.ok) {
+    const b = await res.json().catch(() => ({}));
+    throw new Error(b.detail || `Could not send the code (${res.status})`);
+  }
+}
+
+/** Verify the email OTP → exchange for a Firebase custom token → sign in. */
+export async function verifyEmailOtp(email: string, code: string): Promise<void> {
+  const res = await fetch(apiUrl('/auth/otp/verify'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel: 'email', identifier: email.trim(), code: code.trim() }),
+  });
+  const b = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(b.detail || `Invalid code (${res.status})`);
+  if (!b.token) throw new Error('Sign-in failed: no token returned');
+  await signInWithCustomToken(auth, b.token);
 }
 
 export function isGoogleSignInAvailable(): boolean {

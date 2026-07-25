@@ -29,11 +29,13 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import {
   isGoogleSignInAvailable,
+  requestEmailOtp,
   signInAnonymously,
   signInWithApple,
   signInWithEmail,
   signInWithGoogle,
   signUpWithEmail,
+  verifyEmailOtp,
 } from '@/lib/auth';
 
 export default function LoginScreen() {
@@ -48,6 +50,9 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [otpMode, setOtpMode] = useState(false);   // email-code sign-in
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -165,56 +170,113 @@ export default function LoginScreen() {
                 editable={!busy}
                 style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundElement }]}
               />
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Password"
-                placeholderTextColor={colors.textSecondary}
-                secureTextEntry
-                autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                editable={!busy}
-                style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundElement }]}
-              />
-              {isSignUp && (
-                <TextInput
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Confirm password"
-                  placeholderTextColor={colors.textSecondary}
-                  secureTextEntry
-                  autoComplete="new-password"
-                  editable={!busy}
-                  style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundElement }]}
-                />
+              {!otpMode && (
+                <>
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Password"
+                    placeholderTextColor={colors.textSecondary}
+                    secureTextEntry
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                    editable={!busy}
+                    style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundElement }]}
+                  />
+                  {isSignUp && (
+                    <TextInput
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      placeholder="Confirm password"
+                      placeholderTextColor={colors.textSecondary}
+                      secureTextEntry
+                      autoComplete="new-password"
+                      editable={!busy}
+                      style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundElement }]}
+                    />
+                  )}
+                  {isSignUp && confirmPassword.length > 0 && password !== confirmPassword && (
+                    <ThemedText type="small" style={{ color: '#e5484d' }}>
+                      Passwords don&apos;t match
+                    </ThemedText>
+                  )}
+                  <Pressable
+                    disabled={busy || !email || password.length < 6 || (isSignUp && password !== confirmPassword)}
+                    onPress={() =>
+                      run(() => (isSignUp ? signUpWithEmail(email, password) : signInWithEmail(email, password)))
+                    }
+                    style={({ pressed }) => [
+                      styles.providerButton,
+                      {
+                        backgroundColor: colors.text,
+                        opacity: pressed || busy || !email || password.length < 6 || (isSignUp && password !== confirmPassword) ? 0.6 : 1,
+                      },
+                    ]}>
+                    {busy ? (
+                      <ActivityIndicator color={colors.background} />
+                    ) : (
+                      <ThemedText type="smallBold" style={{ color: colors.background }}>
+                        {isSignUp ? 'Create account' : 'Sign in'}
+                      </ThemedText>
+                    )}
+                  </Pressable>
+                  <Pressable disabled={busy} onPress={() => setIsSignUp((v) => !v)} hitSlop={8}>
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
+                      {isSignUp ? 'Have an account? Sign in' : 'New here? Create an account'}
+                    </ThemedText>
+                  </Pressable>
+                </>
               )}
-              {isSignUp && confirmPassword.length > 0 && password !== confirmPassword && (
-                <ThemedText type="small" style={{ color: '#e5484d' }}>
-                  Passwords don&apos;t match
-                </ThemedText>
+              {otpMode && !otpSent && (
+                <Pressable
+                  disabled={busy || !email}
+                  onPress={() => run(async () => { await requestEmailOtp(email); setOtpSent(true); })}
+                  style={({ pressed }) => [
+                    styles.providerButton,
+                    { backgroundColor: colors.text, opacity: pressed || busy || !email ? 0.6 : 1 },
+                  ]}>
+                  {busy ? (
+                    <ActivityIndicator color={colors.background} />
+                  ) : (
+                    <ThemedText type="smallBold" style={{ color: colors.background }}>Email me a code</ThemedText>
+                  )}
+                </Pressable>
+              )}
+              {otpMode && otpSent && (
+                <>
+                  <TextInput
+                    value={otpCode}
+                    onChangeText={setOtpCode}
+                    placeholder="6-digit code"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    editable={!busy}
+                    style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundElement }]}
+                  />
+                  <Pressable
+                    disabled={busy || otpCode.length < 4}
+                    onPress={() => run(() => verifyEmailOtp(email, otpCode))}
+                    style={({ pressed }) => [
+                      styles.providerButton,
+                      { backgroundColor: colors.text, opacity: pressed || busy || otpCode.length < 4 ? 0.6 : 1 },
+                    ]}>
+                    {busy ? (
+                      <ActivityIndicator color={colors.background} />
+                    ) : (
+                      <ThemedText type="smallBold" style={{ color: colors.background }}>Verify &amp; sign in</ThemedText>
+                    )}
+                  </Pressable>
+                  <Pressable disabled={busy} onPress={() => run(() => requestEmailOtp(email))} hitSlop={8}>
+                    <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>Resend code</ThemedText>
+                  </Pressable>
+                </>
               )}
               <Pressable
-                disabled={busy || !email || password.length < 6 || (isSignUp && password !== confirmPassword)}
-                onPress={() =>
-                  run(() => (isSignUp ? signUpWithEmail(email, password) : signInWithEmail(email, password)))
-                }
-                style={({ pressed }) => [
-                  styles.providerButton,
-                  {
-                    backgroundColor: colors.text,
-                    opacity: pressed || busy || !email || password.length < 6 || (isSignUp && password !== confirmPassword) ? 0.6 : 1,
-                  },
-                ]}>
-                {busy ? (
-                  <ActivityIndicator color={colors.background} />
-                ) : (
-                  <ThemedText type="smallBold" style={{ color: colors.background }}>
-                    {isSignUp ? 'Create account' : 'Sign in'}
-                  </ThemedText>
-                )}
-              </Pressable>
-              <Pressable disabled={busy} onPress={() => setIsSignUp((v) => !v)} hitSlop={8}>
+                disabled={busy}
+                onPress={() => { setOtpMode((v) => !v); setOtpSent(false); setOtpCode(''); }}
+                hitSlop={8}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
-                  {isSignUp ? 'Have an account? Sign in' : 'New here? Create an account'}
+                  {otpMode ? 'Use your password instead' : 'Email me a code instead'}
                 </ThemedText>
               </Pressable>
               <Pressable disabled={busy} onPress={() => setEmailMode(false)} hitSlop={8}>
