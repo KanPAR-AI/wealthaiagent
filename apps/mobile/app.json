@@ -12,6 +12,7 @@
       "bundleIdentifier": "com.yourfinadvisor.app",
       "usesAppleSignIn": true,
       "supportsTablet": false,
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -24,6 +25,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
+      "googleServicesFile": "./google-services.json",
       "package": "com.yourfinadvisor.app"
     },
     "web": {
@@ -68,7 +70,10 @@
           "photosPermission": "YourFinAdvisor accesses your photos so you can attach images to a chat.",
           "cameraPermission": "YourFinAdvisor uses the camera so you can take a photo to attach to a chat."
         }
-      ]
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/analytics",
+      "./plugins/withAndroidLintFix"
     ],
     "experiments": {
       "typedRoutes": true,

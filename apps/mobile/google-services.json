@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "388592327571",
+    "project_id": "aiagentapi",
+    "storage_bucket": "aiagentapi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:388592327571:android:6adb9a9990fa0eae35e666",
+        "android_client_info": {
+          "package_name": "com.yourfinadvisor.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "388592327571-qgkesqstbdeig6nnrm6jahk9hon7tcah.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.yourfinadvisor.app",
+            "certificate_hash": "924b6e5d9a4b4c2194bbe4dc1caec2e89c399083"
+          }
+        },
+        {
+          "client_id": "388592327571-onpvgba3j318162sqm5h7brd4ackpl07.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8WX337lc7VF4I-LDPYvyEjblUuPRlBas"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "388592327571-onpvgba3j318162sqm5h7brd4ackpl07.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "388592327571-f23fuufpir7c1g7op9i4cearl23ihvs9.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.yourfinadvisor.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
