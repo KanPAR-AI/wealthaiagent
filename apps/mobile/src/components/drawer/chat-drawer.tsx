@@ -308,20 +308,26 @@ export function ChatDrawer({
               </View>
               <View style={styles.footerText}>
                 <ThemedText type="smallBold" numberOfLines={1}>{who}</ThemedText>
-                {credits && (credits.unlimited ? (
-                  <ThemedText type="small" themeColor="textSecondary">✦ Unlimited credits</ThemedText>
-                ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      ✦ {credits.balance.toLocaleString()} credits
-                    </ThemedText>
-                    <Pressable onPress={handleRequestCredits} hitSlop={6} disabled={requesting}>
-                      <ThemedText type="small" style={styles.signOut}>
-                        {requesting ? '…' : 'Request'}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 }}>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {credits
+                      ? (credits.unlimited ? '✦ Unlimited' : `✦ ${credits.balance.toLocaleString()} credits`)
+                      : '✦ Credits'}
+                  </ThemedText>
+                  {(!credits || !credits.unlimited) && (
+                    <Pressable
+                      onPress={handleRequestCredits}
+                      disabled={requesting}
+                      style={{
+                        borderWidth: 1, borderColor: colors.backgroundSelected,
+                        borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3,
+                      }}>
+                      <ThemedText type="small" style={{ fontWeight: '600', color: colors.text }}>
+                        {requesting ? 'Requesting…' : '＋ Request more'}
                       </ThemedText>
                     </Pressable>
-                  </View>
-                ))}
+                  )}
+                </View>
                 <Pressable onPress={handleSignOut} hitSlop={6}>
                   <ThemedText type="small" style={styles.signOut}>Sign out</ThemedText>
                 </Pressable>
