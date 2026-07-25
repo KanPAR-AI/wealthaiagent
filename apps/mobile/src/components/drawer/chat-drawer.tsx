@@ -289,6 +289,16 @@ export function ChatDrawer({
               )}
             </View>
 
+            {/* Settings & credits */}
+            <Pressable
+              onPress={() => { router.push('/settings'); onClose(); }}
+              style={({ pressed }) => [
+                styles.serverRow,
+                pressed && { backgroundColor: colors.backgroundElement },
+              ]}>
+              <ThemedText type="small">⚙︎ Settings &amp; credits</ThemedText>
+            </Pressable>
+
             {/* Server switcher */}
             <Pressable
               onPress={chooseServer}
