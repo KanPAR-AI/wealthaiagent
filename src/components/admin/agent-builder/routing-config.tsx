@@ -20,7 +20,7 @@ interface Props {
 }
 
 export function RoutingConfig({ agentId }: Props) {
-  const { agentConfig, setAgentConfig, loading, setLoading } = useAdminStore();
+  const { setAgentConfig, loading, setLoading } = useAdminStore();
 
   const [indicators, setIndicators] = useState<string[]>([]);
   const [markers, setMarkers] = useState<string[]>([]);

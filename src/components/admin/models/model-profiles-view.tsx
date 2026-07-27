@@ -72,9 +72,23 @@ export function ModelProfilesView() {
             {overrides > 0 && <> · <span className="text-amber-600 font-medium">{overrides} overridden</span></>}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Clears the server's profile cache, so a Firestore override edited
+              elsewhere takes effect without a redeploy — the plain refresh
+              below only re-fetches into this browser. */}
+          <Button variant="outline" size="sm" disabled={loading}
+                  title="Clear the server's profile cache and re-fetch"
+                  onClick={async () => {
+                    setError(null);
+                    try { await reloadModelProfiles(); } catch (e: any) { setError(e.message); }
+                    load();
+                  }}>
+            Clear cache
+          </Button>
+          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+          </Button>
+        </div>
       </div>
 
       <div className="relative mb-3">

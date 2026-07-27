@@ -20,7 +20,7 @@ interface Props {
 }
 
 export function MemoryConfigPanel({ agentId }: Props) {
-  const { agentConfig, setAgentConfig, loading, setLoading } = useAdminStore();
+  const { setAgentConfig, loading, setLoading } = useAdminStore();
 
   const [enabled, setEnabled] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);

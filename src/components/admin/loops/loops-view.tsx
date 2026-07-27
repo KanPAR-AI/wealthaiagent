@@ -482,6 +482,18 @@ export function IntegrationsPanel({ onClose }: { onClose?: () => void }) {
                        className="rounded-md border border-border bg-background px-2 py-1.5 text-sm w-36" />
               </>
             )}
+            <Button size="sm" variant="outline" disabled={busy || tool.trim().length < 2}
+                    onClick={async () => {
+                      setBusy(true); setErr(null); setHint(null);
+                      try {
+                        const s = await suggestIntegration(tool.trim());
+                        setKind(s.transport);
+                        if (s.transport === "composio") setAction(s.composio_action || "");
+                        setHint([s.rationale, s.field_notes].filter(Boolean).join("\n"));
+                      } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
+                    }}>
+              <Sparkles size={14} className="mr-1 text-violet-500" /> suggest
+            </Button>
             <Button size="sm"
                     disabled={busy || tool.trim().length < 2 ||
                               (kind === "composio" ? action.trim().length < 3 : !url.startsWith("http"))}
@@ -523,9 +535,22 @@ function MappedToolEditor({
   const [secret, setSecret] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
   const nativeProviders = nativeProviderIds
     .map((id) => providers.find((p) => p.id === id)).filter(Boolean) as NativeProvider[];
   const isNative = kind.startsWith("native:");
+
+  // "✨ suggest": ask the AI to pick transport + action from the params this
+  // tool's loops actually send, and prefill the form with its rationale.
+  const suggest = async () => {
+    setBusy(true); setErr(null); setHint(null);
+    try {
+      const s = await suggestIntegration(tool);
+      setKind(s.transport);
+      if (s.transport === "composio") setAction(s.composio_action || "");
+      setHint([s.rationale, s.field_notes].filter(Boolean).join("\n"));
+    } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
+  };
 
   const save = async () => {
     setBusy(true); setErr(null);
@@ -562,7 +587,14 @@ function MappedToolEditor({
           <input value={action} onChange={(e) => setAction(e.target.value)} placeholder="GMAIL_SEND_EMAIL"
                  className="flex-1 min-w-40 rounded-md border border-border bg-background px-2 py-1 text-xs font-mono" />
         )}
+        {!isNative && (
+          <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] shrink-0"
+                  disabled={busy} onClick={suggest} title="Let the AI pick the transport and action">
+            <Sparkles size={11} className="mr-1 text-violet-500" /> suggest
+          </Button>
+        )}
       </div>
+      {hint && <p className="text-[11px] text-muted-foreground whitespace-pre-wrap">{hint}</p>}
       {isNative && (
         <p className="text-[11px] text-muted-foreground">
           Pair &amp; test this provider from its card at the top (Connect / Manage).
