@@ -217,7 +217,11 @@ function AddVideoDialog({
   const [url, setUrl] = useState("");
   const [extract, setExtract] = useState(true);
   const [rebuild, setRebuild] = useState(true);
-  const [redis, setRedis] = useState(false);
+  // Defaults ON. When this was off, an added video was written to disk but
+  // never loaded into Redis, so it stayed invisible to retrieval until someone
+  // happened to hit "Reload Vectors" — the ingest reported success and did
+  // nothing observable.
+  const [redis, setRedis] = useState(true);
 
   return (
     <Card className="border-primary/30">
@@ -225,6 +229,11 @@ function AddVideoDialog({
         <CardTitle className="text-sm">Add YouTube Video</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          This pipeline is YouTube-only and needs the video to have captions. For
+          PDFs, audio, video files, a pasted transcript, or bulk uploads, use the{" "}
+          <span className="font-medium text-foreground">Corpus</span> tab.
+        </p>
         <input
           type="text"
           placeholder="https://www.youtube.com/watch?v=..."
