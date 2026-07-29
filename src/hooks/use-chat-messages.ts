@@ -73,14 +73,49 @@ export const useChatMessages = (chatId: string) => {
     if (chatId) {
       // Update in Zustand store (immediate UI update)
       updateMessageInStore(chatId, messageId, updates);
-      
+
+      // An id change is the backend handing us the real uuid for a message we
+      // created optimistically. The cache is keyed by id, so it has to follow
+      // the rename FIRST — otherwise the cached row keeps the old key and its
+      // original (empty) content, every later content update addresses an id
+      // that was never inserted, and the next visit renders a blank bubble.
+      const rekey = updates.id && updates.id !== messageId
+        ? messagesRepository.rekeyMessage(messageId, updates.id)
+        : Promise.resolve();
+      const cacheId = updates.id || messageId;
+
       // Update in IndexedDB in background (don't await, non-blocking)
-      messagesRepository.updateMessageContent(messageId, {
-        message: updates.message,
-        structuredContent: updates.structuredContent,
-        widgets: updates.widgets,
-        contentBlocks: updates.contentBlocks,
-        error: updates.error,
+      rekey.then(async () => {
+        const ok = await messagesRepository.updateMessageContent(cacheId, {
+          message: updates.message,
+          structuredContent: updates.structuredContent,
+          widgets: updates.widgets,
+          contentBlocks: updates.contentBlocks,
+          error: updates.error,
+        });
+        if (ok) return;
+        // The row wasn't there — the optimistic insert is still in flight, or
+        // an id swap raced past it. Patching a missing row is a silent no-op,
+        // which is how a fully streamed reply ended up cached as empty and
+        // then rendered as a blank bubble. Upsert the authoritative version
+        // from the store instead.
+        const current = (useChatStore.getState() as any)
+          .chats?.[chatId]?.messages?.find((m: Message) => m.id === cacheId);
+        if (!current) return;
+        await messagesRepository.cacheMessage({
+          id: current.id,
+          message: current.message || '',
+          sender: current.sender === 'bot' ? 'bot' : 'user',
+          timestamp: current.timestamp || new Date().toISOString(),
+          chatId,
+          files: current.files,
+          structuredContent: current.structuredContent,
+          widgets: current.widgets,
+          contentBlocks: current.contentBlocks,
+          error: current.error,
+          status: 'sent',
+          metadata: {},
+        });
       }).catch(error => {
         console.error('[useChatMessages] Failed to update message in IndexedDB:', error);
       });

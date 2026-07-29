@@ -223,12 +223,64 @@ class MessagesRepository extends CachedRepository<CachedMessage, 'id'> {
       contentBlocks?: any[];
       error?: string;
     }
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
-      await this.update(messageId, updates as Partial<CachedMessage>);
+      // Dexie DELETES a property whose value is `undefined`, and callers pass
+      // a fixed shape where most keys are undefined on any given update. So an
+      // update that only meant to flip `isStreaming` was silently erasing the
+      // cached message text — the reply was there during streaming and blank
+      // on the next visit. Only write the keys actually supplied.
+      const defined = Object.fromEntries(
+        Object.entries(updates).filter(([, v]) => v !== undefined)
+      );
+      if (Object.keys(defined).length === 0) return true;
+      // Dexie returns the number of rows changed. 0 means the row isn't there
+      // — the optimistic insert hasn't landed yet, or an id swap raced ahead
+      // of it. Report that so the caller can upsert the full record instead of
+      // silently dropping the content, which is how a streamed reply ended up
+      // cached empty and rendered as a blank bubble on the next visit.
+      const changed = await this.table.update(messageId, defined as any);
+      return changed > 0;
     } catch (error) {
       console.error('[MessagesRepository] Error updating message content:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Re-key a cached message when the backend assigns its real id.
+   *
+   * WHY THIS EXISTS
+   * ---------------
+   * A streamed reply is created optimistically under a local nanoid, then the
+   * backend sends its stable uuid mid-stream and the UI swaps the id. The
+   * cache used to miss that swap entirely: the row stayed under the nanoid
+   * with the EMPTY content it was inserted with, while every later content
+   * update addressed the new uuid — a row that had never been inserted.
+   *
+   * The result was an empty assistant bubble on the next visit, because
+   * loading prefers a "fresh" cache and skips the backend. Users saw their
+   * answer vanish and reported it as "can't see the reply".
+   *
+   * `id` is the primary key, so this deletes and re-inserts rather than
+   * updating in place.
+   */
+  async rekeyMessage(oldId: string, newId: string): Promise<void> {
+    if (!oldId || !newId || oldId === newId) return;
+    try {
+      const existing = await this.table.get(oldId);
+      if (!existing) return;                 // nothing cached yet — no-op
+      // If the new id is already there, the old row is a duplicate.
+      const already = await this.table.get(newId);
+      if (already) {
+        await this.table.delete(oldId);
+        return;
+      }
+      await this.table.delete(oldId);
+      await this.table.put({ ...existing, id: newId });
+    } catch (error) {
+      // The cache is an optimisation; a failure here must not break the send.
+      console.error('[MessagesRepository] Error re-keying message:', error);
     }
   }
 
