@@ -174,8 +174,20 @@ function buildMdComponents(
           </a>
         );
       }
+      // External links were rendered with NO class. Tailwind's preflight resets
+      // `a` to inherit colour and drop the underline, so an agent reply like
+      // "[Download the unlocked PDF](…)" looked like ordinary prose — clickable
+      // with nothing to say so. Style them the same as internal links.
       return (
-        <a href={href} target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline underline-offset-2 hover:text-primary/80"
+          {...props}
+        >
+          {children}
+        </a>
       );
     },
   };

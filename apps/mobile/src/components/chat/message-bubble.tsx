@@ -128,6 +128,13 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
 
   const markdownStyles = {
     body: { color: colors.text, fontSize: 16, lineHeight: 24 },
+    // Links inherited `body` colour with no underline, so an agent reply like
+    // "[Download the unlocked PDF](…)" rendered as plain text indistinguishable
+    // from the sentence around it — tappable, but with nothing to say so. That
+    // is half of "cant see the unlocked pdf": the link was invisible AS a link.
+    // iOS system blue reads on both the light and dark backgrounds this theme
+    // uses (#ffffff / #000000).
+    link: { color: '#0A84FF', textDecorationLine: 'underline' as const },
     code_inline: {
       backgroundColor: colors.backgroundElement,
       color: colors.text,
