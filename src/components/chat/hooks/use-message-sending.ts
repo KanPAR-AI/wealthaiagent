@@ -66,7 +66,9 @@ export function useMessageSending({
           setPendingMessage(text, attachments, mockChatId, true);
           navigate(`/chat/${mockChatId}`);
         } else {
-          const { chatId: newChatId } = await createChatSession(token!, 'New Chat', messageText, attachments);
+          const { chatId: newChatId } = await createChatSession(
+            token!, 'New Chat', messageText, attachments,
+            useChatStore.getState().standaloneMode);
           setPendingMessage(text, attachments, newChatId, false);
           navigate(`/chat/${newChatId}`);
         }

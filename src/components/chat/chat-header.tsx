@@ -1,5 +1,5 @@
 // src/components/chat/ChatHeader.tsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Logo from '@/components/ui/logo';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Edit, Bug, Calculator, SlidersHorizontal, AlertCircle } from 'lucide-react';
@@ -9,11 +9,38 @@ import { ModeToggle } from '../theme/mode-toggle';
 import { Button } from '../ui/button';
 import CalcDebugModal from '../debug/calc-debug-modal';
 import { ReportBugModal } from './report-bug-modal';
+import { chatsRepository } from "@/services/repositories/chats-repository";
+import { StandaloneBadge } from "./standalone-toggle";
 
 export function ChatHeader(): JSX.Element {
   const { chatid } = useParams<{ chatid: string }>();
   const [isCalcModalOpen, setIsCalcModalOpen] = useState(false);
   const [isReportBugOpen, setIsReportBugOpen] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  // Read from the chat itself, not from the session toggle, so a REOPENED
+  // standalone chat still shows the badge. These chats appear in history like
+  // any other, so this indicator is the only thing distinguishing them.
+  useEffect(() => {
+    let cancelled = false;
+    if (!chatid) {
+      setIsStandalone(false);
+      return;
+    }
+    chatsRepository
+      .get(chatid)
+      .then((chat) => {
+        if (!cancelled) setIsStandalone(Boolean(chat?.standalone));
+      })
+      .catch(() => {
+        // Unknown beats a wrong claim: showing the badge when we could not
+        // confirm it would promise isolation we have not verified.
+        if (!cancelled) setIsStandalone(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [chatid]);
 
   return (
     <>
@@ -21,6 +48,7 @@ export function ChatHeader(): JSX.Element {
         <SidebarTrigger className="mr-2" />
         <div className="flex items-center gap-2 overflow-hidden flex-1">
           <Logo />
+          {isStandalone && <StandaloneBadge className="hidden sm:inline-flex" />}
         </div>
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {chatid && (

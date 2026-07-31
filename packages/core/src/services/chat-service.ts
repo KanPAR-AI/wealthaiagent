@@ -81,7 +81,18 @@ export const createChatSession = async (
   jwt: string,
   title: string,
   firstMessageContent: string,
-  files: MessageFile[]
+  files: MessageFile[],
+  /**
+   * Create the chat sealed off from user memory. It is still saved, still
+   * appears in history and still reopens later — it just neither reads the
+   * user's profile nor adds to it. Deliberately not called "temporary":
+   * nothing is deleted, and a name that implied deletion would mislead people
+   * into saying things they otherwise would not.
+   *
+   * Set at creation only. A chat switched later would already have been
+   * answered from a profile it now promises not to read.
+   */
+  standalone: boolean = false
 ): Promise<{ chatId: string; firstMessageId: string }> => {
   const { fetch, getApiUrl } = getPlatform();
   const response = await fetch(getApiUrl('/chats'), {
@@ -96,6 +107,7 @@ export const createChatSession = async (
         content: firstMessageContent,
         attachments: files.map(file => file.url),
       },
+      standalone,
     }),
   });
 

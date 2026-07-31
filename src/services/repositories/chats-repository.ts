@@ -77,6 +77,7 @@ class ChatsRepository extends CachedRepository<CachedChat, 'id'> {
     messageCount: number;
     lastMessage: any;
     isFavorite?: boolean;
+    standalone?: boolean;
   }): Promise<string> {
     try {
       // Check if chat already exists
@@ -93,6 +94,10 @@ class ChatsRepository extends CachedRepository<CachedChat, 'id'> {
         messageCount: chatData.messageCount,
         lastMessage: chatData.lastMessage,
         isFavorite: chatData.isFavorite ?? existing?.isFavorite ?? false,
+        // Carried through the cache so a REOPENED standalone chat still shows
+        // its badge. Without this the distinction would only be visible in the
+        // session that created it, which is when the user least needs telling.
+        standalone: chatData.standalone ?? existing?.standalone ?? false,
         ...times,
         syncedAt: Date.now(),
         isDirty: false,
@@ -122,6 +127,7 @@ class ChatsRepository extends CachedRepository<CachedChat, 'id'> {
     messageCount: number;
     lastMessage: any;
     isFavorite?: boolean;
+    standalone?: boolean;
   }>): Promise<string[]> {
     try {
       const ids: string[] = [];

@@ -1,6 +1,7 @@
 // src/components/chat/ChatEmptyState.tsx
 import { JSX } from "react";
 import { useIsMysticAI } from "@/lib/mysticai";
+import { StandaloneToggle } from "./standalone-toggle";
 
 export function ChatEmptyState(): JSX.Element {
   const isMystic = useIsMysticAI();
@@ -66,6 +67,12 @@ export function ChatEmptyState(): JSX.Element {
   return (
     <div className="text-start text-2xl text-foreground dark:text-zinc-400">
       <h1>How can I help you today?</h1>
+      {/* Offered before the first message, because standalone applies at
+          creation only — a chat switched later would already have been
+          answered from a profile it now promises not to read. */}
+      <div className="mt-4">
+        <StandaloneToggle />
+      </div>
     </div>
   );
 }

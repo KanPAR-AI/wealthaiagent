@@ -78,6 +78,11 @@ export interface CachedChat extends CacheMetadata, SyncMetadata {
   messageCount: number;
   lastMessage: any;       // Last message object
   
+  // Sealed off from user memory. These chats DO appear in history, so the UI
+  // must draw the distinction explicitly — with a temporary/incognito chat the
+  // absence from the sidebar is itself the signal, and here there is none.
+  standalone?: boolean;
+
   // Local-only fields
   isFavorite: boolean;    // Indexed (for filtering)
   

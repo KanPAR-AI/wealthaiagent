@@ -13,6 +13,14 @@ interface ChatState {
   selectedAgent: string | null;
   setSelectedAgent: (agentId: string | null) => void;
 
+  // Standalone mode for the NEXT chat created. Sealed off from user memory:
+  // the chat is still saved and still appears in history, it just neither
+  // reads the profile nor adds to it. Applies at creation only — a chat
+  // switched later would already have been answered from a profile it now
+  // promises not to read.
+  standaloneMode: boolean;
+  setStandaloneMode: (on: boolean) => void;
+
   // Model tier: 'auto' | 'fast' | 'deep' (null/'auto' = smart default)
   selectedModelTier: string | null;
   setSelectedModelTier: (tier: string | null) => void;
@@ -46,6 +54,8 @@ interface ChatState {
 export const useChatStore = create<ChatState>((set, get) => ({
   chats: {},
   pendingMessage: null,
+  standaloneMode: false,
+  setStandaloneMode: (on: boolean) => set({ standaloneMode: on }),
   selectedAgent: null,
   setSelectedAgent: (agentId) => set({ selectedAgent: agentId }),
   selectedModelTier: 'auto',
