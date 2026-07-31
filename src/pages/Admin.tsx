@@ -38,6 +38,7 @@ import { fetchAgents } from "@/services/admin-service";
 import { OperationsView } from "@/components/admin/ops/operations-view";
 import { LoopsView, IntegrationsPanel } from "@/components/admin/loops/loops-view";
 import { GoldSetView } from "@/components/admin/gold-set/gold-set-view";
+import { MemoryView } from "@/components/admin/memory/memory-view";
 import { ModelProfilesView } from "@/components/admin/models/model-profiles-view";
 import { CreditsAdminView } from "@/components/admin/credits/credits-admin-view";
 import { CampaignsAdminView } from "@/components/admin/campaigns/campaigns-admin-view";
@@ -96,7 +97,7 @@ export default function Admin() {
   // Deep-linkable: /admin?section=ops&tab=integrations, ?section=loops&loop=<id>
   // — Jarvis answers navigate here, and the URL stays shareable.
   const [searchParams, setSearchParams] = useSearchParams();
-  const [section, setSection] = useState<"agents" | "loops" | "ops" | "integrations" | "models" | "goldset" | "credits" | "campaigns">("agents");
+  const [section, setSection] = useState<"agents" | "loops" | "ops" | "integrations" | "models" | "goldset" | "memory" | "credits" | "campaigns">("agents");
   useEffect(() => {
     const s = searchParams.get("section");
     if (s === "agents" || s === "loops" || s === "ops" || s === "integrations" || s === "models" || s === "credits" || s === "campaigns") setSection(s);
@@ -150,7 +151,7 @@ export default function Admin() {
         <div className="max-w-6xl mx-auto px-6 py-6">
           {/* Section switcher: Agents | Verified Procedures | Operations | Integrations */}
           <div className="flex gap-1 mb-5 border-b border-border">
-            {(["agents", "loops", "ops", "integrations", "models", "goldset", "credits", "campaigns"] as const).map((s) => (
+            {(["agents", "loops", "ops", "integrations", "models", "goldset", "memory", "credits", "campaigns"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => { setSection(s); setSearchParams({ section: s }); }}
@@ -163,6 +164,7 @@ export default function Admin() {
                 {s === "agents" ? "Agents" : s === "loops" ? "Verified Procedures"
                   : s === "ops" ? "Operations" : s === "integrations" ? "Integrations"
                   : s === "models" ? "Models" : s === "goldset" ? "Gold Set"
+                  : s === "memory" ? "Memory"
                   : s === "credits" ? "Credits" : "Campaigns"}
               </button>
             ))}
@@ -174,6 +176,8 @@ export default function Admin() {
             <ModelProfilesView />
           ) : section === "goldset" ? (
             <GoldSetView />
+          ) : section === "memory" ? (
+            <MemoryView />
           ) : section === "credits" ? (
             <CreditsAdminView />
           ) : section === "campaigns" ? (
