@@ -27,6 +27,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
 import { useSendMessage } from '@/hooks/use-send-message';
 import { useUiStore } from '@/store/ui';
+import { StandaloneBadge, StandaloneToggle } from '@/components/chat/standalone-toggle';
 
 export default function ChatScreen() {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
@@ -41,6 +42,7 @@ export default function ChatScreen() {
   const selectedAgent = useChatStore((st) => st.selectedAgent);
   const setSelectedAgent = useChatStore((st) => st.setSelectedAgent);
   const modelTier = useChatStore((st) => st.selectedModelTier) || 'auto';
+  const standaloneMode = useChatStore((st) => st.standaloneMode);
 
   // Server-configured suggestion tiles (campaigns). Fetched once on mount;
   // falls back to bundled defaults so the home screen is never blank.
@@ -196,6 +198,10 @@ export default function ChatScreen() {
               <ThemedText type="title" style={styles.emptyTitle}>
                 How can I help you today?
               </ThemedText>
+              {/* Offered before the first message: standalone applies at
+                  creation only, since a chat switched later would already have
+                  been answered from a profile it now promises not to read. */}
+              <StandaloneToggle />
               <View style={styles.suggestions}>
                 {tiles.map((tile, i) => (
                   <Pressable
@@ -212,6 +218,7 @@ export default function ChatScreen() {
               </View>
             </View>
           )}
+          {standaloneMode && msgCount > 0 && <StandaloneBadge />}
           <ChatInput onSend={send} onStop={cancel} busy={busy} />
         </KeyboardAvoidingView>
       </SafeAreaView>

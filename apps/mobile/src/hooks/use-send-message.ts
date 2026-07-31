@@ -108,7 +108,9 @@ export function useSendMessage(
       // already-visible optimistic bubbles onto the real chat id.
       if (isFirstMessage) {
         try {
-          const { chatId: newChatId } = await createChatSession(token, 'New Chat', trimmed, files);
+          const { chatId: newChatId } = await createChatSession(
+            token, 'New Chat', trimmed, files,
+            useChatStore.getState().standaloneMode);
           if (newChatId && newChatId !== activeChatId) {
             migrateChat(activeChatId, newChatId);
             activeChatId = newChatId;
