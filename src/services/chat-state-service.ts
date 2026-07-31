@@ -33,11 +33,32 @@ export interface StateEvent {
   created_at: string;
 }
 
+/** A standing rule the user stated ("budget is strictly 80 lakh"), re-injected
+ *  verbatim on every later turn. Chat-scoped: it dies with the conversation.
+ *
+ *  The backend has always returned these; this interface simply never declared
+ *  them, so the panel could not show them and reported "nothing yet" while the
+ *  assistant was replying "I have noted your budget constraint". */
+export interface PinnedConstraint {
+  id: string;
+  text: string;
+  kind: string;          // budget | jurisdiction | risk | medical | preference | other
+  evidence?: string;
+  created_at: string;
+  active: boolean;
+  invalidated_at?: string | null;   // set once superseded/released
+  superseded_by?: string | null;
+  reason?: string;
+}
+
 export interface ChatState {
   chat_id: string;
   domains: StateDomain[];
   belief: Record<string, unknown> | null;
   events: StateEvent[];
+  /** Live constraints only — retired ones are filtered server-side so they
+   *  cannot leak back into a prompt. */
+  pinned_constraints?: PinnedConstraint[];
 }
 
 function authHeaders(token: string): HeadersInit {

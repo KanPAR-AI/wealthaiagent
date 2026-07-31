@@ -140,17 +140,27 @@ export function ChatStatePanel({ chatId, token, refreshSignal }: Props) {
   };
 
   const slotCount = state?.domains.reduce((n, d) => n + d.slots.length, 0) ?? 0;
+  // Standing rules the user stated. These were invisible here even though the
+  // backend has always returned them, so the panel said "nothing yet" while the
+  // assistant was replying "I have noted your budget constraint".
+  const constraints = state?.pinned_constraints ?? [];
   const hasBelief = Boolean(state?.belief && (state.belief as any).intent && (state.belief as any).intent !== "general");
   const aboutYou = userFactsFlat(userMem);
   const personalizationOff = userMem ? !userMem.personalization_enabled : false;
 
   // Show once we know the user's personalization state (userMem loaded) OR there
   // is chat state — so a fresh/empty chat still shows "About you" + the toggle.
-  if (!userMem && slotCount === 0 && !hasBelief) return null;
+  if (!userMem && slotCount === 0 && !hasBelief && constraints.length === 0) return null;
 
   const kinds = latestKinds(state?.events ?? []);
   const summary =
-    [slotCount ? `${slotCount} in chat` : "", aboutYou.length ? `${aboutYou.length} about you` : ""]
+    [
+      // Rules first: they are the strongest thing the assistant is holding, and
+      // the most alarming to get wrong.
+      constraints.length ? `${constraints.length} rule${constraints.length === 1 ? "" : "s"}` : "",
+      slotCount ? `${slotCount} in chat` : "",
+      aboutYou.length ? `${aboutYou.length} about you` : "",
+    ]
       .filter(Boolean)
       .join(" · ") || (personalizationOff ? "personalization off" : "nothing yet");
 
@@ -199,8 +209,33 @@ export function ChatStatePanel({ chatId, token, refreshSignal }: Props) {
               </div>
             )}
 
+            {/* Standing rules. Shown FIRST and styled most strongly: these are
+                re-injected verbatim into every later turn, so a wrong or stale
+                one silently distorts every subsequent answer. Seeing them is
+                the whole point — the assistant saying "noted your budget" while
+                this panel read "nothing yet" is what made that untrustworthy. */}
+            {constraints.length > 0 && (
+              <div>
+                <div className="text-foreground mb-1">Rules I'm following</div>
+                <ul className="space-y-1">
+                  {constraints.map((c) => (
+                    <li key={c.id} className="flex items-start gap-1.5">
+                      <span className="mt-0.5 shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                        {c.kind}
+                      </span>
+                      <span className="text-foreground/90">{c.text}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-[11px] text-muted-foreground/70">
+                  Applied to every reply in this chat. Say the opposite and I'll
+                  replace the old one.
+                </p>
+              </div>
+            )}
+
             {/* Empty state so the expanded panel is never blank. */}
-            {aboutYou.length === 0 && slotCount === 0 && !hasBelief && (
+            {aboutYou.length === 0 && slotCount === 0 && !hasBelief && constraints.length === 0 && (
               <div className="italic text-muted-foreground/70">
                 Nothing learned yet — as you chat, what I pick up about you appears here.
               </div>
