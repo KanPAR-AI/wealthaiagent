@@ -25,6 +25,18 @@ export interface MemoryFact {
   confidence?: number;
   weight?: number;
   updated_at?: string;
+  /** Keys this fact was inferred from. Empty for something the user said
+   *  directly. Without it a conclusion cannot be explained or argued with. */
+  derived_from?: string[];
+  /** clean | needs_review — needs_review means cascade repair withdrew it
+   *  because the fact it was inferred from changed. */
+  status?: string;
+}
+
+/** A fact withdrawn by cascade repair: kept for audit, no longer believed. */
+export interface WithdrawnFact extends MemoryFact {
+  collection?: string;
+  agent_id?: string | null;
 }
 
 export interface FactStore {
@@ -42,6 +54,13 @@ export interface UserMemory {
   user_scoped: FactStore[];
   preferences: { personalization_enabled?: boolean };
   total_facts?: number;
+  /** Deliberately separate from the live stores — these are no longer acted
+   *  on, and listing them beside live facts would recreate the confusion the
+   *  repair exists to remove. */
+  withdrawn?: WithdrawnFact[];
+  /** Keyed by what failed to load. A failed read must not render as "nothing
+   *  was withdrawn". */
+  errors?: Record<string, string>;
 }
 
 export interface AuditRow {

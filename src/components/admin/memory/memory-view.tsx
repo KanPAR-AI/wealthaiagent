@@ -76,6 +76,14 @@ function FactStoreCard({ store }: { store: FactStore }) {
             <span className="text-muted-foreground shrink-0">{f.category || "—"}</span>
             <span className="font-medium shrink-0">{f.key}</span>
             <span className="text-muted-foreground truncate">{String(f.value ?? "")}</span>
+            {!!f.derived_from?.length && (
+              <span
+                className="shrink-0 text-[11px] text-muted-foreground"
+                title={`Inferred from ${f.derived_from.join(", ")} — not stated by the user`}
+              >
+                ← {f.derived_from.join(", ")}
+              </span>
+            )}
             {typeof f.confidence === "number" && (
               <span className="ml-auto shrink-0 text-muted-foreground">
                 {Math.round(f.confidence * 100)}%
@@ -274,6 +282,49 @@ export function MemoryView() {
             {stores.map((s) => <FactStoreCard key={s.collection} store={s} />)}
           </CardContent>
         </Card>
+      )}
+
+      {/* Withdrawn by cascade repair. Shown apart from the live stores because
+          the assistant no longer acts on any of it — but "we thought X because
+          Y, and Y turned out to be wrong" is the one explanation a user is
+          owed, and deleting the record deletes the explanation with it. */}
+      {!!um?.withdrawn?.length && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Bot size={14} /> Withdrawn — no longer used
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <p className="text-xs text-muted-foreground">
+              Conclusions dropped because the facts they were inferred from
+              changed. Kept for audit; they are not sent to the model.
+            </p>
+            {um.withdrawn.map((f, i) => (
+              <div key={i} className="flex gap-2 text-xs items-baseline">
+                <span className="text-muted-foreground shrink-0">
+                  {f.agent_id || f.collection}
+                </span>
+                <span className="font-medium shrink-0 line-through">{f.key}</span>
+                <span className="text-muted-foreground truncate line-through">
+                  {String(f.value ?? "")}
+                </span>
+                {!!f.derived_from?.length && (
+                  <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+                    was inferred from {f.derived_from.join(", ")}
+                  </span>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {!!um?.errors?.withdrawn && (
+        <p className="text-xs text-rose-600 dark:text-rose-400">
+          Could not read withdrawn facts ({um.errors.withdrawn}) — this list may
+          be incomplete.
+        </p>
       )}
 
       {data && !stores.length && data.user?.uid && (
