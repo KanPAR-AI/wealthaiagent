@@ -17,6 +17,7 @@ import {
   type MemoryScope,
   type MemoryView as MemoryData,
 } from "@/services/memory-service";
+import { MemoryGraphView } from "./memory-graph";
 
 const SCOPE_STYLE: Record<MemoryScope, string> = {
   chat: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
@@ -280,6 +281,36 @@ export function MemoryView() {
           </CardHeader>
           <CardContent className="space-y-2">
             {stores.map((s) => <FactStoreCard key={s.collection} store={s} />)}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* The DAG. A withdrawn conclusion reads as arbitrary until you can see
+          the fact it was inferred from — that edge is the explanation. */}
+      {!!stores.length && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Bot size={14} /> Memory graph — what was stated vs inferred
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {stores.map((s) => (
+              <div key={s.collection} className="rounded-lg border border-border p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <ScopeBadge scope={s.scope} />
+                  <span className="font-medium text-sm">
+                    {s.agent_id || s.collection}
+                  </span>
+                </div>
+                <MemoryGraphView
+                  live={s.facts}
+                  withdrawn={(um?.withdrawn || []).filter(
+                    (w) => w.collection === s.collection,
+                  )}
+                />
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}
