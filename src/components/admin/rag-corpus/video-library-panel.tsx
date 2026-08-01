@@ -7,6 +7,7 @@ import { Video, RefreshCw, Check, Upload, AlertTriangle, ChevronDown, ChevronRig
 import { DocumentDetail } from "./document-detail";
 import { ExtractPanel } from "./extract-panel";
 import { PipelineFunnel, StageBadge } from "./corpus-pipeline";
+import { SourcesPanel } from "./sources-panel";
 import {
   fetchVideos,
   importVideos,
@@ -64,6 +65,9 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
   // once, and they all come back keyed the same way.
   const [open, setOpen] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
+  // Sources or items. Sources is the default because the early pipeline
+  // stages act on a video, and that is where an unfinished corpus is.
+  const [view, setView] = useState<"sources" | "items">("sources");
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -108,12 +112,33 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
           a corpus you did not build yourself. */}
       <CorpusAssistantPanel corpusId={corpusId} onChanged={load} />
 
-      <ExtractPanel corpusId={corpusId} selected={picked} onDone={load} />
+      <div className="flex gap-1.5">
+        {([["sources", "By source"], ["items", "By item"]] as const).map(([k, label]) => (
+          <button key={k} onClick={() => setView(k)}
+            className={`rounded-full px-3 py-1 text-xs border transition-colors ${
+              view === k ? "border-primary bg-primary/10 text-foreground"
+                         : "border-border text-muted-foreground hover:text-foreground"}`}>
+            {label}
+          </button>
+        ))}
+        <span className="self-center text-[11px] text-muted-foreground">
+          {view === "sources"
+            ? "One row per video — transcribe and segment act here."
+            : "One row per extracted item — naming and publishing act here."}
+        </span>
+      </div>
 
+      {view === "sources" && <SourcesPanel corpusId={corpusId} onChanged={load} />}
+
+      {view === "items" && (
+        <ExtractPanel corpusId={corpusId} selected={picked} onDone={load} />
+      )}
+
+    {view === "items" && (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
-          <Video size={14} /> Documents — {corpusId}
+          <Video size={14} /> Items — {corpusId}
           <span className="ml-auto flex items-center gap-2">
             <input
               value={corpusId}
@@ -359,6 +384,7 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
         </div>
       </CardContent>
     </Card>
+    )}
     </div>
   );
 }

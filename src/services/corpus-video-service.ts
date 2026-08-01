@@ -257,3 +257,80 @@ export async function extractCorpus(
 export async function backfillEvidence(corpusId: string) {
   return call(`/${encodeURIComponent(corpusId)}/evidence/backfill`, { method: "POST" });
 }
+
+// ── sources ─────────────────────────────────────────────────────────────────
+//
+// The list showed 74 rows for 49 videos, and the pipeline's two halves act on
+// different things: you RE-TRANSCRIBE a video but you NAME an exercise. With
+// only entities listed, every source-level action had no row to be a button on.
+
+export interface CorpusSource {
+  source: string;
+  items: number;
+  titles: string[];
+  doc_ids: string[];
+  duration_s?: number | null;
+  has_speech: boolean;
+  has_transcript: boolean;
+  /** Whether the transcript kept its timings. A flat one looks identical on
+   *  screen, and only a timed one lets spans be proposed rather than typed. */
+  has_timings: boolean;
+  stage: string;
+  stages: string[];
+  languages: string[];
+  awaiting_translation_review: number;
+}
+
+export interface SourceSummary {
+  sources: number;
+  items: number;
+  with_transcript: number;
+  with_timings: number;
+  needs_retranscribe: number;
+  no_speech: number;
+  languages: string[];
+  awaiting_translation_review: number;
+  /** Documents not cut from any source — derived summaries. Counted so the
+   *  difference between 74 documents and 70 items is not a mystery. */
+  not_from_a_source: number;
+}
+
+export async function fetchSources(
+  corpusId: string,
+): Promise<{ summary: SourceSummary; sources: CorpusSource[] }> {
+  return call(`/${encodeURIComponent(corpusId)}/sources`);
+}
+
+/** Re-transcribe one source KEEPING the timings, then locate each item's span.
+ *  Takes the file because the sources are not reachable from the server — a
+ *  button that silently could not find the media would not be honest. */
+export async function retranscribeSource(
+  corpusId: string,
+  source: string,
+  file: File,
+  instruction: string,
+  proposeSpans = true,
+) {
+  const token = await auth.currentUser?.getIdToken();
+  const form = new FormData();
+  form.append("file", file);
+  const params = new URLSearchParams({
+    source,
+    instruction,
+    propose_spans: String(proposeSpans),
+  });
+  const res = await fetch(
+    getApiUrl(`/admin/corpus/${encodeURIComponent(corpusId)}/sources/transcribe?${params}`),
+    { method: "POST", body: form, headers: token ? { Authorization: `Bearer ${token}` } : {} },
+  );
+  if (!res.ok) {
+    const body = await res.text();
+    try {
+      const p = JSON.parse(body);
+      throw new Error(p?.error?.message ?? p?.detail ?? body);
+    } catch (e) {
+      throw e instanceof Error && e.message !== body ? e : new Error(body);
+    }
+  }
+  return res.json();
+}
