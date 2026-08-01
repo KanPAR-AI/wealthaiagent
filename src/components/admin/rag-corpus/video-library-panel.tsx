@@ -3,13 +3,17 @@ import { CorpusAssistantPanel } from "./corpus-assistant-panel";
 import { LabellingPanel } from "./labelling-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Video, RefreshCw, Check, Upload, AlertTriangle } from "lucide-react";
+import { Video, RefreshCw, Check, Upload, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
+import { DocumentDetail } from "./document-detail";
+import { ExtractPanel } from "./extract-panel";
+import { PipelineFunnel, StageBadge } from "./corpus-pipeline";
 import {
   fetchVideos,
   importVideos,
   patchVideo,
   publishCorpus,
   type CorpusVideoDoc,
+  type Funnel,
   type VideoState,
 } from "@/services/corpus-video-service";
 
@@ -54,6 +58,12 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
   const [readers, setReaders] = useState<string[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [publishNote, setPublishNote] = useState("");
+  const [funnel, setFunnel] = useState<Funnel | undefined>();
+  // Which rows are expanded / selected. Selection feeds the batch
+  // extraction: pick documents that share a subject, write the guidelines
+  // once, and they all come back keyed the same way.
+  const [open, setOpen] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -63,6 +73,7 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
       setDocs(view.documents);
       setSummary(view.summary);
       setReaders(view.readers || []);
+      setFunnel(view.funnel);
     } catch (e) {
       // An empty list and a failed read look identical, and "nothing needs you"
       // is a reassuring thing to show when the truth is "we could not look".
@@ -96,6 +107,8 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
           what is wrong with them; asking is the one interaction that scales to
           a corpus you did not build yourself. */}
       <CorpusAssistantPanel corpusId={corpusId} onChanged={load} />
+
+      <ExtractPanel corpusId={corpusId} selected={picked} onDone={load} />
 
     <Card>
       <CardHeader className="pb-3">
@@ -191,6 +204,9 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
           )}
         </div>
 
+        {/* Where the WORK is, before any list of rows. */}
+        <PipelineFunnel funnel={funnel} />
+
         {/* Two different questions, so two labelled groups. They read as one
             undifferentiated row of chips otherwise, and nothing said they were
             combined rather than alternatives. */}
@@ -257,12 +273,31 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
         <div className="space-y-2">
           {docs.slice(0, 60).map((d) => {
             const curated = d.provenance?.exercise?.source === "human";
+            const key = d.doc_id || d.id;
+            const isOpen = open === d.id;
             return (
               <div key={d.id} className="rounded-lg border border-border p-3">
                 <div className="flex items-center gap-2 flex-wrap text-xs">
-                  <span className="font-medium">
+                  {/* Selection drives the batch extraction above: pick the
+                      documents that share a subject, write the guidelines once,
+                      and every one comes back keyed the same way. */}
+                  <input
+                    type="checkbox"
+                    checked={picked.includes(key)}
+                    onChange={(e) =>
+                      setPicked((p) =>
+                        e.target.checked ? [...p, key] : p.filter((x) => x !== key))}
+                    className="h-3.5 w-3.5 accent-primary"
+                    aria-label={`select ${d.exercise || d.title}`}
+                  />
+                  <button
+                    onClick={() => setOpen(isOpen ? "" : d.id)}
+                    className="flex items-center gap-1 font-medium hover:underline"
+                  >
+                    {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                     {d.exercise || d.topic || d.title || "(unnamed)"}
-                  </span>
+                  </button>
+                  <StageBadge stage={d.stage} />
                   {d.phase && (
                     <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-violet-600 dark:text-violet-400">
                       Phase {d.phase}
@@ -285,7 +320,11 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
                   </span>
                 </div>
 
-                {state === "unlabelled" && (
+                {d.next_action && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">{d.next_action}</p>
+                )}
+
+                {(state === "unlabelled" || d.stage === "named") && (
                   <div className="mt-2 flex gap-2">
                     <input
                       value={draft[d.id] ?? ""}
@@ -301,6 +340,8 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
                     </Button>
                   </div>
                 )}
+
+                {isOpen && <DocumentDetail doc={d} corpusId={corpusId} onSaved={load} />}
               </div>
             );
           })}

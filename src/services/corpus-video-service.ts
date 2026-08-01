@@ -30,6 +30,27 @@ export interface CorpusVideoDoc {
   /** Which fields a person set, so the UI can show what is curated and what
    *  was merely extracted. A re-index never overwrites the former. */
   provenance?: Record<string, { source: string; by?: string; at?: string }>;
+  /** Ingest evidence, carried onto the document so it can be READ. Not
+   *  embedded: the transcript belongs to the whole video, and twelve videos
+   *  hold several exercises. */
+  source_transcript?: string;
+  on_screen_text?: string[];
+  has_speech?: boolean;
+  evidence_from?: string;
+  start_seconds?: number;
+  end_seconds?: number;
+  /** Derived server-side. Which pipeline stage this document has NOT cleared. */
+  stage?: string;
+  next_action?: string | null;
+  /** How many documents come from this same source. 49 videos produced 74
+   *  documents, so a row is an ENTITY, not a video — without saying so, three
+   *  rows quoting one filename and one transcript read as duplicates. */
+  items_in_source?: number;
+  transcript_segments?: { text: string; start: number; duration?: number; speaker?: string }[];
+  span_source?: string;
+  span_confidence?: number;
+  suggested?: Record<string, { value: unknown; by?: string; at?: string }>;
+  rejected?: boolean;
 }
 
 export interface CorpusVideoView {
@@ -40,6 +61,7 @@ export interface CorpusVideoView {
    *  REMEMBER to publish, and a corpus that silently stops matching its review
    *  queue is the defect that made this whole surface a no-op. */
   summary: Record<string, number>;
+  funnel?: Funnel;
   /** Agents subscribed to this corpus. Empty means it reaches no answer, no
    *  matter how well it is indexed. */
   readers?: string[];
@@ -57,7 +79,25 @@ async function call(path: string, init?: RequestInit) {
       ...(init?.headers || {}),
     },
   });
-  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    // FastAPI wraps refusals as {"detail": "..."} (and the app's handler nests
+    // it again under {"error": {"message": ...}}). Throwing the raw body put
+    // `400 {"error":{"code":"HTTP_EXCEPTION","message":"..."}}` in front of the
+    // user, so a careful, readable refusal arrived looking like a crash.
+    const body = await res.text();
+    let message = body;
+    try {
+      const parsed = JSON.parse(body);
+      message =
+        parsed?.error?.message ??
+        (typeof parsed?.detail === "string" ? parsed.detail : null) ??
+        parsed?.detail?.message ??
+        body;
+    } catch {
+      /* not JSON — the raw body is the best we have */
+    }
+    throw new Error(message);
+  }
   return res.json();
 }
 
@@ -154,4 +194,66 @@ export async function askCorpusAssistant(
     method: "POST",
     body: JSON.stringify({ question, history }),
   });
+}
+
+// ── the pipeline ────────────────────────────────────────────────────────────
+//
+// A corpus page that lists documents cannot say what state the WORK is in. Every
+// knee document looked equally finished; none had been segmented and none had
+// been indexed. Stages are derived server-side from the document, never stored,
+// so they cannot drift from what is actually true of it.
+
+export type Stage = "ingested" | "read" | "segmented" | "named" | "published" | "rejected";
+
+export interface Funnel {
+  total: number;
+  /** Cumulative — "44 of 74 read" is how far the corpus has got. */
+  cleared: Record<string, number>;
+  /** Occupancy — where each document is stuck. */
+  stuck_at: Record<string, number>;
+  stages: { key: string; label: string; blurb: string; next?: string }[];
+}
+
+export interface ExtractionSpec {
+  instruction?: string;
+  fields?: { name: string; instruction?: string }[];
+}
+
+/** Say when an item starts and ends in its source. A person can; the model
+ *  cannot — the stored transcript has no segments and the source videos are
+ *  unreachable, so a proposed timestamp would be a guess wearing a number. */
+export async function setSegment(
+  corpusId: string,
+  docId: string,
+  startSeconds: number,
+  endSeconds: number,
+) {
+  return call(
+    `/${encodeURIComponent(corpusId)}/videos/${encodeURIComponent(docId)}/segment`,
+    { method: "PATCH", body: JSON.stringify({ start_seconds: startSeconds, end_seconds: endSeconds }) },
+  );
+}
+
+export async function fetchExtractionSpec(
+  corpusId: string,
+): Promise<{ spec: ExtractionSpec }> {
+  return call(`/${encodeURIComponent(corpusId)}/spec`);
+}
+
+/** Run one spec across a batch, so every document in it comes back keyed the
+ *  same way. Re-typing guidelines per batch is how one video ends up keyed
+ *  `equipment`, the next `apparatus` and a third `gear`. */
+export async function extractCorpus(
+  corpusId: string,
+  spec: ExtractionSpec & { doc_ids?: string[]; dry_run?: boolean; limit?: number },
+) {
+  return call(`/${encodeURIComponent(corpusId)}/extract`, {
+    method: "POST",
+    body: JSON.stringify(spec),
+  });
+}
+
+/** Carry the ingest evidence onto documents so it can be read. */
+export async function backfillEvidence(corpusId: string) {
+  return call(`/${encodeURIComponent(corpusId)}/evidence/backfill`, { method: "POST" });
 }
