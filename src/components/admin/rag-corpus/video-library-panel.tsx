@@ -32,7 +32,9 @@ const STATES: { key: VideoState; label: string }[] = [
 ];
 
 export function VideoLibraryPanel({ agentId }: { agentId: string }) {
-  const corpusId = agentId || "knee";
+  // A corpus is addressed by its own id, not by an agent. `agentId` is only a
+  // convenience default when the panel is opened from inside an agent's tab.
+  const [corpusId, setCorpusId] = useState(agentId || "knee");
   const [state, setState] = useState<VideoState>("unlabelled");
   const [docs, setDocs] = useState<CorpusVideoDoc[]>([]);
   const [summary, setSummary] = useState<Record<string, number>>({});
@@ -81,6 +83,12 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
         <CardTitle className="text-sm flex items-center gap-2">
           <Video size={14} /> Video library — {corpusId}
           <span className="ml-auto flex items-center gap-2">
+            <input
+              value={corpusId}
+              onChange={(e) => setCorpusId(e.target.value)}
+              placeholder="corpus id"
+              className="w-28 rounded-md border border-border bg-background px-2 py-1 text-xs"
+            />
             <Button variant="outline" size="sm" disabled={busy}
                     onClick={async () => {
                       setBusy(true);

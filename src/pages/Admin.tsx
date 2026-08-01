@@ -52,6 +52,7 @@ type Tab =
   | "cost_dashboard"
   | "dish_library"
   | "rag_corpus"
+  | "corpus_library"
   | "user_memory"
   | "prompt_editor"
   | "routing_config"
@@ -65,7 +66,8 @@ const TAB_META: Record<Tab, { label: string; icon: React.ReactNode }> = {
   model_config: { label: "Models", icon: <Cpu size={14} /> },
   cost_dashboard: { label: "Costs", icon: <DollarSign size={14} /> },
   dish_library: { label: "Dishes", icon: <UtensilsCrossed size={14} /> },
-  rag_corpus: { label: "Corpus", icon: <Database size={14} /> },
+  rag_corpus: { label: "Agent corpus", icon: <Database size={14} /> },
+  corpus_library: { label: "Corpus", icon: <Database size={14} /> },
   user_memory: { label: "Memory", icon: <Brain size={14} /> },
   prompt_editor: { label: "Prompts", icon: <FileText size={14} /> },
   routing_config: { label: "Routing", icon: <Route size={14} /> },
@@ -244,6 +246,23 @@ export default function Admin() {
 
           {/* Tab bar */}
           <div className="flex gap-1 border-b border-border mb-6 overflow-x-auto">
+            {/* Corpora are their own thing, not a property of an agent. This
+                tab used to be rendered from the SELECTED AGENT's capability
+                list, so a corpus was unreachable unless you first guessed
+                which agent happened to declare rag_corpus — and with no agent
+                selected the tab simply did not exist. */}
+            <button
+              key="corpus_library"
+              onClick={() => setActiveTab("corpus_library" as Tab)}
+              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap ${
+                activeTab === "corpus_library"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Database size={14} />
+              Corpus
+            </button>
             {capabilities.map((cap) => {
               const meta = TAB_META[cap as Tab];
               if (!meta) return null;
@@ -280,6 +299,9 @@ export default function Admin() {
             capabilities.includes("dish_library") && (
               <DishPanel agentId={selectedAgentId!} />
             )}
+          {activeTab === "corpus_library" && (
+            <VideoLibraryPanel agentId="" />
+          )}
           {activeTab === "rag_corpus" &&
             capabilities.includes("rag_corpus") && (
               <div className="space-y-4">
