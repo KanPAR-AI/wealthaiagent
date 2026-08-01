@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { LabellingPanel } from "./labelling-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Video, RefreshCw, Check } from "lucide-react";
@@ -182,6 +183,17 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
               </div>
             );
           })}
+        </div>
+
+        {/* Whatever the current filter shows is what gets delegated -- the
+            reviewer already narrowed to the documents that need a person, so
+            asking them to re-select the same set would only introduce a way to
+            get it wrong. */}
+        <div className="mt-4">
+          <LabellingPanel
+            corpusId={corpusId}
+            candidateIds={docs.map((d) => d.id).filter(Boolean)}
+          />
         </div>
       </CardContent>
     </Card>
