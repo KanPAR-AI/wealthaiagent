@@ -100,7 +100,10 @@ export function BugReportSheet({
     const context = {
       url: 'app://mobile/chat',
       selected_agent: selectedAgent || undefined,
-      user_agent: 'YourFinAdvisor iOS (Expo dev)',
+      // Was hardcoded to "iOS" on every platform, so an Android report came
+      // in labelled iOS and platform-specific bugs could not be triaged from
+      // the report itself.
+      user_agent: `YourFinAdvisor ${Platform.OS} ${Platform.Version} (Expo)`,
     };
     try {
       const token = await getToken();
@@ -159,7 +162,12 @@ export function BugReportSheet({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={styles.backdrop}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        // 'height' on Android, not undefined. The manifest sets
+        // adjustResize, but that applies to the ACTIVITY window — a Modal gets
+        // its own window and does not inherit it, so with no behavior the
+        // sheet sat underneath the keyboard and the user could not see what
+        // they were typing (bug ef26fdb0).
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={[styles.sheet, { backgroundColor: colors.background }]}>
           <View style={styles.grabber} />

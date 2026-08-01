@@ -170,14 +170,25 @@ export function OnboardingForm({ data }: { data: any }) {
       );
     }
 
-    // number
+    // Everything that is not a select/slider lands here. It used to be treated
+    // as a NUMBER unconditionally and stripped every non-digit, so on a text
+    // field you typed letters and nothing appeared — reported as "form filling
+    // not working" (bug ef26fdb0). Only strip when the field is actually
+    // numeric; anything else is free text.
+    const numeric = ['number', 'integer', 'numeric', 'age', 'weight', 'amount']
+      .includes(String(f.type || '').toLowerCase());
+
     return (
       <TextInput
         value={v}
-        onChangeText={(t) => set(f.id, t.replace(/[^0-9.]/g, ''))}
+        onChangeText={(t) => set(f.id, numeric ? t.replace(/[^0-9.]/g, '') : t)}
         placeholder={f.placeholder || ''}
         placeholderTextColor={colors.textSecondary}
-        keyboardType="numeric"
+        keyboardType={numeric ? 'numeric' : 'default'}
+        // A numeric keypad has no return key on Android, so without this there
+        // is no way to dismiss it and the next field stays unreachable.
+        returnKeyType="done"
+        blurOnSubmit
         style={[styles.numberInput, { backgroundColor: colors.backgroundElement, color: colors.text }]}
       />
     );
