@@ -8,6 +8,7 @@ import { DocumentDetail } from "./document-detail";
 import { ExtractPanel } from "./extract-panel";
 import { PipelineFunnel, StageBadge } from "./corpus-pipeline";
 import { SourcesPanel } from "./sources-panel";
+import { CreateCorpus } from "./create-corpus";
 import {
   fetchVideos,
   importVideos,
@@ -146,10 +147,17 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
           )}
           {corpora.map((c) => (
             <option key={c.corpus_id} value={c.corpus_id}>
-              {c.corpus_id} ({c.documents} docs)
+              {c.name || c.corpus_id} ({c.documents} docs)
+              {c.unnamed ? " — no purpose recorded" : ""}
             </option>
           ))}
         </select>
+        <CreateCorpus
+          onCreated={(id) => {
+            setCorpusId(id);
+            fetchCorpora().then((r) => setCorpora(r.corpora)).catch(() => {});
+          }}
+        />
         {plan && plan.sources > 0 && (
           <span className="text-[11px] text-muted-foreground">
             Re-extraction: {plan.note}

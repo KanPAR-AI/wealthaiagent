@@ -343,6 +343,12 @@ export async function retranscribeSource(
 
 export interface CorpusListing {
   corpus_id: string;
+  name?: string;
+  purpose?: string;
+  template?: string;
+  /** Predates the Corpus entity, so it has no name. Saying so beats showing a
+   *  blank, which reads as a bug. */
+  unnamed?: boolean;
   documents: number;
   readers: string[];
 }
@@ -371,4 +377,33 @@ export async function syncArtifacts(corpusId: string, run: string) {
     `/${encodeURIComponent(corpusId)}/artifacts/sync?run=${encodeURIComponent(run)}`,
     { method: "POST" },
   );
+}
+
+// ── creating a corpus (CUJ 1) ───────────────────────────────────────────────
+//
+// A corpus used to be created by typing an id into an import call: no name, no
+// owner, and nowhere to record what it was FOR. Everything downstream — schema
+// suggestion, retrieval contract, evaluation questions — needs that field.
+
+export interface NewCorpusInput {
+  name: string;
+  purpose: string;
+  corpus_id?: string;
+  description?: string;
+  audience?: string;
+  typical_questions?: string[];
+  template?: string;
+}
+
+export async function createCorpus(input: NewCorpusInput): Promise<{
+  corpus: CorpusListing & { name: string; purpose: string; template: string };
+  suggested_fields: { name: string; instruction: string }[];
+}> {
+  return call("", { method: "POST", body: JSON.stringify(input) });
+}
+
+export async function fetchTemplates(): Promise<{
+  templates: { key: string; fields: string[] }[];
+}> {
+  return call("/templates");
 }
