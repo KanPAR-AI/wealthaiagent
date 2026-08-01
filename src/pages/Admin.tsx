@@ -23,6 +23,7 @@ import { ModelConfigPanel } from "@/components/admin/model-config/model-config-p
 import { CostPanel } from "@/components/admin/cost-dashboard/cost-panel";
 import { DishPanel } from "@/components/admin/dish-library/dish-panel";
 import { CorpusPanel } from "@/components/admin/rag-corpus/corpus-panel";
+import { VideoLibraryPanel } from "@/components/admin/rag-corpus/video-library-panel";
 import { UserMemoryPanel } from "@/components/admin/user-memory/user-memory-panel";
 import { PromptEditor } from "@/components/admin/agent-builder/prompt-editor";
 import { RoutingConfig } from "@/components/admin/agent-builder/routing-config";
@@ -281,7 +282,10 @@ export default function Admin() {
             )}
           {activeTab === "rag_corpus" &&
             capabilities.includes("rag_corpus") && (
-              <CorpusPanel agentId={selectedAgentId!} />
+              <div className="space-y-4">
+                <VideoLibraryPanel agentId={selectedAgentId!} />
+                <CorpusPanel agentId={selectedAgentId!} />
+              </div>
             )}
           {activeTab === "user_memory" &&
             capabilities.includes("user_memory") && (
