@@ -37,6 +37,7 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
   // convenience default when the panel is opened from inside an agent's tab.
   const [corpusId, setCorpusId] = useState(agentId || "knee");
   const [state, setState] = useState<VideoState>("unlabelled");
+  const [kind, setKind] = useState("");   // "" = every source
   const [docs, setDocs] = useState<CorpusVideoDoc[]>([]);
   const [summary, setSummary] = useState<Record<string, number>>({});
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -48,7 +49,7 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
     setBusy(true);
     setError("");
     try {
-      const view = await fetchVideos(corpusId, state);
+      const view = await fetchVideos(corpusId, state, kind);
       setDocs(view.documents);
       setSummary(view.summary);
     } catch (e) {
@@ -59,7 +60,7 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
     } finally {
       setBusy(false);
     }
-  }, [corpusId, state]);
+  }, [corpusId, state, kind]);
 
   useEffect(() => {
     void load();
@@ -69,7 +70,7 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
     const value = (draft[doc.id] ?? "").trim();
     if (!value) return;
     try {
-      await patchVideo(corpusId, doc.id, "exercise", value);
+      await patchVideo(corpusId, doc.doc_id || doc.id, "exercise", value);
       setSaved(doc.id);
       setDraft((d) => ({ ...d, [doc.id]: "" }));
       await load();
@@ -116,6 +117,26 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
               <span className="ml-1.5 opacity-70">{summary[s.key] ?? 0}</span>
             </button>
           ))}
+          {/* A corpus holds footage AND text; the filter is a lens over one
+              collection rather than a second collection, so a rule written
+              once applies to both. */}
+          <span className="ml-4 flex gap-2">
+            {[
+              { key: "", label: "All sources" },
+              { key: "video", label: "Video" },
+              { key: "pdf", label: "PDF" },
+            ].map((k) => (
+              <button key={k.key} onClick={() => setKind(k.key)}
+                className={`rounded-full px-2.5 py-1 text-xs border transition-colors ${
+                  kind === k.key
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border text-muted-foreground hover:text-foreground"
+                }`}>
+                {k.label}
+                {k.key && <span className="ml-1.5 opacity-70">{summary[k.key] ?? 0}</span>}
+              </button>
+            ))}
+          </span>
           <span className="ml-auto self-center text-xs text-muted-foreground">
             {summary.total ?? 0} documents
           </span>
@@ -192,7 +213,7 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
         <div className="mt-4">
           <LabellingPanel
             corpusId={corpusId}
-            candidateIds={docs.map((d) => d.id).filter(Boolean)}
+            candidateIds={docs.map((d) => d.doc_id || d.id).filter(Boolean)}
           />
         </div>
       </CardContent>

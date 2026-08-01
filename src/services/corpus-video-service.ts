@@ -12,6 +12,10 @@ export type VideoState = "unlabelled" | "translation_review" | "labelled";
 
 export interface CorpusVideoDoc {
   id: string;
+  /** The Firestore storage key. Differs from `id` whenever the document has a
+   *  content hash, and it is the one an edit must address -- patching by `id`
+   *  404s against a key that does not exist. */
+  doc_id?: string;
   kind?: string;
   title?: string;
   exercise?: string | null;
@@ -52,9 +56,27 @@ async function call(path: string, init?: RequestInit) {
 export async function fetchVideos(
   corpusId: string,
   state?: VideoState,
+  kind?: string,
 ): Promise<CorpusVideoView> {
-  const q = state ? `?state=${state}` : "";
-  return call(`/${encodeURIComponent(corpusId)}/videos${q}`);
+  const params = new URLSearchParams();
+  if (state) params.set("state", state);
+  if (kind) params.set("kind", kind);
+  const q = params.toString();
+  return call(`/${encodeURIComponent(corpusId)}/videos${q ? `?${q}` : ""}`);
+}
+
+/** Push ingest output straight into a corpus. The PDF and video tools emit the
+ *  same document shape, so one import path serves both -- reading only a seed
+ *  file baked into the image meant a corpus could hold exactly one kind of
+ *  thing, decided at build time. */
+export async function importDocuments(
+  corpusId: string,
+  documents: Record<string, unknown>[],
+): Promise<{ added: number; merged_preserving_edits: number; summary: Record<string, number> }> {
+  return call(`/${encodeURIComponent(corpusId)}/videos/import`, {
+    method: "POST",
+    body: JSON.stringify({ documents }),
+  });
 }
 
 export async function patchVideo(

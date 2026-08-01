@@ -52,7 +52,6 @@ type Tab =
   | "cost_dashboard"
   | "dish_library"
   | "rag_corpus"
-  | "corpus_library"
   | "user_memory"
   | "prompt_editor"
   | "routing_config"
@@ -61,13 +60,18 @@ type Tab =
   | "agent_builder"
   | "sandbox";
 
+// The admin's top-level sections, declared once. Two copies of this list is
+// how ?section=goldset quietly opened the Agents page for months.
+const SECTIONS = ["agents", "corpus", "loops", "ops", "integrations", "models",
+                  "goldset", "memory", "latency", "credits", "campaigns"] as const;
+type Section = (typeof SECTIONS)[number];
+
 const TAB_META: Record<Tab, { label: string; icon: React.ReactNode }> = {
   videos: { label: "Videos", icon: <Film size={14} /> },
   model_config: { label: "Models", icon: <Cpu size={14} /> },
   cost_dashboard: { label: "Costs", icon: <DollarSign size={14} /> },
   dish_library: { label: "Dishes", icon: <UtensilsCrossed size={14} /> },
   rag_corpus: { label: "Agent corpus", icon: <Database size={14} /> },
-  corpus_library: { label: "Corpus", icon: <Database size={14} /> },
   user_memory: { label: "Memory", icon: <Brain size={14} /> },
   prompt_editor: { label: "Prompts", icon: <FileText size={14} /> },
   routing_config: { label: "Routing", icon: <Route size={14} /> },
@@ -101,10 +105,14 @@ export default function Admin() {
   // Deep-linkable: /admin?section=ops&tab=integrations, ?section=loops&loop=<id>
   // — Jarvis answers navigate here, and the URL stays shareable.
   const [searchParams, setSearchParams] = useSearchParams();
-  const [section, setSection] = useState<"agents" | "loops" | "ops" | "integrations" | "models" | "goldset" | "memory" | "latency" | "credits" | "campaigns">("agents");
+  const [section, setSection] = useState<Section>("agents");
   useEffect(() => {
     const s = searchParams.get("section");
-    if (s === "agents" || s === "loops" || s === "ops" || s === "integrations" || s === "models" || s === "credits" || s === "campaigns") setSection(s);
+    // Checked against the single SECTIONS list. This was a hand-written second
+    // list, and it had already drifted: ?section=goldset, memory, latency and
+    // corpus all silently fell back to Agents, so a shared link opened the
+    // wrong page with no error.
+    if (s && (SECTIONS as readonly string[]).includes(s)) setSection(s as Section);
     const agentId = searchParams.get("agent");
     if (agentId) {
       setSelectedAgentId(agentId);
@@ -155,7 +163,7 @@ export default function Admin() {
         <div className="max-w-6xl mx-auto px-6 py-6">
           {/* Section switcher: Agents | Verified Procedures | Operations | Integrations */}
           <div className="flex gap-1 mb-5 border-b border-border">
-            {(["agents", "loops", "ops", "integrations", "models", "goldset", "memory", "latency", "credits", "campaigns"] as const).map((s) => (
+            {SECTIONS.map((s) => (
               <button
                 key={s}
                 onClick={() => { setSection(s); setSearchParams({ section: s }); }}
@@ -165,7 +173,8 @@ export default function Admin() {
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {s === "agents" ? "Agents" : s === "loops" ? "Verified Procedures"
+                {s === "agents" ? "Agents" : s === "corpus" ? "Corpus"
+                  : s === "loops" ? "Verified Procedures"
                   : s === "ops" ? "Operations" : s === "integrations" ? "Integrations"
                   : s === "models" ? "Models" : s === "goldset" ? "Gold Set"
                   : s === "memory" ? "Memory" : s === "latency" ? "Latency"
@@ -174,7 +183,12 @@ export default function Admin() {
             ))}
           </div>
 
-          {section === "integrations" ? (
+          {section === "corpus" ? (
+            // No agent needed. A corpus is addressed by its own id; the knee
+            // library was invisible for weeks because it rendered only inside
+            // the detail view of an agent that declared rag_corpus.
+            <VideoLibraryPanel agentId="" />
+          ) : section === "integrations" ? (
             <IntegrationsPanel />
           ) : section === "models" ? (
             <ModelProfilesView />
@@ -246,23 +260,6 @@ export default function Admin() {
 
           {/* Tab bar */}
           <div className="flex gap-1 border-b border-border mb-6 overflow-x-auto">
-            {/* Corpora are their own thing, not a property of an agent. This
-                tab used to be rendered from the SELECTED AGENT's capability
-                list, so a corpus was unreachable unless you first guessed
-                which agent happened to declare rag_corpus — and with no agent
-                selected the tab simply did not exist. */}
-            <button
-              key="corpus_library"
-              onClick={() => setActiveTab("corpus_library" as Tab)}
-              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap ${
-                activeTab === "corpus_library"
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Database size={14} />
-              Corpus
-            </button>
             {capabilities.map((cap) => {
               const meta = TAB_META[cap as Tab];
               if (!meta) return null;
@@ -299,9 +296,6 @@ export default function Admin() {
             capabilities.includes("dish_library") && (
               <DishPanel agentId={selectedAgentId!} />
             )}
-          {activeTab === "corpus_library" && (
-            <VideoLibraryPanel agentId="" />
-          )}
           {activeTab === "rag_corpus" &&
             capabilities.includes("rag_corpus") && (
               <div className="space-y-4">
