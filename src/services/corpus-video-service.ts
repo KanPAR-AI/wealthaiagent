@@ -334,3 +334,41 @@ export async function retranscribeSource(
   }
   return res.json();
 }
+
+// ── which corpora exist ─────────────────────────────────────────────────────
+//
+// The panel offered a text box. A corpus whose id you have not memorised is a
+// corpus you cannot open — which is how a freshly built one stays invisible to
+// the person who built it.
+
+export interface CorpusListing {
+  corpus_id: string;
+  documents: number;
+  readers: string[];
+}
+
+export async function fetchCorpora(): Promise<{ corpora: CorpusListing[] }> {
+  return call("");
+}
+
+/** What a re-extraction would cost, before anyone starts. Pre-processing is
+ *  content-addressed and shared, so a video processed under one corpus does
+ *  not need transcribing again under another. */
+export interface ReprocessPlan {
+  sources: number;
+  llm_only: number;
+  needs_vision: number;
+  needs_media: number;
+  note: string;
+}
+
+export async function fetchReprocessPlan(corpusId: string): Promise<ReprocessPlan> {
+  return call(`/${encodeURIComponent(corpusId)}/reprocess/plan`);
+}
+
+export async function syncArtifacts(corpusId: string, run: string) {
+  return call(
+    `/${encodeURIComponent(corpusId)}/artifacts/sync?run=${encodeURIComponent(run)}`,
+    { method: "POST" },
+  );
+}

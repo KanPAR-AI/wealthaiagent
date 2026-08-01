@@ -12,8 +12,12 @@ import {
   fetchVideos,
   importVideos,
   patchVideo,
+  fetchCorpora,
+  fetchReprocessPlan,
   publishCorpus,
+  type CorpusListing,
   type CorpusVideoDoc,
+  type ReprocessPlan,
   type Funnel,
   type VideoState,
 } from "@/services/corpus-video-service";
@@ -68,6 +72,8 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
   // Sources or items. Sources is the default because the early pipeline
   // stages act on a video, and that is where an unfinished corpus is.
   const [view, setView] = useState<"sources" | "items">("sources");
+  const [corpora, setCorpora] = useState<CorpusListing[]>([]);
+  const [plan, setPlan] = useState<ReprocessPlan | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -92,6 +98,17 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    fetchCorpora().then((r) => setCorpora(r.corpora)).catch(() => {});
+  }, []);
+
+  // What a re-extraction would cost. Pre-processing is content-addressed and
+  // shared, so footage transcribed under one corpus is not transcribed again
+  // under another — and this library has three byte-identical pairs.
+  useEffect(() => {
+    fetchReprocessPlan(corpusId).then(setPlan).catch(() => setPlan(null));
+  }, [corpusId]);
+
   const save = async (doc: CorpusVideoDoc) => {
     const value = (draft[doc.id] ?? "").trim();
     if (!value) return;
@@ -111,6 +128,34 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
           what is wrong with them; asking is the one interaction that scales to
           a corpus you did not build yourself. */}
       <CorpusAssistantPanel corpusId={corpusId} onChanged={load} />
+
+      {/* Scopes everything below it, so it sits ABOVE the view toggle rather
+          than inside one of the views — where it was unreachable from the
+          other, making a freshly built corpus impossible to open. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          Corpus
+        </span>
+        <select
+          value={corpusId}
+          onChange={(e) => setCorpusId(e.target.value)}
+          className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+        >
+          {!corpora.some((c) => c.corpus_id === corpusId) && (
+            <option value={corpusId}>{corpusId}</option>
+          )}
+          {corpora.map((c) => (
+            <option key={c.corpus_id} value={c.corpus_id}>
+              {c.corpus_id} ({c.documents} docs)
+            </option>
+          ))}
+        </select>
+        {plan && plan.sources > 0 && (
+          <span className="text-[11px] text-muted-foreground">
+            Re-extraction: {plan.note}
+          </span>
+        )}
+      </div>
 
       <div className="flex gap-1.5">
         {([["sources", "By source"], ["items", "By item"]] as const).map(([k, label]) => (
@@ -140,12 +185,6 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
         <CardTitle className="text-sm flex items-center gap-2">
           <Video size={14} /> Items — {corpusId}
           <span className="ml-auto flex items-center gap-2">
-            <input
-              value={corpusId}
-              onChange={(e) => setCorpusId(e.target.value)}
-              placeholder="corpus id"
-              className="w-28 rounded-md border border-border bg-background px-2 py-1 text-xs"
-            />
             <Button variant="outline" size="sm" disabled={busy}
                     onClick={async () => {
                       setBusy(true);
@@ -231,6 +270,8 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
 
         {/* Where the WORK is, before any list of rows. */}
         <PipelineFunnel funnel={funnel} />
+
+
 
         {/* Two different questions, so two labelled groups. They read as one
             undifferentiated row of chips otherwise, and nothing said they were
