@@ -34,7 +34,15 @@ export interface CorpusVideoDoc {
 
 export interface CorpusVideoView {
   corpus_id: string;
+  /** Counts by state and source kind, plus `pending_publish` /
+   *  `never_published` — how far the index has fallen behind the queue.
+   *  Publishing is an explicit action, so without that number an admin has to
+   *  REMEMBER to publish, and a corpus that silently stops matching its review
+   *  queue is the defect that made this whole surface a no-op. */
   summary: Record<string, number>;
+  /** Agents subscribed to this corpus. Empty means it reaches no answer, no
+   *  matter how well it is indexed. */
+  readers?: string[];
   documents: CorpusVideoDoc[];
   editable_fields: string[];
 }
@@ -55,7 +63,7 @@ async function call(path: string, init?: RequestInit) {
 
 export async function fetchVideos(
   corpusId: string,
-  state?: VideoState,
+  state?: VideoState | "",
   kind?: string,
 ): Promise<CorpusVideoView> {
   const params = new URLSearchParams();
@@ -95,4 +103,55 @@ export async function patchVideo(
 
 export async function importVideos(corpusId: string) {
   return call(`/${encodeURIComponent(corpusId)}/videos/import`, { method: "POST" });
+}
+
+// ── publish, readers, assistant ─────────────────────────────────────────────
+//
+// Until publishing existed, everything above wrote to a collection no answer
+// path read: the review queue lived in Firestore and retrieval read vectors
+// baked into the container image. A label reached nobody.
+
+export interface PublishResult {
+  corpus_id: string;
+  index: string;
+  chunks: number;
+  documents_published: number;
+  held_back: Record<string, number>;
+  readers?: string[];
+  note?: string;
+}
+
+export async function publishCorpus(corpusId: string): Promise<PublishResult> {
+  return call(`/${encodeURIComponent(corpusId)}/publish`, { method: "POST" });
+}
+
+/** Which agents may retrieve from this corpus. A corpus is its own thing, not
+ *  a possession of one agent, so several can read it without a second copy. */
+export async function setCorpusReaders(
+  corpusId: string,
+  readers: string[],
+): Promise<{ readers: string[] }> {
+  return call(`/${encodeURIComponent(corpusId)}/readers`, {
+    method: "PUT",
+    body: JSON.stringify({ readers }),
+  });
+}
+
+export interface AssistantTurn {
+  answer: string;
+  /** What actually ran. Shown, not hidden: an assistant that changes a corpus
+   *  and reports only prose is asking to be trusted; one that shows the call
+   *  and the count it got back can be checked. */
+  tool_calls: { name: string; arguments: Record<string, unknown>; result: Record<string, unknown> }[];
+}
+
+export async function askCorpusAssistant(
+  corpusId: string,
+  question: string,
+  history: { role: string; content: string }[] = [],
+): Promise<AssistantTurn> {
+  return call(`/${encodeURIComponent(corpusId)}/assistant`, {
+    method: "POST",
+    body: JSON.stringify({ question, history }),
+  });
 }

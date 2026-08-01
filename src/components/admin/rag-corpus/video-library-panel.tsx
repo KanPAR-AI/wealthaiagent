@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
+import { CorpusAssistantPanel } from "./corpus-assistant-panel";
 import { LabellingPanel } from "./labelling-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Video, RefreshCw, Check } from "lucide-react";
+import { Video, RefreshCw, Check, Upload, AlertTriangle } from "lucide-react";
 import {
   fetchVideos,
   importVideos,
   patchVideo,
+  publishCorpus,
   type CorpusVideoDoc,
   type VideoState,
 } from "@/services/corpus-video-service";
@@ -26,7 +28,12 @@ import {
  * rather than asking anyone to trust it.
  */
 
-const STATES: { key: VideoState; label: string }[] = [
+// "" = every state. It is first and it is the default because the panel used to
+// open filtered to "Needs a name", so a corpus with nothing outstanding — the
+// good case — greeted you with "Nothing in this state." over an empty list,
+// which reads as an empty corpus rather than a finished one.
+const STATES: { key: VideoState | ""; label: string }[] = [
+  { key: "", label: "All" },
   { key: "unlabelled", label: "Needs a name" },
   { key: "translation_review", label: "Translation review" },
   { key: "labelled", label: "Done" },
@@ -36,7 +43,7 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
   // A corpus is addressed by its own id, not by an agent. `agentId` is only a
   // convenience default when the panel is opened from inside an agent's tab.
   const [corpusId, setCorpusId] = useState(agentId || "knee");
-  const [state, setState] = useState<VideoState>("unlabelled");
+  const [state, setState] = useState<VideoState | "">("");
   const [kind, setKind] = useState("");   // "" = every source
   const [docs, setDocs] = useState<CorpusVideoDoc[]>([]);
   const [summary, setSummary] = useState<Record<string, number>>({});
@@ -44,6 +51,9 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState<string>("");
+  const [readers, setReaders] = useState<string[]>([]);
+  const [publishing, setPublishing] = useState(false);
+  const [publishNote, setPublishNote] = useState("");
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -52,6 +62,7 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
       const view = await fetchVideos(corpusId, state, kind);
       setDocs(view.documents);
       setSummary(view.summary);
+      setReaders(view.readers || []);
     } catch (e) {
       // An empty list and a failed read look identical, and "nothing needs you"
       // is a reassuring thing to show when the truth is "we could not look".
@@ -80,10 +91,16 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
   };
 
   return (
+    <div className="space-y-4">
+      {/* The front door. Someone arriving at 74 near-identical rows cannot see
+          what is wrong with them; asking is the one interaction that scales to
+          a corpus you did not build yourself. */}
+      <CorpusAssistantPanel corpusId={corpusId} onChanged={load} />
+
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
-          <Video size={14} /> Video library — {corpusId}
+          <Video size={14} /> Documents — {corpusId}
           <span className="ml-auto flex items-center gap-2">
             <input
               value={corpusId}
@@ -105,7 +122,82 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
       </CardHeader>
 
       <CardContent className="space-y-3">
-        <div className="flex flex-wrap gap-2">
+        {/* WHAT STATE IS THIS CORPUS IN — before any list of rows.
+            The page used to open with 74 near-identical rows and no way to tell
+            whether any of it had reached an agent. "Indexed 0 of 74" is the
+            first thing worth knowing and it was the one thing not shown. */}
+        <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
+            <span>
+              <span className="font-medium tabular-nums">
+                {(summary.total ?? 0) - (summary.pending_publish ?? 0)}
+              </span>
+              <span className="text-muted-foreground"> of {summary.total ?? 0} indexed</span>
+            </span>
+            {(summary.pending_publish ?? 0) > 0 && (
+              <span className="text-amber-700 dark:text-amber-400">
+                {summary.pending_publish} waiting to publish
+              </span>
+            )}
+            <span className="text-muted-foreground">
+              read by{" "}
+              {readers.length ? (
+                <span className="text-foreground">{readers.join(", ")}</span>
+              ) : (
+                // The failure this makes visible: a corpus can be perfectly
+                // indexed and still reach no answer, because no agent is
+                // subscribed to it.
+                <span className="text-amber-700 dark:text-amber-400">no agent yet</span>
+              )}
+            </span>
+            <Button
+              size="sm"
+              className="ml-auto"
+              disabled={publishing || !(summary.pending_publish ?? 0)}
+              onClick={async () => {
+                setPublishing(true);
+                setPublishNote("");
+                try {
+                  const r = await publishCorpus(corpusId);
+                  const held = Object.entries(r.held_back || {});
+                  setPublishNote(
+                    `Indexed ${r.documents_published} document(s) as ${r.chunks} chunk(s)` +
+                      (held.length
+                        ? ` — held back ${held.map(([k, v]) => `${v} ${k}`).join(", ")}`
+                        : ""),
+                  );
+                  await load();
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : String(e));
+                } finally {
+                  setPublishing(false);
+                }
+              }}
+            >
+              <Upload size={13} className="mr-1" />
+              {publishing ? "Publishing…" : "Publish"}
+            </Button>
+          </div>
+          {publishNote && (
+            <p className="mt-1.5 text-[11px] text-muted-foreground">{publishNote}</p>
+          )}
+          {/* Not a nag: a document nobody can name is one an agent would
+              retrieve and be unable to say anything about. */}
+          {(summary.unlabelled ?? 0) > 0 && (
+            <p className="mt-1.5 flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400">
+              <AlertTriangle size={11} />
+              {summary.unlabelled} document(s) nobody could name — these never publish.
+            </p>
+          )}
+        </div>
+
+        {/* Two different questions, so two labelled groups. They read as one
+            undifferentiated row of chips otherwise, and nothing said they were
+            combined rather than alternatives. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            Status
+          </span>
           {STATES.map((s) => (
             <button key={s.key} onClick={() => setState(s.key)}
               className={`rounded-full px-2.5 py-1 text-xs border transition-colors ${
@@ -114,13 +206,21 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
                   : "border-border text-muted-foreground hover:text-foreground"
               }`}>
               {s.label}
-              <span className="ml-1.5 opacity-70">{summary[s.key] ?? 0}</span>
+              {/* "All" has no key of its own in the summary, so the generic
+                  lookup rendered it as 0 — a filter labelled "All 0" over a
+                  full list. */}
+              <span className="ml-1.5 opacity-70">
+                {s.key ? (summary[s.key] ?? 0) : (summary.total ?? 0)}
+              </span>
             </button>
           ))}
           {/* A corpus holds footage AND text; the filter is a lens over one
               collection rather than a second collection, so a rule written
               once applies to both. */}
-          <span className="ml-4 flex gap-2">
+          <span className="ml-3 flex items-center gap-2 border-l border-border pl-3">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Source
+            </span>
             {[
               { key: "", label: "All sources" },
               { key: "video", label: "Video" },
@@ -150,7 +250,7 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
 
         {!error && !busy && docs.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            Nothing in this state.
+            No documents match this filter.
           </p>
         )}
 
@@ -218,5 +318,6 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 }
