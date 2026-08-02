@@ -153,9 +153,17 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
           ))}
         </select>
         <CreateCorpus
-          onCreated={(id) => {
+          onCreated={async (id) => {
+            // Refresh the list BEFORE selecting. Selecting first left the
+            // picker rendering the fallback option — a bare id — for a corpus
+            // that has a perfectly good name, until the fetch landed.
+            try {
+              const r = await fetchCorpora();
+              setCorpora(r.corpora);
+            } catch {
+              /* the fallback option still shows the id, so it stays usable */
+            }
             setCorpusId(id);
-            fetchCorpora().then((r) => setCorpora(r.corpora)).catch(() => {});
           }}
         />
         {plan && plan.sources > 0 && (

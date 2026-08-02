@@ -23,7 +23,7 @@ import {
 export function CreateCorpus({
   onCreated,
 }: {
-  onCreated: (corpusId: string) => void;
+  onCreated: (corpusId: string) => void | Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<NewCorpusInput>({
@@ -53,7 +53,7 @@ export function CreateCorpus({
       setOpen(false);
       setForm({ name: "", purpose: "", description: "", audience: "", template: "general" });
       setQuestions("");
-      onCreated(out.corpus.corpus_id);
+      await onCreated(out.corpus.corpus_id);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
