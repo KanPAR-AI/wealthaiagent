@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  ChevronLeft, Clock, FileText, Layers, Loader2, MonitorPlay, Plus, Search,
+  ChevronLeft, Layers, Loader2, MonitorPlay, Plus, Search,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
