@@ -800,3 +800,96 @@ export async function ingestAssetWithProgress(
     xhr.send(form);
   });
 }
+
+// ── AI Extract, per asset (docs/25 screen 4) ────────────────────────────────
+
+/** Three states, and the difference between the last two is the point.
+ *
+ *  `suggested` — a model proposed it and nobody has looked. NOT the value.
+ *  `missing`   — nothing proposed anything.
+ *
+ *  "The model found nothing" and "the model proposed something unchecked" are
+ *  opposite problems; a UI rendering both as blank hides which one you have. */
+export type ValueState = "human" | "suggested" | "missing";
+
+export interface ExtractedValue {
+  value: unknown;
+  state: ValueState;
+  by: string;
+  at: string;
+}
+
+export interface ExtractItem {
+  doc_id: string;
+  title: string;
+  start_seconds: number | null;
+  values: Record<string, ExtractedValue>;
+  evidence: {
+    transcript_chars: number;
+    transcript_excerpt: string;
+    on_screen_text: string[];
+    has_evidence: boolean;
+    /** Where a value could have come from — a field read from six words of
+     *  on-screen text deserves different scepticism from one read from a
+     *  12-minute narration, and nothing else on screen says which. */
+    note: string;
+  };
+}
+
+export interface AssetExtract {
+  corpus_id: string;
+  source: string;
+  /** `in_schema: false` means the column came from a one-off run and will
+   *  vanish from other corpora when the real schema is re-run. */
+  fields: { name: string; instruction: string; in_schema: boolean }[];
+  instruction: string;
+  items: ExtractItem[];
+  coverage: Record<string, Record<ValueState, number>>;
+  pending_review: number;
+  headline: string;
+  runs: { run: string; at: string; instruction?: string; model?: string }[];
+}
+
+export async function fetchAssetExtract(
+  corpusId: string,
+  source: string,
+): Promise<AssetExtract> {
+  return call(
+    `/${encodeURIComponent(corpusId)}/assets/${encodeURIComponent(source)}/extract`,
+  );
+}
+
+export async function runAssetExtract(
+  corpusId: string,
+  source: string,
+  body: {
+    instruction?: string;
+    fields?: { name: string; instruction: string }[];
+    run?: string;
+  } = {},
+): Promise<{
+  items_read: number;
+  items_without_evidence: number;
+  values_proposed: number;
+  failed: number;
+  run: string;
+  note: string;
+}> {
+  return call(
+    `/${encodeURIComponent(corpusId)}/assets/${encodeURIComponent(source)}/extract`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+}
+
+/** Accept a proposal, or override it. Passing `value` overrides — and that must
+ *  not be harder than agreeing, or reviewers stop disagreeing. */
+export async function acceptExtractedValue(
+  corpusId: string,
+  source: string,
+  body: { doc_id: string; field: string; value?: unknown },
+): Promise<{ field: string; value: unknown; note: string }> {
+  return call(
+    `/${encodeURIComponent(corpusId)}/assets/${encodeURIComponent(source)}/extract/accept`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+}

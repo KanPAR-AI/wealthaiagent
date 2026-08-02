@@ -15,6 +15,7 @@ import {
   addSegment, fetchAssetDetail, fetchAssetMedia, setSegmentType,
   type AssetDetail, type AssetMedia,
 } from "@/services/corpus-video-service";
+import { AiExtractTab } from "./ai-extract";
 import { FilmstripTrack } from "./filmstrip";
 import { formatBytes, formatTime } from "./format";
 import { TYPE_TONE } from "./segment-tone";
@@ -24,16 +25,12 @@ const TABS = [
   { key: "overview", label: "Overview", built: true },
   { key: "transcript", label: "Transcript", built: true },
   { key: "segments", label: "Segments", built: true },
-  { key: "extract", label: "AI Extract", built: false },
+  { key: "extract", label: "AI Extract", built: true },
   { key: "graph", label: "Knowledge Graph", built: false },
   { key: "preview", label: "Preview", built: false },
 ] as const;
 
 const NOT_BUILT: Record<string, string> = {
-  extract:
-    "Extraction runs from the corpus view, against a schema you write. A " +
-    "per-asset view of what it produced needs the extraction results stored " +
-    "per asset, which they are not yet.",
   graph:
     "Nothing builds a knowledge graph. It needs the extractor to propose " +
     "RELATIONSHIPS between entities — that field exists in the schema " +
@@ -461,6 +458,10 @@ export function AssetDetailView({
             </table>
           </div>
         </div>
+      )}
+
+      {tab === "extract" && (
+        <AiExtractTab corpusId={corpusId} source={source} onSeek={goTo} />
       )}
 
       {data && !TABS.find((t) => t.key === tab)?.built && (
