@@ -24,6 +24,7 @@ import { CostPanel } from "@/components/admin/cost-dashboard/cost-panel";
 import { DishPanel } from "@/components/admin/dish-library/dish-panel";
 import { CorpusPanel } from "@/components/admin/rag-corpus/corpus-panel";
 import { VideoLibraryPanel } from "@/components/admin/rag-corpus/video-library-panel";
+import { CorpusStudio } from "@/components/admin/rag-corpus/studio";
 import { UserMemoryPanel } from "@/components/admin/user-memory/user-memory-panel";
 import { PromptEditor } from "@/components/admin/agent-builder/prompt-editor";
 import { RoutingConfig } from "@/components/admin/agent-builder/routing-config";
@@ -187,7 +188,7 @@ export default function Admin() {
             // No agent needed. A corpus is addressed by its own id; the knee
             // library was invisible for weeks because it rendered only inside
             // the detail view of an agent that declared rag_corpus.
-            <VideoLibraryPanel agentId="" />
+            <CorpusStudio />
           ) : section === "integrations" ? (
             <IntegrationsPanel />
           ) : section === "models" ? (

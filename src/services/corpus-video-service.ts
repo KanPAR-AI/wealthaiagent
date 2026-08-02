@@ -444,3 +444,138 @@ export async function ingestAsset(
   }
   return res.json();
 }
+
+// ── the studio surfaces (docs/25) ───────────────────────────────────────────
+
+export interface CorpusCard {
+  corpus_id: string;
+  name: string;
+  purpose: string;
+  template: string;
+  status: "published" | "processing" | "needs_review" | "unreachable" | "draft";
+  sources: number;
+  items: number;
+  indexed: number;
+  completion: number;
+  issues: number;
+  pending_publish: number;
+  readers: string[];
+  language: string;
+  headline: string;
+  eta_seconds: number | null;
+}
+
+export interface DashboardView {
+  corpora: CorpusCard[];
+  totals: { corpora: number; processing: number; needs_review: number; unreachable: number };
+}
+
+export async function fetchDashboard(): Promise<DashboardView> {
+  return call("/dashboard");
+}
+
+export interface ActivityEvent {
+  kind: string;
+  title: string;
+  detail: string;
+  corpus_id: string;
+  at: string;
+}
+
+export async function fetchActivity(limit = 12): Promise<{ events: ActivityEvent[] }> {
+  return call(`/activity?limit=${limit}`);
+}
+
+export interface QueueRow {
+  job_id: string;
+  corpus_id: string;
+  source: string;
+  stage: string;
+  percent: number;
+  state: string;
+  at: string | null;
+}
+
+export async function fetchProcessingQueue(): Promise<{
+  queue: QueueRow[];
+  active: number;
+  recently_finished: number;
+}> {
+  return call("/processing/queue");
+}
+
+// ── one asset's whole detail screen ─────────────────────────────────────────
+
+export interface AssetSegment {
+  id: string;
+  title: string;
+  type: string;
+  start_seconds: number | null;
+  end_seconds: number | null;
+  duration_seconds: number | null;
+  confidence: number | null;
+  span_source?: string;
+  phase?: string | null;
+  text: string;
+}
+
+export interface AssetDetail {
+  corpus_id: string;
+  source: string;
+  info: {
+    duration_s: number | null;
+    resolution: string | null;
+    fps: number | null;
+    size_bytes: number | null;
+    language: string;
+    has_speech: boolean;
+    audio: string;
+    items: number;
+    content_sha: string;
+  };
+  pipeline: { step: number; key: string; label: string; state: string; detail: string }[];
+  insight: string;
+  segments: AssetSegment[];
+  segment_types: string[];
+  segments_by_type: Record<string, number>;
+  transcript: {
+    start_seconds: number;
+    text: string;
+    type: string;
+    segment_id: string | null;
+    speaker?: string | null;
+  }[];
+  on_screen_text: string[];
+}
+
+export async function fetchAssetDetail(
+  corpusId: string,
+  source: string,
+  opts: { q?: string; lineType?: string } = {},
+): Promise<AssetDetail> {
+  const params = new URLSearchParams();
+  if (opts.q) params.set("q", opts.q);
+  if (opts.lineType) params.set("line_type", opts.lineType);
+  const qs = params.toString();
+  return call(
+    `/${encodeURIComponent(corpusId)}/assets/${encodeURIComponent(source)}${qs ? `?${qs}` : ""}`,
+  );
+}
+
+export async function setSegmentType(corpusId: string, docId: string, type: string) {
+  return call(
+    `/${encodeURIComponent(corpusId)}/videos/${encodeURIComponent(docId)}/type`,
+    { method: "PATCH", body: JSON.stringify({ segment_type: type }) },
+  );
+}
+
+export async function addSegment(
+  corpusId: string,
+  source: string,
+  segment: { title: string; segment_type: string; start_seconds: number; end_seconds: number },
+) {
+  return call(
+    `/${encodeURIComponent(corpusId)}/assets/${encodeURIComponent(source)}/segments`,
+    { method: "POST", body: JSON.stringify(segment) },
+  );
+}

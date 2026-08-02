@@ -45,6 +45,11 @@ async function signInAsAdmin(page: Page) {
 async function goToCorpus(page: Page) {
   await page.goto('/chataiagent/admin?section=corpus');
   await page.getByText('Admin Portal').waitFor({ state: 'visible', timeout: 20_000 });
+  // The tab opens on the Studio dashboard now (docs/25 screen 1), so the
+  // corpus workspace is one click in. Navigation only.
+  await page.getByRole('button', { name: /New corpus/i }).first()
+    .waitFor({ state: 'visible', timeout: 20_000 });
+  await page.getByRole('button', { name: /New corpus/i }).first().click();
   await page.getByRole('button', { name: 'Create corpus' })
     .waitFor({ state: 'visible', timeout: 20_000 });
 }

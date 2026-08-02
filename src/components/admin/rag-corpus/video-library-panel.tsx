@@ -49,7 +49,16 @@ const STATES: { key: VideoState | ""; label: string }[] = [
   { key: "labelled", label: "Done" },
 ];
 
-export function VideoLibraryPanel({ agentId }: { agentId: string }) {
+export function VideoLibraryPanel({
+  agentId,
+  onBackToStudio,
+  onOpenAsset,
+}: {
+  agentId: string;
+  /** Present when rendered inside Corpus Studio; absent standalone. */
+  onBackToStudio?: () => void;
+  onOpenAsset?: (source: string) => void;
+}) {
   // A corpus is addressed by its own id, not by an agent. `agentId` is only a
   // convenience default when the panel is opened from inside an agent's tab.
   const [corpusId, setCorpusId] = useState(agentId || "knee");
@@ -125,6 +134,13 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
 
   return (
     <div className="space-y-4">
+      {onBackToStudio && (
+        <button onClick={onBackToStudio}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+          ‹ All corpora
+        </button>
+      )}
+
       {/* The front door. Someone arriving at 74 near-identical rows cannot see
           what is wrong with them; asking is the one interaction that scales to
           a corpus you did not build yourself. */}
@@ -189,7 +205,9 @@ export function VideoLibraryPanel({ agentId }: { agentId: string }) {
         </span>
       </div>
 
-      {view === "sources" && <SourcesPanel corpusId={corpusId} onChanged={load} />}
+      {view === "sources" && (
+        <SourcesPanel corpusId={corpusId} onChanged={load} onOpenAsset={onOpenAsset} />
+      )}
 
       {view === "items" && (
         <ExtractPanel corpusId={corpusId} selected={picked} onDone={load} />

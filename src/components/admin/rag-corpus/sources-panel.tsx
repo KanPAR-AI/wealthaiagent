@@ -33,9 +33,12 @@ function mmss(s?: number | null) {
 export function SourcesPanel({
   corpusId,
   onChanged,
+  onOpenAsset,
 }: {
   corpusId: string;
   onChanged?: () => void;
+  /** Opens the asset detail screen — the source row is the way in. */
+  onOpenAsset?: (source: string) => void;
 }) {
   const [rows, setRows] = useState<CorpusSource[]>([]);
   const [summary, setSummary] = useState<SourceSummary | null>(null);
@@ -208,7 +211,13 @@ export function SourcesPanel({
           {rows.map((r) => (
             <div key={r.source} className="rounded-lg border border-border px-3 py-2">
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-medium">{r.source}</span>
+                <button
+                  onClick={() => onOpenAsset?.(r.source)}
+                  disabled={!onOpenAsset}
+                  className="font-medium hover:underline disabled:cursor-default disabled:no-underline"
+                >
+                  {r.source}
+                </button>
                 <StageBadge stage={r.stage} />
                 <span className="text-muted-foreground">
                   {r.items} item{r.items === 1 ? "" : "s"}

@@ -62,6 +62,7 @@ test.describe('CUJ 2 — upload starts the pipeline', () => {
     await signInAsAdmin(page);
     await page.goto('/chataiagent/admin?section=corpus');
     await page.getByText('Admin Portal').waitFor({ state: 'visible', timeout: 20_000 });
+    await page.getByRole('button', { name: /New corpus/i }).first().click();
 
     // A corpus with a purpose — CUJ 1 first, because there is nowhere to put
     // an asset until a corpus exists.
@@ -106,6 +107,7 @@ test.describe('CUJ 2 — upload starts the pipeline', () => {
     await signInAsAdmin(page);
     await page.goto('/chataiagent/admin?section=corpus');
     await page.getByText('Admin Portal').waitFor({ state: 'visible', timeout: 20_000 });
+    await page.getByRole('button', { name: /New corpus/i }).first().click();
     await page.locator('select').first().selectOption(CORPUS);
     await page.waitForTimeout(WATCH);
 
@@ -129,6 +131,7 @@ test.describe('CUJ 2 — upload starts the pipeline', () => {
       await signInAsAdmin(page);
       await page.goto('/chataiagent/admin?section=corpus');
       await page.getByText('Admin Portal').waitFor({ state: 'visible', timeout: 20_000 });
+      await page.getByRole('button', { name: /New corpus/i }).first().click();
       await page.locator('select').first().selectOption(CORPUS);
       await page.waitForTimeout(WATCH);
 
