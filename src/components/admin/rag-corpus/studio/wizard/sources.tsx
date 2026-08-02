@@ -198,10 +198,10 @@ export function SourcesStep({
             >
               <CloudUpload size={22} className="text-muted-foreground" />
               <p className="text-xs font-medium">
-                Drop videos here, or click to choose
+                Drop videos or documents here, or click to choose
               </p>
               <p className="text-[11px] text-muted-foreground">
-                MP4, MOV, AVI, MKV, WEBM · MP3, M4A, WAV · up to 10 GB each
+                MP4, MOV, AVI, MKV, WEBM · MP3, M4A, WAV · PDF · up to 10 GB each
               </p>
               <input
                 ref={input}

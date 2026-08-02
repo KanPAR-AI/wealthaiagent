@@ -741,7 +741,8 @@ export async function suggestSchema(corpusId: string): Promise<SchemaSuggestion>
  *  real risk — but a dropzone that accepts a file the server then refuses is
  *  worse than one that repeats itself, and the refusal text quotes these same
  *  words so a mismatch is visible rather than silent. */
-export const ACCEPTED_UPLOAD = ".mp4,.mov,.avi,.mkv,.webm,.mp3,.m4a,.wav,.aac,.flac";
+export const ACCEPTED_UPLOAD =
+  ".mp4,.mov,.avi,.mkv,.webm,.mp3,.m4a,.wav,.aac,.flac,.pdf";
 export const MAX_UPLOAD_BYTES = 10 * 1024 ** 3;
 
 /** Ingest with REAL upload progress.
