@@ -579,3 +579,55 @@ export async function addSegment(
     { method: "POST", body: JSON.stringify(segment) },
   );
 }
+
+// ── the footage itself (docs/25 screen 4) ───────────────────────────────────
+
+export interface Filmstrip {
+  /** One sprite sheet holding every thumbnail. The whole point: scrubbing is a
+   *  background-position shift after ONE request, not a fetch per frame. */
+  url: string;
+  count: number;
+  interval_s: number;
+  columns: number;
+  rows: number;
+  tile_width: number;
+  tile_height: number;
+  sheet_width: number;
+  sheet_height: number;
+}
+
+export interface AssetMedia {
+  corpus_id: string;
+  source: string;
+  duration_s: number | null;
+  stored: boolean;
+  /** Why there is nothing to play. Present only when `stored` is false, and
+   *  worth showing verbatim — "we did not keep it" is the normal state for
+   *  anything ingested before the media store existed, and a screen that
+   *  reports it as an error teaches people the screen is broken. */
+  reason?: string;
+  content_sha?: string;
+  size_bytes?: number;
+  content_type?: string;
+  /** Expiring, signed, and names one asset. Not a user credential. */
+  ticket?: string;
+  expires_in_s?: number;
+  source_url?: string;
+  poster_url?: string;
+  filmstrip?: Filmstrip | null;
+}
+
+export async function fetchAssetMedia(
+  corpusId: string,
+  source: string,
+): Promise<AssetMedia> {
+  return call(
+    `/${encodeURIComponent(corpusId)}/assets/${encodeURIComponent(source)}/media`,
+  );
+}
+
+/** Media URLs come back relative, because baking an absolute host into a
+ *  descriptor is how a URL ends up pointing at localhost in production. */
+export function mediaUrl(path: string): string {
+  return getApiUrl(`/admin/corpus${path.replace(/^\/admin\/corpus/, "")}`);
+}

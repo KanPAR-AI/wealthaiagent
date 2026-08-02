@@ -12,9 +12,13 @@ import {
 
 import { Button } from "@/components/ui/button";
 import {
-  addSegment, fetchAssetDetail, setSegmentType, type AssetDetail,
+  addSegment, fetchAssetDetail, fetchAssetMedia, setSegmentType,
+  type AssetDetail, type AssetMedia,
 } from "@/services/corpus-video-service";
+import { FilmstripTrack } from "./filmstrip";
 import { formatBytes, formatTime } from "./format";
+import { TYPE_TONE } from "./segment-tone";
+import { VideoPlayer, type SeekRequest } from "./video-player";
 
 const TABS = [
   { key: "overview", label: "Overview", built: true },
@@ -38,17 +42,6 @@ const NOT_BUILT: Record<string, string> = {
     "Previewing means asking this corpus a question and seeing the answer " +
     "with its citations. Retrieval returns segments today; nothing " +
     "synthesises an answer from them.",
-};
-
-// Lane colours. Warning is red on purpose — it is the one type a consumer must
-// never silently drop, and the timeline should make it findable at a glance.
-const TYPE_TONE: Record<string, string> = {
-  exercise: "bg-emerald-500",
-  instruction: "bg-sky-500",
-  tip: "bg-amber-400",
-  warning: "bg-rose-500",
-  equipment: "bg-violet-500",
-  other: "bg-muted-foreground/40",
 };
 
 function Confidence({ value }: { value: number | null }) {
@@ -82,6 +75,15 @@ export function AssetDetailView({
   const [lineType, setLineType] = useState("");
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState({ title: "", type: "instruction", start: "", end: "" });
+  const [media, setMedia] = useState<AssetMedia | null>(null);
+  const [seekTo, setSeekTo] = useState<SeekRequest | null>(null);
+
+  // A seek from anywhere on the screen. The nonce makes clicking the same
+  // segment twice seek twice — see SeekRequest.
+  const goTo = useCallback((seconds: number | null | undefined) => {
+    if (seconds == null) return;
+    setSeekTo({ seconds, nonce: Date.now() });
+  }, []);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -99,6 +101,23 @@ export function AssetDetailView({
     void load();
   }, [load]);
 
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      try {
+        const m = await fetchAssetMedia(corpusId, source);
+        if (live) setMedia(m);
+      } catch {
+        // A missing player must not blank a screen whose real job is the
+        // transcript and the segments. `stored: false` is the honest state.
+        if (live) setMedia({ corpus_id: corpusId, source, duration_s: null,
+                             stored: false,
+                             reason: "Could not reach the media store." });
+      }
+    })();
+    return () => { live = false; };
+  }, [corpusId, source]);
+
   const info = data?.info;
   const duration = info?.duration_s ?? 0;
 
@@ -110,6 +129,67 @@ export function AssetDetailView({
         </button>
         <span className="text-muted-foreground">›</span>
         <span className="font-medium">{source}</span>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,22rem)_1fr] lg:items-start">
+        <div className="space-y-2">
+          <VideoPlayer media={media} segments={data?.segments ?? []}
+                       duration={duration} seekTo={seekTo} />
+          {media?.stored && media.filmstrip && duration > 0 && (
+            <FilmstripTrack strip={media.filmstrip} duration={duration}
+                            onSeek={goTo} />
+          )}
+        </div>
+        {/* Beside the player: what is actually IN this video. The counts are
+            the fastest read of whether an extraction went wrong — a 12-minute
+            routine that produced one segment is visible here in a way it is
+            not three tabs away. */}
+        {data && (
+          <div className="space-y-2">
+            {data.insight && (
+              <p className="rounded-lg border border-border bg-muted/30 px-2.5 py-2 text-[11px] leading-relaxed">
+                {data.insight}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(data.segments_by_type)
+                .filter(([, n]) => n > 0)
+                .map(([type, n]) => (
+                  <button
+                    key={type}
+                    onClick={() => setTab("segments")}
+                    className="flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[11px] capitalize hover:bg-muted"
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full ${TYPE_TONE[type] ?? TYPE_TONE.other}`} />
+                    {n} {n === 1 ? type : `${type}s`}
+                  </button>
+                ))}
+            </div>
+            {data.segments.length > 0 && (
+              <ul className="space-y-0.5">
+                {data.segments.slice(0, 8).map((sg) => (
+                  <li key={sg.id}>
+                    <button
+                      onClick={() => goTo(sg.start_seconds)}
+                      className="flex w-full gap-2 rounded px-1.5 py-1 text-left text-[11px] hover:bg-muted/60"
+                    >
+                      <span className="w-10 shrink-0 tabular-nums text-muted-foreground">
+                        {formatTime(sg.start_seconds)}
+                      </span>
+                      <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${TYPE_TONE[sg.type] ?? TYPE_TONE.other}`} />
+                      <span className="truncate">{sg.title}</span>
+                    </button>
+                  </li>
+                ))}
+                {data.segments.length > 8 && (
+                  <li className="px-1.5 text-[11px] text-muted-foreground">
+                    +{data.segments.length - 8} more in Segments
+                  </li>
+                )}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-1.5 border-b border-border">
@@ -154,11 +234,6 @@ export function AssetDetailView({
               ))}
             </dl>
 
-            {data.insight && (
-              <p className="mt-3 rounded-lg border border-border bg-muted/30 px-2.5 py-2 text-[11px] leading-relaxed">
-                {data.insight}
-              </p>
-            )}
           </section>
 
           <section>
@@ -227,13 +302,14 @@ export function AssetDetailView({
           ) : (
             <div className="max-h-[28rem] space-y-0.5 overflow-y-auto rounded-lg border border-border p-2">
               {data.transcript.map((l, i) => (
-                <div key={i} className="flex gap-2 rounded px-1.5 py-1 text-[11px] hover:bg-muted/50">
+                <button key={i} onClick={() => goTo(l.start_seconds)}
+                        className="flex w-full gap-2 rounded px-1.5 py-1 text-left text-[11px] hover:bg-muted/50">
                   <span className="w-10 shrink-0 tabular-nums text-muted-foreground">
                     {formatTime(l.start_seconds)}
                   </span>
                   <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${TYPE_TONE[l.type] ?? TYPE_TONE.other}`} />
                   <span className="leading-relaxed">{l.text}</span>
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -279,10 +355,11 @@ export function AssetDetailView({
                     {data.segments
                       .filter((s) => s.type === type && s.start_seconds !== null)
                       .map((s) => (
-                        <span
+                        <button
                           key={s.id}
+                          onClick={() => goTo(s.start_seconds)}
                           title={`${s.title} · ${formatTime(s.start_seconds)}–${formatTime(s.end_seconds)}`}
-                          className={`absolute top-0 h-3 rounded ${TYPE_TONE[type]}`}
+                          className={`absolute top-0 h-3 rounded ${TYPE_TONE[type]} hover:ring-1 hover:ring-foreground`}
                           style={{
                             left: `${((s.start_seconds ?? 0) / (duration || 1)) * 100}%`,
                             width: `${Math.max(
@@ -369,7 +446,12 @@ export function AssetDetailView({
                         {data.segment_types.map((t) => <option key={t} value={t}>{t}</option>)}
                       </select>
                     </td>
-                    <td className="px-2 py-1.5 tabular-nums">{formatTime(s.start_seconds)}</td>
+                    <td className="px-2 py-1.5 tabular-nums">
+                      <button onClick={() => goTo(s.start_seconds)}
+                              className="hover:underline">
+                        {formatTime(s.start_seconds)}
+                      </button>
+                    </td>
                     <td className="px-2 py-1.5 tabular-nums">{formatTime(s.end_seconds)}</td>
                     <td className="px-2 py-1.5 tabular-nums">{formatTime(s.duration_seconds)}</td>
                     <td className="px-2 py-1.5"><Confidence value={s.confidence} /></td>
