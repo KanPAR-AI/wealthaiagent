@@ -45,12 +45,16 @@ async function signInAsAdmin(page: Page) {
 async function goToCorpus(page: Page) {
   await page.goto('/chataiagent/admin?section=corpus');
   await page.getByText('Admin Portal').waitFor({ state: 'visible', timeout: 20_000 });
-  // The tab opens on the Studio dashboard now (docs/25 screen 1), so the
-  // corpus workspace is one click in. Navigation only.
-  await page.getByRole('button', { name: /New corpus/i }).first()
-    .waitFor({ state: 'visible', timeout: 20_000 });
-  await page.getByRole('button', { name: /New corpus/i }).first().click();
-  await page.getByRole('button', { name: 'Create corpus' })
+  // NAVIGATION ONLY — no assertion below this line changed.
+  //
+  // The tab opens on the Studio dashboard (docs/25 screen 1). This used to
+  // route through "New corpus", which now opens the 5-step wizard (screen 2)
+  // instead of the old single form. The workspace these tests exercise is
+  // reached by opening a corpus card.
+  const card = page.locator('button').filter({ hasText: 'knee_timed' }).first();
+  await card.waitFor({ state: 'visible', timeout: 20_000 });
+  await card.click();
+  await page.locator('select').first()
     .waitFor({ state: 'visible', timeout: 20_000 });
 }
 

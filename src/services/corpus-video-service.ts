@@ -153,6 +153,17 @@ export async function importVideos(corpusId: string) {
 
 export interface PublishResult {
   corpus_id: string;
+  /** FOUR successful shapes plus `nothing_publishable`, because "published"
+   *  was true of a corpus nothing could reach AND of one that answers none of
+   *  the questions its owner said it must. Optional in the type only because
+   *  older payloads omit it — a caller must never default the absence to
+   *  success. */
+  status?:
+    | "published"
+    | "published_unreachable"
+    | "published_unverified"
+    | "published_failed_evaluation"
+    | "nothing_publishable";
   index: string;
   chunks: number;
   documents_published: number;
@@ -630,4 +641,161 @@ export async function fetchAssetMedia(
  *  descriptor is how a URL ends up pointing at localhost in production. */
 export function mediaUrl(path: string): string {
   return getApiUrl(`/admin/corpus${path.replace(/^\/admin\/corpus/, "")}`);
+}
+
+// ── the create wizard (docs/25 screens 2-3) ─────────────────────────────────
+
+export interface WizardStep {
+  key: string;
+  label: string;
+  blurb: string;
+}
+
+export async function fetchWizardSteps(): Promise<{ steps: WizardStep[] }> {
+  return call("/wizard/steps");
+}
+
+export interface InterviewOpening {
+  step: number;
+  of: number;
+  greeting: string;
+  question: string;
+}
+
+export async function startInterview(name = ""): Promise<InterviewOpening> {
+  return call("/interview/start", { method: "POST", body: JSON.stringify({ name }) });
+}
+
+export interface InterviewArea {
+  title: string;
+  subtitle: string;
+}
+
+export interface InterviewTurn {
+  step: number;
+  of: number;
+  acknowledgement: string;
+  /** All four, every turn — the mockup shows them as collapsible rows somebody
+   *  answers in any order or skips. An interview that blocks on question two
+   *  is a form with extra steps. */
+  follow_ups: { key: string; question: string; why: string }[];
+  preview: {
+    template: string;
+    /** AREAS, not fields. Nothing has been uploaded yet, so the backend
+     *  refuses to promise a schema the material may not support — see
+     *  services/corpus/interview.py. The UI must not relabel these as fields,
+     *  and must show the caveat. */
+    areas: InterviewArea[];
+    caveat: string;
+  };
+}
+
+export async function interviewTurn(
+  answer: string,
+  history: string[] = [],
+): Promise<InterviewTurn> {
+  return call("/interview/turn", {
+    method: "POST",
+    body: JSON.stringify({ answer, history }),
+  });
+}
+
+export async function completeInterview(input: {
+  name: string;
+  purpose: string;
+  audience?: string;
+  questions?: string;
+  avoid?: string;
+  focus?: string;
+  template?: string;
+}): Promise<{ corpus: { corpus_id: string; name: string }; next: string }> {
+  return call("/interview/complete", { method: "POST", body: JSON.stringify(input) });
+}
+
+export interface SchemaSuggestion {
+  corpus_id: string;
+  /** `why` is the engine's justification for proposing the field, not evidence
+   *  that the media contains it — the two read alike and mean opposite things,
+   *  so the UI labels it as reasoning. */
+  fields: { name: string; instruction: string; why?: string }[];
+  /** The output that justifies the whole component: what the MEDIA cannot
+   *  support. An engine that only proposes fields will happily propose
+   *  `contraindication` over footage that never mentions one, and the corpus
+   *  then extracts a column of nulls that reads as a processing failure.
+   *
+   *  `wanted` is what the PURPOSE asked for; `why_not` is what the media
+   *  actually contains instead. Live, this caught a corpus whose purpose said
+   *  elbow rehab and whose footage was entirely knee — which no field list
+   *  would ever have surfaced. */
+  unsupported: { wanted: string; why_not: string }[];
+  note?: string;
+}
+
+export async function suggestSchema(corpusId: string): Promise<SchemaSuggestion> {
+  return call(`/${encodeURIComponent(corpusId)}/schema/suggest`, { method: "POST" });
+}
+
+/** The formats and cap the BACKEND enforces, restated for the dropzone.
+ *
+ *  Kept in sync with `_check_upload` in corpus_videos.py by hand, which is a
+ *  real risk — but a dropzone that accepts a file the server then refuses is
+ *  worse than one that repeats itself, and the refusal text quotes these same
+ *  words so a mismatch is visible rather than silent. */
+export const ACCEPTED_UPLOAD = ".mp4,.mov,.avi,.mkv,.webm,.mp3,.m4a,.wav,.aac,.flac";
+export const MAX_UPLOAD_BYTES = 10 * 1024 ** 3;
+
+/** Ingest with REAL upload progress.
+ *
+ *  fetch() cannot report how much of a request body has been sent, so a
+ *  progress bar built on it is a lie — it sits at 0 and jumps to 100. XHR
+ *  reports it, which matters here because these files run to 400 MB and the
+ *  difference between "stuck" and "62% of a big file" is the difference
+ *  between waiting and reloading the page.
+ *
+ *  What it CANNOT report is the server's work afterwards. Ingest transcribes
+ *  before it answers, so upload completing means processing STARTS, not that
+ *  it finished — hence the separate `processing` phase rather than a bar that
+ *  parks at 100% and pretends. */
+export async function ingestAssetWithProgress(
+  corpusId: string,
+  file: File,
+  opts: { instruction?: string; onProgress?: (fraction: number) => void } = {},
+): Promise<{ file: string; reused_existing_transcript: boolean; segments: number; documents: number; note: string }> {
+  const token = await auth.currentUser?.getIdToken();
+  const params = new URLSearchParams({ instruction: opts.instruction ?? "" });
+  const url = getApiUrl(
+    `/admin/corpus/${encodeURIComponent(corpusId)}/ingest?${params}`,
+  );
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) opts.onProgress?.(e.loaded / e.total);
+    };
+    xhr.onload = () => {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(xhr.responseText);
+      } catch {
+        reject(new Error(xhr.responseText || `HTTP ${xhr.status}`));
+        return;
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(parsed as never);
+        return;
+      }
+      const p = parsed as { error?: { message?: string }; detail?: string };
+      reject(new Error(p?.error?.message ?? p?.detail ?? `HTTP ${xhr.status}`));
+    };
+    xhr.onerror = () => reject(new Error("The upload failed to reach the server."));
+    xhr.ontimeout = () => reject(new Error("The upload timed out."));
+    // Ingest transcribes before answering; a 400 MB file legitimately takes
+    // minutes. The browser default would abort a healthy request.
+    xhr.timeout = 30 * 60 * 1000;
+    const form = new FormData();
+    form.append("file", file);
+    xhr.send(form);
+  });
 }

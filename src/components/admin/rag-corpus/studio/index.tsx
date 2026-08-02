@@ -16,9 +16,11 @@ import { AssetDetailView } from "./asset-detail";
 import { StudioHome } from "./dashboard";
 import { NotBuilt, StudioRail, type RailSection } from "./rail";
 import { TemplatesPanel } from "./templates";
+import { CreateWizard } from "./wizard";
 
 type View =
   | { screen: "home" }
+  | { screen: "create" }
   | { screen: "corpus"; corpusId: string }
   | { screen: "asset"; corpusId: string; source: string };
 
@@ -38,7 +40,7 @@ export function CorpusStudio() {
               // create flow the dashboard's "+ New corpus" uses rather than
               // opening a second one that would drift from it.
               setSection("corpora");
-              setView({ screen: "corpus", corpusId: "" });
+              setView({ screen: "create" });
             }}
           />
         )}
@@ -61,7 +63,16 @@ function CorporaSection({
     return (
       <StudioHome
         onOpenCorpus={(corpusId) => setView({ screen: "corpus", corpusId })}
-        onCreate={() => setView({ screen: "corpus", corpusId: "" })}
+        onCreate={() => setView({ screen: "create" })}
+      />
+    );
+  }
+
+  if (view.screen === "create") {
+    return (
+      <CreateWizard
+        onCancel={() => setView({ screen: "home" })}
+        onOpenCorpus={(corpusId) => setView({ screen: "corpus", corpusId })}
       />
     );
   }
