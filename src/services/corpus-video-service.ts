@@ -407,3 +407,40 @@ export async function fetchTemplates(): Promise<{
 }> {
   return call("/templates");
 }
+
+/** Upload an asset and actually process it (CUJ 2).
+ *
+ *  Upload used to store nothing and start nothing — ingest was a command
+ *  somebody ran. Footage already processed is REUSED rather than transcribed
+ *  again, because a transcript is a property of the file, not of the corpus. */
+export async function ingestAsset(
+  corpusId: string,
+  file: File,
+  instruction = "",
+): Promise<{
+  file: string;
+  reused_existing_transcript: boolean;
+  segments: number;
+  documents: number;
+  duration_s?: number;
+  note: string;
+}> {
+  const token = await auth.currentUser?.getIdToken();
+  const form = new FormData();
+  form.append("file", file);
+  const params = new URLSearchParams({ instruction });
+  const res = await fetch(
+    getApiUrl(`/admin/corpus/${encodeURIComponent(corpusId)}/ingest?${params}`),
+    { method: "POST", body: form, headers: token ? { Authorization: `Bearer ${token}` } : {} },
+  );
+  if (!res.ok) {
+    const body = await res.text();
+    try {
+      const p = JSON.parse(body);
+      throw new Error(p?.error?.message ?? p?.detail ?? body);
+    } catch (e) {
+      throw e instanceof Error && e.message !== body ? e : new Error(body);
+    }
+  }
+  return res.json();
+}

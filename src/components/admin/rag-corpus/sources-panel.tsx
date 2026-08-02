@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   fetchSources,
+  ingestAsset,
   retranscribeSource,
   type CorpusSource,
   type SourceSummary,
@@ -44,6 +45,9 @@ export function SourcesPanel({
   const [error, setError] = useState("");
   const pending = useRef<string>("");
   const fileInput = useRef<HTMLInputElement>(null);
+  // Adding a NEW asset, as opposed to re-transcribing one already here.
+  const addInput = useRef<HTMLInputElement>(null);
+  const [adding, setAdding] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -82,6 +86,27 @@ export function SourcesPanel({
       setBusySource("");
       pending.current = "";
       if (fileInput.current) fileInput.current.value = "";
+    }
+  };
+
+  const addAsset = async (file?: File) => {
+    if (!file) return;
+    setAdding(true);
+    setError("");
+    setNote("");
+    try {
+      const out = await ingestAsset(corpusId, file, instruction);
+      setNote(
+        `${out.file}: ${out.segments} timed segments, ${out.documents} document(s). ` +
+          out.note,
+      );
+      await load();
+      onChanged?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAdding(false);
+      if (addInput.current) addInput.current.value = "";
     }
   };
 
@@ -156,6 +181,25 @@ export function SourcesPanel({
           className="hidden"
           onChange={(e) => void onFile(e.target.files?.[0])}
         />
+        <input
+          ref={addInput}
+          type="file"
+          accept="video/*,audio/*"
+          className="hidden"
+          data-testid="add-asset-input"
+          onChange={(e) => void addAsset(e.target.files?.[0])}
+        />
+
+        <div className="flex items-center gap-2">
+          <Button size="sm" disabled={adding} onClick={() => addInput.current?.click()}>
+            {adding ? <Loader2 size={13} className="mr-1 animate-spin" />
+                    : <Upload size={13} className="mr-1" />}
+            {adding ? "Processing…" : "Add video"}
+          </Button>
+          <span className="text-[11px] text-muted-foreground">
+            Footage already processed is reused, not transcribed again.
+          </span>
+        </div>
 
         {note && <p className="text-[11px] text-emerald-700 dark:text-emerald-400">{note}</p>}
         {error && <p className="text-[11px] text-rose-600 dark:text-rose-400">{error}</p>}
