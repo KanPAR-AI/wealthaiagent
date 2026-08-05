@@ -542,6 +542,10 @@ export interface AssetDetail {
     has_speech: boolean;
     audio: string;
     items: number;
+    /** Every recovery phase this source carries — the corpus's main filter
+     *  dimension. A LIST because a compilation can legitimately span two, and
+     *  collapsing it to the first would misfile half the video. */
+    phases: string[];
     content_sha: string;
   };
   pipeline: { step: number; key: string; label: string; state: string; detail: string }[];

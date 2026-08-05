@@ -223,6 +223,10 @@ export function AssetDetailView({
                 ["Size", formatBytes(info?.size_bytes)],
                 ["Language", (info?.language ?? "en").toUpperCase()],
                 ["Audio", info?.audio ?? "—"],
+                // Shown because it is what a query FILTERS on. A source whose
+                // phase card was read correctly used to look identical to one
+                // that had never been read.
+                ["Phase", info?.phases?.length ? info.phases.join(", ") : "—"],
               ].map(([k, v]) => (
                 <div key={k} className="rounded-md border border-border px-2 py-1.5">
                   <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">{k}</dt>
@@ -421,7 +425,7 @@ export function AssetDetailView({
             <table className="w-full text-[11px]">
               <thead className="bg-muted/40 text-muted-foreground">
                 <tr>
-                  {["#", "Title", "Type", "Start", "End", "Duration", "Confidence"].map((h) => (
+                  {["#", "Title", "Type", "Phase", "Start", "End", "Duration", "Confidence"].map((h) => (
                     <th key={h} className="px-2 py-1.5 text-left font-medium">{h}</th>
                   ))}
                 </tr>
@@ -442,6 +446,15 @@ export function AssetDetailView({
                       >
                         {data.segment_types.map((t) => <option key={t} value={t}>{t}</option>)}
                       </select>
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {s.phase ? (
+                        <span className="rounded-full bg-muted px-1.5 py-0.5 tabular-nums">
+                          {s.phase}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-2 py-1.5 tabular-nums">
                       <button onClick={() => goTo(s.start_seconds)}
