@@ -35,6 +35,7 @@ export {
   fetchChatHistory,
   fetchChatList,
   mapHistoryMessage,
+  stripRoutingTag,
   deleteChatSession,
   listenToChatStreamCore,
   fetchAvailableAgents,

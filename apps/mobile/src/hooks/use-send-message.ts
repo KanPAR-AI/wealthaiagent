@@ -23,6 +23,7 @@ import {
   listenToChatStreamCore,
   mapHistoryMessage,
   sendChatMessage,
+  stripRoutingTag,
   useChatStore,
   type ContentBlock,
   type MessageFile,
@@ -257,6 +258,12 @@ export function useSendMessage(
             if (type === 'text_chunk') {
               receivedText += chunk;
               currentTextBlock += chunk;
+              // The router's "[Using X agent]" tag arrives as the FIRST chunk
+              // of a reply. Stripped here as well as in mapHistoryMessage,
+              // because a live stream never goes through that mapper — which
+              // is exactly why it showed on this app and not on web.
+              receivedText = stripRoutingTag(receivedText);
+              currentTextBlock = stripRoutingTag(currentTextBlock);
               scheduleFlush();
             } else if (type.startsWith('widget_')) {
               // Seal the running text block, then append the widget in

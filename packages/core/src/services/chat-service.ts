@@ -481,6 +481,25 @@ export const fetchChatList = async (
  *      contentBlocks [text, ...widgets]; falls back to legacy
  *      metadata.widgets
  *    - attachments (URL strings) → MessageFile[]           */
+
+/** Strip the router's internal "[Using X agent]" tag from anything a person reads.
+ *
+ *  The tag is NOT decoration and must stay in the stored message: the
+ *  orchestrator reads it back out of history to decide whether the previous
+ *  reply came from a specialist, which is how conversation continuity works
+ *  (`_was_previous_response_specialist`). So it is stripped at the point of
+ *  DISPLAY, not at the point of storage.
+ *
+ *  It lives here, in core, because it was previously stripped only in the web
+ *  app's renderer — and so every reply on the Android app showed
+ *  "[Using generic agent]" to real users for as long as that app has existed.
+ *  A tag each client has to remember to strip is a tag that leaks on the next
+ *  client, and it did.
+ */
+export function stripRoutingTag(text: string): string {
+  return (text || '').replace(/^\[Using [\w-]+ agent\]\s*/i, '');
+}
+
 export function mapHistoryMessage(msg: ChatMessage): {
   id: string;
   message: string;
@@ -504,22 +523,33 @@ export function mapHistoryMessage(msg: ChatMessage): {
   } else if (meta.widgets) {
     widgets = meta.widgets;
   }
+  // Stripped ONCE, here, so the tag cannot reach any client through any of
+  // the three fields below that carry the same text.
+  //
+  // ASSISTANT REPLIES ONLY. The router writes this tag; a person might also
+  // type it — an admin asking Jarvis what "[Using generic agent]" means is the
+  // obvious case — and silently editing somebody's own words back at them is a
+  // worse bug than the one being fixed.
+  const shown = msg.sender === 'assistant'
+    ? stripRoutingTag(msg.content)
+    : msg.content;
+
   let contentBlocks: any[] | undefined;
   if (widgets && Array.isArray(widgets) && widgets.length > 0) {
     contentBlocks = [
-      { type: 'text', content: msg.content },
+      { type: 'text', content: shown },
       ...widgets.map((w: any) => ({ type: 'widget', widget: w })),
     ];
   }
 
   return {
     id: msg.id,
-    message: msg.content,
+    message: shown,
     sender: msg.sender === 'assistant' ? 'bot' : 'user',
     timestamp: msg.timestamp,
     files: files.length > 0 ? files : undefined,
     isStreaming: false,
-    streamingContent: msg.content,
+    streamingContent: shown,
     contentBlocks,
   };
 }
