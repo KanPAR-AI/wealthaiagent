@@ -26,7 +26,7 @@
 // disagreeing, and their agreement then means nothing.
 
 import { useCallback, useEffect, useState } from "react";
-import { Check, ChevronDown, Loader2, Pencil, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, Loader2, Pencil, Sparkles, User, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -192,6 +192,28 @@ export function AiExtractTab({
       )}
       {error && <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>}
 
+      {/* What a person already called this footage somewhere else. Shown ABOVE
+          the table, because it should be read before anything is accepted —
+          the whole failure it prevents was naming in ignorance of it. */}
+      {data && data.human_labels_elsewhere?.length > 0 && (
+        <div className="rounded-lg border border-sky-500/40 bg-sky-500/5 px-2.5 py-2">
+          <p className="flex items-center gap-1.5 text-xs font-medium">
+            <User size={12} /> Already named by a person
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {data.human_labels_elsewhere.map((l, i) => (
+              <li key={i} className="text-[11px]">
+                <span className="font-medium">{l.value}</span>
+                <span className="text-muted-foreground">
+                  {" "}— in {l.corpus_id}
+                  {l.by ? `, by ${l.by}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {data && data.fields.length > 0 && (
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-[11px]">
@@ -272,6 +294,16 @@ export function AiExtractTab({
                     <span title={item.evidence.transcript_excerpt}>
                       {item.evidence.note}
                     </span>
+                    {item.label_review?.needs_review && (
+                      <ul className="mt-1 space-y-0.5">
+                        {item.label_review.notes.map((n, i) => (
+                          <li key={i}
+                              className="text-[11px] text-amber-700 dark:text-amber-400">
+                            {n}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -823,11 +823,32 @@ export interface ExtractedValue {
   at: string;
 }
 
+export interface HumanLabel {
+  corpus_id: string;
+  field: string;
+  value: string;
+  by: string;
+  at: string;
+}
+
+export interface LabelReview {
+  proposed: string | null;
+  /** The name merely restates the phase — which already has its own field. */
+  is_phase_card: boolean;
+  human_labels: HumanLabel[];
+  conflicts: HumanLabel[];
+  /** A person should look before accepting. NOT a refusal — the human label
+   *  can be the wrong one, and the point is to show both. */
+  needs_review: boolean;
+  notes: string[];
+}
+
 export interface ExtractItem {
   doc_id: string;
   title: string;
   start_seconds: number | null;
   values: Record<string, ExtractedValue>;
+  label_review?: LabelReview;
   evidence: {
     transcript_chars: number;
     transcript_excerpt: string;
@@ -851,6 +872,11 @@ export interface AssetExtract {
   coverage: Record<string, Record<ValueState, number>>;
   pending_review: number;
   headline: string;
+  /** What a person has already called this footage in another corpus. Footage
+   *  is shared and names are per-corpus, so without this a naming pass cannot
+   *  see a label somebody set elsewhere — which is how "PHASE 1 EXERCISES"
+   *  came to overwrite nothing and coexist with "tailgate swings". */
+  human_labels_elsewhere: HumanLabel[];
   runs: { run: string; at: string; instruction?: string; model?: string }[];
 }
 
