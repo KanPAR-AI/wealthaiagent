@@ -30,6 +30,15 @@ const STARTERS = [
   "Is this ready to publish?",
 ];
 
+// On an asset page the useful questions are about THIS source. "What's in this
+// corpus?" is the wrong opener when you are looking at one video, and a person
+// who opens a panel whose suggestions do not fit what is on screen closes it.
+const ASSET_STARTERS = [
+  "What is the transcript here and where did it come from?",
+  "Why are some fields empty on this one?",
+  "Name the unnamed items on this source",
+];
+
 function ToolTrace({ calls }: { calls: AssistantTurn["tool_calls"] }) {
   if (!calls?.length) return null;
   return (
@@ -62,9 +71,14 @@ function ToolTrace({ calls }: { calls: AssistantTurn["tool_calls"] }) {
 
 export function CorpusAssistantPanel({
   corpusId,
+  source = "",
   onChanged,
 }: {
   corpusId: string;
+  /** The asset on screen. Passed to the backend, which attaches THIS asset's
+   *  actual facts — cue count, transcript origin, which fields are empty — so
+   *  "why is there no phase here?" is answered rather than guessed. */
+  source?: string;
   /** A tool may have mutated the corpus, so the list above should re-read. */
   onChanged?: () => void;
 }) {
@@ -81,7 +95,7 @@ export function CorpusAssistantPanel({
     setBusy(true);
     try {
       const history = turns.map((t) => ({ role: t.role, content: t.content }));
-      const res = await askCorpusAssistant(corpusId, q, history);
+      const res = await askCorpusAssistant(corpusId, q, history, source);
       setTurns((t) => [...t, { role: "assistant", content: res.answer, tools: res.tool_calls }]);
       if (res.tool_calls?.some((c) => c.name !== "corpus_inspect" && c.name !== "corpus_query")) {
         onChanged?.();
@@ -103,7 +117,8 @@ export function CorpusAssistantPanel({
         <CardTitle className="text-sm flex items-center gap-2">
           <Bot size={14} /> Corpus assistant
           <span className="ml-auto text-[11px] font-normal text-muted-foreground">
-            reads and edits <span className="font-mono">{corpusId}</span>
+            {source ? "about this source in " : "reads and edits "}
+            <span className="font-mono">{corpusId}</span>
           </span>
         </CardTitle>
       </CardHeader>
@@ -118,7 +133,7 @@ export function CorpusAssistantPanel({
                 previewed with a count before it runs.
               </p>
               <div className="flex flex-col gap-1.5">
-                {STARTERS.map((s) => (
+                {(source ? ASSET_STARTERS : STARTERS).map((s) => (
                   <button
                     key={s}
                     onClick={() => send(s)}
@@ -163,7 +178,7 @@ export function CorpusAssistantPanel({
                 send(input);
               }
             }}
-            placeholder="Ask about this corpus…"
+            placeholder={source ? "Ask about this source…" : "Ask about this corpus…"}
             disabled={busy}
             className="flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs"
           />

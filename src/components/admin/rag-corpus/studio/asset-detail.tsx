@@ -15,6 +15,7 @@ import {
   addSegment, fetchAssetDetail, fetchAssetMedia, setSegmentType,
   type AssetDetail, type AssetMedia,
 } from "@/services/corpus-video-service";
+import { CorpusAssistantPanel } from "../corpus-assistant-panel";
 import { AiExtractTab } from "./ai-extract";
 import { FilmstripTrack } from "./filmstrip";
 import { formatBytes, formatTime } from "./format";
@@ -26,6 +27,10 @@ const TABS = [
   { key: "transcript", label: "Transcript", built: true },
   { key: "segments", label: "Segments", built: true },
   { key: "extract", label: "AI Extract", built: true },
+  // Scoped to THIS source: the backend attaches the asset's real facts — cue
+  // count, transcript origin, which fields are empty — so "why is there no
+  // phase here?" gets answered instead of guessed.
+  { key: "assistant", label: "Ask", built: true },
   { key: "graph", label: "Knowledge Graph", built: false },
   { key: "preview", label: "Preview", built: false },
 ] as const;
@@ -475,6 +480,14 @@ export function AssetDetailView({
 
       {tab === "extract" && (
         <AiExtractTab corpusId={corpusId} source={source} onSeek={goTo} />
+      )}
+
+      {tab === "assistant" && (
+        <CorpusAssistantPanel
+          corpusId={corpusId}
+          source={source}
+          onChanged={load}
+        />
       )}
 
       {data && !TABS.find((t) => t.key === tab)?.built && (

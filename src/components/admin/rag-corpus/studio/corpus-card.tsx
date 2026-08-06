@@ -73,6 +73,10 @@ export function CorpusCard({
 
   return (
     <button
+      // Keyed on the ID, not the display name. A card shows "Dr David Knee
+      // Program" while the corpus is `knee_timed`, so any test or deep link
+      // matching on text breaks the moment somebody renames it.
+      data-testid={`corpus-card-${card.corpus_id}`}
       onClick={() => onOpen(card.corpus_id)}
       className="group flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card text-left transition-colors hover:border-primary/60"
     >

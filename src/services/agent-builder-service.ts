@@ -87,6 +87,10 @@ export interface CreateAgentRequest {
   prompts?: Partial<PromptsConfig>;
   routing?: Partial<RoutingConfig>;
   memory_config?: Partial<MemoryConfig>;
+  /** Retrieval + grounding, settable at creation. Without this the grounding
+   *  mode chosen in the wizard was collected, shown, and dropped on the way to
+   *  the server — every agent created blended whatever the person picked. */
+  rag?: { grounding?: string; top_k?: number; temperature?: number; model?: string };
   capabilities?: string[];
 }
 

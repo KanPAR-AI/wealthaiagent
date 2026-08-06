@@ -207,6 +207,39 @@ export function VideoLibraryPanel({
         </span>
       </div>
 
+      {/* WHO CAN READ THIS — at corpus level, where you land.
+          It used to live inside the summary card, which only renders in the
+          "By item" view, so the two corpus-level actions (publish, and who
+          reads it) were both hidden behind a view toggle nobody has a reason
+          to flip. Binding is the last step of building a corpus; it should not
+          be the hardest thing on the page to find. */}
+      <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => setEditingReaders((v) => !v)}
+          data-testid="toggle-readers"
+          className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+        >
+          read by{" "}
+          {readers.length ? (
+            <span className="text-foreground">{readers.join(", ")}</span>
+          ) : (
+            <span className="text-amber-700 dark:text-amber-400">no agent yet</span>
+          )}
+          <span className="ml-1 text-[11px]">({editingReaders ? "hide" : "change"})</span>
+        </button>
+        {editingReaders && (
+          <div className="mt-2">
+            <ReadersPicker
+              corpusId={corpusId}
+              readers={readers}
+              published={(summary?.total ?? 0) > 0}
+              onChange={setReaders}
+            />
+          </div>
+        )}
+      </div>
+
       {view === "sources" && (
         <SourcesPanel corpusId={corpusId} onChanged={load} onOpenAsset={onOpenAsset} />
       )}
@@ -252,22 +285,14 @@ export function VideoLibraryPanel({
                 {summary.pending_publish} waiting to publish
               </span>
             )}
-            {/* Reading it was never the problem — the panel has shown "no
-                agent yet" for weeks. SETTING it had no control anywhere, so
-                the warning named a fix nobody could apply. */}
-            <button
-              type="button"
-              onClick={() => setEditingReaders((v) => !v)}
-              data-testid="toggle-readers"
-              className="text-muted-foreground underline-offset-2 hover:underline"
-            >
+            <span className="text-muted-foreground">
               read by{" "}
               {readers.length ? (
                 <span className="text-foreground">{readers.join(", ")}</span>
               ) : (
                 <span className="text-amber-700 dark:text-amber-400">no agent yet</span>
               )}
-            </button>
+            </span>
             <Button
               size="sm"
               className="ml-auto"
@@ -308,17 +333,6 @@ export function VideoLibraryPanel({
             </p>
           )}
         </div>
-          {editingReaders && (
-            <div className="mt-2">
-              <ReadersPicker
-                corpusId={corpusId}
-                readers={readers}
-                published={(summary?.total ?? 0) > 0}
-                onChange={setReaders}
-              />
-            </div>
-          )}
-
 
         {/* Where the WORK is, before any list of rows. */}
         <PipelineFunnel funnel={funnel} />

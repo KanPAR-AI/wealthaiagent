@@ -28,12 +28,41 @@ import { AlertTriangle, BookOpen, Check, Loader2 } from "lucide-react";
 
 import { fetchCorpora, type CorpusListing } from "@/services/corpus-video-service";
 
+const GROUNDING = [
+  {
+    id: "corpus_only",
+    label: "Only from these corpora",
+    blurb:
+      "Says plainly when they do not cover a question, instead of answering " +
+      "from the model's own knowledge. Recommended.",
+  },
+  {
+    id: "corpus_first",
+    label: "Prefer these, allow general knowledge",
+    blurb: "May go beyond the corpora, but must label which part it made up.",
+  },
+  {
+    id: "blended",
+    label: "No constraint",
+    blurb:
+      "Blends corpora and the model's own knowledge indistinguishably. An " +
+      "empty or stale corpus then answers exactly like a good one.",
+  },
+] as const;
+
 interface Props {
   selected: string[];
   onChange: (corpusIds: string[]) => void;
+  grounding: string;
+  onGroundingChange: (mode: string) => void;
 }
 
-export function CorpusStep({ selected, onChange }: Props) {
+export function CorpusStep({
+  selected,
+  onChange,
+  grounding,
+  onGroundingChange,
+}: Props) {
   const [corpora, setCorpora] = useState<CorpusListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -134,6 +163,35 @@ export function CorpusStep({ selected, onChange }: Props) {
           no corpus to ground it.
         </p>
       )}
+
+      {/* SHOWN, not buried in a config file. The default is corpus_only and it
+          changes what the agent is allowed to say, so somebody creating an
+          agent should see that decision rather than inherit it silently. */}
+      <div className="space-y-1.5 border-t border-border/60 pt-3">
+        <p className="text-sm font-medium">When the corpora do not have the answer</p>
+        {GROUNDING.map((g) => (
+          <button
+            key={g.id}
+            type="button"
+            onClick={() => onGroundingChange(g.id)}
+            data-testid={`grounding-${g.id}`}
+            aria-pressed={grounding === g.id}
+            className={`flex w-full flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left transition ${
+              grounding === g.id
+                ? "border-emerald-500/50 bg-emerald-500/10"
+                : "border-border/60 hover:border-border"
+            }`}
+          >
+            <span className="flex items-center gap-1.5 text-sm">
+              {grounding === g.id && <Check size={12} className="text-emerald-400" />}
+              {g.label}
+            </span>
+            <span className="text-[11px] leading-snug text-muted-foreground">
+              {g.blurb}
+            </span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

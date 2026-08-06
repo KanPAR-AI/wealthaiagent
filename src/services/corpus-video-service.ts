@@ -212,10 +212,14 @@ export async function askCorpusAssistant(
   corpusId: string,
   question: string,
   history: { role: string; content: string }[] = [],
+  /** The asset on screen, when asked from an asset page. Without it the
+   *  assistant answers about the corpus in general, which is a confidently
+   *  wrong answer to "why is there no phase HERE?". */
+  source = "",
 ): Promise<AssistantTurn> {
   return call(`/${encodeURIComponent(corpusId)}/assistant`, {
     method: "POST",
-    body: JSON.stringify({ question, history }),
+    body: JSON.stringify({ question, history, source }),
   });
 }
 

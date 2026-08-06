@@ -50,6 +50,7 @@ export function AgentCreationWizard({ onClose }: WizardProps) {
   // Step 4: Knowledge — corpus ids, applied AFTER creation because the
   // subscription lives on the corpus and needs the agent to exist first.
   const [corpusIds, setCorpusIds] = useState<string[]>([]);
+  const [grounding, setGrounding] = useState("corpus_only");
 
   // Step 3: Routing & Memory
   const [keywords, setKeywords] = useState("");
@@ -101,6 +102,7 @@ export function AgentCreationWizard({ onClose }: WizardProps) {
           decay_rates: {},
           extraction_prompt: extractionPrompt.trim(),
         },
+        rag: { grounding },
         capabilities: ["prompt_editor", "routing_config", "memory_config", "ontology", "model_config", "cost_dashboard", "rag_corpus", "user_memory", "agent_builder", "sandbox"],
       };
 
@@ -359,7 +361,12 @@ export function AgentCreationWizard({ onClose }: WizardProps) {
 
           {/* Step 4: Knowledge */}
           {step === 3 && (
-            <CorpusStep selected={corpusIds} onChange={setCorpusIds} />
+            <CorpusStep
+              selected={corpusIds}
+              onChange={setCorpusIds}
+              grounding={grounding}
+              onGroundingChange={setGrounding}
+            />
           )}
 
           {/* Step 5: Review */}
