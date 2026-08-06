@@ -421,6 +421,27 @@ export interface IngestQueueRow {
   at: string | null;
 }
 
+/** Add a YouTube video to a corpus. Subtitles are optional — supplied ones
+ *  outrank anything fetched, and blank means the cascade works it out. */
+export async function ingestYouTube(
+  corpusId: string,
+  url: string,
+  subtitles = "",
+): Promise<{
+  youtube_id: string;
+  title: string;
+  transcript_source: string;
+  segments: number;
+  documents: number;
+  reused_existing_transcript: boolean;
+  note: string;
+}> {
+  return call(`/${encodeURIComponent(corpusId)}/ingest/youtube`, {
+    method: "POST",
+    body: JSON.stringify({ url, subtitles }),
+  });
+}
+
 export async function fetchIngestQueue(
   corpusId: string,
 ): Promise<{ queue: IngestQueueRow[]; active: number }> {

@@ -29,6 +29,7 @@ import {
   type WizardStep,
 } from "@/services/corpus-video-service";
 import { PublishStep, ReviewStep, SchemaStep } from "./finish";
+import { CorpusAssistantPanel } from "../../corpus-assistant-panel";
 import { EMPTY_DRAFT, PurposeStep, type PurposeDraft } from "./purpose";
 import { SourcesStep } from "./sources";
 import { Stepper } from "./stepper";
@@ -158,6 +159,26 @@ export function CreateWizard({
           Finish the purpose step first — everything after it attaches to a
           corpus, and there is not one yet.
         </p>
+      )}
+
+      {/* THE ASSISTANT, DURING CREATION — not only afterwards.
+          It was mounted on the corpus workspace and the asset page, which are
+          both places you arrive once the corpus exists. Building one is
+          exactly when the questions are hardest ("is this enough sources?",
+          "why did that video only produce 30 passages?", "what should the
+          schema be?") and it was the one place with no way to ask.
+
+          Collapsed by default: it must not crowd out the step somebody is
+          actually working on. */}
+      {corpusId && (
+        <details className="rounded-lg border border-border">
+          <summary className="cursor-pointer px-3 py-2 text-xs text-muted-foreground hover:text-foreground">
+            Ask about this corpus while you build it
+          </summary>
+          <div className="border-t border-border p-3">
+            <CorpusAssistantPanel corpusId={corpusId} />
+          </div>
+        </details>
       )}
     </div>
   );

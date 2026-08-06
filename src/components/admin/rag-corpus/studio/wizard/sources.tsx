@@ -36,6 +36,7 @@ import {
   MAX_UPLOAD_BYTES,
   ingestAssetWithProgress,
 } from "@/services/corpus-video-service";
+import { ingestYouTube } from "@/services/corpus-video-service";
 import { formatBytes } from "../format";
 import { StageProgress } from "../progress";
 import { useIngestProgress } from "../use-ingest-progress";
@@ -62,12 +63,12 @@ const TABS = [
     key: "youtube",
     label: "YouTube Links",
     icon: Link2,
-    built: false,
-    why:
-      "A YouTube ingest exists, but on the older agent-corpus surface: it " +
-      "writes a differently shaped document into a different collection, " +
-      "which this studio's pipeline cannot read. Pointing this tab at it " +
-      "would silently create a corpus that never publishes.",
+    // BUILT 2026-08-06. The reason this sat disabled — "the ingest writes a
+    // differently shaped document into a different collection" — was true of
+    // the older agent-corpus surface and is no longer true: the studio has its
+    // own YouTube ingest that produces the same documents the file path does,
+    // content-keyed and split into timed passages.
+    built: true,
   },
   {
     key: "drive",
@@ -96,6 +97,14 @@ export function SourcesStep({
   // The SERVER's view of what is happening, polled only while something is
   // moving. Matched to a row by filename because that is what the ingest
   // endpoint records as the job's source_ref.
+  // Sources added BY LINK. Kept here rather than inside the tab because the
+  // step's "can I continue" and its source count both have to see them — the
+  // first build kept them in the tab, so a corpus with a fully ingested video
+  // reported "0 Sources Added" and offered no way forward.
+  const [links, setLinks] = useState<
+    { id: string; title: string; note: string }[]
+  >([]);
+
   const { rows: jobs } = useIngestProgress(
     corpusId,
     rows.some((r) => r.phase === "processing"),
@@ -169,7 +178,8 @@ export function SourcesStep({
     setRunning(false);
   }, [rows, corpusId, instruction, patch]);
 
-  const done = rows.filter((r) => r.phase === "done").length;
+  const done = rows.filter((r) => r.phase === "done").length + links.length;
+  const sources = rows.length + links.length;
   const queued = rows.filter((r) => r.phase === "queued").length;
   const active = TABS.find((t) => t.key === tab);
 
@@ -197,7 +207,12 @@ export function SourcesStep({
           })}
         </div>
 
-        {tab === "files" ? (
+        {tab === "youtube" ? (
+          <YouTubeTab
+            corpusId={corpusId}
+            onAdded={(x) => setLinks((l) => [...l, x])}
+          />
+        ) : tab === "files" ? (
           <>
             <div
               onDragOver={(e) => {
@@ -245,9 +260,6 @@ export function SourcesStep({
                   <>Process {queued || ""} {queued === 1 ? "file" : "files"}</>
                 )}
               </Button>
-              <Button size="sm" variant="outline" onClick={onDone} disabled={!done}>
-                Continue →
-              </Button>
               {running && (
                 <span className="text-[11px] text-muted-foreground">
                   One at a time — each file is transcribed as it arrives.
@@ -268,8 +280,23 @@ export function SourcesStep({
       </section>
 
       <aside className="space-y-2 lg:sticky lg:top-4">
+        {/* OUTSIDE the tab, because every way of adding a source needs a way
+            forward. It used to sit inside the Upload Files branch, so the
+            YouTube tab had no Continue button at all. */}
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full"
+          onClick={onDone}
+          disabled={!done}
+          data-testid="sources-continue"
+          title={done ? "" : "Add and process at least one source first"}
+        >
+          Continue →
+        </Button>
+
         <p className="text-xs font-medium">
-          {rows.length} {rows.length === 1 ? "Source" : "Sources"} Added
+          {sources} {sources === 1 ? "Source" : "Sources"} Added
           {done > 0 && (
             <span className="ml-1 text-[11px] font-normal text-muted-foreground">
               · {done} processed
@@ -277,7 +304,18 @@ export function SourcesStep({
           )}
         </p>
 
-        {rows.length === 0 ? (
+        {links.length > 0 && (
+          <div className="space-y-1.5">
+            {links.map((l) => (
+              <div key={l.id} className="rounded-md border border-border px-2.5 py-1.5">
+                <p className="truncate text-[11px] font-medium">{l.title}</p>
+                <p className="text-[11px] text-muted-foreground">{l.note}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {sources === 0 ? (
           <p className="text-[11px] text-muted-foreground">
             Nothing yet. A corpus with no sources can be created, but it cannot
             answer anything.
@@ -381,6 +419,139 @@ function FileRow({
       )}
       {row.error && (
         <p className="mt-0.5 text-[11px] text-rose-600 dark:text-rose-400">{row.error}</p>
+      )}
+    </div>
+  );
+}
+
+
+/**
+ * Add a video by link.
+ *
+ * The transcript cascade lives on the server — uploader captions, then scraped
+ * subtitles, then Whisper on the audio — so this screen's whole job is to take
+ * a URL, say which rung answered, and be honest that a video with no captions
+ * takes minutes rather than seconds.
+ *
+ * Subtitles are offered but not demanded. Supplying them outranks anything
+ * fetched, for the same reason a human label outranks a derived one: somebody
+ * watched it.
+ */
+function YouTubeTab({
+  corpusId,
+  onAdded,
+}: {
+  corpusId: string;
+  onAdded: (row: { id: string; title: string; note: string }) => void;
+}) {
+  const [url, setUrl] = useState("");
+  const [subs, setSubs] = useState("");
+  const [showSubs, setShowSubs] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [startedAt, setStartedAt] = useState(0);
+  const [added, setAdded] = useState<
+    { id: string; title: string; source: string; segments: number; docs: number;
+      reused: boolean }[]
+  >([]);
+  const [error, setError] = useState("");
+
+  const add = async () => {
+    if (!url.trim() || busy) return;
+    setBusy(true);
+    setError("");
+    setStartedAt(Date.now());
+    try {
+      const r = await ingestYouTube(corpusId, url.trim(), subs);
+      const row = { id: r.youtube_id, title: r.title || r.youtube_id,
+                    source: r.transcript_source, segments: r.segments,
+                    docs: r.documents, reused: r.reused_existing_transcript };
+      setAdded((a) => [...a, row]);
+      // The STEP needs to know, not just this tab: it owns the source count
+      // and whether Continue is allowed.
+      onAdded({
+        id: r.youtube_id,
+        title: row.title,
+        note: `${r.segments} cues · ${r.documents} passage${r.documents === 1 ? "" : "s"}`,
+      });
+      setUrl("");
+      setSubs("");
+      setShowSubs(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2.5">
+      <div className="flex gap-2">
+        <input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void add();
+          }}
+          placeholder="https://www.youtube.com/watch?v=…"
+          disabled={busy}
+          data-testid="youtube-url"
+          className="flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs"
+        />
+        <Button size="sm" onClick={() => void add()} disabled={busy || !url.trim()}
+                data-testid="youtube-add">
+          {busy ? <Loader2 size={13} className="mr-1 animate-spin" /> : <Link2 size={13} className="mr-1" />}
+          {busy ? "Adding…" : "Add"}
+        </Button>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setShowSubs((v) => !v)}
+        className="text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+      >
+        {showSubs ? "Hide" : "Have subtitles? Add them"} — they beat anything fetched
+      </button>
+      {showSubs && (
+        <textarea
+          value={subs}
+          onChange={(e) => setSubs(e.target.value)}
+          placeholder="Paste an .srt or .vtt file…"
+          rows={4}
+          data-testid="youtube-subtitles"
+          className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 font-mono text-[11px]"
+        />
+      )}
+
+      {busy && (
+        <div className="rounded-md border border-border px-2.5 py-2">
+          {/* No percentage: the server does not report one for this, and the
+              length depends on whether captions exist or the audio has to be
+              transcribed. An elapsed clock is the honest thing to show. */}
+          <StageProgress
+            label="Reading the video"
+            stage="captions first; falls back to transcribing the audio, which takes minutes"
+            startedAt={startedAt}
+          />
+        </div>
+      )}
+
+      {error && <p className="text-[11px] text-rose-600 dark:text-rose-400">{error}</p>}
+
+      {added.length > 0 && (
+        <ul className="space-y-1" data-testid="youtube-added">
+          {added.map((a) => (
+            <li key={a.id} className="rounded-md border border-border px-2.5 py-1.5">
+              <p className="truncate text-[11px] font-medium">{a.title}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {a.reused ? "Transcript reused — this video was already processed" :
+                 a.source === "uploader_captions" ? `${a.segments} cues from the uploader's own captions` :
+                 a.source === "whisper" ? `${a.segments} segments transcribed from the audio` :
+                 `${a.segments} cues`}
+                {" · "}{a.docs} passage{a.docs === 1 ? "" : "s"}
+              </p>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
