@@ -132,7 +132,16 @@ export function PurposeStep({
               placeholder="e.g. an assistant that recommends knee rehab exercises based on which recovery phase somebody is in"
               className="flex-1 rounded-lg border border-border bg-background px-2.5 py-2 text-xs"
             />
-            <Button size="sm" onClick={() => void answer()} disabled={busy || !typing.trim()}>
+            {/* An icon-only button with no accessible name: a screen reader
+                announces "button" and nothing else, and there is no way to
+                refer to it by name at all. */}
+            <Button
+              size="sm"
+              aria-label="Send answer"
+              title="Send answer"
+              onClick={() => void answer()}
+              disabled={busy || !typing.trim()}
+            >
               <Send size={13} />
             </Button>
           </div>

@@ -79,6 +79,14 @@ test.describe('Full journey', () => {
       'knee arthritis, using what the reviewer actually says on camera.');
     await pause(page, BEAT, 'Stated as an outcome, not a topic list.');
 
+    // SUBMIT IT. That textarea is the interview ANSWER box — `purpose` is set
+    // when the answer is sent, not as you type. Filling it and reaching
+    // straight for Continue left the button disabled with its own tooltip
+    // explaining why, twice.
+    await page.getByRole('button', { name: /Send answer/i }).click();
+    await page.waitForTimeout(6000);
+    await pause(page, BEAT, 'The assistant reads it back as areas it would index.');
+
     // NAME FIRST. The continue button is disabled until both a name and a
     // purpose exist — it says so in its own tooltip — and the previous run
     // spent twenty seconds trying to click it before filling the field it was
@@ -123,58 +131,64 @@ test.describe('Full journey', () => {
       'Added — it says which rung of the cascade answered, and how many ' +
       'passages the transcript was split into.');
 
-    // ── 3. schema + publish ─────────────────────────────────────────────
-    for (const label of [/^Next$/, /^Continue$/, /Skip/]) {
-      const b = page.getByRole('button', { name: label }).first();
-      if (await b.isVisible().catch(() => false)) {
-        await b.click();
-        await page.waitForTimeout(2500);
-      }
-    }
-    await pause(page, BEAT, 'Through the schema step.');
+    // ── 3. through the wizard ───────────────────────────────────────────
+    // Continue lives OUTSIDE the tabs now — it used to be nested inside the
+    // Upload Files branch, so adding by link left no way forward at all.
+    await page.getByTestId("sources-continue").click();
+    await pause(page, BEAT, "Sources done. The schema step reads the media.");
 
-    const publish = page.getByRole('button', { name: /^Publish$/ });
-    await publish.waitFor({ state: 'visible', timeout: 60_000 });
+    // Schema, then Review. Both are one button; the review one says "Publish
+    // anyway" when it has a reason to object, which is still the way forward.
+    for (const label of [/^Continue →$/, /Continue →|Publish anyway →/]) {
+      const b = page.getByRole("button", { name: label }).first();
+      await b.waitFor({ state: "visible", timeout: 300_000 });
+      // ENABLED, not just present. Both buttons are disabled while their step
+      // does its work — the schema step reads the media and proposes fields,
+      // which outlasts the 20s action timeout that exists to catch typos.
+      // Waiting on the element and waiting on the WORK are different things
+      // and need different budgets.
+      await expect(b).toBeEnabled({ timeout: 600_000 });
+      await b.click();
+      await page.waitForTimeout(2500);
+    }
+    await pause(page, BEAT, "Reviewed.");
+
+    // ── 4. publish ──────────────────────────────────────────────────────
+    // EXACT. The stepper renders "5 Publish" as a button too, and a regex
+    // ending in /Publish$/ matches both — strict mode then refuses to act
+    // rather than picking one, which is the correct behaviour and the reason
+    // the ambiguity surfaced at all.
+    const publish = page.getByRole("button", { name: "Publish", exact: true });
+    await publish.waitFor({ state: "visible", timeout: 120_000 });
     await publish.click();
     await pause(page, BEAT,
-      'Publishing: embed every chunk, write the vectors, then PROVE an agent ' +
-      'can retrieve — an indeterminate bar, because nobody measured this.');
+      "Embedding every chunk, writing the vectors, then PROVING an agent can " +
+      "retrieve. An indeterminate bar, because nobody measured this.");
 
-    await expect(page.getByText(/Published|Nothing was published/i).first())
-      .toBeVisible({ timeout: 900_000 });
-    await pause(page, LOOK, 'Outcome reported, held-back census and all.');
+    await expect(
+      page.getByText(/Published|Nothing was published/i).first(),
+    ).toBeVisible({ timeout: 900_000 });
+    await pause(page, LOOK, "Outcome reported, held-back census and all.");
 
-    // ── 4. bind an agent ────────────────────────────────────────────────
-    const picker = page.getByTestId('readers-options');
-    await picker.waitFor({ state: 'visible', timeout: 60_000 });
+    // ── 5. give it a reader ─────────────────────────────────────────────
+    // The corpus is indexed and verified and STILL cannot answer anything
+    // until something subscribes. That step had no control at all this
+    // morning; the wizard printed advice next to nothing that could act on it.
+    const picker = page.getByTestId("readers-options");
+    await picker.waitFor({ state: "visible", timeout: 60_000 });
     await pause(page, LOOK,
-      'And the binding step, on the same screen — "no agent subscribes to ' +
-      'this corpus" is the warning, and the fix is right under it.');
+      "Indexed, verified — and unreachable until an agent subscribes.");
 
-    const reader = page.getByTestId('reader-knee_arthritis');
-    await reader.click();
-    await page.getByTestId('save-readers').click();
-    await expect(page.getByTestId('readers-saved')).toBeVisible({ timeout: 30_000 });
-    await pause(page, LOOK, 'Subscribed. The corpus is now reachable.');
-
-    // ── 5. ask it something ─────────────────────────────────────────────
-    await page.goto('/chataiagent/new');
-    await page.getByText('How can I help you today?')
-      .waitFor({ state: 'visible', timeout: 30_000 });
-    await pause(page, BEAT, 'Now ask the agent about it.');
-
-    const box = page.locator('textarea, input[type="text"]').first();
-    await box.click();
-    await box.fill(
-      'I have knee arthritis. What does the reviewer say in this video about ' +
-      'the product — is it worth using, and how should I use it?');
-    await page.keyboard.press('Enter');
-
-    await expect(page.getByText(/Sources|Watch|reviewer|Dr\.? David/i).first())
+    // Draft one FROM this corpus rather than hunting for an existing agent
+    // that happens to fit. Everything the draft needs is already here.
+    const make = page.getByTestId("create-agent-for-corpus");
+    await make.click();
+    await expect(page.getByText(/created as a draft and subscribed/i))
       .toBeVisible({ timeout: 300_000 });
     await pause(page, LOOK,
-      'Answered from a corpus that did not exist when this run started.');
+      "An agent drafted from the corpus's own purpose and content, and " +
+      "subscribed. It answers only from here.");
 
-    console.log(`\n  ▸ Done. Corpus "${NAME}" is live and subscribed.\n`);
+    console.log(`\n  ▸ Done. Corpus "${NAME}" is published and has a reader.\n`);
   });
 });
