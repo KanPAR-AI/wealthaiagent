@@ -32,8 +32,13 @@ import {
 } from "@/services/agent-builder-service";
 import type {
   AgentDraft,
+  CorpusOption,
   CreateAgentRequest,
 } from "@/services/agent-builder-service";
+import {
+  fetchCorpusReaders,
+  setCorpusReaders,
+} from "@/services/corpus-video-service";
 import { useAdminStore } from "@/store/admin";
 import { fetchAgents } from "@/services/admin-service";
 import { toast } from "sonner";
@@ -63,6 +68,13 @@ export function AgentDraftScreen({ onClose, onOpenManualWizard }: Props) {
   const [drafting, setDrafting] = useState(false);
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState<AgentDraft | null>(null);
+  // CONNECTED BY DEFAULT (agreed 2026-08-06). The recommendation is visible
+  // and one click to remove; the alternative — a suggestion you must opt into —
+  // reproduces the failure this fixes, because the default outcome is still an
+  // agent that knows nothing.
+  const [corpusIds, setCorpusIds] = useState<string[]>([]);
+  const [corpora, setCorpora] = useState<CorpusOption[]>([]);
+  const [reasons, setReasons] = useState<Record<string, string>>({});
 
   // These mirror the draft so the admin can edit inline without
   // mutating the pristine draft (letting them regenerate cleanly).
@@ -103,6 +115,12 @@ export function AgentDraftScreen({ onClose, onOpenManualWizard }: Props) {
     setDrafting(true);
     try {
       const res = await draftFromGoal(goal.trim());
+      const recommended = res.draft.corpora ?? [];
+      setCorpora(res.corpora_available ?? []);
+      setCorpusIds(recommended.map((c) => c.corpus_id));
+      setReasons(
+        Object.fromEntries(recommended.map((c) => [c.corpus_id, c.reason ?? ""])),
+      );
       applyDraft(res.draft);
       toast.success("Draft ready", {
         description: `Claude drafted ${res.draft.example_queries.length} example queries to seed your eval set.`,
@@ -156,9 +174,35 @@ export function AgentDraftScreen({ onClose, onOpenManualWizard }: Props) {
       };
 
       const result = await createDynamicAgent(req);
-      toast.success("Agent created", {
-        description: `${editedName} (${result.agent_id}) is now in ${result.status} status`,
-      });
+
+      // Subscribe AFTER creation: the subscription lives on the corpus and
+      // needs the agent to exist. Failures are named rather than swallowed —
+      // an agent created without the knowledge it was supposed to read, and
+      // announced as success, is the exact state this whole change fixes.
+      const failed: string[] = [];
+      for (const corpusId of corpusIds) {
+        try {
+          const current = await fetchCorpusReaders(corpusId);
+          await setCorpusReaders(corpusId, [
+            ...current.filter((r) => r !== result.agent_id),
+            result.agent_id,
+          ]);
+        } catch {
+          failed.push(corpusId);
+        }
+      }
+
+      if (failed.length) {
+        toast.error("Agent created, but not all knowledge attached", {
+          description: `Could not subscribe it to ${failed.join(", ")}. Set readers from the corpus itself.`,
+        });
+      } else {
+        toast.success("Agent created", {
+          description:
+            `${editedName} (${result.agent_id}) is now in ${result.status} status` +
+            (corpusIds.length ? `, reading ${corpusIds.length} corpus/corpora` : ""),
+        });
+      }
 
       const data = await fetchAgents();
       setAgents(data.agents);
@@ -363,6 +407,78 @@ export function AgentDraftScreen({ onClose, onOpenManualWizard }: Props) {
                   ))}
                 </ul>
               </details>
+
+              {/* KNOWLEDGE — the field that decides whether this agent can
+                  answer anything, and the one the draft used to be silent
+                  about. Recommended entries arrive ticked; untick to drop. */}
+              <div className="rounded-md border border-border/40 bg-muted/20 p-2.5">
+                <p className="text-xs font-medium">Knowledge</p>
+                {corpora.length === 0 ? (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    No corpora exist yet. Build one in Corpus Studio and
+                    subscribe this agent from there.
+                  </p>
+                ) : (
+                  <div className="mt-1.5 space-y-1" data-testid="draft-corpora">
+                    {corpora.map((c) => {
+                      const on = corpusIds.includes(c.corpus_id);
+                      return (
+                        <button
+                          key={c.corpus_id}
+                          type="button"
+                          data-testid={`draft-corpus-${c.corpus_id}`}
+                          aria-pressed={on}
+                          onClick={() =>
+                            setCorpusIds((prev) =>
+                              prev.includes(c.corpus_id)
+                                ? prev.filter((x) => x !== c.corpus_id)
+                                : [...prev, c.corpus_id],
+                            )
+                          }
+                          className={`flex w-full items-start justify-between gap-3 rounded border px-2.5 py-1.5 text-left transition ${
+                            on
+                              ? "border-emerald-500/50 bg-emerald-500/10"
+                              : "border-border/50 hover:border-border"
+                          }`}
+                        >
+                          <span className="min-w-0">
+                            <span className="block text-xs font-medium">
+                              {on ? "✓ " : ""}
+                              {c.name || c.corpus_id}
+                            </span>
+                            {/* The model's justification, shown so the tick is
+                                a judgement rather than a default accepted
+                                blind. */}
+                            {reasons[c.corpus_id] && (
+                              <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
+                                {reasons[c.corpus_id]}
+                              </span>
+                            )}
+                          </span>
+                          <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                            {c.documents}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {/* A WARNING, NOT A BLOCK (agreed 2026-08-06): an agent that
+                    answers from its prompt alone is a legitimate thing to
+                    build, and blocking would make people attach an irrelevant
+                    corpus just to get past the button. */}
+                {corpora.length > 0 && corpusIds.length === 0 && (
+                  <p
+                    className="mt-2 text-[11px] leading-snug text-amber-700 dark:text-amber-400"
+                    data-testid="no-knowledge-warning"
+                  >
+                    This agent will answer from its prompt alone. It will say so
+                    when asked something it has no source for, rather than
+                    inventing an answer — but it cannot use anything you have
+                    built.
+                  </p>
+                )}
+              </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
                 <Button

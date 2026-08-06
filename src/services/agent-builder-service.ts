@@ -178,6 +178,10 @@ export async function reloadAgent(
 // --- Agent Builder: Goal-First Draft (Phase 1A endpoint) ---
 
 export interface AgentDraft {
+  /** Which existing corpora the model thinks serve this goal, each with a
+   *  reason. Server-filtered against the catalogue it was given — a model
+   *  naming a corpus that does not exist has its recommendation dropped. */
+  corpora?: CorpusRecommendation[];
   agent_id: string;
   name: string;
   description: string;
@@ -213,9 +217,27 @@ export interface AgentDraft {
  * This is the Phase 1 productionization entry point that replaces
  * the 4-step wizard.
  */
+export interface CorpusRecommendation {
+  corpus_id: string;
+  reason?: string;
+}
+
+export interface CorpusOption {
+  corpus_id: string;
+  name: string;
+  purpose: string;
+  documents: number;
+}
+
 export async function draftFromGoal(
   goal: string
-): Promise<{ draft: AgentDraft; status: string }> {
+): Promise<{
+  draft: AgentDraft;
+  status: string;
+  /** Every corpus that exists, so the admin can add one the model missed
+   *  without a second round trip. */
+  corpora_available?: CorpusOption[];
+}> {
   return adminFetch("/agent-builder/draft", {
     method: "POST",
     body: JSON.stringify({ goal }),

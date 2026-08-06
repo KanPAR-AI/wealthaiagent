@@ -378,6 +378,34 @@ export interface CorpusListing {
   unnamed?: boolean;
   documents: number;
   readers: string[];
+  /** What is actually true of this corpus — see services/corpus/health.py.
+   *  "ready_unpublished" is the state that was invisible: complete, eligible,
+   *  and never published, which looks identical to finished. */
+  state?: string;
+  state_note?: string;
+  needs_attention?: boolean;
+  archived?: boolean;
+  indexed?: number;
+}
+
+export interface CorpusCensus {
+  ready_unpublished: number;
+  published_unreachable: number;
+  index_behind: number;
+  archived: number;
+  empty: number;
+  working: number;
+  needs_attention: number;
+}
+
+export async function archiveCorpus(
+  corpusId: string,
+  archived: boolean,
+): Promise<{ corpus_id: string; archived: boolean }> {
+  return call(`/${encodeURIComponent(corpusId)}/archive`, {
+    method: "POST",
+    body: JSON.stringify({ archived }),
+  });
 }
 
 export async function fetchCorpora(): Promise<{ corpora: CorpusListing[] }> {
@@ -479,7 +507,16 @@ export interface CorpusCard {
   name: string;
   purpose: string;
   template: string;
-  status: "published" | "processing" | "needs_review" | "unreachable" | "draft";
+  status:
+    | "published"
+    | "processing"
+    /** Labelled, eligible, and never published — finished work waiting on one
+     *  click. Used to be reported as "processing" with a time estimate. */
+    | "ready"
+    | "archived"
+    | "needs_review"
+    | "unreachable"
+    | "draft";
   sources: number;
   items: number;
   indexed: number;

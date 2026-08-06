@@ -23,6 +23,19 @@ const STATUS: Record<string, { label: string; tone: string }> = {
     label: "Processing",
     tone: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
   },
+  // THE STATE THAT WAS HIDING INSIDE "Processing". A corpus whose documents
+  // are all labelled and none indexed is not working — it is finished and
+  // waiting for somebody to publish it. `knee` sat here for weeks showing a
+  // spinner and "about 5m left" over 74 documents that were never going to
+  // move on their own.
+  ready: {
+    label: "Ready to publish",
+    tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  },
+  archived: {
+    label: "Archived",
+    tone: "bg-muted text-muted-foreground",
+  },
   needs_review: {
     label: "Needs Review",
     tone: "bg-orange-500/15 text-orange-700 dark:text-orange-300",
@@ -116,6 +129,11 @@ export function CorpusCard({
               <p className="flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400">
                 <Loader2 size={10} className="animate-spin" />
                 about {formatDuration(card.eta_seconds)} left
+              </p>
+            ) : card.status === "ready" ? (
+              <p className="flex items-center gap-1 text-[11px] text-sky-700 dark:text-sky-400">
+                <Check size={10} /> {card.items} labelled — publish to make it
+                answerable
               </p>
             ) : card.issues ? (
               <p className="flex items-center gap-1 text-[11px] text-orange-700 dark:text-orange-400">
