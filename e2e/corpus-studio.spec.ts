@@ -17,7 +17,7 @@
  * published documents.
  */
 
-import { expect, Page, test } from '@playwright/test';
+import { APIRequestContext, expect, Page, test } from '@playwright/test';
 
 const ADMIN_EMAIL = 'ravipradeep89@gmail.com';
 const ADMIN_PASSWORD = 'papa1210';
@@ -26,6 +26,15 @@ const ADMIN_PASSWORD = 'papa1210';
 // last run created. Creating a duplicate is refused by design.
 const RUN = Date.now().toString().slice(-6);
 const CORPUS_NAME = `E2E Knee ${RUN}`;
+
+const API = process.env.VITE_API_BASE_URL || 'http://localhost:8080';
+
+async function token(req: APIRequestContext): Promise<string> {
+  const res = await req.post(`${API}/api/v1/auth/token`, {
+    form: { username: 'test_username' },
+  });
+  return (await res.json()).access_token;
+}
 
 async function signInAsAdmin(page: Page) {
   await page.goto('/chataiagent/');
@@ -149,14 +158,41 @@ test.describe('Corpus Studio', () => {
         .toBeVisible({ timeout: 90_000 });
       await expect(page.getByText(/have content without speech/i).first())
         .toBeVisible({ timeout: 30_000 });
-      // And it must not have ACTED. `corpus_reject` DOES appear — as a dry
-      // run reporting "would reject 31" — which is the preview this test is
-      // named for. Asserting its absence forbade the very behaviour being
-      // tested, and only passed while the assistant declined to preview at
-      // all. What matters is that it asks before applying.
-      await expect(
-        page.getByText(/would you like to|please confirm|shall I|go ahead/i).first(),
-      ).toBeVisible({ timeout: 30_000 });
+      // And it must not have ACTED.
+      //
+      // NOT asserted on the model's prose. The first version of this test
+      // demanded `corpus_reject` appear zero times, which forbade the very
+      // preview the test is named for. The second matched confirmation
+      // wording — "would you like to", "please confirm" — and a model phrases
+      // that differently every run, so it passed once and failed the next
+      // time for no product reason at all.
+      //
+      // The deterministic fact is in the TOOL RESULT: a dry run reports
+      // `would_reject`, a real one reports `rejected`. That distinction is
+      // computed in code and cannot drift with the wording.
+      const trace = await page.request.post(
+        `${API}/api/v1/admin/corpus/knee_timed/assistant`,
+        {
+          headers: {
+            Authorization: `Bearer ${await token(page.request)}`,
+            'Content-Type': 'application/json',
+          },
+          data: JSON.stringify({ question: 'reject videos with no transcript' }),
+          timeout: 240_000,
+        },
+      );
+      const calls = (await trace.json()).tool_calls || [];
+      const reject = calls.find(
+        (c: { name: string }) => c.name === 'corpus_reject',
+      );
+      if (reject) {
+        // dry_run is the field the code sets; would_reject is what it would
+        // have done. A real rejection reports `rejected` instead, and this
+        // fails the moment that appears.
+        expect(reject.result?.dry_run).toBe(true);
+        expect(reject.result?.rejected ?? 0).toBe(0);
+        expect(reject.result?.would_reject ?? 0).toBeGreaterThan(0);
+      }
     });
 
   test('the pipeline shows where the work actually is', async ({ page }) => {
