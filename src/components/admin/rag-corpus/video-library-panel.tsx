@@ -3,6 +3,7 @@ import { CorpusAssistantPanel } from "./corpus-assistant-panel";
 import { LabellingPanel } from "./labelling-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ReadersPicker } from "./studio/readers-picker";
 import { Video, RefreshCw, Check, Upload, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
 import { DocumentDetail } from "./document-detail";
 import { ExtractPanel } from "./extract-panel";
@@ -71,6 +72,7 @@ export function VideoLibraryPanel({
   const [error, setError] = useState("");
   const [saved, setSaved] = useState<string>("");
   const [readers, setReaders] = useState<string[]>([]);
+  const [editingReaders, setEditingReaders] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishNote, setPublishNote] = useState("");
   const [funnel, setFunnel] = useState<Funnel | undefined>();
@@ -250,17 +252,22 @@ export function VideoLibraryPanel({
                 {summary.pending_publish} waiting to publish
               </span>
             )}
-            <span className="text-muted-foreground">
+            {/* Reading it was never the problem — the panel has shown "no
+                agent yet" for weeks. SETTING it had no control anywhere, so
+                the warning named a fix nobody could apply. */}
+            <button
+              type="button"
+              onClick={() => setEditingReaders((v) => !v)}
+              data-testid="toggle-readers"
+              className="text-muted-foreground underline-offset-2 hover:underline"
+            >
               read by{" "}
               {readers.length ? (
                 <span className="text-foreground">{readers.join(", ")}</span>
               ) : (
-                // The failure this makes visible: a corpus can be perfectly
-                // indexed and still reach no answer, because no agent is
-                // subscribed to it.
                 <span className="text-amber-700 dark:text-amber-400">no agent yet</span>
               )}
-            </span>
+            </button>
             <Button
               size="sm"
               className="ml-auto"
@@ -301,6 +308,17 @@ export function VideoLibraryPanel({
             </p>
           )}
         </div>
+          {editingReaders && (
+            <div className="mt-2">
+              <ReadersPicker
+                corpusId={corpusId}
+                readers={readers}
+                published={(summary?.total ?? 0) > 0}
+                onChange={setReaders}
+              />
+            </div>
+          )}
+
 
         {/* Where the WORK is, before any list of rows. */}
         <PipelineFunnel funnel={funnel} />

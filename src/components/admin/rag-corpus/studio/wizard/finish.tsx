@@ -30,6 +30,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, Check, Loader2, Rocket } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ReadersPicker } from "../readers-picker";
 import {
   fetchSources,
   publishCorpus,
@@ -367,6 +368,20 @@ export function PublishStep({
               </div>
             ))}
           </dl>
+
+          {/* THE STEP THAT WAS ONLY EVER ADVICE. This screen used to print
+              "Set readers on the corpus" beside no control that could, so the
+              last step of building a corpus was completable by curl and not by
+              a person — and an unsubscribed corpus looks exactly like a working
+              one until somebody asks it a question. */}
+          <ReadersPicker
+            corpusId={corpusId}
+            readers={result.readers ?? []}
+            published={(result.chunks ?? 0) > 0}
+            onChange={(readers) =>
+              setResult((r) => (r ? { ...r, readers } : r))
+            }
+          />
 
           {Object.keys(result.held_back ?? {}).length > 0 && (
             <div className="rounded-lg border border-border px-2.5 py-2">
