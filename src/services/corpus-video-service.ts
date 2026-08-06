@@ -190,6 +190,21 @@ export async function fetchCorpusReaders(corpusId: string): Promise<string[]> {
   return view.readers ?? [];
 }
 
+/** Draft an agent FROM this corpus and subscribe it, in one step.
+ *  Everything the draft needs — purpose, topics, typical questions — is
+ *  already on the corpus, so describing it again from memory in the builder
+ *  was work nobody should have had to do. */
+export async function createAgentForCorpus(corpusId: string): Promise<{
+  agent_id: string;
+  name: string;
+  status: string;
+  readers: string[];
+  example_queries: string[];
+  note: string;
+}> {
+  return call(`/${encodeURIComponent(corpusId)}/agent`, { method: "POST" });
+}
+
 export async function setCorpusReaders(
   corpusId: string,
   readers: string[],

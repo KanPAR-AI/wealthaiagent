@@ -26,7 +26,10 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, Loader2, Users } from "lucide-react";
 
 import { fetchAgents } from "@/services/admin-service";
-import { setCorpusReaders } from "@/services/corpus-video-service";
+import {
+  createAgentForCorpus,
+  setCorpusReaders,
+} from "@/services/corpus-video-service";
 
 interface Props {
   corpusId: string;
@@ -50,6 +53,8 @@ export function ReadersPicker({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [savedAt, setSavedAt] = useState(0);
+  const [making, setMaking] = useState(false);
+  const [made, setMade] = useState<{ name: string; queries: string[] } | null>(null);
 
   // Keyed on the VALUE, not the array identity: the parent rebuilds the list
   // on every render, and depending on the reference would reset a half-made
@@ -101,6 +106,29 @@ export function ReadersPicker({
       setError(String((e as Error)?.message || e));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function makeOne() {
+    setMaking(true);
+    setError("");
+    try {
+      const r = await createAgentForCorpus(corpusId);
+      setSelected(r.readers || []);
+      onChange?.(r.readers || []);
+      setMade({ name: r.name, queries: r.example_queries || [] });
+      // The new agent has to appear in the list, or it reads as not created.
+      const a = await fetchAgents();
+      setAgents(
+        (a.agents || []).map((x: { id?: string; agent_id?: string; name?: string }) => ({
+          id: String(x.id || x.agent_id || ""),
+          name: String(x.name || x.id || x.agent_id || ""),
+        })).filter((x) => x.id),
+      );
+    } catch (e) {
+      setError(String((e as Error)?.message || e));
+    } finally {
+      setMaking(false);
     }
   }
 
@@ -169,6 +197,47 @@ export function ReadersPicker({
           {error}
         </p>
       )}
+
+      {/* NONE OF THESE FIT is a normal answer, and it used to be a dead end:
+          the corpus sat unreachable while somebody went to the builder and
+          described from memory the thing they had just finished building.
+          Everything that draft needs is already on this corpus. */}
+      <div className="mt-3 rounded border border-dashed border-border/60 p-2.5">
+        <p className="text-xs">None of these fit?</p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          Draft one from this corpus — its purpose, what the documents are
+          about, and the questions you said it must answer.
+        </p>
+        <button
+          type="button"
+          onClick={() => void makeOne()}
+          disabled={making}
+          data-testid="create-agent-for-corpus"
+          className="mt-2 flex items-center gap-1.5 rounded border border-border/60 px-3 py-1.5 text-xs disabled:opacity-40"
+        >
+          {making && <Loader2 size={12} className="animate-spin" />}
+          {making ? "Drafting…" : "Create an agent for this corpus"}
+        </button>
+        {made && (
+          <div className="mt-2 rounded border border-emerald-500/40 bg-emerald-500/5 p-2 text-[11px]">
+            <p className="font-medium">
+              <Check size={11} className="mr-1 inline" />
+              {made.name} — created as a draft and subscribed
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              Review its prompt and routing before activating it. It will
+              answer only from this corpus.
+            </p>
+            {made.queries.length > 0 && (
+              <ul className="mt-1.5 space-y-0.5 text-muted-foreground">
+                {made.queries.slice(0, 3).map((q) => (
+                  <li key={q} className="truncate">· {q}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="mt-3 flex items-center gap-2">
         <button
