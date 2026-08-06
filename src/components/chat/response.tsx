@@ -7,6 +7,8 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 
+import { embedCorpusMediaLinks, embedYouTubeLinks } from './embed-links';
+
 import { BedtimeVideoWidget, tryParseBedtimePayload } from '@/components/widgets/bedtime-video-widget';
 import {
   PalmPredictionsCard,
@@ -33,46 +35,6 @@ function cleanContent(text: string): string {
     .replace(/^\[Using \w+ agent\]\s*/i, '')
     .replace(/(\n[ \t]*){3,}/g, '\n\n')
     .replace(/^\n+/, '');
-}
-
-/**
- * Pre-process markdown to convert YouTube links to embedded iframe HTML.
- *
- * Consolidates multiple references to the same video into a single
- * embedded player so the response doesn't show 3 identical iframes
- * when 3 corpus chunks from the same video are cited.
- */
-function embedYouTubeLinks(text: string): string {
-  // First pass: collect all YouTube links and group by video ID
-  const ytPattern =
-    /^(.*?)\[([^\]]+)\]\((https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s)]*v=([a-zA-Z0-9_-]+)[^\s)]*|youtu\.be\/([a-zA-Z0-9_-]+)[^\s)]*?))\)(.*)$/gm;
-
-  const seenVideos = new Set<string>();
-  return text.replace(ytPattern, (_match, before, title, fullUrl, vidId1, vidId2, after) => {
-    const videoId = vidId1 || vidId2;
-    if (!videoId) return _match;
-
-    // Skip duplicate embeds for the same video — show only the first
-    if (seenVideos.has(videoId)) {
-      // Keep the surrounding text but replace the link with a plain text ref
-      const prefix = before.trim() ? before.trim() + ' ' : '';
-      const suffix = after.trim() ? ' ' + after.trim() : '';
-      return `${prefix}*(see video above)*${suffix}`;
-    }
-    seenVideos.add(videoId);
-
-    const timeMatch = fullUrl.match(/[?&]t=(\d+)/);
-    const start = timeMatch ? timeMatch[1] : '0';
-    const embedUrl = `https://www.youtube.com/embed/${videoId}?start=${start}&rel=0`;
-    const prefix = before.trim() ? before.trim() + '\n\n' : '';
-    const suffix = after.trim() ? '\n\n' + after.trim() : '';
-    return (
-      `${prefix}<div class="youtube-embed my-3">` +
-      `<iframe src="${embedUrl}" title="${title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` +
-      `<div class="youtube-embed-caption"><a href="${fullUrl}" target="_blank" rel="noopener noreferrer">${title}</a></div>` +
-      `</div>${suffix}`
-    );
-  });
 }
 
 /** Check if a URL is an internal app link (starts with / and matches known routes) */
@@ -197,7 +159,7 @@ export const Response = memo(
   ({ className, children, onNavigate, isStreaming = true }: ResponseProps) => {
     const raw = typeof children === 'string' ? children : (children ?? '');
     const cleaned = cleanContent(raw);
-    const withEmbeds = embedYouTubeLinks(cleaned);
+    const withEmbeds = embedCorpusMediaLinks(embedYouTubeLinks(cleaned));
     const mdComponents = buildMdComponents(onNavigate, isStreaming);
     return (
       <div className={cn('size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0', className)}>
