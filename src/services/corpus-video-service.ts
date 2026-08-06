@@ -753,6 +753,11 @@ export interface AssetMedia {
    *  anything ingested before the media store existed, and a screen that
    *  reports it as an error teaches people the screen is broken. */
   reason?: string;
+  /** Present when the source is a YouTube ingest: no footage is stored on
+   *  purpose — YouTube hosts it — so the screen embeds YouTube instead of
+   *  apologising for a missing file. */
+  youtube_id?: string;
+  watch_url?: string;
   content_sha?: string;
   size_bytes?: number;
   content_type?: string;

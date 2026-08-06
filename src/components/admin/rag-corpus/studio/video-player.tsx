@@ -86,6 +86,40 @@ export function VideoPlayer({
     );
   }
 
+  if (!media.stored && media.youtube_id) {
+    // A YouTube ingest stores no footage on purpose — YouTube hosts it. The
+    // embed plays it in place; a seek from a segment row or transcript line
+    // reloads the embed at that offset (the plain iframe exposes no seek
+    // API, and loading YouTube's JS API for an admin check isn't worth it).
+    const start = Math.max(0, Math.floor(seekTo?.seconds ?? 0));
+    return (
+      <div className="space-y-2">
+        <div className="overflow-hidden rounded-lg border border-border bg-black">
+          <iframe
+            key={seekTo?.nonce ?? 0}
+            className="aspect-video w-full"
+            src={`https://www.youtube.com/embed/${media.youtube_id}?start=${start}${seekTo ? "&autoplay=1" : ""}`}
+            title={media.source}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Hosted on YouTube — clicking a segment reopens the player at that
+          moment.{" "}
+          <a
+            href={media.watch_url || `https://www.youtube.com/watch?v=${media.youtube_id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary underline underline-offset-2"
+          >
+            Watch on YouTube
+          </a>
+        </p>
+      </div>
+    );
+  }
+
   if (!media.stored) {
     return (
       <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 px-6 text-center">
