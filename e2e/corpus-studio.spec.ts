@@ -51,7 +51,11 @@ async function goToCorpus(page: Page) {
   // route through "New corpus", which now opens the 5-step wizard (screen 2)
   // instead of the old single form. The workspace these tests exercise is
   // reached by opening a corpus card.
-  const card = page.locator('button').filter({ hasText: 'knee_timed' }).first();
+  // BY ID, not by visible text. The card renders `card.name` — "Dr David Knee
+  // Program" — and the server only falls back to the corpus_id when a corpus
+  // has no name. So this selector worked until somebody named the corpus, and
+  // has been failing silently since.
+  const card = page.getByTestId('corpus-card-knee_timed');
   await card.waitFor({ state: 'visible', timeout: 20_000 });
   await card.click();
   await page.locator('select').first()
@@ -145,8 +149,14 @@ test.describe('Corpus Studio', () => {
         .toBeVisible({ timeout: 90_000 });
       await expect(page.getByText(/have content without speech/i).first())
         .toBeVisible({ timeout: 30_000 });
-      // And it must NOT have rejected anything.
-      await expect(page.getByText('corpus_reject')).toHaveCount(0);
+      // And it must not have ACTED. `corpus_reject` DOES appear — as a dry
+      // run reporting "would reject 31" — which is the preview this test is
+      // named for. Asserting its absence forbade the very behaviour being
+      // tested, and only passed while the assistant declined to preview at
+      // all. What matters is that it asks before applying.
+      await expect(
+        page.getByText(/would you like to|please confirm|shall I|go ahead/i).first(),
+      ).toBeVisible({ timeout: 30_000 });
     });
 
   test('the pipeline shows where the work actually is', async ({ page }) => {
