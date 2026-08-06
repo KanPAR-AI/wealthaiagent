@@ -179,6 +179,13 @@ test.describe('Corpus → agent → chat', () => {
     const create = page.getByRole('button', { name: /Create Agent|New Agent/i }).last();
     await create.waitFor({ state: 'visible', timeout: 20_000 });
     await create.click();
+
+    // "Create Agent" opens the GOAL-FIRST screen; the step-by-step wizard is
+    // one click further in. Worth naming: the Knowledge step lives on the
+    // manual path only, so the primary AI-drafted flow still cannot subscribe
+    // an agent to a corpus (docs/29 §2.2, partially open).
+    await page.getByRole('button', { name: /Advanced: skip AI, manual create/i })
+      .click();
     await page.getByPlaceholder('e.g. sleep_wellness').waitFor({
       state: 'visible', timeout: 20_000,
     });
