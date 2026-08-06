@@ -14,6 +14,9 @@ import { useAdminStore } from "@/store/admin";
 import { fetchAgents } from "@/services/admin-service";
 import { toast } from "sonner";
 
+import { CorpusStep } from "./corpus-step";
+import { fetchCorpusReaders, setCorpusReaders } from "@/services/corpus-video-service";
+
 interface WizardProps {
   onClose: () => void;
 }
@@ -22,6 +25,10 @@ const STEPS = [
   "Basic Info",
   "System Prompt",
   "Routing & Memory",
+  // The step that connected the two halves. Corpus Studio built knowledge
+  // nothing read, and this wizard created agents that knew nothing; binding
+  // them was an API call neither screen offered.
+  "Knowledge",
   "Review & Create",
 ];
 
@@ -40,6 +47,10 @@ export function AgentCreationWizard({ onClose }: WizardProps) {
   const [userInstruction, setUserInstruction] = useState("");
   const [disclaimer, setDisclaimer] = useState("");
 
+  // Step 4: Knowledge — corpus ids, applied AFTER creation because the
+  // subscription lives on the corpus and needs the agent to exist first.
+  const [corpusIds, setCorpusIds] = useState<string[]>([]);
+
   // Step 3: Routing & Memory
   const [keywords, setKeywords] = useState("");
   const [contextMarkers, setContextMarkers] = useState("");
@@ -51,6 +62,10 @@ export function AgentCreationWizard({ onClose }: WizardProps) {
   const canNext = () => {
     if (step === 0) return agentId.trim() && name.trim();
     if (step === 1) return systemPrompt.trim();
+    // Knowledge is optional: an agent that answers from its prompt alone is a
+    // legitimate thing to build, and forcing a corpus here would make people
+    // attach an irrelevant one to get past the step.
+    if (step === 3) return true;
     return true;
   };
 
@@ -90,9 +105,36 @@ export function AgentCreationWizard({ onClose }: WizardProps) {
       };
 
       const result = await createDynamicAgent(req);
-      toast.success("Agent created", {
-        description: `${name} (${result.agent_id}) is now in ${result.status} status`,
-      });
+
+      // SUBSCRIBE, now that the agent has an id. Reported honestly: an agent
+      // created with none of its knowledge attached, announced as success, is
+      // the silent half-done state this area keeps producing.
+      const failed: string[] = [];
+      for (const corpusId of corpusIds) {
+        try {
+          const current = await fetchCorpusReaders(corpusId);
+          await setCorpusReaders(corpusId, [
+            ...current.filter((r) => r !== result.agent_id),
+            result.agent_id,
+          ]);
+        } catch {
+          failed.push(corpusId);
+        }
+      }
+
+      if (failed.length) {
+        toast.error("Agent created, but not all knowledge attached", {
+          description: `Could not subscribe it to ${failed.join(", ")}. Set readers from the corpus itself.`,
+        });
+      } else {
+        toast.success("Agent created", {
+          description:
+            `${name} (${result.agent_id}) is now in ${result.status} status` +
+            (corpusIds.length
+              ? `, reading ${corpusIds.length} corpus/corpora`
+              : ""),
+        });
+      }
 
       // Refresh agent list and select the new agent
       const data = await fetchAgents();
@@ -315,8 +357,13 @@ export function AgentCreationWizard({ onClose }: WizardProps) {
             </>
           )}
 
-          {/* Step 4: Review */}
+          {/* Step 4: Knowledge */}
           {step === 3 && (
+            <CorpusStep selected={corpusIds} onChange={setCorpusIds} />
+          )}
+
+          {/* Step 5: Review */}
+          {step === 4 && (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-border/50 bg-muted/30 p-3">

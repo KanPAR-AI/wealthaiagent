@@ -178,6 +178,18 @@ export async function publishCorpus(corpusId: string): Promise<PublishResult> {
 
 /** Which agents may retrieve from this corpus. A corpus is its own thing, not
  *  a possession of one agent, so several can read it without a second copy. */
+/** Who currently reads this corpus.
+ *
+ *  Read from the corpus VIEW rather than from the full listing: the listing
+ *  counts documents by streaming every document of every corpus, which is fine
+ *  for a page you open once and wasteful for a read-modify-write of one
+ *  corpus's readers.
+ */
+export async function fetchCorpusReaders(corpusId: string): Promise<string[]> {
+  const view = await fetchVideos(corpusId);
+  return view.readers ?? [];
+}
+
 export async function setCorpusReaders(
   corpusId: string,
   readers: string[],
