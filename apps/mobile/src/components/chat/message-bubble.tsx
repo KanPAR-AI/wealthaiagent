@@ -12,7 +12,9 @@ import Markdown from 'react-native-markdown-display';
 import type { ContentBlock, Message } from '@wealthai/core';
 
 import { ThemedText } from '@/components/themed-text';
+import { VideoEmbed } from '@/components/chat/video-embed';
 import { WidgetView } from '@/components/chat/widget-view';
+import { splitVideoSegments } from '@/lib/video-links';
 import { Colors, Spacing } from '@/constants/theme';
 import { getToken } from '@/lib/auth';
 import { getPlatform } from '@wealthai/core';
@@ -174,18 +176,28 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
           <ThemedText type="smallBold" style={styles.retry}>↻ Retry</ThemedText>
         </Pressable>
       ) : null}
-      {blocks.map((block, i) =>
-        block.type === 'text' ? (
-          <Markdown key={`t${i}`} style={markdownStyles}>
-            {/* Streaming cursor on the last text block while live */}
-            {message.isStreaming && i === blocks.length - 1
-              ? `${block.content}▍`
-              : block.content}
-          </Markdown>
-        ) : (
-          <WidgetView key={`w${i}`} widget={block.widget} />
-        ),
-      )}
+      {blocks.map((block, i) => {
+        if (block.type !== 'text') {
+          return <WidgetView key={`w${i}`} widget={block.widget} />;
+        }
+        // Streaming cursor on the last text block while live
+        const text =
+          message.isStreaming && i === blocks.length - 1
+            ? `${block.content}▍`
+            : block.content;
+        // Corpus-media citations become inline players; the markdown link
+        // alone would dump the user into a raw browser stream (web parity:
+        // response.tsx embedCorpusMediaLinks).
+        return splitVideoSegments(text).map((seg, j) =>
+          seg.kind === 'video' ? (
+            <VideoEmbed key={`t${i}v${j}`} segment={seg} />
+          ) : (
+            <Markdown key={`t${i}s${j}`} style={markdownStyles}>
+              {seg.text}
+            </Markdown>
+          ),
+        );
+      })}
       {message.isStreaming && blocks.length === 0 && (
         <ThemedText themeColor="textSecondary">▍</ThemedText>
       )}

@@ -76,7 +76,10 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/analytics",
-      "./plugins/withAndroidLintFix"
+      "./plugins/withAndroidLintFix",
+      "expo-video",
+      "expo-image",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true,
