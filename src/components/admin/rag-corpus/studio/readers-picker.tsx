@@ -29,6 +29,7 @@ import { fetchAgents } from "@/services/admin-service";
 import {
   createAgentForCorpus,
   setCorpusReaders,
+  updateAgentPrompt,
 } from "@/services/corpus-video-service";
 
 interface Props {
@@ -54,7 +55,14 @@ export function ReadersPicker({
   const [error, setError] = useState("");
   const [savedAt, setSavedAt] = useState(0);
   const [making, setMaking] = useState(false);
-  const [made, setMade] = useState<{ name: string; queries: string[] } | null>(null);
+  const [made, setMade] = useState<
+    { id: string; name: string; queries: string[] } | null
+  >(null);
+  // The drafted prompt, editable HERE. A prompt somebody has to hunt for in
+  // another tab is a prompt nobody reads before it starts answering.
+  const [prompt, setPrompt] = useState("");
+  const [promptSaved, setPromptSaved] = useState(false);
+  const [savingPrompt, setSavingPrompt] = useState(false);
 
   // Keyed on the VALUE, not the array identity: the parent rebuilds the list
   // on every render, and depending on the reference would reset a half-made
@@ -116,7 +124,9 @@ export function ReadersPicker({
       const r = await createAgentForCorpus(corpusId);
       setSelected(r.readers || []);
       onChange?.(r.readers || []);
-      setMade({ name: r.name, queries: r.example_queries || [] });
+      setMade({ id: r.agent_id, name: r.name, queries: r.example_queries || [] });
+      setPrompt(r.system_prompt || "");
+      setPromptSaved(false);
       // The new agent has to appear in the list, or it reads as not created.
       const a = await fetchAgents();
       setAgents(
@@ -228,6 +238,51 @@ export function ReadersPicker({
               Review its prompt and routing before activating it. It will
               answer only from this corpus.
             </p>
+            {/* EDITABLE, on the page that produced it. The agent is a draft
+                and its prompt is a first attempt — reviewing it is the step
+                between "an agent exists" and "an agent should answer people". */}
+            {prompt && (
+              <div className="mt-2">
+                <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Its prompt — edit before you activate it
+                </label>
+                <textarea
+                  value={prompt}
+                  onChange={(e) => {
+                    setPrompt(e.target.value);
+                    setPromptSaved(false);
+                  }}
+                  rows={6}
+                  data-testid="drafted-prompt"
+                  className="mt-1 w-full rounded border border-border/60 bg-background px-2 py-1.5 text-[11px] leading-relaxed"
+                />
+                <div className="mt-1 flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={savingPrompt || promptSaved || !prompt.trim()}
+                    data-testid="save-drafted-prompt"
+                    onClick={async () => {
+                      setSavingPrompt(true);
+                      try {
+                        await updateAgentPrompt(made.id, prompt);
+                        setPromptSaved(true);
+                      } catch (e) {
+                        setError(String((e as Error)?.message || e));
+                      } finally {
+                        setSavingPrompt(false);
+                      }
+                    }}
+                    className="rounded border border-border/60 px-2 py-1 text-[11px] disabled:opacity-40"
+                  >
+                    {savingPrompt ? "Saving…" : promptSaved ? "Saved" : "Save prompt"}
+                  </button>
+                  <span className="text-[11px] text-muted-foreground">
+                    Every save is a version — nothing is lost.
+                  </span>
+                </div>
+              </div>
+            )}
+
             {made.queries.length > 0 && (
               <ul className="mt-1.5 space-y-0.5 text-muted-foreground">
                 {made.queries.slice(0, 3).map((q) => (

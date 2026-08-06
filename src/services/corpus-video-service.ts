@@ -200,9 +200,33 @@ export async function createAgentForCorpus(corpusId: string): Promise<{
   status: string;
   readers: string[];
   example_queries: string[];
+  system_prompt: string;
   note: string;
 }> {
   return call(`/${encodeURIComponent(corpusId)}/agent`, { method: "POST" });
+}
+
+/** The prompt the corpus drafted, so it can be corrected without leaving the
+ *  page that produced it. Versioned server-side — every save is recoverable. */
+export async function updateAgentPrompt(
+  agentId: string,
+  systemPrompt: string,
+  changeNote = "edited from the corpus page",
+): Promise<unknown> {
+  const token = await auth.currentUser?.getIdToken();
+  const res = await fetch(
+    getApiUrl(`/admin/agents/${encodeURIComponent(agentId)}/prompts`),
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ system_prompt: systemPrompt, change_note: changeNote }),
+    },
+  );
+  if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+  return res.json();
 }
 
 export async function setCorpusReaders(
