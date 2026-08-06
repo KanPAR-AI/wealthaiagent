@@ -37,6 +37,9 @@ import {
   ingestAssetWithProgress,
 } from "@/services/corpus-video-service";
 import { formatBytes } from "../format";
+import { StageProgress } from "../progress";
+import { useIngestProgress } from "../use-ingest-progress";
+import type { IngestQueueRow } from "@/services/corpus-video-service";
 
 type Phase = "queued" | "uploading" | "processing" | "done" | "failed";
 
@@ -48,6 +51,9 @@ interface Row {
   note: string;
   error: string;
   reused: boolean;
+  /** When this file started moving, so an indeterminate bar can show elapsed
+   *  time instead of a percentage nobody computed. */
+  startedAt?: number;
 }
 
 const TABS = [
@@ -86,6 +92,19 @@ export function SourcesStep({
 }) {
   const [tab, setTab] = useState<string>("files");
   const [rows, setRows] = useState<Row[]>([]);
+
+  // The SERVER's view of what is happening, polled only while something is
+  // moving. Matched to a row by filename because that is what the ingest
+  // endpoint records as the job's source_ref.
+  const { rows: jobs } = useIngestProgress(
+    corpusId,
+    rows.some((r) => r.phase === "processing"),
+  );
+  const jobFor = useCallback(
+    (name: string) =>
+      jobs.find((j) => j.source === name || j.source.endsWith(name)),
+    [jobs],
+  );
   const [dragging, setDragging] = useState(false);
   const [running, setRunning] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -118,7 +137,7 @@ export function SourcesStep({
     // iterating the live array would re-process a row whose phase just changed.
     const todo = rows.filter((r) => r.phase === "queued");
     for (const row of todo) {
-      patch(row.id, { phase: "uploading", fraction: 0 });
+      patch(row.id, { phase: "uploading", fraction: 0, startedAt: Date.now() });
       try {
         const out = await ingestAssetWithProgress(corpusId, row.file, {
           instruction,
@@ -269,6 +288,7 @@ export function SourcesStep({
               <FileRow
                 key={r.id}
                 row={r}
+                job={jobFor(r.file.name)}
                 onRemove={
                   r.phase === "queued" || r.phase === "failed"
                     ? () => setRows((rs) => rs.filter((x) => x.id !== r.id))
@@ -291,7 +311,18 @@ const PHASE_LABEL: Record<Phase, string> = {
   failed: "Failed",
 };
 
-function FileRow({ row, onRemove }: { row: Row; onRemove?: () => void }) {
+function FileRow({
+  row,
+  job,
+  onRemove,
+}: {
+  row: Row;
+  /** The server's own job record for this file, when there is one. Upload
+   *  progress is measurable in the browser; everything after it is not, and
+   *  this is where the real stage names come from. */
+  job?: IngestQueueRow;
+  onRemove?: () => void;
+}) {
   const pct = Math.round(row.fraction * 100);
   return (
     <div className="rounded-md border border-border px-2.5 py-1.5">
@@ -312,21 +343,33 @@ function FileRow({ row, onRemove }: { row: Row; onRemove?: () => void }) {
 
       <p className="flex gap-1.5 text-[11px] text-muted-foreground">
         <span>
-          {row.phase === "uploading" ? `Uploading ${pct}%` : PHASE_LABEL[row.phase]}
+          {row.phase === "uploading"
+            ? `Uploading ${pct}%`
+            : row.phase === "processing" && job?.stage
+              ? job.stage
+              : PHASE_LABEL[row.phase]}
         </span>
         <span className="ml-auto shrink-0">{formatBytes(row.file.size)}</span>
       </p>
 
       {(row.phase === "uploading" || row.phase === "processing") && (
-        <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
-          <div
-            className={`h-full rounded-full ${
-              // Indeterminate during processing, because nothing here can
-              // measure a transcription in progress and a bar that keeps
-              // creeping would be inventing the number.
-              row.phase === "processing" ? "w-full animate-pulse bg-sky-400" : "bg-amber-400"
-            }`}
-            style={row.phase === "uploading" ? { width: `${Math.max(pct, 2)}%` } : undefined}
+        <div className="mt-1">
+          {/* Upload is measurable here; everything after it is measured by the
+              SERVER, which reports real stage boundaries. This used to be an
+              indeterminate pulse with the comment "nothing here can measure a
+              transcription" — true of the browser, not of the job record. */}
+          <StageProgress
+            compact
+            percent={
+              row.phase === "uploading"
+                ? pct
+                : job
+                  ? job.percent || null
+                  : null
+            }
+            stage={job?.stage || PHASE_LABEL[row.phase]}
+            updatedAt={row.phase === "processing" ? (job?.at ?? null) : null}
+            startedAt={row.startedAt}
           />
         </div>
       )}

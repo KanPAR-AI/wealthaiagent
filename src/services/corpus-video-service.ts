@@ -408,6 +408,25 @@ export async function archiveCorpus(
   });
 }
 
+/** One row of the server's own job queue. The stage names come from
+ *  `_JobTrail` at the real stage boundaries, so a bar driven by these cannot
+ *  animate over work that has died — which a timer-driven one will. */
+export interface IngestQueueRow {
+  job_id: string;
+  corpus_id: string;
+  source: string;
+  stage: string;
+  percent: number;
+  state: "queued" | "processing" | "uploaded" | "failed" | string;
+  at: string | null;
+}
+
+export async function fetchIngestQueue(
+  corpusId: string,
+): Promise<{ queue: IngestQueueRow[]; active: number }> {
+  return call(`/${encodeURIComponent(corpusId)}/ingest/queue`);
+}
+
 export async function fetchCorpora(): Promise<{ corpora: CorpusListing[] }> {
   return call("");
 }

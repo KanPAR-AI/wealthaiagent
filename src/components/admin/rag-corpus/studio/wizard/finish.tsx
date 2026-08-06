@@ -31,6 +31,7 @@ import { AlertTriangle, Check, Loader2, Rocket } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ReadersPicker } from "../readers-picker";
+import { StageProgress } from "../progress";
 import {
   fetchSources,
   publishCorpus,
@@ -295,10 +296,12 @@ export function PublishStep({
 }) {
   const [result, setResult] = useState<(PublishResult & { status?: string }) | null>(null);
   const [busy, setBusy] = useState(false);
+  const [startedAt, setStartedAt] = useState(0);
   const [error, setError] = useState("");
 
   const go = useCallback(async () => {
     setBusy(true);
+      setStartedAt(Date.now());
     setError("");
     try {
       setResult(await publishCorpus(corpusId));
@@ -340,6 +343,41 @@ export function PublishStep({
             </>
           )}
         </Button>
+      )}
+
+      {/* Publish is ONE blocking request that embeds every chunk, writes the
+          vectors, verifies retrieval and runs the evaluation — minutes on a
+          large corpus, with no progress reported back. So: an indeterminate
+          bar and an elapsed clock, never a percentage, and the four things it
+          is doing listed so the wait is legible rather than merely long.
+
+          The steps are NOT walked as if we knew which one is current. That
+          would be the dashboard's five-minute estimate all over again, in a
+          new place. */}
+      {busy && !result && (
+        <div className="rounded-lg border border-border px-3 py-2.5">
+          <StageProgress
+            label="Publishing"
+            stage="this can take a few minutes on a large corpus"
+            startedAt={startedAt}
+          />
+          <ul className="mt-2 space-y-0.5">
+            {[
+              "Embedding every chunk",
+              "Writing the vectors",
+              "Verifying an agent can retrieve",
+              "Running the corpus evaluation",
+            ].map((step) => (
+              <li
+                key={step}
+                className="flex items-center gap-1.5 text-[11px] text-muted-foreground"
+              >
+                <span className="h-1 w-1 rounded-full bg-current opacity-50" />
+                {step}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {error && <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>}
