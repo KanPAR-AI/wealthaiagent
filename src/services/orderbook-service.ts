@@ -121,6 +121,21 @@ export const fetchOutbox = () =>
 export const markOutboxSent = (messageId: string) =>
   call(`/outbox/${messageId}/mark-sent`, { method: "POST" });
 
+export interface PaymentSuggestion {
+  suggestion_id: string;
+  amount: number;
+  payer: string;
+  raw: string;
+  candidates: { order_id: string; customer_name: string; outstanding: number; why: string }[];
+}
+export const submitAlert = (text: string) =>
+  call("/alerts", { method: "POST", body: JSON.stringify({ text }) }) as Promise<PaymentSuggestion>;
+export const confirmMatch = (suggestionId: string, orderId: string) =>
+  call(`/alerts/${suggestionId}/confirm`, { method: "POST", body: JSON.stringify({ order_id: orderId }) });
+export const dismissMatch = (suggestionId: string) =>
+  call(`/alerts/${suggestionId}/dismiss`, { method: "POST" });
+export const exportCsvUrl = () => "/orderbook/export.csv";
+
 export const compileRule = (nl: string) =>
   call("/rules/compile", { method: "POST", body: JSON.stringify({ nl }) }) as
   Promise<{ rule?: Rule; read_back?: string; clarify?: string; error?: string;

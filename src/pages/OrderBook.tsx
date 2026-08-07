@@ -242,6 +242,32 @@ function ReviewScreen({ refresh, bump }: { refresh: number; bump: () => void }) 
     fetchOutbox().then((r) => setToSend(r.pending)).catch(() => undefined);
   }, [refresh]);
 
+  const [alertText, setAlertText] = useState("");
+  const [suggestion, setSuggestion] = useState<import("@/services/orderbook-service").PaymentSuggestion | null>(null);
+
+  const submitAlertText = async () => {
+    try {
+      const { submitAlert } = await import("@/services/orderbook-service");
+      const s = await submitAlert(alertText);
+      setSuggestion(s); setAlertText("");
+      if (!s.candidates.length) toast.info("Parsed, but no matching outstanding order");
+    } catch (e) {
+      toast.error(String(e));
+    }
+  };
+
+  const applyMatch = async (orderId: string) => {
+    if (!suggestion) return;
+    try {
+      const { confirmMatch } = await import("@/services/orderbook-service");
+      await confirmMatch(suggestion.suggestion_id, orderId);
+      toast.success(`₹${suggestion.amount} applied to ${orderId}`);
+      setSuggestion(null); bump();
+    } catch (e) {
+      toast.error(String(e));
+    }
+  };
+
   const submitPrice = async () => {
     if (!pricing || !amount) return;
     try {
@@ -278,6 +304,29 @@ function ReviewScreen({ refresh, bump }: { refresh: number; bump: () => void }) 
             </div>
           ))}
         </>
+      )}
+
+      <h2 className="khata-section-title">Match a payment</h2>
+      <textarea className="khata-textarea" rows={2} value={alertText}
+                placeholder="Paste a UPI / bank SMS — I'll suggest which order it pays. You confirm; nothing is applied automatically."
+                onChange={(e) => setAlertText(e.target.value)} />
+      <button className="khata-ghost" disabled={!alertText.trim()}
+              onClick={submitAlertText}>Find the order</button>
+      {suggestion && (
+        <div className="khata-rule" style={{ marginTop: 10 }}>
+          <div className="nl">{rupee(suggestion.amount)} from {suggestion.payer || "?"}</div>
+          {suggestion.candidates.map((c) => (
+            <div className="foot" key={c.order_id}>
+              <button className="khata-ghost" onClick={() => applyMatch(c.order_id)}>
+                ✓ {c.customer_name} · {c.order_id} ({rupee(c.outstanding)} due)
+              </button>
+              <span style={{ fontSize: 10.5, color: "var(--ink-faint)" }}>{c.why}</span>
+            </div>
+          ))}
+          {!suggestion.candidates.length && (
+            <div className="rb">No outstanding order matches — record it from Dues if it's real.</div>
+          )}
+        </div>
       )}
 
       <h2 className="khata-section-title">Waiting on you</h2>
