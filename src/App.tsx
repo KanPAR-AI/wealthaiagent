@@ -10,6 +10,7 @@ import Logs from "./pages/Logs";
 import Trade from "./pages/Trade";
 import Debug from "./pages/Debug";
 import MealPlan from "./pages/MealPlan";
+import OrderBook from "./pages/OrderBook";
 import PWAInstall from "./components/PWAInstall";
 import LoginPage from "./pages/Login";
 import Admin from "./pages/Admin";
@@ -71,6 +72,7 @@ const App = () => (
           <Route path="/chat/:chatid" element={<Chat />} />
           <Route path="/mealplan/:chatid" element={<MealPlan />} />
           <Route path="/settings" element={<ProtectedRoute requireAuth><Settings /></ProtectedRoute>} />
+          <Route path="/orderbook" element={<ProtectedRoute requireAuth><OrderBook /></ProtectedRoute>} />
         </Route>
         <Route path="/trade" element={<Trade />} />
         <Route path="/debug/:chatid" element={<Debug />} />

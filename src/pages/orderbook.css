@@ -1,0 +1,578 @@
+/* ORDER BOOK — "the modern khata".
+   A merchant's ledger, digitized: warm paper, iron-gall ink, the classic
+   vermillion margin rule, amounts in ledger mono, PAID as a rubber stamp.
+   Everything scoped under .khata so the app's theme is untouched. */
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..900;1,9..144,400..700&family=Instrument+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap");
+
+.khata {
+  --paper: #f6f1e6;
+  --paper-raised: #fbf8f0;
+  --ink: #221b12;
+  --ink-soft: #5c5243;
+  --ink-faint: #8a8071;
+  --rule: rgba(34, 27, 18, 0.12);
+  --margin-red: #c73e1d;
+  --stamp-green: #1e6f50;
+  --gold: #b98a2f;
+  --font-display: "Fraunces", "Georgia", serif;
+  --font-ui: "Instrument Sans", "Helvetica Neue", sans-serif;
+  --font-money: "Spline Sans Mono", ui-monospace, monospace;
+
+  font-family: var(--font-ui);
+  color: var(--ink);
+  min-height: 100dvh;
+  background:
+    /* the vermillion margin rule, like every khata page */
+    linear-gradient(to right, transparent 0 26px, var(--margin-red) 26px 28px, transparent 28px),
+    /* faint ruled lines */
+    repeating-linear-gradient(to bottom, transparent 0 35px, var(--rule) 35px 36px),
+    /* paper grain */
+    radial-gradient(1200px 500px at 80% -10%, rgba(185, 138, 47, 0.10), transparent 60%),
+    var(--paper);
+}
+@media (min-width: 768px) {
+  .khata {
+    background:
+      linear-gradient(to right, transparent 0 64px, var(--margin-red) 64px 66px, transparent 66px),
+      repeating-linear-gradient(to bottom, transparent 0 35px, var(--rule) 35px 36px),
+      radial-gradient(1200px 500px at 80% -10%, rgba(185, 138, 47, 0.10), transparent 60%),
+      var(--paper);
+  }
+}
+
+.khata * { box-sizing: border-box; }
+.khata ::selection { background: rgba(199, 62, 29, 0.22); }
+
+/* ── masthead ── */
+.khata-head {
+  padding: 20px 20px 10px 44px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+@media (min-width: 768px) { .khata-head { padding-left: 92px; padding-top: 28px; } }
+.khata-title {
+  font-family: var(--font-display);
+  font-weight: 640;
+  font-size: clamp(26px, 6vw, 40px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.khata-title .khata-devanagari {
+  display: block;
+  font-size: 0.34em;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  color: var(--margin-red);
+  margin-top: 6px;
+  text-transform: uppercase;
+}
+.khata-owing {
+  text-align: right;
+  animation: khata-settle 0.5s ease-out both;
+}
+.khata-owing .amt {
+  font-family: var(--font-money);
+  font-size: clamp(20px, 5vw, 30px);
+  font-weight: 600;
+  color: var(--margin-red);
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+.khata-owing .lbl {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ── tab bar: bottom on phones (thumb reach), top on desktop ── */
+.khata-tabs {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 40;
+  display: flex;
+  background: color-mix(in srgb, var(--ink) 96%, transparent);
+  color: var(--paper);
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 24px rgba(34, 27, 18, 0.25);
+}
+.khata-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 2px 5px;
+  border: 0;
+  background: none;
+  color: color-mix(in srgb, var(--paper) 62%, transparent);
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.khata-tab[data-active="true"] {
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.10);
+}
+.khata-tab[data-active="true"] svg { color: #e8b04b; }
+@media (min-width: 768px) {
+  .khata-tabs {
+    position: sticky;
+    top: 0;
+    bottom: auto;
+    margin: 0 24px 0 92px;
+    border-radius: 14px;
+    max-width: 560px;
+    box-shadow: 0 10px 30px rgba(34, 27, 18, 0.28);
+  }
+}
+
+/* ── content shell ── */
+.khata-body {
+  padding: 8px 16px 96px 40px;
+  max-width: 1040px;
+}
+@media (min-width: 768px) { .khata-body { padding: 20px 24px 60px 92px; } }
+
+.khata-section-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  margin: 18px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.khata-section-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--rule), transparent);
+}
+
+/* ── the plan strip ── */
+.khata-plan {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 4px 2px 10px;
+  -webkit-overflow-scrolling: touch;
+}
+.khata-plan::-webkit-scrollbar { display: none; }
+.khata-plan-card {
+  scroll-snap-align: start;
+  min-width: 240px;
+  max-width: 300px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 14px;
+  padding: 13px 14px;
+  box-shadow: 4px 5px 0 rgba(199, 62, 29, 0.85);
+  animation: khata-settle 0.45s ease-out both;
+}
+.khata-plan-card + .khata-plan-card { animation-delay: 0.06s; }
+.khata-plan-card .t {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.khata-plan-card .d {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--paper) 72%, transparent);
+  line-height: 1.45;
+}
+.khata-plan-card .copy {
+  margin-top: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #e8b04b;
+  background: none;
+  border: 1px solid rgba(232, 176, 75, 0.5);
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+/* ── pipeline board ── */
+.khata-board {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+.khata-col {
+  scroll-snap-align: start;
+  min-width: min(78vw, 300px);
+  flex: 1;
+}
+@media (min-width: 1024px) { .khata-col { min-width: 0; } }
+.khata-col-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  padding: 4px 2px 8px;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 10px;
+}
+.khata-col-head .n {
+  font-family: var(--font-money);
+  color: var(--margin-red);
+}
+
+/* an order slip */
+.khata-slip {
+  position: relative;
+  background: var(--paper-raised);
+  border: 1px solid rgba(34, 27, 18, 0.14);
+  border-radius: 3px 12px 12px 3px;
+  border-left: 3px solid var(--margin-red);
+  padding: 11px 12px 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 6px rgba(34, 27, 18, 0.08);
+  animation: khata-settle 0.35s ease-out both;
+}
+.khata-slip .who {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+}
+.khata-slip .what {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin: 3px 0 6px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.khata-slip .what a { color: var(--margin-red); text-decoration: underline dotted; }
+.khata-slip .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.khata-amt {
+  font-family: var(--font-money);
+  font-weight: 600;
+  font-size: 14.5px;
+  font-variant-numeric: tabular-nums;
+}
+.khata-advance {
+  border: 1.5px solid var(--ink);
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 4px 11px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, transform 0.1s;
+}
+.khata-advance:active { transform: scale(0.96); }
+.khata-advance:hover { background: var(--ink); color: var(--paper); }
+
+/* rubber stamps */
+.khata-stamp {
+  font-family: var(--font-money);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  padding: 2px 7px;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
+  transform: rotate(-4deg);
+  opacity: 0.9;
+}
+.khata-stamp.paid { color: var(--stamp-green); }
+.khata-stamp.partial { color: var(--gold); }
+.khata-stamp.unpaid { color: var(--margin-red); }
+
+/* ── receivables ── */
+.khata-buckets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.khata-bucket {
+  background: var(--paper-raised);
+  border: 1px solid rgba(34, 27, 18, 0.14);
+  border-radius: 10px;
+  padding: 9px 8px;
+  text-align: center;
+}
+.khata-bucket.hot { border-color: var(--margin-red); background: rgba(199, 62, 29, 0.07); }
+.khata-bucket .b {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+}
+.khata-bucket .v {
+  font-family: var(--font-money);
+  font-weight: 600;
+  font-size: clamp(12px, 3.4vw, 16px);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.khata-due-row {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--paper-raised);
+  border: 1px solid rgba(34, 27, 18, 0.14);
+  border-left: 3px solid var(--margin-red);
+  border-radius: 3px 12px 12px 3px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  transition: transform 0.1s, box-shadow 0.12s;
+}
+.khata-due-row:active { transform: scale(0.985); }
+.khata-due-row .who { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
+.khata-due-row .meta { font-size: 11.5px; color: var(--ink-faint); margin-top: 2px; }
+.khata-due-row .owed {
+  font-family: var(--font-money);
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--margin-red);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── mark-paid sheet ── */
+.khata-sheet-back {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(24, 18, 10, 0.55);
+  backdrop-filter: blur(2px);
+  animation: khata-fade 0.18s ease-out both;
+}
+.khata-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 61;
+  background: var(--paper);
+  border-radius: 20px 20px 0 0;
+  border-top: 3px solid var(--margin-red);
+  padding: 18px 20px calc(20px + env(safe-area-inset-bottom));
+  animation: khata-rise 0.24s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  max-width: 560px;
+  margin: 0 auto;
+}
+.khata-sheet h3 { font-family: var(--font-display); margin: 0 0 4px; font-size: 19px; }
+.khata-sheet .sub { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 14px; }
+.khata-modes { display: flex; gap: 8px; margin: 10px 0 16px; }
+.khata-mode {
+  flex: 1;
+  border: 1.5px solid rgba(34, 27, 18, 0.3);
+  background: none;
+  border-radius: 10px;
+  padding: 9px 0;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+.khata-mode[data-on="true"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+.khata-primary {
+  width: 100%;
+  border: 0;
+  background: var(--margin-red);
+  color: #fff;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 15px;
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(199, 62, 29, 0.35);
+  transition: transform 0.1s;
+}
+.khata-primary:active { transform: scale(0.98); }
+.khata-primary:disabled { opacity: 0.5; }
+.khata-input, .khata-textarea {
+  width: 100%;
+  border: 1.5px solid rgba(34, 27, 18, 0.25);
+  border-radius: 10px;
+  background: var(--paper-raised);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--ink);
+  padding: 11px 12px;
+  margin-bottom: 10px;
+}
+.khata-input:focus, .khata-textarea:focus { outline: 2px solid var(--margin-red); outline-offset: 0; }
+.khata-amount-input { font-family: var(--font-money); font-size: 20px; font-weight: 600; }
+
+/* ── numbers ── */
+.khata-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (min-width: 640px) { .khata-stats { grid-template-columns: repeat(4, 1fr); } }
+.khata-stat {
+  background: var(--paper-raised);
+  border: 1px solid rgba(34, 27, 18, 0.14);
+  border-radius: 12px;
+  padding: 13px 13px 11px;
+}
+.khata-stat .v {
+  font-family: var(--font-display);
+  font-weight: 640;
+  font-size: clamp(20px, 5.5vw, 27px);
+  font-variant-numeric: tabular-nums;
+}
+.khata-stat .l {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-top: 3px;
+}
+.khata-line-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 2px;
+  border-bottom: 1px dashed var(--rule);
+  font-size: 13px;
+}
+.khata-line-item .m { font-family: var(--font-money); font-variant-numeric: tabular-nums; }
+
+/* ── rules (loops) ── */
+.khata-rule {
+  background: var(--paper-raised);
+  border: 1px solid rgba(34, 27, 18, 0.14);
+  border-radius: 12px;
+  padding: 13px 14px;
+  margin-bottom: 10px;
+}
+.khata-rule .nl { font-family: var(--font-display); font-size: 14.5px; font-weight: 600; }
+.khata-rule .rb { font-size: 12px; color: var(--ink-soft); margin-top: 5px; line-height: 1.5; }
+.khata-rule .foot { display: flex; align-items: center; gap: 10px; margin-top: 9px; }
+.khata-toggle {
+  width: 42px; height: 24px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink);
+  background: none;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.khata-toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 17px; height: 17px;
+  border-radius: 50%;
+  background: var(--ink);
+  transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+.khata-toggle[data-on="true"] { background: var(--stamp-green); border-color: var(--stamp-green); }
+.khata-toggle[data-on="true"]::after { background: #fff; transform: translateX(18px); }
+.khata-ghost {
+  border: 1.5px solid rgba(34, 27, 18, 0.35);
+  background: none;
+  color: var(--ink-soft);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.khata-preview {
+  white-space: pre-wrap;
+  font-family: var(--font-money);
+  font-size: 12px;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 10px;
+  padding: 12px 13px;
+  margin-top: 10px;
+  line-height: 1.55;
+}
+.khata-clarify {
+  border-left: 3px solid var(--gold);
+  background: rgba(185, 138, 47, 0.1);
+  border-radius: 4px 10px 10px 4px;
+  padding: 11px 13px;
+  font-size: 13.5px;
+  margin-top: 10px;
+}
+
+/* ── review ── */
+.khata-review-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(185, 138, 47, 0.08);
+  border: 1px dashed var(--gold);
+  border-radius: 10px;
+  padding: 11px 13px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+/* ── FAB: new entry ── */
+.khata-fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  z-index: 50;
+  width: 54px; height: 54px;
+  border-radius: 16px;
+  border: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 4px 5px 0 rgba(199, 62, 29, 0.9);
+  transition: transform 0.12s;
+}
+.khata-fab:active { transform: scale(0.92); }
+@media (min-width: 768px) { .khata-fab { bottom: 28px; } }
+
+.khata-empty {
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 13px;
+  padding: 26px 10px;
+  font-style: italic;
+  font-family: var(--font-display);
+}
+
+@keyframes khata-settle {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes khata-rise {
+  from { transform: translateY(30%); }
+  to { transform: none; }
+}
+@keyframes khata-fade { from { opacity: 0; } to { opacity: 1; } }
