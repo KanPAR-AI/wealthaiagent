@@ -28,7 +28,15 @@ export interface LoopSummary {
   status: "draft" | "active" | "archived";
   version: number;
   trigger: string;
+  cron?: string | null;
+  description?: string;
   updated_at?: string;
+  // Layer facts for the fleet stack badges (docs/37 §2 thumbnail mode).
+  steps?: number;
+  checks?: number;
+  suite_cases?: number;
+  ai_drafted?: number;
+  ai_reviewed?: number;
 }
 
 export interface LoopDetail {
@@ -48,8 +56,11 @@ export interface RunSummary {
   finished_at?: string | null;
 }
 
-export const compileSop = (sop: string) =>
-  loopsFetch("/loops/compile", { method: "POST", body: JSON.stringify({ sop }) });
+export const compileSop = (sop: string, layerHints?: Record<string, any>) =>
+  loopsFetch("/loops/compile", {
+    method: "POST",
+    body: JSON.stringify(layerHints ? { sop, layer_hints: layerHints } : { sop }),
+  });
 
 // "Draft with AI" — expand a one-line goal into full SOP prose (pre-compile).
 export const draftSop = (goal: string): Promise<{ status: string; sop: string }> =>
@@ -72,6 +83,17 @@ export const updateLoopSpec = (
   loopsFetch(`/loops/${loopId}/spec`, {
     method: "PUT",
     body: JSON.stringify({ spec, change_note: changeNote }),
+  });
+
+// Mark AI-drafted elements human-reviewed (docs/37 §4). Metadata only — no
+// version bump.
+export const reviewLoopElements = (
+  loopId: string,
+  targets: Array<{ kind: "step" | "check"; id?: string; index?: number }>,
+): Promise<{ reviewed: number; loop: Record<string, any> }> =>
+  loopsFetch(`/loops/${loopId}/review`, {
+    method: "PUT",
+    body: JSON.stringify({ targets }),
   });
 
 export const setLoopStatus = (loopId: string, status: string) =>
@@ -260,6 +282,7 @@ export interface LoopsOverview {
     active_runs: number;
     awaiting_approval: { run_id: string; created_at?: string }[];
     recent_cost_usd: number;
+    recent_runs?: { run_id: string; verdict?: string | null; status: string }[];
     last_run: { status: string; exit_reason?: string; created_at?: string } | null;
   }[];
   totals: { awaiting_approval: number; active_runs: number; recent_cost_usd: number };

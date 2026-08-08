@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { RunVerdictStrip, StackThumbnail } from "./loop-stack";
+import { LoopStackSection, RunStackSection } from "./loop-stack-section";
+import { LoopCreateWizard } from "./loop-create-wizard";
+import { buildDiagramModel } from "@/lib/loop-stack/model";
 import {
   JarvisChip, clearJarvisScreenContext, publishJarvisScreenContext,
 } from "@/components/admin/jarvis/jarvis-panel";
@@ -32,8 +36,8 @@ function appOf(tool: string): string {
 import {
   EditReview, EvalCase, LoopSummary, LoopVersion, LoopsOverview, RegressionReport,
   RunSummary,
-  addCase, addRunToSuite, approveRun, compareEvalRuns, compileSop, createLoop, draftSop,
-  createSuite, deleteCase, deleteIntegration, deleteLoop, getEvalRun, getLoop,
+  addCase, addRunToSuite, approveRun, compareEvalRuns, compileSop,
+  deleteCase, deleteIntegration, deleteLoop, getEvalRun, getLoop,
   getOverview, getRun, getSuite, listEvalRuns, listIntegrations, listLoops,
   listRuns, listSuites, listVersions, rejectRun, restoreVersion, resumeEvalRun, signalEvent, fixLoop, FixResult, suggestIntegration,
   reviewEdit, runCandidateSuite, runSuite, setIntegration, setLoopStatus,
@@ -142,8 +146,9 @@ export function LoopsView({ initialLoopId }: { initialLoopId?: string } = {}) {
       {error && <p className="text-sm text-destructive mb-3">{error}</p>}
 
       {showCompile && (
-        <CompilePanel
+        <LoopCreateWizard
           onDone={(loopId) => { setShowCompile(false); refresh(); if (loopId) setSelected(loopId); }}
+          onCancel={() => setShowCompile(false)}
         />
       )}
 
@@ -159,127 +164,59 @@ export function LoopsView({ initialLoopId }: { initialLoopId?: string } = {}) {
             <button
               key={l.loop_id}
               onClick={() => setSelected(l.loop_id)}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 text-left"
+              className="w-full flex flex-col gap-2 px-4 py-3 hover:bg-muted/50 text-left"
             >
-              <ShieldCheck size={16} className="text-muted-foreground shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{l.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  {l.loop_id} · v{l.version} · trigger: {l.trigger}
-                  {ov ? <> · ${ov.recent_cost_usd.toFixed(3)}</> : null}
+              <div className="flex w-full items-center gap-3">
+                <ShieldCheck size={16} className="text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">{l.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {l.description || l.loop_id} · v{l.version}
+                    {ov ? <> · ${ov.recent_cost_usd.toFixed(3)}</> : null}
+                  </div>
                 </div>
+                {ov && ov.awaiting_approval.length > 0 && (
+                  <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-500/15 text-amber-600">
+                    🔔 {ov.awaiting_approval.length} to approve
+                  </span>
+                )}
+                {ov && ov.active_runs > 0 && (
+                  <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-500/15 text-blue-600">
+                    {ov.active_runs} running
+                  </span>
+                )}
+                <Badge text={l.status} />
               </div>
-              {ov && ov.awaiting_approval.length > 0 && (
-                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-500/15 text-amber-600">
-                  🔔 {ov.awaiting_approval.length} to approve
+              {/* Layer badges (docs/37 thumbnail mode) — real layers only, never planned features. */}
+              <StackThumbnail model={buildDiagramModel(
+                { loop_id: l.loop_id, name: l.name, status: l.status, version: l.version,
+                  trigger: { type: (l.trigger as any) || "manual", cron: l.cron },
+                  steps: Array.from({ length: l.steps || 0 }, (_, i) => ({ id: `s${i}`, kind: "llm" as const })),
+                  exit: { checks: Array.from({ length: l.checks || 0 }, () => ({ kind: "assertion" as const, field: "x", op: "not_empty" })) } },
+                l.suite_cases ? { cases: l.suite_cases, trials: 3 } : null,
+              )} />
+              {ov && (ov.recent_runs || []).length > 0 && (
+                <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <RunVerdictStrip runs={ov.recent_runs || []} />
+                  {(() => {
+                    const rr = ov.recent_runs || [];
+                    const p = rr.filter((r) => r.verdict === "passed").length;
+                    const f = rr.filter((r) => r.verdict === "failed").length;
+                    const nr = rr.filter((r) => r.verdict === "needs_review").length;
+                    return <>{p} passed{nr ? ` · ${nr} review` : ""}{f ? ` · ${f} failed` : ""}</>;
+                  })()}
                 </span>
               )}
-              {ov && ov.active_runs > 0 && (
-                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-500/15 text-blue-600">
-                  {ov.active_runs} running
+              {(l.ai_drafted || 0) > (l.ai_reviewed || 0) && (
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span aria-hidden className="size-2 rounded-full bg-violet-500/80" />
+                  {l.ai_reviewed} of {l.ai_drafted} AI-drafted parts reviewed
                 </span>
               )}
-              <Badge text={l.status} />
             </button>
           );
         })}
       </div>
-    </div>
-  );
-}
-
-// ── Compile from prose ─────────────────────────────────────────────────
-
-function CompilePanel({ onDone }: { onDone: (loopId?: string) => void }) {
-  const [sop, setSop] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  // "Draft with AI": a one-line goal → full SOP prose written into the textarea.
-  const [goal, setGoal] = useState("");
-  const [drafting, setDrafting] = useState(false);
-
-  const draftWithAi = async () => {
-    if (goal.trim().length < 5) return;
-    setDrafting(true); setErr(null);
-    try {
-      const { sop: drafted } = await draftSop(goal.trim());
-      setSop(drafted);   // fill the editable box — the human reviews before compiling
-    } catch (e: any) {
-      setErr(e.message || "Draft failed — try rephrasing the goal.");
-    } finally {
-      setDrafting(false);
-    }
-  };
-
-  // Compile AND persist as a draft in one step. Previously "Compile" only
-  // produced an in-memory preview and a reload before the separate "Save"
-  // click lost the whole spec. Persisting immediately means a compiled
-  // procedure always survives reload (it's a draft — reviewable + deletable).
-  const compileAndSave = async () => {
-    setBusy(true); setErr(null);
-    try {
-      const result = await compileSop(sop);
-      const loopId = result.spec.loop_id;
-      try {
-        await createLoop(result.spec);
-      } catch (e: any) {
-        // Recompiling the same SOP yields the same loop_id → 409; just open it.
-        if (!String(e?.message || "").toLowerCase().includes("already exists")) throw e;
-      }
-      // Seed the eval suite from the compiler's spec-derived cases.
-      if (result.eval_cases?.length) {
-        await createSuite(loopId, result.eval_cases, 2, 0.8).catch(() => {});
-      }
-      onDone(loopId);   // navigates to the (persisted) detail view
-    } catch (e: any) { setErr(e.message); setBusy(false); }
-  };
-
-  return (
-    <div className="border border-border rounded-lg p-4 mb-4 bg-muted/30">
-      {/* Draft with AI: describe the goal in one line, let the assistant write
-          the full SOP into the box below (you still review + edit + compile). */}
-      <div className="mb-3 rounded-md border border-violet-500/30 bg-violet-500/5 p-3">
-        <p className="text-sm font-medium mb-1.5 flex items-center gap-1.5">
-          <Sparkles size={14} className="text-violet-500" /> Draft with AI
-        </p>
-        <div className="flex gap-2">
-          <input
-            value={goal}
-            onChange={(e) => setGoal(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") draftWithAi(); }}
-            disabled={drafting || busy}
-            placeholder='What should this procedure do? e.g. "chase overdue invoices every Friday"'
-            className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-          <Button size="sm" onClick={draftWithAi} disabled={goal.trim().length < 5 || drafting || busy}>
-            {drafting ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Sparkles size={14} className="mr-1" />}
-            {drafting ? "Drafting…" : "Draft"}
-          </Button>
-        </div>
-        <p className="text-[11px] text-muted-foreground mt-1.5">
-          Writes a full SOP into the box below — including trigger, approval gates, and “done”. Review &amp; edit before compiling.
-        </p>
-      </div>
-
-      <p className="text-sm font-medium mb-2">Describe the procedure — include what “done” means:</p>
-      <textarea
-        value={sop}
-        onChange={(e) => setSop(e.target.value)}
-        rows={sop ? 8 : 4}
-        placeholder='e.g. "Every Friday, list clients with unpaid invoices over 30 days. Draft polite reminders. Show me for approval, then email them. Done when every such client has been emailed. Slack me a summary."'
-        className="w-full rounded-md border border-border bg-background p-3 text-sm"
-      />
-      <div className="flex gap-2 mt-2">
-        <Button size="sm" onClick={compileAndSave} disabled={sop.trim().length < 20 || busy}>
-          {busy ? <Loader2 size={14} className="mr-1 animate-spin" /> : null}
-          {busy ? "Compiling & saving (≈1 min)…" : "Compile & save draft"}
-        </Button>
-        <Button size="sm" variant="ghost" onClick={() => onDone()} disabled={busy}>Cancel</Button>
-      </div>
-      <p className="text-[11px] text-muted-foreground mt-1">
-        Saved as a draft the moment it compiles — it won’t vanish on reload. Review, edit, then Activate (or delete) from the detail view.
-      </p>
-      {err && <p className="text-sm text-destructive mt-2">{err}</p>}
     </div>
   );
 }
@@ -807,6 +744,8 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
         <RunWatch loopId={loopId} loop={loop} onClose={() => { setWatching(false); refresh(); }} />
       )}
 
+      <LoopStackSection loop={loop} loopId={loopId} onChanged={refresh} />
+
       <ProcedureSection loop={loop} loopId={loopId} onChanged={refresh} />
 
       <PromptLab loop={loop} loopId={loopId} onChanged={refresh} />
@@ -951,6 +890,7 @@ function RunDetail({ loopId, runId, loop, onChanged }: { loopId: string; runId: 
 
   return (
     <div className="px-4 py-3 bg-muted/20 border-t border-border text-sm space-y-3">
+      {loop && <RunStackSection loop={loop} run={run} />}
       <div className="flex items-center gap-2 flex-wrap">
         <Badge text={run.status} />
         <VerdictBadge verdict={run.verdict} />
