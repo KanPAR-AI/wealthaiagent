@@ -34,4 +34,4 @@ export const FIREBASE_WEB_CLIENT_ID =
 // is registered as a URL scheme via the google-signin config plugin in
 // app.json — both must move together.
 export const GOOGLE_IOS_CLIENT_ID: string | null =
-  '388592327571-f23fuufpir7c1g7op9i4cearl23ihvs9.apps.googleusercontent.com';
+  '388592327571-377rtmeik0t65d6p1ril6dr0upkacbpl.apps.googleusercontent.com';

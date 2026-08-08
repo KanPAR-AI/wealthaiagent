@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>388592327571-f23fuufpir7c1g7op9i4cearl23ihvs9.apps.googleusercontent.com</string>
+	<string>388592327571-377rtmeik0t65d6p1ril6dr0upkacbpl.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.388592327571-f23fuufpir7c1g7op9i4cearl23ihvs9</string>
+	<string>com.googleusercontent.apps.388592327571-377rtmeik0t65d6p1ril6dr0upkacbpl</string>
 	<key>ANDROID_CLIENT_ID</key>
 	<string>388592327571-qgkesqstbdeig6nnrm6jahk9hon7tcah.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
@@ -15,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.yourfinadvisor.app</string>
+	<string>com.yourfinadvisor.mobile</string>
 	<key>PROJECT_ID</key>
 	<string>aiagentapi</string>
 	<key>STORAGE_BUCKET</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:388592327571:ios:d27445b106ceee0b35e666</string>
+	<string>1:388592327571:ios:83e034e615a19b6d35e666</string>
 </dict>
 </plist>

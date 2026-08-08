@@ -12,7 +12,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.yourfinadvisor.app",
+      "bundleIdentifier": "com.yourfinadvisor.mobile",
       "usesAppleSignIn": true,
       "supportsTablet": false,
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -58,7 +58,7 @@
       [
         "@react-native-google-signin/google-signin",
         {
-          "iosUrlScheme": "com.googleusercontent.apps.388592327571-f23fuufpir7c1g7op9i4cearl23ihvs9"
+          "iosUrlScheme": "com.googleusercontent.apps.388592327571-377rtmeik0t65d6p1ril6dr0upkacbpl"
         }
       ],
       [
