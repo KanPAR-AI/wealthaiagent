@@ -96,6 +96,27 @@ export const reviewLoopElements = (
     body: JSON.stringify({ targets }),
   });
 
+export interface LoopAssistantReply {
+  answer: string;
+  tool_calls: { name: string; arguments: Record<string, unknown>; result: unknown }[];
+}
+
+// The Loop Assistant (docs/38): loop-scoped or wizard-scoped (context).
+export const askLoopAssistant = (
+  question: string,
+  opts: { loopId?: string; history?: { role: string; content: string }[];
+          context?: Record<string, unknown> } = {},
+): Promise<LoopAssistantReply> =>
+  loopsFetch("/loops/assistant", {
+    method: "POST",
+    body: JSON.stringify({
+      question,
+      loop_id: opts.loopId || "",
+      history: opts.history || [],
+      context: opts.context ?? null,
+    }),
+  });
+
 export const setLoopStatus = (loopId: string, status: string) =>
   loopsFetch(`/loops/${loopId}/status`, {
     method: "PUT",

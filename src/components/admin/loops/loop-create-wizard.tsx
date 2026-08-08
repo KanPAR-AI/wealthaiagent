@@ -20,6 +20,7 @@ import { buildDiagramModel, LoopSpecT } from "@/lib/loop-stack/model";
 import { compileSop, createLoop, draftSop } from "@/services/loops-service";
 
 import { CronBuilder } from "./cron-builder";
+import { LoopAssistantPanel } from "./loop-assistant-panel";
 import { LoopStack, PlannedCapability } from "./loop-stack";
 
 // ── templates: layer presets only, no hidden behavior ────────────────────
@@ -157,7 +158,18 @@ export function LoopCreateWizard({ onDone, onCancel }: {
             </li>
           ))}
         </ol>
-        <Button variant="ghost" size="sm" className="ml-auto" onClick={onCancel}>Cancel</Button>
+        <span className="ml-auto flex items-center gap-2">
+          <LoopAssistantPanel
+            context={{
+              wizard_step: stepNames[step],
+              template,
+              sop: sop.slice(0, 3000),
+              layers,
+              compiled_problems: compiled?.problems ?? null,
+            }}
+          />
+          <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
+        </span>
       </div>
 
       {err && <p className="mb-3 text-sm text-destructive">{err}</p>}
