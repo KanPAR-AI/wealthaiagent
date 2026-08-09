@@ -21,6 +21,7 @@ import { compileSop, createLoop, draftSop } from "@/services/loops-service";
 
 import { CronBuilder } from "./cron-builder";
 import { LoopAssistantPanel } from "./loop-assistant-panel";
+import { LoopBugFlag } from "./loop-bug-flag";
 import { LoopStack, PlannedCapability } from "./loop-stack";
 
 // ── templates: layer presets only, no hidden behavior ────────────────────
@@ -159,6 +160,7 @@ export function LoopCreateWizard({ onDone, onCancel }: {
           ))}
         </ol>
         <span className="ml-auto flex items-center gap-2">
+          <LoopBugFlag context={{ wizard_step: stepNames[step], sop: sop.slice(0, 2000) }} />
           <LoopAssistantPanel
             context={{
               wizard_step: stepNames[step],

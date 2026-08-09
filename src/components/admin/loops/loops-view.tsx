@@ -16,6 +16,7 @@ import { RunVerdictStrip, StackThumbnail } from "./loop-stack";
 import { LoopStackSection, RunStackSection } from "./loop-stack-section";
 import { LoopCreateWizard } from "./loop-create-wizard";
 import { LoopAssistantPanel } from "./loop-assistant-panel";
+import { LoopBugFlag } from "./loop-bug-flag";
 import { buildDiagramModel } from "@/lib/loop-stack/model";
 import {
   JarvisChip, clearJarvisScreenContext, publishJarvisScreenContext,
@@ -113,6 +114,7 @@ export function LoopsView({ initialLoopId }: { initialLoopId?: string } = {}) {
           </p>
         </div>
         <div className="flex gap-2">
+          <LoopBugFlag />
           <LoopAssistantPanel />
           <Button variant="outline" size="sm" onClick={() => setShowIntegrations((s) => !s)}>
             Integrations
@@ -661,6 +663,7 @@ function LoopDetailView({ loopId, onBack }: { loopId: string; onBack: () => void
         <Badge text={loop.status} />
         <span className="text-xs text-muted-foreground">v{loop.version}</span>
         <div className="ml-auto flex gap-2">
+          <LoopBugFlag loopId={loopId} />
           <LoopAssistantPanel loopId={loopId} />
           {loop.status === "draft" && (
             <Button size="sm" disabled={busy || detail.problems.length > 0}
@@ -907,6 +910,7 @@ function RunDetail({ loopId, runId, loop, onChanged }: { loopId: string; runId: 
                 onClick={toSuite}>
           <Plus size={12} className="mr-1" /> Add to eval suite
         </Button>
+        <LoopBugFlag loopId={loopId} runId={runId} />
       </div>
 
       {run.pending_event && (

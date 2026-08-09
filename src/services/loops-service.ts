@@ -117,6 +117,23 @@ export const askLoopAssistant = (
     }),
   });
 
+// File a loops bug — the Loop Assistant gathers diagnostics + drafts the
+// report; lands in the same /admin/bugs pipeline (docs/38).
+export const reportLoopBug = (
+  description: string,
+  opts: { loopId?: string; runId?: string;
+          context?: Record<string, unknown> } = {},
+): Promise<{ id: string; description: string; diagnostics_attached: boolean }> =>
+  loopsFetch("/loops/bug-report", {
+    method: "POST",
+    body: JSON.stringify({
+      description,
+      loop_id: opts.loopId || "",
+      run_id: opts.runId || "",
+      context: opts.context ?? null,
+    }),
+  });
+
 export const setLoopStatus = (loopId: string, status: string) =>
   loopsFetch(`/loops/${loopId}/status`, {
     method: "PUT",
