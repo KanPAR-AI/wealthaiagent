@@ -35,6 +35,7 @@ export function MemoryTimeline() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [spans, setSpans] = useState<TimelineSpan[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!namespace || !predicate) {
@@ -57,7 +58,7 @@ export function MemoryTimeline() {
     return () => {
       alive = false;
     };
-  }, [namespace, predicate]);
+  }, [namespace, predicate, reloadKey]);
 
   // Compute a shared time domain for the bars (display geometry only, not a
   // memory semantic — validity windows themselves come from the backend).
@@ -82,7 +83,8 @@ export function MemoryTimeline() {
     );
   }
   if (status === "loading" || status === "idle") return <LoadingSkeleton rows={4} />;
-  if (status === "error") return <ErrorState message={error ?? undefined} />;
+  if (status === "error")
+    return <ErrorState message={error ?? undefined} onRetry={() => setReloadKey((k) => k + 1)} />;
   if (spans.length === 0) {
     return <EmptyState title="No history for this fact" description="This fact has no recorded value history (it may have been forgotten)." />;
   }
