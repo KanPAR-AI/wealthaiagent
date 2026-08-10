@@ -19,6 +19,8 @@ export function EmptyState({ title, description, icon: Icon = Inbox, action, cla
         className,
       )}
       data-testid="empty-state"
+      role="status"
+      aria-live="polite"
     >
       <Icon className="size-8 text-muted-foreground" aria-hidden="true" />
       <p className="text-sm font-medium">{title}</p>

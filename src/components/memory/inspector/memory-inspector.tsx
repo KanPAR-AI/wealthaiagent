@@ -83,6 +83,8 @@ export function MemoryInspector({ memoryId, open, onClose, onMutated }: MemoryIn
               key={t.key}
               role="tab"
               aria-selected={tab === t.key}
+              aria-controls="memory-inspector-panel"
+              id={`memory-inspector-tab-${t.key}`}
               disabled={!t.ready}
               onClick={() => {
                 setTab(t.key);
@@ -100,7 +102,12 @@ export function MemoryInspector({ memoryId, open, onClose, onMutated }: MemoryIn
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div
+          className="flex-1 overflow-y-auto px-5 py-4"
+          role="tabpanel"
+          id="memory-inspector-panel"
+          aria-labelledby={`memory-inspector-tab-${tab}`}
+        >
           {status === "loading" || status === "idle" ? (
             <LoadingSkeleton rows={8} />
           ) : status === "notfound" ? (
