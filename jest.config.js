@@ -47,7 +47,13 @@ export default {
     }],
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(nanoid|msw|@mswjs|until-async|outvariant|strict-event-emitter|is-node-process|headers-polyfill|@open-draft|@bundled-es-modules)/)'
+    // ESM-only packages in the msw dependency tree that Jest's CJS require()
+    // can't parse without a babel transform. `rettime` (pulled in by msw's
+    // core in newer 2.12.x builds — package.json "type":"module", ships only
+    // `.mjs`, no CJS build) is here for the same reason until-async/outvariant
+    // are: CI installs a newer msw within the ^2.7.0 range whose core imports
+    // rettime, so it must be transformed or the whole suite fails to parse.
+    'node_modules/(?!(nanoid|msw|@mswjs|until-async|outvariant|strict-event-emitter|is-node-process|headers-polyfill|@open-draft|@bundled-es-modules|rettime)/)'
   ],
   testMatch: [
     '**/__tests__/**/*.test.ts',

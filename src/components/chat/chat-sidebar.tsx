@@ -379,6 +379,20 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
       <SidebarFooter className="mt-auto flex-shrink-0">
         <SidebarSeparator />
         <SidebarMenu>
+          {/* Control Centre — discoverable entry point to the Memory OS
+              (/memory). Visible to any signed-in, non-anonymous user, which
+              mirrors the memory.read gate in MemoryRouteGuard/usePermissions
+              (ADR-001: advanced users/evaluators, not admin-only). */}
+          {isSignedIn && !user?.isAnonymous && (
+            <SidebarMenuItem>
+              <Link to="/memory" className="w-full">
+                <SidebarMenuButton tooltip="Control Centre — your memory">
+                  <Brain size={16} className="flex-shrink-0" />
+                  <span className="truncate">Control Centre</span>
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+          )}
           {isAdmin && (
             <>
               <SidebarMenuItem>
