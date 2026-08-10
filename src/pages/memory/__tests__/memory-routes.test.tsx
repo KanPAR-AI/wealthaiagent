@@ -146,13 +146,17 @@ describe("Memory route tree", () => {
     unmount();
   });
 
-  test("/memory/graph, /memory/inbox mount honest (non-mock) placeholders", async () => {
+  test("/memory/graph mounts the real graph screen; /memory/inbox is an honest placeholder", async () => {
     mockUseAuth.mockReturnValue(auth());
 
+    // UI-7 (d1612c4) replaced the /memory/graph placeholder with the real
+    // MemoryGraph. With no entity selected it renders its bounded-1-hop
+    // empty state, not a "Graph" placeholder heading.
     const { unmount: unmountGraph } = renderMemoryApp("/memory/graph");
-    expect(await screen.findByRole("heading", { name: "Graph" })).toBeInTheDocument();
+    expect(await screen.findByText(/Pick an entity to see its relationships/i)).toBeInTheDocument();
     unmountGraph();
 
+    // Inbox (UI-8) is still NOT_STARTED — an honest placeholder.
     renderMemoryApp("/memory/inbox");
     expect(await screen.findByRole("heading", { name: "Inbox" })).toBeInTheDocument();
   });
