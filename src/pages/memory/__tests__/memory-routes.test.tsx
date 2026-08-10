@@ -138,12 +138,16 @@ describe("Memory route tree", () => {
     expect(screen.getByRole("link", { name: "Debugger" })).toBeInTheDocument();
   });
 
-  test("/memory/timeline, /memory/graph, /memory/inbox mount honest (non-mock) placeholders", async () => {
+  test("/memory/timeline mounts the real timeline (guidance when no fact selected)", async () => {
     mockUseAuth.mockReturnValue(auth());
+    const { unmount } = renderMemoryApp("/memory/timeline");
+    // UI-5: real component; with no ?namespace&predicate it guides, not a mock
+    expect(await screen.findByText(/Pick a fact/i)).toBeInTheDocument();
+    unmount();
+  });
 
-    const { unmount: unmountTimeline } = renderMemoryApp("/memory/timeline");
-    expect(await screen.findByRole("heading", { name: "Timeline" })).toBeInTheDocument();
-    unmountTimeline();
+  test("/memory/graph, /memory/inbox mount honest (non-mock) placeholders", async () => {
+    mockUseAuth.mockReturnValue(auth());
 
     const { unmount: unmountGraph } = renderMemoryApp("/memory/graph");
     expect(await screen.findByRole("heading", { name: "Graph" })).toBeInTheDocument();

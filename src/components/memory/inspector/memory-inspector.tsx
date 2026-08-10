@@ -118,7 +118,17 @@ export function MemoryInspector({ memoryId, open, onClose, onMutated }: MemoryIn
             tab === "details" ? (
               <InspectorDetailsTab memory={memory} />
             ) : tab === "history" ? (
-              <InspectorHistoryTab history={history} />
+              <div className="space-y-3">
+                <InspectorHistoryTab history={history} />
+                {memory.predicate && (
+                  <a
+                    href={`/chataiagent/memory/timeline?namespace=${encodeURIComponent(memory.namespace)}&predicate=${encodeURIComponent(memory.predicate)}`}
+                    className="inline-block text-xs text-primary hover:underline"
+                  >
+                    View full timeline →
+                  </a>
+                )}
+              </div>
             ) : tab === "evidence" ? (
               <InspectorEvidenceTab memoryId={memory.id} />
             ) : tab === "raw" ? (

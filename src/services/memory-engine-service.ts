@@ -511,6 +511,28 @@ export async function getOverview(): Promise<MemoryOverview> {
   return memoryFetch("/overview");
 }
 
+export interface TimelineSpan {
+  id: string;
+  value: unknown;
+  text: string;
+  status: MemoryStatus;
+  source_type: SourceType;
+  valid_from: string | null;
+  valid_until: string | null;
+}
+
+/** MUI-1011 — temporal value-history of one fact slot (UI-5). Spans with
+ *  their validity windows, oldest→newest, from the engine's supersession
+ *  lineage. The client renders them; it never computes validity. */
+export async function getTimeline(
+  namespace: string,
+  predicate: string,
+  subject = "user",
+): Promise<{ spans: TimelineSpan[] }> {
+  const qs = new URLSearchParams({ namespace, predicate, subject });
+  return memoryFetch(`/timeline?${qs.toString()}`);
+}
+
 export async function getEvidenceForMemory(
   memoryId: string,
 ): Promise<{ evidence: EvidenceRow[] }> {
