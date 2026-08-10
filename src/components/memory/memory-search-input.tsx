@@ -1,12 +1,11 @@
 // components/memory/memory-search-input.tsx — SearchInput (§3-4).
 //
-// UI-0 SCOPE: this is the "⌘K stub" named in IMPLEMENTATION_PLAN — it wires
-// the URL plumbing (`q` query param, STATE_MODEL "Active filters ... URL")
-// and the ⌘K focus shortcut, but does not itself run hybrid search /
-// render match-reason results (§4, MUI-0006) — that's UI-1. The Memories
-// placeholder screen reads `q` from the URL and performs one real
-// round-trip search against it, so typing + Enter here does reach the
-// backend today; it just isn't yet the full search experience.
+// Wires the URL plumbing (`q` query param, STATE_MODEL "Active filters ...
+// URL") and the ⌘K focus shortcut. The Memories screen's MemoryBrowser
+// (UI-1, useMemoryBrowser) reads `q` from the URL and runs a debounced,
+// match-reason-carrying hybrid search against it — this component only
+// ever writes the URL, never fetches itself (COMPONENT_MODEL data-flow
+// rule).
 import { Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";

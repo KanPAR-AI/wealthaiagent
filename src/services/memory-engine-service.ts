@@ -332,6 +332,18 @@ export interface SearchQuery {
   at?: string;
   include_pinned?: boolean;
   limit?: number;
+  // ── UI-1 structured filter set (§5, API_MAPPING MUI-1001 gap) ──────────
+  // Candidate-set inclusion/exclusion ONLY, mirrored 1:1 from
+  // MemoryQuery/SearchBody (chatservice) — never a new ranking. `used_by`
+  // and `used_in_run` are DEFERRED to UI-6 (need the usage projection).
+  source_types?: SourceType[];
+  statuses?: MemoryStatus[];
+  types?: MemoryType[];
+  min_confidence?: number;
+  min_authority?: number;
+  created_after?: string;
+  created_before?: string;
+  entity_id?: string;
 }
 
 /** MUI-1001 — hybrid search/browse. This is the "raw search round-trips
@@ -350,6 +362,30 @@ export async function listMemoriesByNamespace(
   namespace: string,
 ): Promise<{ memories: MemoryRecord[] }> {
   return memoryFetch(`?namespace=${encodeURIComponent(namespace)}`);
+}
+
+export interface ListMemoriesQuery {
+  namespace?: string;
+  status?: MemoryStatus[];
+  type?: MemoryType[];
+  source_type?: SourceType[];
+}
+
+/** MUI-1001 (UI-1 browse-without-query) — structured listing across ALL
+ *  namespaces (namespace now optional server-side) with the same
+ *  status/type/source candidate filters `searchMemories` accepts. This is
+ *  the engine's OWN stable order (no ranking) — used by MemoryBrowser's
+ *  "Browse (unranked)" sort mode, never client-resorted. */
+export async function listMemories(
+  query: ListMemoriesQuery = {},
+): Promise<{ memories: MemoryRecord[] }> {
+  const params = new URLSearchParams();
+  if (query.namespace) params.set("namespace", query.namespace);
+  for (const s of query.status ?? []) params.append("status", s);
+  for (const t of query.type ?? []) params.append("type", t);
+  for (const st of query.source_type ?? []) params.append("source_type", st);
+  const qs = params.toString();
+  return memoryFetch(qs ? `?${qs}` : "");
 }
 
 /** MUI-1002 — get one. Foreign/unknown id 404s (existence not leaked). */
