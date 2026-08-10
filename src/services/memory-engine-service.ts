@@ -297,6 +297,53 @@ async function memoryFetch<T>(
 
 // ── EXISTS endpoints (API_MAPPING.md MUI-1001..1006, 1017..1020) ───────────
 
+// ── Memory Assistant (docs/39) — POST /memories/assistant ──────────────────
+// Own-scope conversational surface over the SAME gateway the rest of this
+// client uses. The Principal is derived server-side from the authenticated
+// session (never from this body — there is deliberately no scope/user_id
+// field). The assistant is READ-ONLY: it PROPOSES a forget/correct as an
+// inert `action` that the panel turns into an explicit confirm button which
+// calls the real, already-authorized correctMemory/forgetMemory endpoints.
+// It never mutates anything itself (verified end-to-end, MEM-SEC-001).
+
+export interface MemoryAssistantToolCall {
+  name: string;
+  arguments: Record<string, unknown>;
+  /** The gateway's own result for this call — shown in the trace so the
+   *  answer can be checked, not just trusted (same doctrine as the corpus/
+   *  loop assistants). */
+  result: unknown;
+}
+
+/** A PROPOSED mutation — never performed by the assistant. `memory_id` is
+ *  always an id a tool actually surfaced this turn (the backend drops a
+ *  proposal naming an unseen/fabricated id). The panel requires an explicit
+ *  user confirm before calling the real endpoint. */
+export interface MemoryAssistantAction {
+  type: "forget" | "correct";
+  memory_id: string;
+  /** present for `correct` — the proposed new value (inert until confirmed). */
+  value?: string;
+}
+
+export interface MemoryAssistantReply {
+  answer: string;
+  tool_calls: MemoryAssistantToolCall[];
+  actions: MemoryAssistantAction[];
+}
+
+/** Ask the Memory Assistant about the caller's OWN memory. `history` is the
+ *  prior turns (role/content) for follow-up context; the server clips it. */
+export async function askMemoryAssistant(
+  question: string,
+  history: { role: "user" | "assistant"; content: string }[] = [],
+): Promise<MemoryAssistantReply> {
+  return memoryFetch("/assistant", {
+    method: "POST",
+    body: JSON.stringify({ question, history }),
+  });
+}
+
 export interface CandidateBody {
   namespace: string;
   predicate: string;

@@ -7,6 +7,7 @@
 import { Outlet } from "react-router-dom";
 import { MemoryPageHeader } from "@/components/memory/memory-page-header";
 import { MemorySubNav } from "@/components/memory/memory-sub-nav";
+import { MemoryAssistantPanel } from "@/components/memory/memory-assistant-panel";
 import { useMemoryUiStore } from "@/store/memory-ui";
 
 export function MemoryPage() {
@@ -27,6 +28,10 @@ export function MemoryPage() {
           />
         )}
       </div>
+      {/* Own-scope conversational surface for every Memory screen: ask what's
+          remembered, debug retrieval, and propose (never perform) a forget/
+          correct. Mounted once at the /memory root, floats above the outlet. */}
+      <MemoryAssistantPanel />
     </div>
   );
 }
