@@ -445,6 +445,25 @@ export async function forgetMemory(memoryId: string): Promise<ForgetResult> {
   });
 }
 
+/** Q8 (RESOLVED)/UI-2 — broad-forget dry-run preview. The response shape
+ *  is DELIBERATELY different from ForgetResult (no `projection_purges`
+ *  key) so a caller can never mistake a preview for a completed forget —
+ *  the backend enforces this at the route (memories.py forget_by_filter).
+ *  Mutates NOTHING; safe to call before the user confirms. */
+export interface ForgetDryRunResult {
+  affected_count: number;
+  tombstone_keys_preview: string[];
+}
+
+export async function forgetDryRun(
+  body: ForgetBody,
+): Promise<ForgetDryRunResult> {
+  return memoryFetch("/forget", {
+    method: "POST",
+    body: JSON.stringify({ ...body, dry_run: true }),
+  });
+}
+
 /** MUI-1006 — lifecycle history, newest-first is a UI concern (the
  *  backend returns (memory_id, seq) order; callers sort for display). */
 export async function getMemoryHistory(

@@ -14,16 +14,18 @@ import MemoryInboxPage from "@/pages/memory/MemoryInboxPage";
 import MemoryDebuggerPage from "@/pages/memory/MemoryDebuggerPage";
 import MemoryOverviewPage from "@/pages/memory/MemoryOverviewPage";
 import { useAuth } from "@/hooks/use-auth";
-import { searchMemories } from "@/services/memory-engine-service";
+import { searchMemories, getMemory, getMemoryHistory } from "@/services/memory-engine-service";
 
 jest.mock("@/hooks/use-auth");
 jest.mock("@/services/memory-engine-service", () => {
   const actual = jest.requireActual("@/services/memory-engine-service");
-  return { ...actual, searchMemories: jest.fn() };
+  return { ...actual, searchMemories: jest.fn(), getMemory: jest.fn(), getMemoryHistory: jest.fn() };
 });
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockSearchMemories = searchMemories as jest.MockedFunction<typeof searchMemories>;
+const mockGetMemory = getMemory as jest.MockedFunction<typeof getMemory>;
+const mockGetHistory = getMemoryHistory as jest.MockedFunction<typeof getMemoryHistory>;
 
 function auth(overrides: Record<string, unknown> = {}) {
   return {
@@ -151,9 +153,27 @@ describe("Memory route tree", () => {
     expect(await screen.findByRole("heading", { name: "Inbox" })).toBeInTheDocument();
   });
 
-  test("deep link /memory/memories/:id mounts without 404ing (inspector arrives UI-2)", async () => {
+  test("deep link /memory/memories/:id opens the Inspector drawer (UI-2, UI-26)", async () => {
     mockUseAuth.mockReturnValue(auth());
+    mockGetMemory.mockResolvedValue({
+      id: "mem_abc123", tenant_id: "platform", owner_type: "user", owner_id: "u1",
+      owner_key: "user:u1", namespace: "travel", type: "preference",
+      subject: { kind: "literal", entity_id: null, text: "user" },
+      predicate: "seat_preference", value: "aisle", text: "Prefers aisle seats",
+      normalized_text: "prefers aisle seats", status: "active", authority: 0.98,
+      confidence: 1, importance: 0.6, source_type: "user_explicit",
+      valid_from: null, valid_until: null, observed_at: null, created_at: null,
+      updated_at: null, last_accessed_at: null, access_count: 0, version: 1,
+      supersedes: [], superseded_by: null, entity_ids: [], tags: [],
+      evidence_ids: [], qualifiers: {}, pinned: false, exact_tokens: [],
+      idempotency_keys: [], projections_pending: [], dedup_key: "d", policy: {}, metadata: {},
+    } as never);
+    mockGetHistory.mockResolvedValue({ events: [] } as never);
     renderMemoryApp("/memory/memories/mem_abc123");
-    expect(await screen.findByText(/mem_abc123/)).toBeInTheDocument();
+    // the Inspector drawer opens on the deep link and loads the record —
+    // asserted via the Details panel (its accessible name comes from the
+    // memory title, so we key on the rendered content, not a fixed label)
+    expect(await screen.findByTestId("inspector-details")).toBeInTheDocument();
+    expect(screen.getByText("aisle")).toBeInTheDocument();
   });
 });

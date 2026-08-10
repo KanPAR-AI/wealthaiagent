@@ -1,25 +1,44 @@
-// pages/memory/MemoryMemoriesPage.tsx — UI-1 SCOPE.
+// pages/memory/MemoryMemoriesPage.tsx — the canonical Memories screen
+// (COMPONENT_MODEL) + the Inspector deep-link target (ROUTES.md).
 //
-// Mounts the full MemoryBrowser (MemoryFilters left rail, MemoryToolbar,
-// MemoryList/MemoryCard) — COMPONENT_MODEL's canonical Memories screen.
-// Also serves as the deep-link target for `/memory/memories/:id`
-// (ROUTES.md) — the id is acknowledged here; the Inspector drawer that
-// actually opens on it ships in UI-2.
-import { useParams } from "react-router-dom";
+// `/memory/memories`      → browser.
+// `/memory/memories/:id`  → browser + Inspector drawer open on :id
+//                           (deep-linkable, UI-26). Closing the drawer
+//                           navigates back to the list, PRESERVING the URL
+//                           filters (STATE_MODEL) — the drawer is a route,
+//                           not local state, so refresh/deep-link work.
+import { useCallback } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { MemoryBrowser } from "@/components/memory/memory-browser";
+import { MemoryInspector } from "@/components/memory/inspector/memory-inspector";
 
 export default function MemoryMemoriesPage() {
   const { id } = useParams<{ id?: string }>();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Closing the inspector returns to the list with the SAME filters.
+  const closeInspector = useCallback(() => {
+    const qs = searchParams.toString();
+    navigate(`/memory/memories${qs ? `?${qs}` : ""}`);
+  }, [navigate, searchParams]);
+
+  // A correct/forget refreshes the list by re-running the browser hook
+  // (navigating to the same list URL re-triggers its effect).
+  const onMutated = useCallback(() => {
+    const qs = searchParams.toString();
+    navigate(`/memory/memories${qs ? `?${qs}` : ""}`, { replace: true });
+  }, [navigate, searchParams]);
 
   return (
     <div className="flex h-full flex-col gap-4">
-      {id && (
-        <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-          Deep link to memory <code className="font-mono">{id}</code> — the Inspector drawer ships in UI-2
-          (ROUTES.md deep-link contract).
-        </div>
-      )}
       <MemoryBrowser />
+      <MemoryInspector
+        memoryId={id}
+        open={Boolean(id)}
+        onClose={closeInspector}
+        onMutated={onMutated}
+      />
     </div>
   );
 }
