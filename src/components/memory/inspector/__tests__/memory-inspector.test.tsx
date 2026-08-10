@@ -66,7 +66,7 @@ test("deep-link open loads the record and renders Details verbatim", async () =>
   expect(screen.getByText(/context = long_flights/)).toBeInTheDocument();
 });
 
-test("History tab is newest-first with the Current marker", async () => {
+test("History tab is newest-first with the Latest marker", async () => {
   mockGet.mockResolvedValue(record());
   mockHistory.mockResolvedValue(events());
   render(<MemoryInspector memoryId="mem_1" open onClose={() => {}} />);
@@ -74,9 +74,9 @@ test("History tab is newest-first with the Current marker", async () => {
   await userEvent.click(screen.getByRole("tab", { name: "History" }));
   const list = await screen.findByTestId("inspector-history");
   const items = list.querySelectorAll("li");
-  // newest (reinforced, seq 2) first, carries Current
+  // newest (reinforced, seq 2) first, carries the Latest marker (NB-2)
   expect(items[0]).toHaveTextContent("Reinforced");
-  expect(items[0]).toHaveTextContent("Current");
+  expect(items[0]).toHaveTextContent("Latest");
   expect(items[1]).toHaveTextContent("Created");
 });
 

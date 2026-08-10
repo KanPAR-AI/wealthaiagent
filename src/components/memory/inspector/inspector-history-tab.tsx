@@ -49,7 +49,7 @@ export function InspectorHistoryTab({ history }: { history: MemoryEvent[] }) {
               <span>{EVENT_LABEL[ev.event] ?? ev.event}</span>
               {i === 0 && (
                 <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
-                  Current
+                  Latest
                 </span>
               )}
             </div>

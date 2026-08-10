@@ -61,6 +61,12 @@ export function ForgetMemoryDialog({
           (e.currentTarget as HTMLElement)?.focus?.();
         }}
       >
+        {/* Persistent accessible name across ALL states (NB-3): after the
+            action resolves the confirm header unmounts, so keep a hidden
+            title so the dialog is never momentarily unnamed for AT. */}
+        {phase === "success" && (
+          <DialogTitle className="sr-only">Forget memory — result</DialogTitle>
+        )}
         {phase !== "success" && (
           <>
             <DialogHeader>

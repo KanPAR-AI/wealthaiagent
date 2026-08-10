@@ -4,10 +4,13 @@
 // reload/deep-link restores EXACTLY (UI-25). No control computes/holds
 // authoritative state itself; each is a thin view over the URL.
 import { useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { PermissionGate } from "@/components/memory/permission-gate";
+import { BroadForgetDialog } from "@/components/memory/mutations/broad-forget-dialog";
 import type {
   MemoryStatus,
   MemoryType,
@@ -92,6 +95,7 @@ export function MemoryFilters() {
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = parseMemoryFiltersFromParams(searchParams);
   const [namespaceInput, setNamespaceInput] = useState(filters.namespace);
+  const [broadForgetOpen, setBroadForgetOpen] = useState(false);
 
   useEffect(() => {
     setNamespaceInput(filters.namespace);
@@ -151,6 +155,30 @@ export function MemoryFilters() {
           className="h-8 text-xs"
         />
       </div>
+
+      {filters.namespace.trim() !== "" && (
+        <PermissionGate perm="memory.forget">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 justify-start gap-1.5 text-xs text-destructive hover:text-destructive"
+            onClick={() => setBroadForgetOpen(true)}
+          >
+            <Trash2 className="size-3.5" aria-hidden="true" />
+            Forget all in "{filters.namespace.trim()}"…
+          </Button>
+          <BroadForgetDialog
+            open={broadForgetOpen}
+            onOpenChange={setBroadForgetOpen}
+            filter={{ namespace: filters.namespace.trim() }}
+            scopeLabel={filters.namespace.trim()}
+            onForgotten={() => {
+              // re-run the browser by touching the URL (same params)
+              setSearchParams(new URLSearchParams(searchParams), { replace: true });
+            }}
+          />
+        </PermissionGate>
+      )}
 
       <CheckboxGroup
         legend="Memory type"
