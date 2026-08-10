@@ -22,17 +22,22 @@ import { EmptyState } from "@/components/memory/empty-state";
 import { PermissionGate } from "@/components/memory/permission-gate";
 import { InspectorDetailsTab } from "./inspector-details-tab";
 import { InspectorHistoryTab } from "./inspector-history-tab";
+import { InspectorEvidenceTab } from "./inspector-evidence-tab";
+import { InspectorRawTab } from "./inspector-raw-tab";
 import { CorrectMemoryModal } from "@/components/memory/mutations/correct-memory-modal";
 import { ForgetMemoryDialog } from "@/components/memory/mutations/forget-memory-dialog";
 import { useMemoryInspector } from "@/hooks/memory/use-memory-inspector";
+import { usePermissions } from "@/hooks/memory/use-permissions";
 import { trackMemoryEvent } from "@/lib/memory-telemetry";
 
+// Tab readiness can depend on a permission (Raw = read_raw). `perm` gates
+// whether the tab is shown at all (cosmetic — the backend re-checks).
 const TABS = [
   { key: "details", label: "Details", ready: true },
   { key: "history", label: "History", ready: true },
-  { key: "evidence", label: "Evidence", ready: false }, // UI-3
+  { key: "evidence", label: "Evidence", ready: true }, // UI-3
   { key: "usage", label: "Usage", ready: false }, // UI-6
-  { key: "raw", label: "Raw", ready: false }, // later
+  { key: "raw", label: "Raw", ready: true, perm: "memory.read_raw" as const }, // UI-3, dev-only
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -48,6 +53,7 @@ export function MemoryInspector({ memoryId, open, onClose, onMutated }: MemoryIn
   const [editing, setEditing] = useState(false);
   const [forgetting, setForgetting] = useState(false);
   const { status, memory, history, error, refetch } = useMemoryInspector(open ? memoryId : undefined);
+  const { permissions } = usePermissions();
 
   const label = memory?.predicate?.replace(/[._]/g, " ") ?? "Memory";
   const valueStr = memory?.value == null ? (memory?.text ?? "") : String(memory.value);
@@ -72,7 +78,7 @@ export function MemoryInspector({ memoryId, open, onClose, onMutated }: MemoryIn
 
         {/* Tab strip */}
         <div role="tablist" aria-label="Inspector tabs" className="flex gap-1 border-b px-3">
-          {TABS.map((t) => (
+          {TABS.filter((t) => !("perm" in t) || permissions[t.perm]).map((t) => (
             <button
               key={t.key}
               role="tab"
@@ -106,6 +112,10 @@ export function MemoryInspector({ memoryId, open, onClose, onMutated }: MemoryIn
               <InspectorDetailsTab memory={memory} />
             ) : tab === "history" ? (
               <InspectorHistoryTab history={history} />
+            ) : tab === "evidence" ? (
+              <InspectorEvidenceTab memoryId={memory.id} />
+            ) : tab === "raw" ? (
+              <InspectorRawTab memory={memory} />
             ) : null
           ) : null}
         </div>

@@ -472,6 +472,24 @@ export async function getMemoryHistory(
   return memoryFetch(`/${encodeURIComponent(memoryId)}/history`);
 }
 
+/** MUI-1007 — evidence behind a memory (§15). Excerpts are UNTRUSTED data
+ *  (render inert). A `withheld` row means the server redacted a sensitive
+ *  excerpt (UI-35) — the UI shows "protected", never the content. */
+export interface EvidenceRow {
+  id: string;
+  type: string;
+  source_id: string;
+  excerpt: string;
+  withheld: boolean;
+  observed_at: string | null;
+}
+
+export async function getEvidenceForMemory(
+  memoryId: string,
+): Promise<{ evidence: EvidenceRow[] }> {
+  return memoryFetch(`/${encodeURIComponent(memoryId)}/evidence`);
+}
+
 /** MUI-1018 — alias/reference -> entity resolution. AMBIGUOUS is data,
  *  never a guess: render res.candidates, do not pick [0] for the caller. */
 export async function resolveEntity(
