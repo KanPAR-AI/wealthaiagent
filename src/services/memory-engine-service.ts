@@ -484,6 +484,33 @@ export interface EvidenceRow {
   observed_at: string | null;
 }
 
+export interface MemoryOverview {
+  active_count: number;
+  inferred_count: number;
+  shadow_count: number;
+  superseded_count: number;
+  disputed_count: number;
+  new_this_week: number;
+  by_status: Record<string, number>;
+  by_namespace: Record<string, number>;
+  recent_changes: Array<{
+    id: string;
+    predicate: string | null;
+    value: unknown;
+    namespace: string;
+    status: MemoryStatus;
+    source_type: SourceType;
+    updated_at: string | null;
+  }>;
+}
+
+/** MUI-1008-adjacent — Overview aggregates (UI-4). Real counts over the
+ *  caller's own memory; the backend does the aggregation (no client compute).
+ *  'used' is intentionally absent until the UI-6 usage projection. */
+export async function getOverview(): Promise<MemoryOverview> {
+  return memoryFetch("/overview");
+}
+
 export async function getEvidenceForMemory(
   memoryId: string,
 ): Promise<{ evidence: EvidenceRow[] }> {
