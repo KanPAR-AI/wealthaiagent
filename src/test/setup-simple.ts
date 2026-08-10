@@ -58,17 +58,22 @@ if (typeof ReadableStream === 'undefined') {
   } as any;
 }
 
-// Mock navigator.mediaDevices
-Object.defineProperty(navigator, 'mediaDevices', {
-  value: {
-    getUserMedia: jest.fn().mockResolvedValue({
-      getTracks: () => [{
-        stop: jest.fn()
-      }]
-    })
-  },
-  writable: true
-});
+// Mock navigator.mediaDevices — jsdom-only (no `navigator`/`window` under
+// the `node` test environment, used by suites that need real Response/
+// Request/TransformStream globals msw/node depends on, e.g. tests with a
+// `@jest-environment node` docblock).
+if (typeof window !== 'undefined') {
+  Object.defineProperty(navigator, 'mediaDevices', {
+    value: {
+      getUserMedia: jest.fn().mockResolvedValue({
+        getTracks: () => [{
+          stop: jest.fn()
+        }]
+      })
+    },
+    writable: true
+  });
+}
 
 // Mock MediaRecorder
 (global as any).MediaRecorder = class MediaRecorder {
@@ -103,20 +108,22 @@ afterEach(() => {
   jest.clearAllMocks();
 });
 
-// Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: jest.fn().mockImplementation(query => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(), // deprecated
-    removeListener: jest.fn(), // deprecated
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
-});
+// Mock window.matchMedia — jsdom-only, see the mediaDevices guard above.
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: jest.fn().mockImplementation(query => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: jest.fn(), // deprecated
+      removeListener: jest.fn(), // deprecated
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    })),
+  });
+}
 
 // Mock IntersectionObserver
 global.IntersectionObserver = jest.fn().mockImplementation(() => ({
@@ -132,8 +139,10 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
   disconnect: jest.fn(),
 }));
 
-// Mock scrollIntoView
-window.HTMLElement.prototype.scrollIntoView = jest.fn();
+// Mock scrollIntoView — jsdom-only, see the mediaDevices guard above.
+if (typeof window !== 'undefined') {
+  window.HTMLElement.prototype.scrollIntoView = jest.fn();
+}
 
 // Mock fetch globally
 global.fetch = jest.fn();

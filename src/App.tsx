@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AppProviders } from "./components/providers/app-providers";
 import AppLayout from "@/components/layout/app-layout";
 import Chat from "./pages/Chat";
@@ -20,6 +20,13 @@ import Settings from "./pages/Settings";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { isNativePlatform } from "@/lib/capacitor";
 import { isMysticAI, applyMysticTheme, revertMysticTheme } from "@/lib/mysticai";
+import { MemoryRouteGuard } from "@/components/memory/memory-route-guard";
+import { MemoryPage } from "@/components/memory/memory-page";
+import MemoryMemoriesPage from "@/pages/memory/MemoryMemoriesPage";
+import MemoryTimelinePage from "@/pages/memory/MemoryTimelinePage";
+import MemoryGraphPage from "@/pages/memory/MemoryGraphPage";
+import MemoryInboxPage from "@/pages/memory/MemoryInboxPage";
+import MemoryDebuggerPage from "@/pages/memory/MemoryDebuggerPage";
 
 // Keep /chataiagent basename always — nginx handles root-to-chataiagent redirect
 // for astro.yourfinadvisor.com. MysticAI mode only changes theme + agent, not routing.
@@ -33,7 +40,7 @@ if (isMysticAI) applyMysticTheme();
 // outside AppLayout, so app-layout's selectedAgent useEffect can't revert.
 // Without this, navigating from a MysticAI chat to /admin leaves the
 // `mystic` CSS class on <html>, breaking the admin portal layout.
-const NON_MYSTIC_ROUTE_PREFIXES = ["/admin", "/debug", "/trade", "/logs"];
+const NON_MYSTIC_ROUTE_PREFIXES = ["/admin", "/debug", "/trade", "/logs", "/memory"];
 
 function MysticRouteGuard() {
   const { pathname } = useLocation();
@@ -80,6 +87,34 @@ const App = () => (
         <Route path="/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
         <Route path="/admin/bugs" element={<ProtectedRoute requireAdmin><AdminBugReports /></ProtectedRoute>} />
         <Route path="/admin/test/:agentId" element={<ProtectedRoute requireAdmin><TestChat /></ProtectedRoute>} />
+
+        {/* Memory OS UI — new top-level /memory/* tree (ADR-001), NOT
+            nested under /admin and NOT inside the chat <AppLayout> (which
+            renders the chat sidebar chrome). Entry gate is memory.read, not
+            admin-only — see MemoryRouteGuard. docs/memory-ui/ROUTES.md. */}
+        <Route
+          path="/memory"
+          element={
+            <MemoryRouteGuard perm="memory.read">
+              <MemoryPage />
+            </MemoryRouteGuard>
+          }
+        >
+          <Route index element={<Navigate to="memories" replace />} />
+          <Route path="memories" element={<MemoryMemoriesPage />} />
+          <Route path="memories/:id" element={<MemoryMemoriesPage />} />
+          <Route path="timeline" element={<MemoryTimelinePage />} />
+          <Route path="graph" element={<MemoryGraphPage />} />
+          <Route path="inbox" element={<MemoryInboxPage />} />
+          <Route
+            path="debugger"
+            element={
+              <MemoryRouteGuard perm="memory.debug_retrieval">
+                <MemoryDebuggerPage />
+              </MemoryRouteGuard>
+            }
+          />
+        </Route>
 
         {/* Routes outside the layout, like a 404 page, won't have the sidebar */}
         <Route path="*" element={<NotFound />} />
