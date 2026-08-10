@@ -2,9 +2,10 @@
 // drawer (UI_SPEC §12-13). A right-side Sheet (radix dialog → focus trap,
 // Esc-to-close, focus restored to the trigger for free) 480-560px wide,
 // opened by the /memory/memories/:id route param and closed by navigating
-// back to the list (filters preserved). Tabs: Details · History (this slice);
-// Evidence · Usage · Raw arrive in later slices and show as disabled tabs so
-// the information architecture is honest, not faked.
+// back to the list (filters preserved). Tabs: Details · History · Evidence ·
+// Usage · Raw (Raw is gated on memory.read_raw). A tab only lights up once its
+// backing endpoint is real — the information architecture stays honest, never
+// faked with placeholder data.
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -23,6 +24,7 @@ import { PermissionGate } from "@/components/memory/permission-gate";
 import { InspectorDetailsTab } from "./inspector-details-tab";
 import { InspectorHistoryTab } from "./inspector-history-tab";
 import { InspectorEvidenceTab } from "./inspector-evidence-tab";
+import { InspectorUsageTab } from "./inspector-usage-tab";
 import { InspectorRawTab } from "./inspector-raw-tab";
 import { CorrectMemoryModal } from "@/components/memory/mutations/correct-memory-modal";
 import { ForgetMemoryDialog } from "@/components/memory/mutations/forget-memory-dialog";
@@ -36,7 +38,7 @@ const TABS = [
   { key: "details", label: "Details", ready: true },
   { key: "history", label: "History", ready: true },
   { key: "evidence", label: "Evidence", ready: true }, // UI-3
-  { key: "usage", label: "Usage", ready: false }, // UI-6
+  { key: "usage", label: "Usage", ready: true }, // UI-6
   { key: "raw", label: "Raw", ready: true, perm: "memory.read_raw" as const }, // UI-3, dev-only
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
@@ -89,6 +91,7 @@ export function MemoryInspector({ memoryId, open, onClose, onMutated }: MemoryIn
               onClick={() => {
                 setTab(t.key);
                 if (t.key === "history") trackMemoryEvent("memory_history_opened", { memory_id: memoryId });
+                if (t.key === "usage") trackMemoryEvent("memory_usage_opened", { memory_id: memoryId });
               }}
               className={cn(
                 "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors",
@@ -131,6 +134,8 @@ export function MemoryInspector({ memoryId, open, onClose, onMutated }: MemoryIn
               </div>
             ) : tab === "evidence" ? (
               <InspectorEvidenceTab memoryId={memory.id} />
+            ) : tab === "usage" ? (
+              <InspectorUsageTab memoryId={memory.id} />
             ) : tab === "raw" ? (
               <InspectorRawTab memory={memory} />
             ) : null

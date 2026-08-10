@@ -13,6 +13,7 @@ export const MEMORY_TELEMETRY_EVENTS = {
   INSPECTED: "memory_inspected",
   EVIDENCE_OPENED: "memory_evidence_opened",
   HISTORY_OPENED: "memory_history_opened",
+  USAGE_OPENED: "memory_usage_opened",
   CORRECT_STARTED: "memory_correct_started",
   CORRECT_COMPLETED: "memory_correct_completed",
   FORGET_STARTED: "memory_forget_started",

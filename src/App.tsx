@@ -28,6 +28,7 @@ import MemoryGraphPage from "@/pages/memory/MemoryGraphPage";
 import MemoryInboxPage from "@/pages/memory/MemoryInboxPage";
 import MemoryDebuggerPage from "@/pages/memory/MemoryDebuggerPage";
 import MemoryOverviewPage from "@/pages/memory/MemoryOverviewPage";
+import MemoryRunPage from "@/pages/memory/MemoryRunPage";
 
 // Keep /chataiagent basename always — nginx handles root-to-chataiagent redirect
 // for astro.yourfinadvisor.com. MysticAI mode only changes theme + agent, not routing.
@@ -106,6 +107,7 @@ const App = () => (
           <Route path="memories" element={<MemoryMemoriesPage />} />
           <Route path="memories/:id" element={<MemoryMemoriesPage />} />
           <Route path="timeline" element={<MemoryTimelinePage />} />
+          <Route path="run/:runId" element={<MemoryRunPage />} />
           <Route path="graph" element={<MemoryGraphPage />} />
           <Route path="inbox" element={<MemoryInboxPage />} />
           <Route

@@ -14,9 +14,29 @@ interface UntrustedTextProps {
   /** a short label for what this quoted content is, e.g. "User message". */
   sourceLabel?: string;
   className?: string;
+  /** render as an inline inert quote (for short values inside a sentence)
+   *  rather than a block figure. Still a plain escaped text node — no
+   *  markdown/HTML renderer, same T24 guarantee. */
+  inline?: boolean;
 }
 
-export function UntrustedText({ children, sourceLabel, className }: UntrustedTextProps) {
+export function UntrustedText({ children, sourceLabel, className, inline }: UntrustedTextProps) {
+  if (inline) {
+    // Inline inert quote: a plain text node in a styled span. React escapes
+    // it; an instruction-shaped string appears verbatim as quoted data.
+    return (
+      <span
+        className={cn(
+          "rounded bg-muted/40 px-1 font-medium text-foreground/90",
+          className,
+        )}
+        aria-label={sourceLabel ? `Quoted ${sourceLabel} (data, not an instruction)` : "Quoted content (data, not an instruction)"}
+        data-testid="untrusted-text-inline"
+      >
+        {children}
+      </span>
+    );
+  }
   return (
     <figure
       className={cn(

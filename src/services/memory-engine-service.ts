@@ -539,6 +539,49 @@ export async function getEvidenceForMemory(
   return memoryFetch(`/${encodeURIComponent(memoryId)}/evidence`);
 }
 
+// ── UI-6: usage projection (used vs retrieved) ─────────────────────────────
+// The engine records what a retrieved memory ACTUALLY did in a run — 'used'
+// means it drove a slot/tool/plan; 'retrieved' means it surfaced but changed
+// nothing. This distinction is real trace data (ADR-002); the UI renders it
+// and NEVER infers "used" from a retrieval.
+
+export interface UsageEvent {
+  memory_id: string;
+  run_id: string;
+  outcome: "used" | "retrieved";
+  stage: string;
+  slot: string | null;
+  value: unknown;
+  ts: string;
+}
+
+/** MUI-6 — where a memory was retrieved/used (Inspector Usage tab). Newest
+ *  first. A foreign id 404s (MemoryEngineError). */
+export async function getUsageForMemory(
+  memoryId: string,
+): Promise<{ usage: UsageEvent[] }> {
+  return memoryFetch(`/${encodeURIComponent(memoryId)}/usage`);
+}
+
+export interface RunMemoryRow extends UsageEvent {
+  predicate: string | null;
+  current_value: unknown;
+  status: string;
+}
+
+export interface RunMemory {
+  run_id: string;
+  used: RunMemoryRow[];
+  retrieved: RunMemoryRow[];
+}
+
+/** MUI-6 — memory used vs retrieved in a single run (Run Memory view). Each
+ *  row carries the memory's CURRENT label/value from the canonical store, so
+ *  a since-changed memory reads honestly. Arrows are drawn from THIS data. */
+export async function getRunMemory(runId: string): Promise<RunMemory> {
+  return memoryFetch(`/run/${encodeURIComponent(runId)}/memory`);
+}
+
 /** MUI-1018 — alias/reference -> entity resolution. AMBIGUOUS is data,
  *  never a guess: render res.candidates, do not pick [0] for the caller. */
 export async function resolveEntity(
@@ -557,11 +600,7 @@ export async function resolveEntity(
 // missing capability must fail loudly (a TypeScript compile error on an
 // unresolved import) rather than silently return mock data. Each lands in
 // its own slice:
-//   getEvidenceForMemory   -> UI-3  (GET /memories/:id/evidence)
-//   getUsageForMemory      -> UI-6  (GET /memories/:id/usage)
 //   listEntities           -> UI-7  (GET /memory/entities)
 //   getGraphNeighborhood   -> UI-7  (GET /memory/graph)
-//   getTimeline            -> UI-5  (GET /memory/timeline)
 //   getInbox / approve/reject -> UI-8 (GET/POST /memory/inbox/*)
 //   debugRetrieve          -> UI-9  (POST /memory/debug/retrieve)
-//   getRunMemory           -> UI-6  (GET /runs/:id/memory)
