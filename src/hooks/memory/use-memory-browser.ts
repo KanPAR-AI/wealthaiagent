@@ -39,12 +39,19 @@ export interface MemoryBrowserRow {
 export interface UseMemoryBrowserResult {
   status: MemoryBrowserStatus;
   rows: MemoryBrowserRow[];
+  atCap: boolean;
   error: string | null;
   filters: MemoryFiltersState;
   refetch: () => void;
 }
 
 const DEBOUNCE_MS = 300;
+// Server caps (honest UI-33 disclosure — no cursor pagination yet, Role-3
+// rec): ranked search is capped at 50 server-side (memories.py), browse at
+// the repo default of 500. When rows hit the cap the server may hold more,
+// so the toolbar shows "top N" rather than implying an exact total.
+const RANKED_CAP = 50;
+const BROWSE_CAP = 500;
 
 function toRow(row: RetrievedMemoryRow, pinned: boolean): MemoryBrowserRow {
   return {
@@ -66,6 +73,7 @@ export function useMemoryBrowser(): UseMemoryBrowserResult {
 
   const [status, setStatus] = useState<MemoryBrowserStatus>("idle");
   const [rows, setRows] = useState<MemoryBrowserRow[]>([]);
+  const [atCap, setAtCap] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
 
@@ -95,6 +103,10 @@ export function useMemoryBrowser(): UseMemoryBrowserResult {
       .then((nextRows) => {
         if (requestIdRef.current !== requestId) return; // superseded
         setRows(nextRows);
+        setAtCap(
+          nextRows.length >=
+            (state.sort === "browse" ? BROWSE_CAP : RANKED_CAP),
+        );
         setStatus("success");
       })
       .catch((err: unknown) => {
@@ -117,5 +129,5 @@ export function useMemoryBrowser(): UseMemoryBrowserResult {
     return () => clearTimeout(handle);
   }, [run]);
 
-  return { status, rows, error, filters, refetch: run };
+  return { status, rows, atCap, error, filters, refetch: run };
 }

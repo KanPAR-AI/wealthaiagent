@@ -30,6 +30,7 @@ import {
   getMemory,
   getMemoryHistory,
   searchMemories,
+  listMemories,
   toMemoryCardView,
   type MemoryRecord,
 } from "@/services/memory-engine-service";
@@ -112,6 +113,32 @@ describe("memory-engine-service", () => {
     expect(result.results[0].memory.id).toBe("mem_1");
     // Response passed through verbatim — no client recomputation of score.
     expect(result.results[0].score).toBe(0.9);
+  });
+
+  test("listMemories GETs /memories with repeatable status/type/source_type query params", async () => {
+    let capturedUrl = "";
+    server.use(
+      http.get(`${BASE}/memories`, ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({ memories: [record()] });
+      }),
+    );
+
+    const result = await listMemories({
+      namespace: "travel",
+      status: ["active", "disputed"],
+      type: ["preference"],
+      source_type: ["user_explicit"],
+    });
+
+    const url = new URL(capturedUrl);
+    expect(url.pathname).toMatch(/\/memories$/);
+    expect(url.searchParams.get("namespace")).toBe("travel");
+    // repeatable multi-value serialization — NOT a comma-joined string
+    expect(url.searchParams.getAll("status")).toEqual(["active", "disputed"]);
+    expect(url.searchParams.getAll("type")).toEqual(["preference"]);
+    expect(url.searchParams.getAll("source_type")).toEqual(["user_explicit"]);
+    expect(result.memories).toHaveLength(1);
   });
 
   test("getMemory GETs /memories/:id", async () => {

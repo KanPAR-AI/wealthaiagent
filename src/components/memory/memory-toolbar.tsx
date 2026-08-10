@@ -23,10 +23,11 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
 
 export interface MemoryToolbarProps {
   resultCount: number;
+  atCap?: boolean;
   loading?: boolean;
 }
 
-export function MemoryToolbar({ resultCount, loading = false }: MemoryToolbarProps) {
+export function MemoryToolbar({ resultCount, atCap = false, loading = false }: MemoryToolbarProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = parseMemoryFiltersFromParams(searchParams);
 
@@ -42,7 +43,11 @@ export function MemoryToolbar({ resultCount, loading = false }: MemoryToolbarPro
   return (
     <div className="flex items-center justify-between gap-2 pb-2">
       <p className="text-sm text-muted-foreground" data-testid="memory-result-count" aria-live="polite">
-        {loading ? "Searching…" : `${resultCount} ${resultCount === 1 ? "memory" : "memories"}`}
+        {loading
+          ? "Searching…"
+          : atCap
+            ? `Showing top ${resultCount} — refine filters to see more`
+            : `${resultCount} ${resultCount === 1 ? "memory" : "memories"}`}
       </p>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

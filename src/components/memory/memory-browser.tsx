@@ -18,7 +18,7 @@ export interface MemoryBrowserProps {
 }
 
 export function MemoryBrowser({ devMode = false }: MemoryBrowserProps) {
-  const { status, rows, error, filters, refetch } = useMemoryBrowser();
+  const { status, rows, error, filters, refetch, atCap } = useMemoryBrowser();
 
   useEffect(() => {
     trackMemoryEvent(MEMORY_TELEMETRY_EVENTS.VIEW_OPENED, { screen: "memories" });
@@ -31,7 +31,7 @@ export function MemoryBrowser({ devMode = false }: MemoryBrowserProps) {
     <div className="flex h-full gap-4" data-testid="memory-browser">
       <MemoryFilters />
       <div className="flex min-w-0 flex-1 flex-col">
-        <MemoryToolbar resultCount={rows.length} loading={loading} />
+        <MemoryToolbar resultCount={rows.length} atCap={atCap} loading={loading} />
         {status === "error" ? (
           <ErrorState message={error ?? undefined} onRetry={refetch} />
         ) : loading ? (
