@@ -75,6 +75,7 @@
     "zustand": "^5.0.4"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.29.0",
     "@capacitor/cli": "^8.1.0",
     "@eslint/js": "^9.22.0",
     "@playwright/test": "^1.58.2",
@@ -88,6 +89,7 @@
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/ui": "^2.1.8",
+    "babel-jest": "^29.7.0",
     "eslint": "^9.22.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",

@@ -12,6 +12,7 @@ import MemoryTimelinePage from "@/pages/memory/MemoryTimelinePage";
 import MemoryGraphPage from "@/pages/memory/MemoryGraphPage";
 import MemoryInboxPage from "@/pages/memory/MemoryInboxPage";
 import MemoryDebuggerPage from "@/pages/memory/MemoryDebuggerPage";
+import MemoryOverviewPage from "@/pages/memory/MemoryOverviewPage";
 import { useAuth } from "@/hooks/use-auth";
 import { searchMemories } from "@/services/memory-engine-service";
 
@@ -60,7 +61,8 @@ function renderMemoryApp(initialPath: string) {
             </MemoryRouteGuard>
           }
         >
-          <Route index element={<Navigate to="memories" replace />} />
+          <Route index element={<Navigate to="overview" replace />} />
+          <Route path="overview" element={<MemoryOverviewPage />} />
           <Route path="memories" element={<MemoryMemoriesPage />} />
           <Route path="memories/:id" element={<MemoryMemoriesPage />} />
           <Route path="timeline" element={<MemoryTimelinePage />} />
@@ -87,7 +89,7 @@ describe("Memory route tree", () => {
     });
   });
 
-  test("/memory redirects to /memory/memories and renders header + subnav", async () => {
+  test("/memory redirects to /memory/overview and renders header + subnav", async () => {
     mockUseAuth.mockReturnValue(auth());
     renderMemoryApp("/memory");
 
@@ -98,7 +100,14 @@ describe("Memory route tree", () => {
     }
     // Cosmetic gate: Debugger hidden for a non-admin (no memory.debug_retrieval).
     expect(screen.queryByRole("link", { name: "Debugger" })).not.toBeInTheDocument();
-    // UI-0 acceptance: "a raw search round-trips against the real engine".
+    // /memory lands on the Overview placeholder (UI-4 target) — which does NOT
+    // fire a search. The raw-search round-trip is asserted on /memory/memories below.
+    expect(mockSearchMemories).not.toHaveBeenCalled();
+  });
+
+  test("/memory/memories fires a real search round-trip (no mock data)", async () => {
+    mockUseAuth.mockReturnValue(auth());
+    renderMemoryApp("/memory/memories");
     await waitFor(() => expect(mockSearchMemories).toHaveBeenCalled());
   });
 

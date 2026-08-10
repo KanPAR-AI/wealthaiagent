@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { PermissionGate } from "@/components/memory/permission-gate";
 
 const NAV_ITEMS = [
-  { to: "/memory", label: "Overview", end: true },
+  { to: "/memory/overview", label: "Overview", end: false },
   { to: "/memory/memories", label: "Memories", end: false },
   { to: "/memory/timeline", label: "Timeline", end: false },
   { to: "/memory/graph", label: "Graph", end: false },
