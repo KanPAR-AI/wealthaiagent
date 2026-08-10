@@ -593,14 +593,87 @@ export async function resolveEntity(
   });
 }
 
-// ── BUILD endpoints (API_MAPPING.md MUI-1007..1016) — NOT IMPLEMENTED ──────
+// ── UI-7: entities + graph neighborhood (API_MAPPING.md MUI-1009/1010) ─────
+
+/** MUI-1009 — entities in the caller's own universe (graph seed + entity
+ *  filter autocomplete + alias->canonical picker, UI-15). */
+export async function listEntities(
+  params: { q?: string; type?: string } = {},
+): Promise<{ entities: Entity[] }> {
+  const qs = new URLSearchParams();
+  if (params.q) qs.set("q", params.q);
+  if (params.type) qs.set("type", params.type);
+  const s = qs.toString();
+  return memoryFetch(`/entities${s ? `?${s}` : ""}`);
+}
+
+export interface GraphNode {
+  entity_id: string;
+  label: string;
+  type: string;
+  aliases: string[];
+}
+
+export interface GraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  relation_type: string;
+  valid_from: string | null;
+  valid_until: string | null;
+  confidence: number;
+  status: string;
+  evidence_id: string | null;
+}
+
+/** MUI-1010 — the response shape of GET /memories/graph (1-hop bounded,
+ *  resolver-based, temporal neighborhood). `status` mirrors
+ *  ResolveEntityResult ("resolved" | "ambiguous" | "unknown") — an
+ *  ambiguous alias comes back as `candidates`, never a guess (T29); an
+ *  unknown/foreign reference is identical to a made-up one (no existence
+ *  leak). `truncated` means a defensive server-side cap trimmed a very
+ *  high-degree entity's edges — still an honest 1-hop view, just not
+ *  exhaustive. Nothing here is client-computed: nodes/edges/validity all
+ *  come straight from the engine. */
+export interface GraphNeighborhood {
+  status: "resolved" | "ambiguous" | "unknown";
+  center: Entity | null;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  truncated: boolean;
+  candidates: Entity[];
+}
+
+export interface GraphQuery {
+  /** an entity id (exact re-center) OR an alias/free-text reference
+   *  (resolved server-side, same resolver as resolveEntity — T14). */
+  entity: string;
+  /** ISO timestamp — the temporal slider's point-in-time (UI-16/TEMP-03).
+   *  Omit for "now" (no temporal filtering). */
+  at?: string;
+  /** narrow the 1-hop edges to these relation types — a plain inclusion
+   *  filter passed straight to the backend, never a client re-filter of
+   *  an already-fetched edge set. */
+  relationTypes?: string[];
+}
+
+/** MUI-1010 — 1-hop bounded, resolver-based, temporal entity neighborhood
+ *  (UI-7 Graph). This NEVER returns more than one hop out of `entity`, and
+ *  never the full tenant graph — "expand" in the UI means calling this
+ *  again re-centered on the clicked node. */
+export async function getGraphNeighborhood(query: GraphQuery): Promise<GraphNeighborhood> {
+  const qs = new URLSearchParams({ entity: query.entity });
+  if (query.at) qs.set("at", query.at);
+  for (const rt of query.relationTypes ?? []) qs.append("relation", rt);
+  return memoryFetch(`/graph?${qs.toString()}`);
+}
+
+// ── BUILD endpoints (API_MAPPING.md MUI-1012..1016) — NOT IMPLEMENTED ──────
 //
 // Deliberately absent. Do not add a function here that calls an endpoint
 // that doesn't exist yet, and do not fake a response shape "for now" — a
 // missing capability must fail loudly (a TypeScript compile error on an
 // unresolved import) rather than silently return mock data. Each lands in
 // its own slice:
-//   listEntities           -> UI-7  (GET /memory/entities)
-//   getGraphNeighborhood   -> UI-7  (GET /memory/graph)
 //   getInbox / approve/reject -> UI-8 (GET/POST /memory/inbox/*)
 //   debugRetrieve          -> UI-9  (POST /memory/debug/retrieve)
