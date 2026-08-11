@@ -26,6 +26,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { SymbolView } from 'expo-symbols';
 import { fetchChatList, useChatStore, type ChatListItem } from '@wealthai/core';
 
 import { ThemedText } from '@/components/themed-text';
@@ -35,9 +36,26 @@ import { PROD_BASE_URL, getBaseUrl, setBaseUrl } from '@/lib/server-config';
 import { loadChatIntoStore } from '@/lib/load-chat';
 import { useUiStore } from '@/store/ui';
 import { useAuth } from '@/hooks/use-auth';
-import { getCreditBalance, requestCredits, type CreditBalance } from '@/services/credits-service';
+import { getCreditBalance, type CreditBalance } from '@/services/credits-service';
+import { getOverview } from '@/services/memory-service';
 
 const SPRING = { damping: 24, stiffness: 240, mass: 0.8 };
+
+// Active-memory count for the Control Centre subtitle. Cached so reopening
+// the drawer doesn't refetch; the subtitle silently omits it on any failure.
+let memoryCountCache: { at: number; count: number } | null = null;
+async function fetchActiveMemoryCount(): Promise<number | null> {
+  if (memoryCountCache && Date.now() - memoryCountCache.at < 60_000) {
+    return memoryCountCache.count;
+  }
+  try {
+    const ov = await getOverview();
+    memoryCountCache = { at: Date.now(), count: ov.active_count };
+    return ov.active_count;
+  } catch {
+    return null;
+  }
+}
 
 function relativeTime(iso?: string): string {
   if (!iso) return '';
@@ -71,24 +89,16 @@ export function ChatDrawer({
   const [query, setQuery] = useState('');
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [credits, setCredits] = useState<CreditBalance | null>(null);
-  const [requesting, setRequesting] = useState(false);
+  const [memoryCount, setMemoryCount] = useState<number | null>(null);
 
-  // Refresh the credit balance whenever the drawer opens.
+  // Refresh the credit balance + active-memory count whenever the drawer opens.
   useEffect(() => {
-    if (open) getCreditBalance().then(setCredits).catch(() => {});
-  }, [open]);
-
-  const handleRequestCredits = useCallback(async () => {
-    setRequesting(true);
-    try {
-      await requestCredits(0, 'Requested from the app');
-      Alert.alert('Request sent', 'An admin will review your credit request shortly.');
-    } catch (e: any) {
-      Alert.alert('Could not request', e?.message ?? 'Try again later.');
-    } finally {
-      setRequesting(false);
+    if (!open) return;
+    getCreditBalance().then(setCredits).catch(() => {});
+    if (user && !user.isAnonymous) {
+      fetchActiveMemoryCount().then(setMemoryCount);
     }
-  }, []);
+  }, [open, user]);
 
   // ── Animation ────────────────────────────────────────────────────
   const tx = useSharedValue(-width);
@@ -205,6 +215,9 @@ export function ChatDrawer({
 
   const initial = (user?.displayName || user?.email || 'A')[0].toUpperCase();
   const who = user?.isAnonymous ? 'Guest' : (user?.displayName || user?.email || '');
+  // Second identity line only when it adds information (name shown above it).
+  const secondaryIdentity =
+    !user?.isAnonymous && user?.displayName && user?.email ? user.email : '';
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, styles.root, pointerStyle]}>
@@ -289,72 +302,112 @@ export function ChatDrawer({
               )}
             </View>
 
-            {/* Control Centre — entry to the Memory OS. Same gate as web
-                (chat-sidebar): signed-in, non-anonymous users only. */}
-            {user && !user.isAnonymous && (
+            {/* Utility group — Control Centre + Settings as an inset iOS-style
+                grouped card (design review 2026-08-11, Direction A). The
+                Control Centre chip is the single saturated element in the
+                drawer. Server switching lives in the env pill below, shown
+                only when NOT pointed at production. */}
+            <View style={[styles.utilGroup, { backgroundColor: colors.backgroundElement }]}>
+              {user && !user.isAnonymous && (
+                <>
+                  <Pressable
+                    onPress={() => { router.push('/control-centre'); onClose(); }}
+                    style={({ pressed }) => [
+                      styles.utilRow,
+                      pressed && { backgroundColor: colors.backgroundSelected },
+                    ]}>
+                    <View style={[styles.chip, { backgroundColor: scheme === 'dark' ? '#6E6ADE' : '#5B5BD6' }]}>
+                      <SymbolView
+                        name="brain.head.profile"
+                        size={17}
+                        tintColor="#ffffff"
+                        fallback={<ThemedText style={{ color: '#fff', fontSize: 14 }}>✦</ThemedText>}
+                      />
+                    </View>
+                    <View style={styles.utilText}>
+                      <ThemedText type="smallBold">Control Centre</ThemedText>
+                      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.utilSub}>
+                        {memoryCount != null
+                          ? `What I've learned about you · ${memoryCount} active`
+                          : "What I've learned about you"}
+                      </ThemedText>
+                    </View>
+                    <SymbolView
+                      name="chevron.right"
+                      size={13}
+                      tintColor={colors.textSecondary}
+                      fallback={<ThemedText type="small" themeColor="textSecondary">›</ThemedText>}
+                    />
+                  </Pressable>
+                  <View style={[styles.utilSep, { backgroundColor: colors.backgroundSelected }]} />
+                </>
+              )}
               <Pressable
-                onPress={() => { router.push('/control-centre'); onClose(); }}
+                onPress={() => { router.push('/settings'); onClose(); }}
                 style={({ pressed }) => [
-                  styles.serverRow,
-                  pressed && { backgroundColor: colors.backgroundElement },
+                  styles.utilRow,
+                  pressed && { backgroundColor: colors.backgroundSelected },
                 ]}>
-                <ThemedText type="small">🧠 Control Centre</ThemedText>
+                <View style={[styles.chip, { backgroundColor: colors.backgroundSelected }]}>
+                  <SymbolView
+                    name="gearshape"
+                    size={16}
+                    tintColor={colors.textSecondary}
+                    fallback={<ThemedText type="small" themeColor="textSecondary">⚙</ThemedText>}
+                  />
+                </View>
+                <View style={styles.utilText}>
+                  <ThemedText type="smallBold">Settings &amp; credits</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.utilSub}>
+                    {credits
+                      ? (credits.unlimited ? 'Account · ✦ Unlimited' : `Account · ✦ ${credits.balance.toLocaleString()}`)
+                      : 'Account'}
+                  </ThemedText>
+                </View>
+                <SymbolView
+                  name="chevron.right"
+                  size={13}
+                  tintColor={colors.textSecondary}
+                  fallback={<ThemedText type="small" themeColor="textSecondary">›</ThemedText>}
+                />
+              </Pressable>
+            </View>
+
+            {/* Env honesty — a dev build never masquerades as prod. Hidden on
+                production; tap opens the existing server switcher. */}
+            {serverUrl !== PROD_BASE_URL && (
+              <Pressable
+                onPress={chooseServer}
+                style={[
+                  styles.envPill,
+                  { backgroundColor: scheme === 'dark' ? '#33290F' : '#FDF3E0' },
+                ]}>
+                <View style={styles.envDot} />
+                <ThemedText
+                  type="small"
+                  style={{ fontSize: 12, fontWeight: '600', color: scheme === 'dark' ? '#F0C368' : '#8A6116' }}>
+                  Server: {serverLabel}
+                </ThemedText>
               </Pressable>
             )}
 
-            {/* Settings & credits */}
-            <Pressable
-              onPress={() => { router.push('/settings'); onClose(); }}
-              style={({ pressed }) => [
-                styles.serverRow,
-                pressed && { backgroundColor: colors.backgroundElement },
-              ]}>
-              <ThemedText type="small">⚙︎ Settings &amp; credits</ThemedText>
-            </Pressable>
-
-            {/* Server switcher */}
-            <Pressable
-              onPress={chooseServer}
-              style={({ pressed }) => [
-                styles.serverRow,
-                pressed && { backgroundColor: colors.backgroundElement },
-              ]}>
-              <ThemedText type="small" themeColor="textSecondary">
-                ⚙︎ Server: {serverLabel}
-              </ThemedText>
-            </Pressable>
-
-            {/* Profile footer */}
+            {/* Profile footer — identity + sign out only (credits moved into
+                the Settings row subtitle). */}
             <View style={[styles.footer, { borderTopColor: colors.backgroundElement }]}>
               <View style={[styles.avatar, { backgroundColor: colors.backgroundSelected }]}>
                 <ThemedText type="smallBold">{initial}</ThemedText>
               </View>
               <View style={styles.footerText}>
                 <ThemedText type="smallBold" numberOfLines={1}>{who}</ThemedText>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 }}>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {credits
-                      ? (credits.unlimited ? '✦ Unlimited' : `✦ ${credits.balance.toLocaleString()} credits`)
-                      : '✦ Credits'}
+                {!!secondaryIdentity && (
+                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                    {secondaryIdentity}
                   </ThemedText>
-                  {(!credits || !credits.unlimited) && (
-                    <Pressable
-                      onPress={handleRequestCredits}
-                      disabled={requesting}
-                      style={{
-                        borderWidth: 1, borderColor: colors.backgroundSelected,
-                        borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3,
-                      }}>
-                      <ThemedText type="small" style={{ fontWeight: '600', color: colors.text }}>
-                        {requesting ? 'Requesting…' : '＋ Request more'}
-                      </ThemedText>
-                    </Pressable>
-                  )}
-                </View>
-                <Pressable onPress={handleSignOut} hitSlop={6}>
-                  <ThemedText type="small" style={styles.signOut}>Sign out</ThemedText>
-                </Pressable>
+                )}
               </View>
+              <Pressable onPress={handleSignOut} hitSlop={8}>
+                <ThemedText type="small" style={styles.signOut}>Sign out</ThemedText>
+              </Pressable>
             </View>
           </SafeAreaView>
         </Animated.View>
@@ -436,11 +489,49 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.two,
   },
   chatRowText: { flex: 1 },
-  serverRow: {
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: 10,
-    marginHorizontal: Spacing.two,
+  utilGroup: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginHorizontal: Spacing.three,
+    marginTop: Spacing.two,
+  },
+  utilRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 10,
+    minHeight: 52,
+  },
+  utilSep: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 56,
+  },
+  utilText: { flex: 1, minWidth: 0 },
+  utilSub: { fontSize: 12.5, lineHeight: 17, marginTop: 1 },
+  chip: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  envPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginHorizontal: Spacing.three,
+    marginTop: Spacing.two,
+  },
+  envDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#F5A524',
   },
   footer: {
     flexDirection: 'row',
