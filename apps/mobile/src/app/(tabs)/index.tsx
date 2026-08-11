@@ -21,7 +21,6 @@ import { ChatDrawer } from '@/components/drawer/chat-drawer';
 import { RETRY_EVENT } from '@/components/chat/message-bubble';
 import { QUICK_REPLY_EVENT } from '@/components/chat/widget-view';
 import { MessageList } from '@/components/chat/message-list';
-import { StatePanel } from '@/components/chat/state-panel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
@@ -179,9 +178,6 @@ export default function ChatScreen() {
         </Pressable>
 
         <KeyboardAvoidingView behavior="padding" style={styles.body}>
-          {/* Always mounted (even with no chatId) so a brand-new chat still
-              shows "About you" + the personalization toggle. */}
-          <StatePanel chatId={chatId} refreshSignal={msgCount + (busy ? 0 : 1000)} />
           {chatId ? (
             <MessageList chatId={chatId} />
           ) : busy ? (

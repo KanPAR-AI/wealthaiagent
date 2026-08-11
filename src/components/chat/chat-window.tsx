@@ -20,7 +20,6 @@ import { AgentSelector } from "./agent-selector";
 import { SuggestionTiles } from './chat-suggestion-tiles';
 import { FilePreviewModal } from './file-preview-modal';
 import { ChatLoadingSkeleton } from './chat-loading-skeleton';
-import { ChatStatePanel } from './chat-state-panel';
 
 // Custom hooks
 import { useChatWindowState } from './hooks/use-chat-window-state';
@@ -342,13 +341,6 @@ export default function ChatWindow({
         file={selectedFile}
       />
       <div className={`flex flex-col h-full bg-background dark:bg-zinc-800 w-full min-w-0 ${className}`}>
-        {/* "What I've learned" panel — shown on every chat (incl. a fresh one,
-            where it surfaces cross-chat "About you" + the personalization toggle). */}
-        <ChatStatePanel
-          chatId={chatId}
-          token={token}
-          refreshSignal={messages.length + (isSending ? 0 : 1000)}
-        />
         {messages.length === 0 && !isHistoryLoading ? (
           // Empty state with centered input
           <div className="flex flex-col items-center justify-center flex-1 px-4 md:px-6 space-y-8">
