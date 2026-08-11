@@ -289,6 +289,19 @@ export function ChatDrawer({
               )}
             </View>
 
+            {/* Control Centre — entry to the Memory OS. Same gate as web
+                (chat-sidebar): signed-in, non-anonymous users only. */}
+            {user && !user.isAnonymous && (
+              <Pressable
+                onPress={() => { router.push('/control-centre'); onClose(); }}
+                style={({ pressed }) => [
+                  styles.serverRow,
+                  pressed && { backgroundColor: colors.backgroundElement },
+                ]}>
+                <ThemedText type="small">🧠 Control Centre</ThemedText>
+              </Pressable>
+            )}
+
             {/* Settings & credits */}
             <Pressable
               onPress={() => { router.push('/settings'); onClose(); }}

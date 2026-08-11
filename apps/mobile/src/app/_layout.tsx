@@ -24,6 +24,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="login" options={{ animation: 'fade' }} />
           <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />
+          <Stack.Screen name="control-centre" options={{ animation: 'slide_from_right' }} />
         </Stack>
       </ThemeProvider>
     </KeyboardProvider>
