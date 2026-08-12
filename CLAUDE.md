@@ -2,6 +2,11 @@
 
 React 19 + TypeScript 5.7 frontend for the YourFinAdvisor chat platform. See [`../docs/`](../docs/) for detailed docs.
 
+This repo is also an npm-workspaces monorepo: the **React Native (Expo) mobile
+app** lives at [`apps/mobile/`](apps/mobile/) (own CLAUDE.md/AGENTS.md) with
+shared platform-agnostic services in `packages/core` (`@wealthai/core`). The
+web app stays at the repo root.
+
 ## Commands
 
 ```bash
@@ -45,6 +50,7 @@ src/types/                  # TypeScript definitions
 | `/new` | New chat | |
 | `/chat/:chatid` | Chat | Main interface |
 | `/admin` | Admin | `<ProtectedRoute requireAdmin>` |
+| `/memory/*` | Memory OS "Control Centre" | Overview/Memories/Inbox/Timeline/Graph/Debugger/Run; gated signed-in non-anonymous (`MemoryRouteGuard`); entry in chat-sidebar footer. Docs: `../docs/memory-ui/` |
 | `/mealplan/:chatid` | MealPlan | Week nav, generate, swap |
 | `/debug/:chatid` | Debug | Slot inspector |
 
