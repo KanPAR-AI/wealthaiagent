@@ -23,8 +23,8 @@ npm run deploy:gcp       # Deploy to GCP
 - **React 19** with TypeScript 5.7 (strict mode)
 - **Vite 6.3** — path alias `@/*` → `src/*`, base path `/chataiagent/`
 - **Tailwind CSS 4.x** with Vite plugin
-- **Zustand 5.0** for state (chat.ts, auth.ts, meal-plan.ts)
-- **React Router 7.5** with basename `/chataiagent`
+- **Zustand 5.0** for state (admin.ts, auth.ts, chat.ts, meal-plan.ts, memory-ui.ts, trade.ts)
+- **React Router 7.5** with basename `/chataiagent` on web (`'/'` on native Capacitor builds)
 - **Radix UI** + shadcn/ui patterns
 - **Jest + React Testing Library + MSW**
 
@@ -33,14 +33,22 @@ npm run deploy:gcp       # Deploy to GCP
 ```
 src/components/chat/        # Chat UI (message list, input, streaming, sidebar)
 src/components/ui/          # Reusable UI primitives (25+ shadcn-style)
-src/components/widgets/     # Interactive inline widgets (5 types)
+src/components/widgets/     # 24 SSE widget types registered in widget-renderer.tsx
+                            #   + 4 fenced-markdown widgets in chat/response.tsx
 src/components/meal-plan/   # Meal plan components (variety score, staleness)
-src/pages/                  # MealPlan.tsx, Login.tsx, Admin.tsx
-src/store/                  # Zustand stores
-src/hooks/                  # Custom hooks (use-auth, use-chat-history)
-src/services/               # API layer (chat-service.ts, meal-plan-service.ts)
+src/pages/                  # 15 page files + pages/memory/
+src/store/                  # Zustand stores: admin.ts, auth.ts, chat.ts,
+                            #   meal-plan.ts, memory-ui.ts, trade.ts (6)
+src/hooks/                  # Custom hooks (use-auth, use-chat-messages, use-chat-session)
+src/services/               # API layer: ~29 service files + repositories/
+                            #   (memory-engine, loops, jarvis, orderbook,
+                            #    agent-builder, corpus-*, …)
 src/types/                  # TypeScript definitions
 ```
+
+npm workspaces cover both `packages/*` and `apps/*`: `packages/core`
+(`@wealthai/core`, platform-agnostic services shared by web and mobile) and
+`apps/mobile` (the Expo app).
 
 ## Routes
 
@@ -48,30 +56,53 @@ src/types/                  # TypeScript definitions
 |------|-----------|-------|
 | `/` | Login | Google / Phone OTP / Email / Anonymous |
 | `/new` | New chat | |
+| `/chat` | New chat | Alias of `/new` |
 | `/chat/:chatid` | Chat | Main interface |
+| `/a/:slug` | AgentLanding | Agent landing page |
+| `/settings` | Settings | `<ProtectedRoute requireAuth>` |
+| `/orderbook` | Order Book | `<ProtectedRoute requireAuth>` |
+| `/trade` | Trade | |
+| `/logs` | Logs | |
 | `/admin` | Admin | `<ProtectedRoute requireAdmin>` |
+| `/admin/bugs` | Bug reports | `<ProtectedRoute requireAdmin>` |
+| `/admin/test/:agentId` | Agent test | `<ProtectedRoute requireAdmin>` |
 | `/memory/*` | Memory OS "Control Centre" | Overview/Memories/Inbox/Timeline/Graph/Debugger/Run; gated signed-in non-anonymous (`MemoryRouteGuard`); entry in chat-sidebar footer. Docs: `../docs/memory-ui/` |
 | `/mealplan/:chatid` | MealPlan | Week nav, generate, swap |
 | `/debug/:chatid` | Debug | Slot inspector |
 
-All routes under base path `/chataiagent/`.
+Layout: `/orderbook` and `/settings` render **inside** `AppLayout` (chat chrome
+— sidebar etc.), while `/trade`, `/logs`, `/debug`, `/admin/*`, and `/memory/*`
+render outside it.
+
+Base path: routes live under `/chataiagent/` on web, but the router basename is
+`'/'` on native Capacitor builds (`const basename = isNativePlatform ? '/' :
+'/chataiagent'`).
 
 ## Widget System
 
 See [`../docs/11-widget-system.md`](../docs/11-widget-system.md).
 
-All widgets dispatch `chat-quick-reply` CustomEvent (not direct store calls):
+**24 SSE widget types** are registered in `widget-renderer.tsx` (the registry of
+record), plus **4 fenced-markdown widgets** in `chat/response.tsx`:
+
+| Group | Types |
+|-------|-------|
+| Charts | pie / bar / line / composed |
+| Calculators | compound-interest / SIP / mortgage / retirement |
+| Conversational input | action-tiles, multi-select, onboarding-form, cuisine-proportions, specialist-picker |
+| Financial planner | 10 `widget_financial_*` types in `widgets/financial-planner/` |
+| Table | table widget |
+
+Interactive widgets dispatch `chat-quick-reply` CustomEvent (not direct store calls):
 ```typescript
 window.dispatchEvent(new CustomEvent('chat-quick-reply', { detail: { text } }))
 ```
 
-| Widget | File | Purpose |
-|--------|------|---------|
-| Onboarding Form | `onboarding-form-widget.tsx` | Profile collection (sliders, dropdowns, pills) |
-| Specialist Picker | `specialist-picker-widget.tsx` | 6 nutrition specialist cards |
-| Multi-Select | `multi-select-widget.tsx` | Multi-choice with "Other" input |
-| Cuisine Proportion | `cuisine-proportion-widget.tsx` | Slider-based cuisine weights |
-| Action Tiles | `action-tiles-widget.tsx` | Quick-reply buttons |
+**Fenced-markdown path** (bypasses `chat-quick-reply`): `response.tsx`
+intercepts code fences — `bedtime_video`, `palm_scanning` (streaming-only),
+`palm_analysis`, and `palm_predictions` render widgets, while
+`muhurta_results` / `natal_chart` / `match_report` fences deliberately render
+null.
 
 Mobile-first: 24px slider thumbs, `touch-none`, `active:scale` feedback.
 
