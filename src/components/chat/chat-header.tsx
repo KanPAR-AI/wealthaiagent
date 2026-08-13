@@ -10,7 +10,7 @@ import { Button } from '../ui/button';
 import CalcDebugModal from '../debug/calc-debug-modal';
 import { ReportBugModal } from './report-bug-modal';
 import { chatsRepository } from "@/services/repositories/chats-repository";
-import { StandaloneBadge } from "./standalone-toggle";
+import { StandaloneHeaderControl } from "./standalone-toggle";
 
 export function ChatHeader(): JSX.Element {
   const { chatid } = useParams<{ chatid: string }>();
@@ -48,7 +48,14 @@ export function ChatHeader(): JSX.Element {
         <SidebarTrigger className="mr-2" />
         <div className="flex items-center gap-2 overflow-hidden flex-1">
           <Logo />
-          {isStandalone && <StandaloneBadge className="hidden sm:inline-flex" />}
+          {/* Memory control, always reachable from the top bar. It was only on
+              the new-chat empty state before, so once a conversation started
+              there was no way to see or change it without leaving. */}
+          <StandaloneHeaderControl
+            chatId={chatid}
+            isStandalone={isStandalone}
+            className="hidden sm:inline-flex"
+          />
         </div>
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {chatid && (
