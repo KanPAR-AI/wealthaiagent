@@ -18,6 +18,7 @@ import {
   Database,
   Brain,
   FileText,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +37,7 @@ import {
 import type { AgentStatus } from "@/services/agent-builder-service";
 import { AgentStatusBadge } from "./agent-status-badge";
 import { getApiUrl } from "@/config/environment";
+import { langfuseSessionUrl } from "@/lib/langfuse";
 import { auth } from "@/config/firebase";
 import { toast } from "sonner";
 
@@ -275,6 +277,11 @@ export function SandboxPanel({ agentId }: Props) {
   const [messages, setMessages] = useState<TestMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  // docs/40 VIEW-3 — the sandbox creates a fresh chat per send, so the last
+  // one is the run an admin is actually looking at. Its Langfuse session has
+  // what the panel below cannot show: every generation's verbatim prompt,
+  // every tool result, and where the time went.
+  const [lastChatId, setLastChatId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadConfig = useCallback(async () => {
@@ -340,6 +347,7 @@ export function SandboxPanel({ agentId }: Props) {
       const chatData = await createRes.json();
       const chatId = chatData.chat?.id;
       if (!chatId) throw new Error("Create chat returned no chat.id");
+      setLastChatId(chatId);
 
       // 2) Open the SSE stream with trace + force_agent pinning
       const streamUrl = getApiUrl(
@@ -501,6 +509,24 @@ export function SandboxPanel({ agentId }: Props) {
             <div className="flex items-center gap-2">
               {agentConfig?.status && (
                 <AgentStatusBadge status={agentConfig.status} />
+              )}
+              {/* docs/40 VIEW-3 — one click from the run to its trajectory.
+                  Shown only once a run exists: a link to nothing is worse
+                  than no link, because it looks like the feature works. */}
+              {lastChatId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg"
+                  title="Open this run's Langfuse session (prompts, tools, retrieval, latency)"
+                  onClick={() => {
+                    const url = langfuseSessionUrl(lastChatId);
+                    if (url) window.open(url, "_blank", "noopener,noreferrer");
+                  }}
+                >
+                  <Activity size={14} className="mr-1.5" />
+                  Trajectories
+                </Button>
               )}
               <Button
                 variant="outline"

@@ -28,6 +28,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { getApiUrl } from "@/config/environment"; // Assuming the function is in 'lib/utils'
+import { langfuseSessionUrl } from "@/lib/langfuse";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -302,6 +303,21 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
            <DropdownMenuItem onClick={() => handleToggleFavorite(chat.id)}>
              {chat.isFavorite ? "Remove from favorites" : "Add to favorites"}
            </DropdownMenuItem>
+           {/* docs/40 VIEW-3 — debugging starts from the conversation, not
+               from a search box. Admin-only (D4: verbatim prompts are
+               admin-gated), and the instance is not publicly reachable, so
+               this link only resolves for someone already on the tunnel. */}
+           {isAdmin && (
+             <DropdownMenuItem
+               onClick={() => {
+                 const url = langfuseSessionUrl(chat.id);
+                 if (url) window.open(url, "_blank", "noopener,noreferrer");
+               }}
+             >
+               <Activity size={14} className="mr-2" />
+               Trajectories
+             </DropdownMenuItem>
+           )}
            <DropdownMenuSeparator />
            <DropdownMenuItem
              className="text-red-600 focus:text-red-700 focus:bg-red-50"

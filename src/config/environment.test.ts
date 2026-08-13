@@ -16,6 +16,8 @@ interface EnvironmentConfig {
   testPassword?: string;
   sentryDsn?: string;
   gaTrackingId?: string;
+  langfuseBaseUrl: string;
+  langfuseProject: string;
 }
 
 export const env: EnvironmentConfig = {
@@ -30,7 +32,9 @@ export const env: EnvironmentConfig = {
   isDevelopment: true,
   isProduction: false,
   testUsername: 'testuser',
-  testPassword: 'testpass123'
+  testPassword: 'testpass123',
+  langfuseBaseUrl: 'http://localhost:3001',
+  langfuseProject: 'chatservice'
 };
 
 export function getApiUrl(endpoint: string): string {

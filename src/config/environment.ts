@@ -27,6 +27,13 @@ interface EnvironmentConfig {
   sentryDsn?: string;
   gaTrackingId?: string;
   massiveApiKey?: string;
+
+  // Trajectory observability (docs/40 VIEW-3). The Langfuse instance is
+  // deliberately NOT publicly reachable (VIEW-2), so this is whatever the
+  // admin's tunnel exposes it on — 3001 by convention. Configurable because
+  // "the URL your box happens to use" is not something to hardcode.
+  langfuseBaseUrl: string;
+  langfuseProject: string;
 }
 
 // Helper function to get required environment variable
@@ -91,6 +98,10 @@ export const env: EnvironmentConfig = {
   gaTrackingId: getOptionalEnv('VITE_GA_TRACKING_ID'),
   // Note: In .env file, use VITE_MASSIVE_API_KEY (Vite requires VITE_ prefix for client-side env vars)
   massiveApiKey: getOptionalEnv('VITE_MASSIVE_API_KEY'),
+
+  // docs/40 VIEW-3 / docs/41 §10
+  langfuseBaseUrl: getOptionalEnv('VITE_LANGFUSE_BASE_URL', 'http://localhost:3001') || '',
+  langfuseProject: getOptionalEnv('VITE_LANGFUSE_PROJECT', 'chatservice') || '',
 };
 
 // Validate configuration in development
