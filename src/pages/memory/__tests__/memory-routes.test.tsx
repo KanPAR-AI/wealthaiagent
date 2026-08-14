@@ -107,6 +107,23 @@ describe("Memory route tree", () => {
     expect(mockSearchMemories).not.toHaveBeenCalled();
   });
 
+  test("header carries the Back-to-Chat escape; Admin link hidden for non-admins", async () => {
+    // Memory routes render OUTSIDE AppLayout (no chat sidebar) — without
+    // these links the section is a dead end.
+    mockUseAuth.mockReturnValue(auth());
+    renderMemoryApp("/memory");
+    const back = await screen.findByRole("link", { name: /back to chat/i });
+    expect(back).toHaveAttribute("href", "/new");
+    expect(screen.queryByRole("link", { name: /^admin$/i })).not.toBeInTheDocument();
+  });
+
+  test("admins additionally get an Admin link in the header", async () => {
+    mockUseAuth.mockReturnValue(auth({ isAdmin: true }));
+    renderMemoryApp("/memory");
+    const admin = await screen.findByRole("link", { name: /^admin$/i });
+    expect(admin).toHaveAttribute("href", "/admin");
+  });
+
   test("/memory/memories fires a real search round-trip (no mock data)", async () => {
     mockUseAuth.mockReturnValue(auth());
     renderMemoryApp("/memory/memories");
