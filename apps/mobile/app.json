@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Arthu1203",
+    "name": "Arthur1203",
     "slug": "yourfinadvisor",
     "version": "1.0.0",
     "runtimeVersion": {
@@ -18,7 +18,8 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "2"
     },
     "android": {
       "adaptiveIcon": {
