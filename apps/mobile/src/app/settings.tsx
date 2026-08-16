@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { PROD_BASE_URL, getBaseUrl, setBaseUrl } from '@/lib/server-config';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
@@ -52,6 +53,38 @@ export default function SettingsScreen() {
       Alert.alert('Could not request', e?.message ?? 'Try again later.');
     } finally { setRequesting(false); }
   };
+
+  // Backend server section (restored): the drawer's switcher pill is
+  // deliberately hidden on production ("env honesty"), which removed the
+  // only ENTRY POINT for switching to a local server — a one-way trap.
+  // Settings is its permanent home; the drawer pill remains the non-prod
+  // reminder.
+  const [serverUrl, setServerUrl] = useState(getBaseUrl());
+  const applyServer = useCallback(async (url: string) => {
+    await setBaseUrl(url);
+    setServerUrl(getBaseUrl());
+  }, []);
+  const chooseServer = useCallback(() => {
+    Alert.alert('Backend server', `Current: ${serverUrl}`, [
+      { text: 'Production', onPress: () => { void applyServer(PROD_BASE_URL); } },
+      {
+        text: 'Local (enter address)',
+        onPress: () => {
+          Alert.prompt(
+            'Local server address',
+            'Your Mac\u2019s LAN IP, e.g. http://192.168.68.55:8080',
+            (value) => { if (value?.trim()) void applyServer(value); },
+            'plain-text',
+            serverUrl.startsWith('http://') ? serverUrl : 'http://192.168.68.55:8080',
+          );
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [serverUrl, applyServer]);
+  const serverLabel = serverUrl === PROD_BASE_URL
+    ? 'Production'
+    : serverUrl.replace(/^https?:\/\//, '');
 
   const onSignOut = () => {
     Alert.alert('Sign out', 'Sign out of YourFinAdvisor?', [
@@ -127,6 +160,17 @@ export default function SettingsScreen() {
 
           {loading && <ActivityIndicator color={colors.textSecondary} style={{ marginTop: 12 }} />}
 
+          {/* Developer — backend server */}
+          <ThemedText type="small" themeColor="textSecondary" style={styles.sectionLabel}>DEVELOPER</ThemedText>
+          <View style={[styles.card, { backgroundColor: colors.backgroundElement }]}>
+            <Pressable onPress={chooseServer} style={styles.serverRow}>
+              <ThemedText type="small" themeColor="textSecondary">Backend server</ThemedText>
+              <ThemedText type="small" style={{ color: serverUrl === PROD_BASE_URL ? colors.text : '#B8860B' }}>
+                {serverLabel} ›
+              </ThemedText>
+            </Pressable>
+          </View>
+
           <Pressable onPress={onSignOut} style={[styles.signOut, { borderColor: colors.backgroundSelected }]}>
             <ThemedText style={{ color: '#e5484d' }}>Sign out</ThemedText>
           </Pressable>
@@ -160,5 +204,9 @@ const styles = StyleSheet.create({
   requestBtn: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8 },
   usageRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 9 },
   usageBorder: { borderBottomWidth: StyleSheet.hairlineWidth },
+  serverRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
   signOut: { marginTop: 24, alignItems: 'center', borderWidth: 1, borderRadius: 12, paddingVertical: 12 },
 });
