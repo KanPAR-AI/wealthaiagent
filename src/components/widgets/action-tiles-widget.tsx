@@ -21,18 +21,23 @@ interface ActionTilesWidgetProps {
   };
 }
 
-export function ActionTilesWidget({ data, isHistory }: ActionTilesWidgetProps) {
+export function ActionTilesWidget({ data, isHistory, ...rest }: ActionTilesWidgetProps) {
   const [clicked, setClicked] = useState(false);
+
+  // Resilient like mobile's widget-view: a payload with top-level actions
+  // (no data nesting) must render, not crash — an undefined `data` here
+  // white-screened entire chats (bug 6d2f70b0).
+  const src: ActionTilesWidgetProps['data'] = data ?? (rest as any);
 
   // Normalize: support both {actions} and {tiles + message_prefix} formats
   const actions: ActionItem[] = useMemo(() => {
-    if (data.actions?.length) return data.actions;
-    if (data.tiles?.length) {
-      const prefix = data.message_prefix ?? '';
-      return data.tiles.map((t) => ({ label: t.label, message: `${prefix}${t.id}` }));
+    if (src.actions?.length) return src.actions;
+    if (src.tiles?.length) {
+      const prefix = src.message_prefix ?? '';
+      return src.tiles.map((t) => ({ label: t.label, message: `${prefix}${t.id}` }));
     }
     return [];
-  }, [data]);
+  }, [src]);
 
   const handleClick = (message: string) => {
     if (clicked) return;

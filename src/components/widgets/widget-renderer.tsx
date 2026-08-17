@@ -38,9 +38,43 @@ interface WidgetRendererProps {
   isHistory?: boolean
 }
 
+import { Component, type ReactNode } from 'react'
+
+/** One malformed widget must never take the whole chat down (bug 6d2f70b0:
+ *  a widgets_json entry whose shape one component didn't expect threw in
+ *  render and white-screened the page). The boundary contains the blast to
+ *  the single widget, logs it, and renders nothing in its place. */
+class WidgetErrorBoundary extends Component<
+  { widgetType?: string; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  componentDidCatch(error: unknown) {
+    console.warn('[WidgetRenderer] widget crashed, rendering nothing:',
+      this.props.widgetType, error)
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children
+  }
+}
+
 export function WidgetRenderer({ widget, isHistory }: WidgetRendererProps) {
   console.log('[WidgetRenderer] Rendering widget:', widget.type, widget)
 
+  return (
+    <WidgetErrorBoundary widgetType={widget.type}>
+      {renderWidget(widget, isHistory)}
+    </WidgetErrorBoundary>
+  )
+}
+
+function renderWidget(widget: WidgetRendererProps['widget'], isHistory?: boolean) {
   switch (widget.type) {
     case 'widget_pie_chart':
       return <PieChartWidget {...widget} />
