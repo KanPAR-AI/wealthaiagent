@@ -27,7 +27,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
-import { fetchChatList, useChatStore, type ChatListItem } from '@wealthai/core';
+import { fetchChatList, searchChats, useChatStore, type ChatListItem } from '@wealthai/core';
 
 import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
@@ -150,11 +150,28 @@ export function ChatDrawer({
     })();
   }, [open]);
 
+  // Server results cover ALL chats — the drawer only loads the newest 50,
+  // so the local filter (kept as the instant first pass) cannot see older
+  // ones. Degrades to the local filter if the request fails.
+  const [serverResults, setServerResults] = useState<ChatListItem[] | null>(null);
+  useEffect(() => {
+    if (!query.trim()) { setServerResults(null); return; }
+    const handle = setTimeout(async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        setServerResults(await searchChats(token, query.trim()));
+      } catch { /* local filter keeps working */ }
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [query]);
+
   const filtered = useMemo(() => {
     if (!query.trim()) return chats;
+    if (serverResults !== null) return serverResults;
     const q = query.toLowerCase();
     return chats.filter((c) => (c.title || '').toLowerCase().includes(q));
-  }, [chats, query]);
+  }, [chats, query, serverResults]);
 
   const openChat = useCallback(async (chat: ChatListItem) => {
     if (openingId) return;

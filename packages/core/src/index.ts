@@ -34,6 +34,7 @@ export {
   sendChatMessage,
   fetchChatHistory,
   fetchChatList,
+  searchChats,
   mapHistoryMessage,
   stripRoutingTag,
   deleteChatSession,

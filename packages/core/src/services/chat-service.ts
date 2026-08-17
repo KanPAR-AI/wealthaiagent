@@ -473,6 +473,25 @@ export const fetchChatList = async (
   );
 };
 
+/** Search ALL the user's chats by title, server-side (case-insensitive
+ *  substring, newest first). The list endpoints only page the newest chats,
+ *  so a client-side filter cannot see older ones — this can. */
+export const searchChats = async (
+  jwt: string,
+  query: string,
+  limit = 50,
+): Promise<ChatListItem[]> => {
+  const { fetch, getApiUrl } = getPlatform();
+  const response = await fetch(
+    getApiUrl(`/chats/search?q=${encodeURIComponent(query)}&limit=${limit}`),
+    { headers: { Authorization: `Bearer ${jwt}` } },
+  );
+  if (!response.ok) {
+    throw new Error(`Chat search failed: ${response.statusText}`);
+  }
+  return response.json();
+};
+
 /** Map one backend history message (GET /chats/{id}) to the store's
  *  Message shape. Extracted from the web's use-chat-history hook so both
  *  apps hydrate identically:
