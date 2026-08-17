@@ -132,6 +132,12 @@ function formatChatDate(dateString: string): string {
 export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [chats, setChats] = useState<Chat[]>([]);
+  // Server-side search results — the local `chats` array only ever holds the
+  // newest page (limit=20), so a local filter cannot see older chats. When a
+  // query is active, the backend searches ALL of the user's chat titles and
+  // these results replace the local filter (which still serves as the
+  // instant first pass while the request is in flight).
+  const [searchResults, setSearchResults] = useState<Chat[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -180,13 +186,37 @@ export default function ChatSidebar({ currentChatId }: ChatSidebarProps) {
     fetchChats();
   }, [token, currentChatId]);
 
+  // --- Server search (debounced) ---
+  useEffect(() => {
+    if (!searchQuery || !token) {
+      setSearchResults(null);
+      return;
+    }
+    const handle = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          getApiUrl(`chats/search?q=${encodeURIComponent(searchQuery)}`),
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (response.ok) {
+          setSearchResults(await response.json());
+        }
+      } catch {
+        // keep the local filter — search degrades, never breaks the sidebar
+      }
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [searchQuery, token]);
+
   // --- Filtering Logic ---
   const filteredChats = useMemo(() => {
     if (!searchQuery) return chats;
+    // Server results cover ALL chats; until they land, filter the loaded page.
+    if (searchResults !== null) return searchResults;
     return chats.filter((chat) =>
       chat.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [chats, searchQuery]);
+  }, [chats, searchQuery, searchResults]);
 
   const favoriteChats = useMemo(() => {
     return filteredChats.filter(chat => chat.isFavorite).sort((a,b) => a.title.localeCompare(b.title));
