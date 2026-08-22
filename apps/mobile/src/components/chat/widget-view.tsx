@@ -1,4 +1,5 @@
-// Widget rendering for assistant messages.
+// Widget rendering for assistant messages, dispatched through a REGISTRY
+// keyed by widget type (docs/49 ASTRAL-20).
 //
 // Interactive (tap → quick reply, dispatched through the core platform
 // event bus — the mobile analogue of web's `chat-quick-reply` CustomEvent):
@@ -8,13 +9,23 @@
 //   multi_select      {options:[{id,label}], message_prefix?, submit_label?,
 //                     max_select?} — proper select-then-submit
 //
-// Everything else (natal_chart, palm_analysis, charts, tables, onboarding
-// form) renders as a labeled chip until its native view lands in Phase 4 —
-// visible structure, never silently dropped.
+// Three outcomes, and the third is the point of ASTRAL-20:
+//   1. a registered type renders its view;
+//   2. a type on DEFERRED_TYPES — known to the backend, native view not built
+//      yet — renders a labelled chip, visible structure rather than silence;
+//   3. anything else renders NOTHING and warns once, naming the type.
+//
+// (3) replaces the old `if (type === 'natal_chart' || ...) return null` and the
+// catch-all chip. The hardcoded null is how three computed block types went
+// unrendered for months: the server sent a chart, the client dropped it, and
+// dropping it looked exactly like never receiving one.
 
-import { useState } from 'react';
+import { createBlockRegistry } from '@wealthai/astral';
+import { useState, type ReactElement } from 'react';
 import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import { getPlatform, type Widget } from '@wealthai/core';
+
+import { AstralBlock } from '@/components/astral/astral-block';
 
 import { ChartWidget, TableWidget } from '@/components/chat/chart-widgets';
 import { OnboardingForm } from '@/components/chat/onboarding-form';
@@ -118,73 +129,86 @@ function Chip({ label, plain }: { label: string; plain?: boolean }) {
   );
 }
 
-export function WidgetView({ widget }: { widget: Widget }) {
-  const type = (widget.type || '').replace(/^widget_/, '');
-  const data: any = widget.data ?? widget;
+type WidgetHandler = (data: any, widget: Widget) => ReactElement | null;
 
-  if (type === 'action_tiles') {
+const handlers: Record<string, WidgetHandler> = {
+  action_tiles: (data) => {
     const items: { label: string; message: string }[] = data.actions?.length
       ? data.actions.map((a: any) => ({ label: a.label, message: a.message }))
       : (data.tiles || []).map((t: any) => ({
           label: t.label,
           message: `${data.message_prefix || ''}${t.id}`,
         }));
-    if (items.length) return <TileRow items={items} />;
-  }
+    return items.length ? <TileRow items={items} /> : null;
+  },
 
-  if (type === 'specialist_picker') {
+  specialist_picker: (data) => {
     const items = (data.specialists || []).map((sp: any) => ({
       label: sp.name || sp.label || sp.id,
       message: `${data.message_prefix || ''}${sp.id}`,
     }));
-    if (items.length) return <TileRow items={items} />;
-  }
+    return items.length ? <TileRow items={items} /> : null;
+  },
 
-  if (type === 'multi_select' && Array.isArray(data.options) && data.options.length) {
-    return <MultiSelect data={data} />;
-  }
+  multi_select: (data) =>
+    Array.isArray(data.options) && data.options.length ? <MultiSelect data={data} /> : null,
 
-  if (type === 'onboarding_form' && Array.isArray(data.fields) && data.fields.length) {
-    return <OnboardingForm data={data} />;
-  }
+  onboarding_form: (data) =>
+    Array.isArray(data.fields) && data.fields.length ? <OnboardingForm data={data} /> : null,
 
-  if (type === 'palm_analysis') {
-    return <PalmView data={data} />;
-  }
+  palm_analysis: (data) => <PalmView data={data} />,
 
   // Transient status marker streamed while the vision pass runs; the
   // palm_analysis widget follows it in the same message.
-  if (type === 'palm_scanning') {
-    return <Chip label="Scanning palm…" plain />;
-  }
+  palm_scanning: () => <Chip label="Scanning palm…" plain />,
 
   // Chip-only snapshot pinned atop holistic follow-ups.
-  if (type === 'palm_predictions') {
-    return <PalmPredictionsView data={data} />;
-  }
+  palm_predictions: (data) => <PalmPredictionsView data={data} />,
 
   // Charts + tables — native SVG renders (bug aef2e65d: these piled up
   // as "coming soon" chips at the end of every IRR analysis).
-  if (type === 'table') {
-    return <TableWidget widget={widget} />;
-  }
-  if (type === 'line_chart') {
-    return <ChartWidget widget={widget} kind="line" />;
-  }
-  if (type === 'bar_chart') {
-    return <ChartWidget widget={widget} kind="bar" />;
-  }
-  if (type === 'composed_chart') {
-    return <ChartWidget widget={widget} kind="composed" />;
-  }
+  table: (_data, widget) => <TableWidget widget={widget} />,
+  line_chart: (_data, widget) => <ChartWidget widget={widget} kind="line" />,
+  bar_chart: (_data, widget) => <ChartWidget widget={widget} kind="bar" />,
+  composed_chart: (_data, widget) => <ChartWidget widget={widget} kind="composed" />,
 
-  // Web parity: these JSON blocks are data for the formatted markdown that
-  // follows them — never shown raw, never chipped.
-  if (type === 'natal_chart' || type === 'muhurta_results' || type === 'match_report') {
-    return null;
-  }
+  // docs/49 PH-3: the three blocks both clients used to discard.
+  natal_chart: (data) => <AstralBlock type="natal_chart" data={data} />,
+  match_report: (data) => <AstralBlock type="match_report" data={data} />,
+  muhurta_results: (data) => <AstralBlock type="muhurta_results" data={data} />,
+};
 
-  return <Chip label={type.replace(/_/g, ' ')} />;
+export const widgetRegistry = createBlockRegistry<WidgetHandler>(handlers, {
+  surface: 'widget-view',
+});
+
+/**
+ * Types the backend really emits and this app has no native view for yet.
+ * They keep the labelled chip on purpose — "visible structure, never silently
+ * dropped" — and they are DECLARED, so an undeclared type still trips the
+ * ASTRAL-20 warning instead of hiding behind a friendly chip.
+ */
+const DEFERRED_TYPES = new Set([
+  'pie_chart',
+  'compound_interest_calculator',
+  'sip_calculator',
+  'mortgage_calculator',
+  'retirement_calculator',
+  'cuisine_proportions',
+  'bedtime_video',
+]);
+
+export function WidgetView({ widget }: { widget: Widget }) {
+  const type = (widget.type || '').replace(/^widget_/, '');
+  const data: any = widget.data ?? widget;
+
+  const handler = widgetRegistry.get(type);
+  if (handler) return handler(data, widget);
+
+  if (DEFERRED_TYPES.has(type)) return <Chip label={type.replace(/_/g, ' ')} />;
+
+  widgetRegistry.reportUnknown(type);
+  return null;
 }
 
 const styles = StyleSheet.create({

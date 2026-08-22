@@ -98,11 +98,25 @@ Interactive widgets dispatch `chat-quick-reply` CustomEvent (not direct store ca
 window.dispatchEvent(new CustomEvent('chat-quick-reply', { detail: { text } }))
 ```
 
-**Fenced-markdown path** (bypasses `chat-quick-reply`): `response.tsx`
-intercepts code fences — `bedtime_video`, `palm_scanning` (streaming-only),
-`palm_analysis`, and `palm_predictions` render widgets, while
-`muhurta_results` / `natal_chart` / `match_report` fences deliberately render
-null.
+**Fenced-markdown path** (bypasses `chat-quick-reply`): `response.tsx` hands
+every fenced block to the **block registry** in `chat/block-registry.tsx`
+(docs/49 ASTRAL-20). Seven types are registered — `bedtime_video`,
+`palm_scanning` (streaming-only), `palm_analysis`, `palm_predictions`, and,
+since PH-3, `natal_chart` / `match_report` / `muhurta_results`, which render
+through `@wealthai/astral`. A fence is treated as *data* only when its language
+equals the JSON body's own `type`, so an ordinary ```json or ```python fence
+still renders as code. An **unregistered** data block renders nothing and logs
+one warning naming the type — the three astrology blocks above were silently
+dropped for months because that warning did not exist.
+
+**`@wealthai/astral`** (`packages/astral/`): the astrology renderers — natal
+wheel, match scorecard, muhurta windows — written ONCE against a small
+primitive contract (`primitives.ts`) so the same source file serves the web
+app, the 380px AstroMatch extension panel and the React Native app. Web binds
+it in `src/components/astral/` (`dom-primitives.tsx`, `astral-block.tsx`);
+mobile in `apps/mobile/src/components/astral/`. A second implementation of the
+scorecard anywhere in the workspace is a SPEC-DEVIATION and
+`packages/astral/src/__tests__/structural.test.ts` fails on it.
 
 Mobile-first: 24px slider thumbs, `touch-none`, `active:scale` feedback.
 

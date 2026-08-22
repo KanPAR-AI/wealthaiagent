@@ -2,13 +2,16 @@
 //   user      → right-aligned filled bubble, plain text
 //   assistant → full-width markdown, no bubble, streaming cursor while live
 //
-// Widgets stream as contentBlocks between text runs. Interactive widget
-// UIs arrive in Phase 4 — until then each renders as a labeled chip so
-// the reply's structure stays visible instead of silently dropping data.
+// Widgets stream as contentBlocks between text runs, and fenced data blocks
+// in the TEXT stream are split out into widgets here. `widget-view.tsx`
+// dispatches them through a registry (docs/49 ASTRAL-20): a registered type
+// renders its view, a declared not-yet-built type renders a labelled chip, and
+// anything else renders nothing and warns once by name.
 
 import { memo, useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import Markdown from 'react-native-markdown-display';
+import { readDataBlock } from '@wealthai/astral';
 import type { ContentBlock, Message } from '@wealthai/core';
 
 import { ThemedText } from '@/components/themed-text';
@@ -39,9 +42,18 @@ function AuthImage({ uri, style, onError }: { uri: string; style: any; onError?:
 }
 
 
-// ```some_widget_type\n{...json...}\n``` → widget block. Anything that
-// isn't a JSON object with a fence language stays as text (real code
-// blocks render as code).
+// ```some_widget_type\n{...json...}\n``` → widget block.
+//
+// "Is this fence data?" is decided by `readDataBlock` from @wealthai/astral,
+// the SAME rule web uses (docs/49 ASTRAL-20): the fence language must equal
+// the JSON body's own `type` field, which is the backend's convention for
+// every data block it emits (natal_chart, match_report, muhurta_results,
+// palm_*, bedtime_video — all verified against the emitters).
+//
+// Sharing the rule fixes a small mobile-only wart: previously ANY fenced JSON
+// object became a widget, so an ordinary ```json fence turned into a
+// "json — interactive view coming to mobile soon" chip instead of rendering
+// as code the way it does on web. Now it stays text.
 const FENCE_RE = /```([a-z_][a-z0-9_]*)\s*\n([\s\S]*?)```/g;
 
 function splitFencedWidgets(block: ContentBlock): ContentBlock[] {
@@ -52,14 +64,10 @@ function splitFencedWidgets(block: ContentBlock): ContentBlock[] {
   for (const m of text.matchAll(FENCE_RE)) {
     const [whole, lang, body] = m;
     const start = m.index ?? 0;
-    let widgetData: any = null;
-    try {
-      const parsed = JSON.parse(body.trim());
-      if (parsed && typeof parsed === 'object') widgetData = parsed;
-    } catch { /* not JSON — leave the fence as text/code */ }
-    if (!widgetData) continue;
+    const data = readDataBlock(lang, body.trim());
+    if (!data) continue;
     if (start > last) out.push({ type: 'text', content: text.slice(last, start) });
-    out.push({ type: 'widget', widget: { ...widgetData, type: widgetData.type || lang } });
+    out.push({ type: 'widget', widget: data.value as any });
     last = start + whole.length;
   }
   if (last === 0) return [block];

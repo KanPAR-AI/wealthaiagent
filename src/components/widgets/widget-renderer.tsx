@@ -39,6 +39,11 @@ interface WidgetRendererProps {
 }
 
 import { Component, type ReactNode } from 'react'
+import { createBlockRegistry } from '@wealthai/astral'
+
+/** Registry of metadata-borne widget types. Handlers live in the switch below;
+ *  this instance exists for its warn-once bookkeeping (docs/49 ASTRAL-20). */
+const unknownWidgetRegistry = createBlockRegistry<true>({}, { surface: 'widget-renderer' })
 
 /** One malformed widget must never take the whole chat down (bug 6d2f70b0:
  *  a widgets_json entry whose shape one component didn't expect threw in
@@ -149,14 +154,13 @@ function renderWidget(widget: WidgetRendererProps['widget'], isHistory?: boolean
       return <HealthSnapshot data={widget.data ?? widget} isHistory={isHistory} />
 
     default:
-      console.warn('[WidgetRenderer] Unknown widget type:', widget.type)
-      return (
-        <div className="rounded-lg border border-yellow-500/50 p-4 bg-yellow-500/10">
-          <p className="text-sm text-yellow-600 dark:text-yellow-400">
-            Unknown widget type: {widget.type}
-          </p>
-        </div>
-      )
+      // docs/49 ASTRAL-20: an unregistered type renders NOTHING to the user
+      // and warns ONCE, naming itself. The yellow "Unknown widget type: X"
+      // card that used to sit here showed an internal type name to a user on
+      // every render, which is a raw-internals leak with a border round it;
+      // the console warning is for us and the empty space is for them.
+      unknownWidgetRegistry.reportUnknown(widget.type)
+      return null
   }
 }
 

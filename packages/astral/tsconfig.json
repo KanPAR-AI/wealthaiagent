@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    // Deliberately NO "dom" lib and no react-native types: every component in
+    // here renders through the injected `AstralPrimitives`, which is what lets
+    // the SAME scorecard source file serve the 380px extension panel and the
+    // native app (docs/49 ASTRAL-18). If a file here needs `document` or
+    // `View`, it belongs in a host adapter, not in this package.
+    "lib": ["ES2022"]
+  },
+  "include": ["src"]
+}

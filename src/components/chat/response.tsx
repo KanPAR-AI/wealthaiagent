@@ -9,14 +9,7 @@ import rehypeRaw from 'rehype-raw';
 
 import { embedCorpusMediaLinks, embedYouTubeLinks } from './embed-links';
 
-import { BedtimeVideoWidget, tryParseBedtimePayload } from '@/components/widgets/bedtime-video-widget';
-import {
-  PalmPredictionsCard,
-  PalmReadingWidget,
-  tryParsePalmPayload,
-  tryParsePalmPredictionsPayload,
-} from '@/components/widgets/palm-reading-widget';
-import { PalmScanningWidget, tryParsePalmScanningPayload } from '@/components/widgets/palm-scanning-widget';
+import { renderCodeBlock } from './block-registry';
 
 interface ResponseProps {
   children?: string;
@@ -49,52 +42,22 @@ function buildMdComponents(
   isStreaming = true,
 ): Components {
   return {
-    // Intercept fenced ```bedtime_video {...}``` blocks and render the
-    // interactive widget. Any other fenced code block falls through to the
-    // default <code> rendering.
+    // Fenced data blocks go through the registry (docs/49 ASTRAL-20). The
+    // three astrology blocks used to be a hardcoded `return null` here, with
+    // a comment claiming the prose below covered them. It did not: the server
+    // computed a chart, a match scorecard and a muhurta table, and the client
+    // threw all three away. An unregistered data block now renders nothing
+    // AND says so once, by name, so the next one is visible in a session
+    // rather than in a quarterly audit.
     code: ({ className, children, ...props }: any) => {
       const lang = /language-(\w+)/.exec(className || "")?.[1];
       const raw = String(children ?? "").trim();
 
-      if (lang === "bedtime_video") {
-        const payload = tryParseBedtimePayload(raw);
-        if (payload) return <BedtimeVideoWidget payload={payload} />;
-      }
+      const outcome = renderCodeBlock(lang, raw, { isStreaming });
+      if (outcome.handled) return outcome.node;
 
-      // Cinematic scanning placeholder while Gemini Vision is running.
-      // Suppress on history (saved messages also contain the analysis block
-      // that already supersedes this placeholder; otherwise the "Compiling
-      // reading…" animation loops forever after reload).
-      if (lang === "palm_scanning") {
-        if (!isStreaming) return null;
-        const payload = tryParsePalmScanningPayload(raw);
-        if (payload) return <PalmScanningWidget payload={payload} />;
-        return null;
-      }
-
-      // Render palm_analysis as the visual PalmReadingWidget (image + neon
-      // line overlay + viral prediction chips). If parsing fails for any
-      // reason, fall back to hiding the raw JSON.
-      if (lang === "palm_analysis") {
-        const payload = tryParsePalmPayload(raw);
-        if (payload) return <PalmReadingWidget payload={payload} />;
-        return null;
-      }
-
-      // Compact chip-only card pinned at the top of holistic follow-ups.
-      if (lang === "palm_predictions") {
-        const payload = tryParsePalmPredictionsPayload(raw);
-        if (payload) return <PalmPredictionsCard payload={payload} />;
-        return null;
-      }
-
-      // Hide muhurta_results, natal_chart JSON blocks for now (rendered as
-      // formatted markdown below the block; raw JSON is noise).
-      if (lang && ["muhurta_results", "natal_chart", "match_report"].includes(lang)) {
-        return null;
-      }
-
-      // Default: inline code or unknown language — let react-markdown do its thing.
+      // Ordinary inline code or an unknown non-data language — let
+      // react-markdown do its thing.
       return (
         <code className={className} {...props}>
           {children}
