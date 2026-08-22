@@ -2,6 +2,8 @@
 // and sign out. Opened from the drawer profile row.
 
 import { useRouter } from 'expo-router';
+import * as Updates from 'expo-updates';
+import Constants from 'expo-constants';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, useColorScheme, View,
@@ -24,8 +26,62 @@ function when(ts: number) {
   try { return new Date(ts * 1000).toLocaleDateString(); } catch { return ''; }
 }
 
+
+/**
+ * "Am I on the latest build?" — invisible by design with OTA updates, because
+ * the binary version never moves when the JS bundle does. So say it plainly.
+ *
+ * `Updates.createdAt` is when the running bundle was PUBLISHED, which is the
+ * only number that answers the question. `isEmbeddedLaunch` means the app is
+ * running the bundle that shipped inside the binary — i.e. it has not taken an
+ * OTA at all, which is a different state from "up to date" and must not be
+ * shown as one.
+ */
+function useBuildLine() {
+  const version = Constants.expoConfig?.version ?? '—';
+  const embedded = Updates.isEmbeddedLaunch;
+  const published = Updates.createdAt
+    ? new Date(Updates.createdAt).toLocaleString(undefined, {
+        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+      })
+    : null;
+  const id = Updates.updateId ? Updates.updateId.slice(0, 8) : null;
+  return {
+    version,
+    detail: embedded
+      ? 'bundled with the app — no update taken'
+      : published
+        ? `updated ${published}`
+        : 'update state unknown',
+    id,
+  };
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
+  const build = useBuildLine();
+  const [updateMsg, setUpdateMsg] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  const checkForUpdate = useCallback(async () => {
+    if (__DEV__) { setUpdateMsg('Updates are disabled in a dev build.'); return; }
+    setChecking(true);
+    setUpdateMsg(null);
+    try {
+      const res = await Updates.checkForUpdateAsync();
+      if (!res.isAvailable) { setUpdateMsg("You're on the latest build."); return; }
+      setUpdateMsg('Newer build found — downloading…');
+      await Updates.fetchUpdateAsync();
+      // reloadAsync never returns; the app restarts on the new bundle.
+      await Updates.reloadAsync();
+    } catch (e: any) {
+      console.warn('[settings] update check', String(e?.message ?? e));
+      setUpdateMsg("Couldn't check for updates — check your connection.");
+    } finally {
+      setChecking(false);
+    }
+  }, []);
+
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const colors = Colors[scheme];
   const { user } = useAuth();
@@ -169,6 +225,22 @@ export default function SettingsScreen() {
                 {serverLabel} ›
               </ThemedText>
             </Pressable>
+            <Pressable onPress={checkForUpdate} disabled={checking} style={styles.serverRow}>
+              <ThemedText type="small" themeColor="textSecondary">Build</ThemedText>
+              <ThemedText type="small" style={{ color: colors.text }} numberOfLines={1}>
+                {build.version} · {build.detail}
+                {build.id ? ` · ${build.id}` : ''} ›
+              </ThemedText>
+            </Pressable>
+            {(checking || updateMsg) && (
+              <ThemedText
+                type="small"
+                themeColor="textSecondary"
+                style={{ paddingHorizontal: 12, paddingBottom: 10 }}
+              >
+                {checking ? 'Checking…' : updateMsg}
+              </ThemedText>
+            )}
           </View>
 
           <Pressable onPress={onSignOut} style={[styles.signOut, { borderColor: colors.backgroundSelected }]}>
