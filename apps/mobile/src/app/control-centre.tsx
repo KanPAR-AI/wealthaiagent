@@ -65,6 +65,24 @@ interface Row {
   matchReason?: string;
 }
 
+/**
+ * Turn a thrown error into something a person should read.
+ *
+ * `e.message` here is whatever the network layer threw, and on iOS that is
+ * "UnexpectedException: Could not connect to the server. (at
+ * ExpoModulesCore/Promise.swift:56)" — a Swift source path, shown to a user
+ * who wanted to look at their memories. The raw text still goes to the log,
+ * where it is useful; the screen gets the sentence that tells them what to do.
+ */
+function humanError(e: any, fallback: string): string {
+  const raw = String(e?.message ?? e ?? '');
+  console.warn('[control-centre]', raw);
+  if (/could not connect|network request failed|timeout|timed out/i.test(raw)) {
+    return "Can't reach the server — check your connection and try again.";
+  }
+  return fallback;
+}
+
 export default function ControlCentreScreen() {
   const router = useRouter();
   const colors = useTheme();
@@ -88,7 +106,7 @@ export default function ControlCentreScreen() {
       setRows(list.memories.map((memory) => ({ memory })));
     } catch (e: any) {
       if (seq !== searchSeq.current) return;
-      setError(e?.message ?? 'Could not load your memory.');
+      setError(humanError(e, 'Could not load your memory.'));
     }
   }, []);
 
@@ -108,7 +126,7 @@ export default function ControlCentreScreen() {
       setRows(merged);
     } catch (e: any) {
       if (seq !== searchSeq.current) return;
-      setError(e?.message ?? 'Search failed.');
+      setError(humanError(e, 'Search failed.'));
     }
   }, []);
 
@@ -148,7 +166,7 @@ export default function ControlCentreScreen() {
       )}
       {error && (
         <View style={[styles.errorBox, { backgroundColor: colors.backgroundElement }]}>
-          <ThemedText type="small">⚠ {error}</ThemedText>
+          <ThemedText type="small" style={styles.errorText}>⚠ {error}</ThemedText>
           <Pressable onPress={onRefresh} hitSlop={8}>
             <ThemedText type="smallBold">Retry</ThemedText>
           </Pressable>
@@ -271,9 +289,15 @@ export default function ControlCentreScreen() {
             ListEmptyComponent={
               <View style={styles.center}>
                 <ThemedText type="small" themeColor="textSecondary">
-                  {searching
-                    ? 'No memories match that search.'
-                    : 'Nothing remembered yet — memories appear here as you chat.'}
+                  {/* An empty list after a FAILED fetch means we could not ask,
+                      not that there is nothing. Saying "nothing remembered yet"
+                      there states a fact we do not have — the same shape as the
+                      backend defects this project keeps finding, in UI form. */}
+                  {error
+                    ? 'Your memories could not be loaded.'
+                    : searching
+                      ? 'No memories match that search.'
+                      : 'Nothing remembered yet — memories appear here as you chat.'}
                 </ThemedText>
               </View>
             }
@@ -368,7 +392,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    // The message must SHRINK; without this the row lays both children out at
+    // their natural width and a long error pushes Retry off the screen edge,
+    // which is exactly when the user most needs to press it.
+    gap: 12,
   },
+  errorText: { flex: 1, flexShrink: 1 },
   center: { alignItems: 'center', paddingVertical: 40 },
   listContent: { paddingHorizontal: 16, paddingBottom: 24 },
 });
