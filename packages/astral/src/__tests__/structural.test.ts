@@ -111,6 +111,92 @@ describe('ASTRAL-18 — exactly one match scorecard in the workspace', () => {
   });
 });
 
+describe('ASTRAL-91 — exactly one input widget in the workspace', () => {
+  it('has one component', () => {
+    expect(filesContaining(/function InputRequestView/, (f) => !isTest(f))).toEqual([
+      'packages/astral/src/components/input-request.tsx',
+    ]);
+  });
+
+  it('has one place a widget answer becomes a message', () => {
+    // The carrier. A second builder anywhere is how a client-side format
+    // drifts away from the engine's parser without anyone noticing.
+    expect(
+      filesContaining(/function buildInputResponseMessage/, (f) => !isTest(f)),
+    ).toEqual(['packages/astral/src/input-request.ts']);
+  });
+
+  it('has one module that knows the `input_response` fence', () => {
+    const owners = filesContaining(/input_response/, (f) => !isTest(f) && !isFixture(f));
+    expect(owners).toEqual(['packages/astral/src/input-request.ts']);
+  });
+
+  it('keeps the per-platform adapters free of widget logic', () => {
+    for (const adapter of [
+      'src/components/astral/dom-primitives.tsx',
+      'apps/mobile/src/components/astral/rn-primitives.tsx',
+    ]) {
+      const code = codeOf(join(WORKSPACE, adapter));
+      expect(code).not.toContain('input_response');
+      expect(code).not.toContain('buildInputResponseMessage');
+      expect(code).not.toMatch(/allowUnknown|I don't know/);
+    }
+  });
+});
+
+describe('F18 — the answer is never flattened into a sentence to be re-parsed', () => {
+  const COMPONENT = 'packages/astral/src/components/input-request.tsx';
+
+  it('every send goes through the typed carrier', () => {
+    // `apps/mobile/src/components/chat/onboarding-form.tsx:63-70` builds
+    // `Age: ${v}, Sex: ${v}` and posts it "because the backend slot extractor
+    // depends on it". That is the shipped convention and the exact defect this
+    // widget exists to remove, so: every call to `onSend` in the component
+    // hands it `buildInputResponseMessage` and nothing else.
+    const code = codeOf(join(WORKSPACE, COMPONENT));
+    const calls = code.match(/onSend\(([^;]*)/g) ?? [];
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call).toContain('buildInputResponseMessage');
+    }
+    expect(code).not.toMatch(/onSend\(\s*echoFor/);
+  });
+
+  it('the two hosts pass the message through rather than building one', () => {
+    for (const host of [
+      'src/components/astral/astral-block.tsx',
+      'apps/mobile/src/components/astral/astral-block.tsx',
+    ]) {
+      const code = codeOf(join(WORKSPACE, host));
+      // no host-side string assembly of an answer at all
+      expect(code).not.toMatch(/: \$\{/);
+      expect(code).not.toContain('buildInputResponseMessage');
+    }
+  });
+
+  it('the flatten-then-send pattern is pinned to the files that already had it', () => {
+    // The signature of F18: a file that BOTH assembles `label: ${value}` text
+    // AND posts it on the quick-reply channel. Five such files exist today
+    // (`onboarding-form.tsx` on each client plus three financial-planner
+    // panels) and they are legacy. The assertion is an exact set, so the
+    // sixth — in particular one inside the astral path — is a red diff.
+    const sends = ALL_FILES.filter((f) => !isTest(f)).filter((f) =>
+      /QUICK_REPLY_EVENT|chat-quick-reply/.test(codeOf(f)),
+    );
+    const flatteners = sends.filter((f) => /: \$\{/.test(codeOf(f))).map(rel).sort();
+    expect(flatteners).toEqual([
+      'apps/mobile/src/components/chat/onboarding-form.tsx',
+      'src/components/widgets/financial-planner/advisor-panel.tsx',
+      'src/components/widgets/financial-planner/health-snapshot.tsx',
+      'src/components/widgets/financial-planner/profile-review.tsx',
+      'src/components/widgets/onboarding-form-widget.tsx',
+    ]);
+    for (const f of flatteners) {
+      expect(f.startsWith('packages/astral/')).toBe(false);
+    }
+  });
+});
+
 describe('ASTRAL-19 — renderers derive nothing', () => {
   const RENDERER_FILES = ALL_FILES.filter((f) => {
     const r = rel(f);

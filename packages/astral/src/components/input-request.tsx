@@ -164,6 +164,12 @@ const handlers: Record<string, FieldRenderer> = {
   text: TextField,
 };
 
+/**
+ * Test seam. Set for the duration of ONE synchronous `reportUnknown` call
+ * below and cleared immediately, so it is never live across a render — a
+ * module-level value read during concurrent rendering is how a test double
+ * leaks into a neighbouring component.
+ */
 let activeWarn: ((message: string) => void) | null = null;
 
 export const inputFieldRegistry = createBlockRegistry<FieldRenderer>(handlers, {
@@ -175,11 +181,16 @@ export const inputFieldRegistry = createBlockRegistry<FieldRenderer>(handlers, {
     'registry (docs/49 ASTRAL-91).',
 });
 
-function rendererFor(kind: string): FieldRenderer {
+function rendererFor(kind: string, warn?: (message: string) => void): FieldRenderer {
   const handler = inputFieldRegistry.get(kind);
   if (handler) return handler;
   if (DEFERRED_KINDS.indexOf(kind) !== -1) return TextField;
-  inputFieldRegistry.reportUnknown(kind);
+  activeWarn = warn ?? null;
+  try {
+    inputFieldRegistry.reportUnknown(kind);
+  } finally {
+    activeWarn = null;
+  }
   return TextField;
 }
 
@@ -245,7 +256,6 @@ export function InputRequestView({
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<Record<string, InputValue>>({});
   const [outcome, setOutcome] = useState<'open' | 'submitted' | 'dismissed'>('open');
-  activeWarn = warn ?? null;
 
   const total = request.fields.length;
   const field = request.fields[Math.min(step, total - 1)];
@@ -308,7 +318,7 @@ export function InputRequestView({
     );
   }
 
-  const renderField = rendererFor(field.kind);
+  const renderField = rendererFor(field.kind, warn);
   const answered = field.key in values;
 
   return (

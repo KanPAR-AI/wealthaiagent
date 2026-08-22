@@ -22,6 +22,9 @@
  *   matchTimeless   Austin-without-a-time vs Pune -> total null, firm 5 of 15,
  *                   21 pending, verdict "incomplete", 4 kootas pending
  *   muhurta         1-5 Sep 2026, Pune, 320 slots evaluated, 10 windows
+ *   inputRequest    the birth-time ask (docs/49 ASTRAL-83), captured from
+ *                   `node_ask_user(rt, "birth_time_unlocks")` on a natal
+ *                   belief that already has a date and a place
  */
 
 export const natalTimedPayload = {
@@ -1263,3 +1266,28 @@ export const muhurtaPayload = {
   ]
 } as const;
 
+export const inputRequestPayload = {
+  "type": "input_request",
+  "ask": "birth_time_unlocks",
+  "reason": "A birth time unlocks the Lagna, the twelve bhavas and 21 of the 36 gunas. If you don't know it, say so and I'll cast what is firm.",
+  "fields": [
+    {
+      "key": "tob",
+      "kind": "time",
+      "label": "Birth time",
+      "required": true,
+      "allow_unknown": true
+    },
+    {
+      "key": "birth_time_confidence",
+      "kind": "choice",
+      "label": "How exact is that time?",
+      "required": false,
+      "allow_unknown": false,
+      "options": [
+        { "value": "exact", "label": "Exact \u2014 off a record or a clock" },
+        { "value": "approximate", "label": "Approximate \u2014 roughly that" }
+      ]
+    }
+  ]
+};

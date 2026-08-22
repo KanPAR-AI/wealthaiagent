@@ -11,10 +11,13 @@
 
 import { render } from '@testing-library/react';
 import {
+  InputRequestView,
   LIGHT_THEME,
   MatchScorecard,
   MuhurtaWindowsView,
   NatalChartView,
+  inputFieldRegistry,
+  parseInputRequest,
   parseMatchReport,
   parseMuhurtaResults,
   parseNatalChart,
@@ -47,4 +50,33 @@ export function renderMuhurta(payload: unknown, width = APP_WIDTH) {
   return render(
     <MuhurtaWindowsView ui={domPrimitives} theme={LIGHT_THEME} width={width} results={results} />,
   );
+}
+
+/**
+ * docs/49 ASTRAL-91 — the input widget through the same real adapter.
+ *
+ * `onSend` is captured rather than dispatched: the send CHANNEL is the
+ * clients' existing quick-reply event and is tested where it is wired; what
+ * matters here is WHAT the widget hands it.
+ */
+export function renderInputRequest(
+  payload: unknown,
+  width = APP_WIDTH,
+  warn?: (message: string) => void,
+) {
+  const request = parseInputRequest(payload);
+  if (!request) throw new Error('fixture did not parse');
+  inputFieldRegistry.resetWarnings();
+  const sent: string[] = [];
+  const view = render(
+    <InputRequestView
+      ui={domPrimitives}
+      theme={LIGHT_THEME}
+      width={width}
+      request={request}
+      onSend={(text) => sent.push(text)}
+      warn={warn}
+    />,
+  );
+  return { ...view, sent };
 }
