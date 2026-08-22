@@ -43,6 +43,16 @@ export interface BlockRegistryOptions {
    * Defaults to `console.warn`.
    */
   warn?: (message: string, ...rest: unknown[]) => void;
+  /**
+   * The wording, for a surface where "rendering nothing" would be a LIE.
+   *
+   * ASTRAL-20's rule is block-level: an unknown BLOCK renders nothing. The
+   * input widget deliberately differs (ASTRAL-91) — an unknown FIELD KIND
+   * renders a working text input, because an unrenderable field silently
+   * removes a question the engine is waiting on. Same once-per-type
+   * bookkeeping, honest sentence.
+   */
+  unknownMessage?: (type: string) => string;
 }
 
 export function createBlockRegistry<T>(
@@ -64,9 +74,11 @@ export function createBlockRegistry<T>(
       if (warned.has(key)) return false;
       warned.add(key);
       warn(
-        `[astral/${options.surface}] unregistered block type "${key}" — ` +
-        'rendering nothing. If the backend now emits this block, add a ' +
-        'renderer to the registry (docs/49 ASTRAL-20).',
+        options.unknownMessage
+          ? options.unknownMessage(key)
+          : `[astral/${options.surface}] unregistered block type "${key}" — ` +
+            'rendering nothing. If the backend now emits this block, add a ' +
+            'renderer to the registry (docs/49 ASTRAL-20).',
       );
       return true;
     },

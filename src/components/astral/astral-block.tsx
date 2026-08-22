@@ -10,10 +10,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   DARK_THEME,
+  InputRequestView,
   LIGHT_THEME,
   MatchScorecard,
   MuhurtaWindowsView,
   NatalChartView,
+  parseInputRequest,
   parseMatchReport,
   parseMuhurtaResults,
   parseNatalChart,
@@ -79,7 +81,27 @@ export function AstralBlock({ type, value }: { type: string; value: unknown }) {
   const ui = domPrimitives;
 
   let body: ReactNode = null;
-  if (type === 'natal_chart') {
+  if (type === 'input_request') {
+    const request = parseInputRequest(value);
+    if (request) {
+      body = (
+        <InputRequestView
+          ui={ui}
+          theme={theme}
+          width={width}
+          request={request}
+          // The answer rides the SAME channel the shipped quick-reply
+          // widgets use (`chat-window.tsx`'s `chat-quick-reply` listener),
+          // so no new send path is introduced on the client either. What is
+          // different is what travels: a typed fence, not a sentence for the
+          // extractor to re-parse (docs/49 ASTRAL-85, F18).
+          onSend={(text) =>
+            window.dispatchEvent(new CustomEvent('chat-quick-reply', { detail: { text } }))
+          }
+        />
+      );
+    }
+  } else if (type === 'natal_chart') {
     const chart = parseNatalChart(value);
     if (chart) body = <NatalChartView ui={ui} theme={theme} width={width} chart={chart} />;
   } else if (type === 'match_report') {

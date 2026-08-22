@@ -172,6 +172,9 @@ const handlers: Record<string, WidgetHandler> = {
   bar_chart: (_data, widget) => <ChartWidget widget={widget} kind="bar" />,
   composed_chart: (_data, widget) => <ChartWidget widget={widget} kind="composed" />,
 
+  // docs/49 ASTRAL-83: the engine asks, the client collects.
+  input_request: (data) => <AstralBlock type="input_request" data={data} />,
+
   // docs/49 PH-3: the three blocks both clients used to discard.
   natal_chart: (data) => <AstralBlock type="natal_chart" data={data} />,
   match_report: (data) => <AstralBlock type="match_report" data={data} />,

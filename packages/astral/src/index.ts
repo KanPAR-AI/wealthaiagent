@@ -11,6 +11,7 @@ export * from './format';
 export * from './geometry';
 export * from './primitives';
 export * from './block-registry';
+export * from './input-request';
 
 export * from './view/natal';
 export * from './view/match';
@@ -22,3 +23,6 @@ export { MatchScorecard } from './components/match-scorecard';
 export type { MatchScorecardProps } from './components/match-scorecard';
 export { MuhurtaWindowsView } from './components/muhurta-windows';
 export type { MuhurtaWindowsProps } from './components/muhurta-windows';
+
+export { InputRequestView, inputFieldRegistry } from './components/input-request';
+export type { InputRequestViewProps } from './components/input-request';

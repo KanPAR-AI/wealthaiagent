@@ -161,6 +161,7 @@ describe('renderCodeBlock — the dispatch contract', () => {
   it('registers every block type the client can draw', () => {
     expect(responseBlockRegistry.types().sort()).toEqual([
       'bedtime_video',
+      'input_request',
       'match_report',
       'muhurta_results',
       'natal_chart',

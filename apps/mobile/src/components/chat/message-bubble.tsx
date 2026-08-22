@@ -11,7 +11,7 @@
 import { memo, useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import Markdown from 'react-native-markdown-display';
-import { readDataBlock } from '@wealthai/astral';
+import { readDataBlock, stripInputResponse } from '@wealthai/astral';
 import type { ContentBlock, Message } from '@wealthai/core';
 
 import { ThemedText } from '@/components/themed-text';
@@ -109,12 +109,18 @@ export const MessageBubble = memo(function MessageBubble({ message }: { message:
               <ThemedText type="small">📄 {f.name}</ThemedText>
             </View>
           ))}
-          {message.message ? (
+          {stripInputResponse(message.message) ? (
             <View style={[styles.userBubble, { backgroundColor: colors.backgroundElement }]}>
               {/* selectable → native long-press "Copy" menu. RN Text isn't
                   copyable by default, so users couldn't copy what they sent
-                  (bug 522f3a6e). */}
-              <ThemedText selectable>{message.message}</ThemedText>
+                  (bug 522f3a6e).
+
+                  `stripInputResponse` is AMB-17 (a)'s declared cost: a widget
+                  answer travels as a fenced `input_response` block inside the
+                  user's own message, so the raw fence is suppressed here the
+                  same way data fences already are on an assistant bubble. The
+                  ASTRAL-89 echo is what remains. */}
+              <ThemedText selectable>{stripInputResponse(message.message)}</ThemedText>
             </View>
           ) : null}
         </View>

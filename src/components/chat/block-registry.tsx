@@ -66,6 +66,11 @@ const handlers: Record<string, BlockHandler> = {
   },
 
   // The three blocks PH-3 stops discarding.
+  // docs/49 ASTRAL-83: the engine asks, the client collects. Registered here
+  // so the ask is a widget rather than an unrendered fence — the exact
+  // failure ASTRAL-20 built this registry to make visible.
+  input_request: (_raw, value) => <AstralBlock type="input_request" value={value} />,
+
   natal_chart: (_raw, value) => <AstralBlock type="natal_chart" value={value} />,
   match_report: (_raw, value) => <AstralBlock type="match_report" value={value} />,
   muhurta_results: (_raw, value) => <AstralBlock type="muhurta_results" value={value} />,

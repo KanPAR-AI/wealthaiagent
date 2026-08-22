@@ -20,9 +20,12 @@ import type { CSSProperties } from 'react';
 import type {
   AstralBoxStyle,
   AstralPrimitives,
+  AstralTextInputProps,
   AstralTextStyle,
   BoxProps,
   GroupProps,
+  PressableProps,
+  TimeWheelProps,
   SvgCircleProps,
   SvgLineProps,
   SvgProps,
@@ -137,6 +140,72 @@ function SvgText(p: SvgTextProps) {
   );
 }
 
+function Pressable({ onPress, disabled, accessibilityLabel, style, testID, children }: PressableProps) {
+  return (
+    <button
+      type="button"
+      onClick={onPress}
+      disabled={disabled}
+      aria-label={accessibilityLabel}
+      data-testid={testID}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        cursor: disabled ? 'default' : 'pointer',
+        font: 'inherit',
+        textAlign: 'left',
+        ...toCss(style),
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function TextInput({
+  value,
+  onChangeText,
+  placeholder,
+  keyboard,
+  style,
+  accessibilityLabel,
+  testID,
+}: AstralTextInputProps) {
+  return (
+    <input
+      type="text"
+      inputMode={keyboard === 'number' ? 'numeric' : undefined}
+      value={value}
+      placeholder={placeholder}
+      aria-label={accessibilityLabel}
+      data-testid={testID}
+      onChange={(e) => onChangeText(e.target.value)}
+      style={{ ...toCss(style) }}
+    />
+  );
+}
+
+/**
+ * `<input type="time">` IS the native picker on every phone browser and a
+ * keyboard-navigable HH:MM control on the desktop — and it hands back a
+ * 24-hour string, so the am/pm loss that A6#3/A6#8 live at never happens on
+ * this surface. That is why the wheel is a primitive rather than something
+ * the shared component draws.
+ */
+function TimeWheel({ value, onChange, accessibilityLabel, testID }: TimeWheelProps) {
+  return (
+    <input
+      type="time"
+      value={value ?? ''}
+      aria-label={accessibilityLabel}
+      data-testid={testID}
+      onChange={(e) => onChange(e.target.value)}
+      style={{ fontSize: '16px', padding: '10px 12px', borderRadius: '10px' }}
+    />
+  );
+}
+
 export const domPrimitives: AstralPrimitives = {
   Box, Text, Svg, Group, SvgRect, SvgLine, SvgCircle, SvgText,
+  Pressable, TextInput, TimeWheel,
 };

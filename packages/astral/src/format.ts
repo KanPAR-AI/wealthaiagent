@@ -149,3 +149,20 @@ function asFiniteNumber(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   return value;
 }
+
+/**
+ * "23:45" → "11:45 pm". DISPLAY ONLY (docs/49 ASTRAL-89's echo).
+ *
+ * Lives here because `format.ts` is one of the two modules the ASTRAL-19
+ * structural test declares may do arithmetic on a value a user reads. The
+ * 24-hour form is what travels on the wire and what the engine stores; this
+ * is only what the sentence in the transcript says.
+ */
+export function formatClockTime(value: string): string {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value);
+  if (!m) return value;
+  const hour24 = Number(m[1]);
+  const suffix = hour24 < 12 ? 'am' : 'pm';
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return `${hour12}:${m[2]} ${suffix}`;
+}

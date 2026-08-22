@@ -147,6 +147,57 @@ export interface SvgTextProps {
   children?: ReactNode;
 }
 
+/**
+ * The interactive half of the contract (docs/49 ASTRAL-91).
+ *
+ * PH-3's components only ever drew, so the contract only had drawing in it.
+ * The input widget has to be TAPPED, and a tap target is the one place where
+ * `<button>` and `Pressable` genuinely cannot be the same element. So three
+ * more primitives, mapped by the same two adapters, and the widget itself
+ * still exists exactly once for web, React Native and the 380 px panel.
+ */
+export interface PressableProps {
+  onPress: () => void;
+  disabled?: boolean;
+  /** what a screen reader announces — this is a question, not decoration */
+  accessibilityLabel?: string;
+  style?: AstralBoxStyle;
+  testID?: string;
+  children?: ReactNode;
+}
+
+export interface AstralTextInputProps {
+  value: string;
+  onChangeText: (value: string) => void;
+  placeholder?: string;
+  /** `number` asks for a numeric keypad where one exists */
+  keyboard?: 'default' | 'number';
+  style?: AstralBoxStyle & AstralTextStyle;
+  accessibilityLabel?: string;
+  testID?: string;
+}
+
+/**
+ * A time of day, entered the way the host does it best.
+ *
+ * This is a PRIMITIVE rather than a shared component because "native picker"
+ * is precisely the part that cannot be written once: on the web the honest
+ * answer is `<input type="time">`, which is the OS picker on every phone
+ * browser, and React Native has no equivalent element. What stays shared is
+ * everything around it — the question, the progress, the "I don't know", the
+ * validation and the carrier.
+ *
+ * `value` is 24-hour "HH:MM" or null when nothing has been chosen. 24-hour on
+ * the wire is deliberate: am/pm loss is one of the two failures (A6#3, A6#8)
+ * this whole widget exists to remove, so the ambiguous form never travels.
+ */
+export interface TimeWheelProps {
+  value: string | null;
+  onChange: (value: string) => void;
+  accessibilityLabel?: string;
+  testID?: string;
+}
+
 export interface AstralPrimitives {
   Box: ComponentType<BoxProps>;
   Text: ComponentType<TextProps>;
@@ -156,6 +207,9 @@ export interface AstralPrimitives {
   SvgLine: ComponentType<SvgLineProps>;
   SvgCircle: ComponentType<SvgCircleProps>;
   SvgText: ComponentType<SvgTextProps>;
+  Pressable: ComponentType<PressableProps>;
+  TextInput: ComponentType<AstralTextInputProps>;
+  TimeWheel: ComponentType<TimeWheelProps>;
 }
 
 /** Colour tokens a host supplies so the shared components carry no palette. */

@@ -1,5 +1,7 @@
 // components/chat/chat-bubble.tsx
 
+import { stripInputResponse } from '@wealthai/astral';
+
 import { ActionIconDefinition, Message, MessageFile, UserInfo } from '@/types';
 import { motion } from 'framer-motion';
 import { JSX, useCallback, useEffect } from 'react';
@@ -129,7 +131,7 @@ export function ChatBubble({
                         />
                       ) : (
                         <div className="break-words overflow-wrap-anywhere min-w-0 overflow-x-auto chat-bubble-content">
-                          {trimmed}
+                          {stripInputResponse(trimmed)}
                         </div>
                       )}
                     </div>
@@ -182,8 +184,14 @@ export function ChatBubble({
                         onNavigate={handleNavigate}
                       />
                     ) : (
+                      /* AMB-17 (a)'s declared cost: a widget answer is
+                         carried by a fenced `input_response` block inside the
+                         user's own message, so the raw fence is suppressed on
+                         a USER bubble exactly as data fences already are on an
+                         assistant one. What stays is the ASTRAL-89 echo —
+                         readable, disputable, correctable. */
                       <div className="break-words overflow-wrap-anywhere min-w-0 overflow-x-auto chat-bubble-content">
-                        {message.message}
+                        {stripInputResponse(message.message)}
                       </div>
                     )}
                   </div>

@@ -122,7 +122,8 @@ describe('ASTRAL-19 — renderers derive nothing', () => {
   });
 
   it('found the renderer modules', () => {
-    expect(RENDERER_FILES.length).toBe(6);
+    // 6 through PH-3; the 7th is PH-11's input widget (ASTRAL-91).
+    expect(RENDERER_FILES.length).toBe(7);
   });
 
   it.each(RENDERER_FILES.map(rel))('%s does no rounding or rescaling', (r) => {
