@@ -197,3 +197,39 @@ describe('the role-labelled palm upload widget', () => {
     );
   });
 });
+
+// ── Preview: the user must see WHICH photo landed in which slot ────────────
+//
+// The widget exists to label a photo as the dominant or non-dominant hand. A
+// control that only says "Replace photo" cannot show that the wrong photo went
+// into the wrong slot — which is the one mistake it exists to prevent.
+
+describe('the picked photo is shown back', () => {
+  // jsdom has no object-URL support; the browser always does.
+  beforeAll(() => {
+    (URL as unknown as Record<string, unknown>).createObjectURL =
+      jest.fn(() => 'blob:preview');
+    (URL as unknown as Record<string, unknown>).revokeObjectURL = jest.fn();
+  });
+  afterAll(() => {
+    delete (URL as unknown as Record<string, unknown>).createObjectURL;
+    delete (URL as unknown as Record<string, unknown>).revokeObjectURL;
+  });
+
+  it('renders a preview once a file is chosen', async () => {
+    const { container } = renderInputRequest(REQUEST);
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const file = new File(['x'], 'palm.jpg', { type: 'image/jpeg' });
+    fireEvent.change(input, { target: { files: [file] } });
+    await waitFor(() => {
+      expect(container.querySelector('img[data-testid$="-preview"]')).not.toBeNull();
+    });
+    const img = container.querySelector('img[data-testid$="-preview"]')!;
+    expect(img.getAttribute('alt')).toMatch(/preview/i);
+  });
+
+  it('shows no preview before anything is picked', () => {
+    const { container } = renderInputRequest(REQUEST);
+    expect(container.querySelector('img[data-testid$="-preview"]')).toBeNull();
+  });
+});

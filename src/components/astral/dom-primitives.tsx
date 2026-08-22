@@ -16,7 +16,7 @@
  *     pixels; CSS numbers are unitless and mostly invalid.
  */
 
-import { useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type {
   AstralBoxStyle,
   AstralImagePickerProps,
@@ -225,6 +225,30 @@ function TimeWheel({ value, onChange, accessibilityLabel, testID }: TimeWheelPro
  * tapping a control that looks unchanged, which is how the same hand gets
  * sent twice.
  */
+/**
+ * A preview URL, or null where the environment cannot make one.
+ *
+ * A thumbnail is a nicety; the upload is the job. `URL.createObjectURL` is
+ * absent in jsdom and in some embedded webviews, and letting that throw would
+ * lose the photo to a decoration — the opposite of the "never lose an upload"
+ * rule this widget is built around.
+ */
+function objectUrlOrNull(file: File): string | null {
+  try {
+    return typeof URL?.createObjectURL === 'function'
+      ? URL.createObjectURL(file) : null;
+  } catch {
+    return null;
+  }
+}
+
+function revokeObjectUrl(url: string | null): void {
+  if (!url) return;
+  try {
+    URL.revokeObjectURL?.(url);
+  } catch { /* nothing to release */ }
+}
+
 function ImagePicker({
   value,
   onChange,
@@ -235,8 +259,17 @@ function ImagePicker({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [preview, setPreview] = useState<string | null>(null);
+
+  // Revoke the object URL when this slot stops showing it, or every retry
+  // leaks a blob for the life of the tab.
+  useEffect(() => () => revokeObjectUrl(preview), [preview]);
 
   const upload = async (file: File) => {
+    // The whole point of this widget is labelling WHICH hand, so the user must
+    // be able to see which photo landed in which slot. Shown before the upload
+    // finishes, because that is when a wrong pick is worth catching.
+    setPreview((old) => { revokeObjectUrl(old); return objectUrlOrNull(file); });
     setBusy(true);
     setError('');
     try {
@@ -254,6 +287,7 @@ function ImagePicker({
       if (!id) throw new Error('The upload came back without a file id');
       onChange(id);
     } catch (e) {
+      setPreview((old) => { revokeObjectUrl(old); return null; });
       setError(e instanceof Error ? e.message : 'Upload failed — try again.');
     } finally {
       setBusy(false);
@@ -292,6 +326,15 @@ function ImagePicker({
           font: 'inherit',
         }}
       >
+        {preview ? (
+          <img
+            src={preview}
+            alt={label ? `${label} preview` : 'Selected photo'}
+            data-testid={`${testID}-preview`}
+            style={{ width: '96px', height: '96px', objectFit: 'cover',
+                     borderRadius: '8px', marginBottom: '4px' }}
+          />
+        ) : null}
         <span style={{ fontSize: '15px', fontWeight: 600 }}>
           {busy ? 'Uploading…' : value ? 'Replace photo' : 'Add photo'}
         </span>

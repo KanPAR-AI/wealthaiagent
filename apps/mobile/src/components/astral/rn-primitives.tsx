@@ -29,6 +29,8 @@ import type {
 } from '@wealthai/astral';
 import { fileIdFromUrl } from '@wealthai/astral';
 import * as ExpoImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { Image as ExpoImage } from 'expo-image';
 import {
   Alert,
   Pressable as RNPressable,
@@ -279,29 +281,67 @@ function ImagePicker({
   testID,
 }: AstralImagePickerProps) {
   const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
 
-  const pick = async () => {
+  // A palm shot is usually taken in the moment; forcing a detour through the
+  // Camera app is the same friction chat-input.tsx already solved.
+  const choose = () => {
     if (busy) return;
-    const res = await ExpoImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'images',
-      quality: 0.85,
-    });
+    Alert.alert(label || 'Add photo', undefined, [
+      { text: 'Take photo', onPress: () => { void pick('camera'); } },
+      { text: 'Choose from library', onPress: () => { void pick('library'); } },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const pick = async (source: 'camera' | 'library') => {
+    if (busy) return;
+    if (source === 'camera') {
+      const perm = await ExpoImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Camera access needed',
+          'Enable camera access in Settings to take a photo.');
+        return;
+      }
+    }
+    const res = source === 'camera'
+      ? await ExpoImagePicker.launchCameraAsync({ mediaTypes: 'images', quality: 0.85 })
+      : await ExpoImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.85 });
     const asset = res.assets?.[0];
     if (!asset) return;
+    setPreview(asset.uri);          // instant feedback, before the upload
     setBusy(true);
     try {
       const token = await getToken();
       if (!token) throw new Error('Not signed in');
+      // Downscale before uploading. A full-res palm photo is several MB and
+      // uploads crawl on a slow or LAN connection (bug af85427f, solved the
+      // same way in chat-input.tsx). 1600px + JPEG 0.7 — vision models
+      // downscale internally, so no analysis quality is lost. EXIF survives
+      // the resize, which ASTRAL palm orientation now depends on.
+      let uri = asset.uri;
+      let mime = asset.mimeType || 'image/jpeg';
+      if ((asset.width ?? 9999) > 1600) {
+        try {
+          const r = await manipulateAsync(asset.uri, [{ resize: { width: 1600 } }],
+                                          { compress: 0.7, format: SaveFormat.JPEG });
+          uri = r.uri;
+          mime = 'image/jpeg';
+        } catch {
+          /* keep the original on any manipulation failure */
+        }
+      }
       const uploaded = await uploadFileNative(token, {
-        uri: asset.uri,
+        uri,
         name: asset.fileName || `palm_${Date.now()}.jpg`,
-        type: asset.mimeType || 'image/jpeg',
+        type: mime,
         size: asset.fileSize,
       });
       const id = fileIdFromUrl(uploaded.url);
       if (!id) throw new Error('The upload came back without a file id');
       onChange(id);
     } catch (e: unknown) {
+      setPreview(null);           // the tile must not imply a photo that is not there
       Alert.alert('Upload failed',
         e instanceof Error ? e.message : 'Try again.');
     } finally {
@@ -311,7 +351,7 @@ function ImagePicker({
 
   return (
     <RNPressable
-      onPress={pick}
+      onPress={choose}
       disabled={busy}
       accessibilityLabel={accessibilityLabel ?? label}
       testID={testID}
@@ -324,6 +364,17 @@ function ImagePicker({
         alignItems: 'center',
         opacity: busy ? 0.5 : 1,
       }}>
+      {preview ? (
+        // The whole point of this widget is labelling WHICH hand, so the user
+        // must be able to see which photo landed in which slot. A control that
+        // only says "Replace photo" cannot show a wrong photo in the wrong slot.
+        <ExpoImage
+          source={{ uri: preview }}
+          style={{ width: 96, height: 96, borderRadius: 8, marginBottom: 8 }}
+          contentFit="cover"
+          accessibilityLabel={label ? `${label} preview` : 'Selected photo'}
+        />
+      ) : null}
       <RNText style={{ fontSize: 15, fontWeight: '600' }}>
         {busy ? 'Uploading…' : value ? 'Replace photo' : 'Add photo'}
       </RNText>
