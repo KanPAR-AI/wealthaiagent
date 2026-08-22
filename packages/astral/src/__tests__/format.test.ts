@@ -7,6 +7,7 @@ import {
   splitIsoInstant,
   titleCase,
 } from '../format';
+import { placementRows } from '../view/natal';
 import { natalTimedPayload, muhurtaPayload } from '../fixtures/payloads';
 
 describe('formatDegrees — notation, never a different quantity', () => {
@@ -32,14 +33,41 @@ describe('formatDegrees — notation, never a different quantity', () => {
     expect(formatDegrees(Infinity)).toBeNull();
   });
 
-  it('preserves the ABSOLUTE longitude the engine emits, not a sign-relative one', () => {
-    // The Moon on the captured chart is Gemini at degree 73.42, which is
-    // 13.42 INTO Gemini. Subtracting the sign boundary would be a new claim
-    // (ASTRAL-19), so 73 is what renders.
+  it('re-notates whatever it is given, and does not derive one from the other', () => {
+    // The Moon on the captured chart is Gemini, absolute longitude 73.42,
+    // which is 13.42 INTO Gemini. The engine supplies BOTH (natal_chart v4);
+    // this helper only changes notation and never subtracts a sign boundary,
+    // which would be the new claim ASTRAL-19 bans.
     const moon = natalTimedPayload.planets.find((p) => p.planet === 'Moon')!;
     expect(moon.sign).toBe('Gemini');
     expect(formatDegrees(moon.degree)).toBe('73°25′');
-    expect(formatDegrees(moon.degree)).not.toContain('13°');
+    expect(formatDegrees(moon.sign_degree)).toBe('13°25′');
+  });
+
+  // A6#13. "Gemini 73°25′" is impossible — a sign spans 30° — and it was on
+  // every chart. What renders beside a sign name must be the within-sign
+  // degree, and a chart too old to carry one must show nothing rather than
+  // falling back to the longitude.
+  it('renders the within-sign degree beside the sign, never the longitude', () => {
+    const moon = natalTimedPayload.planets.find((p) => p.planet === 'Moon')!;
+    const row = placementRows(natalTimedPayload as never)
+      .find((r) => r.planet === 'Moon')!;
+    expect(row.sign).toBe('Gemini');
+    expect(row.longitude).toBe(formatDegrees(moon.sign_degree));
+    expect(row.longitude).not.toBe(formatDegrees(moon.degree));
+    // The within-sign value must be a possible position in a 30° sign.
+    expect(moon.sign_degree).toBeGreaterThanOrEqual(0);
+    expect(moon.sign_degree).toBeLessThan(30);
+  });
+
+  it('shows no degree at all on a chart that predates sign_degree', () => {
+    const legacy = {
+      ...natalTimedPayload,
+      planets: natalTimedPayload.planets.map((p) => ({ ...p, sign_degree: null })),
+    };
+    const row = placementRows(legacy as never).find((r) => r.planet === 'Moon')!;
+    expect(row.sign).toBe('Gemini');
+    expect(row.longitude).toBeNull();
   });
 });
 

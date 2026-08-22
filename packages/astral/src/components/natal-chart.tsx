@@ -117,7 +117,12 @@ export function NatalChartView(props: NatalChartViewProps): ReactNode {
             theme={theme}
             testID="astral-natal-ascendant"
             label="Lagna"
-            value={joinNonEmpty([chart.ascendant, formatDegrees(chart.ascendant_degree)])}
+            /* A6#13: the within-sign degree beside the sign name. Null on a
+               pre-v4 chart, and joinNonEmpty then shows the sign alone. */
+            value={joinNonEmpty([
+              chart.ascendant,
+              formatDegrees(chart.ascendant_sign_degree),
+            ])}
           />
         ) : null}
         {chart.moon_sign ? (

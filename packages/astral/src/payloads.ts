@@ -23,6 +23,13 @@ export interface NatalPlanet {
   house: number | null;
   /** ABSOLUTE ecliptic longitude 0..360, not degrees within the sign. */
   degree: number | null;
+  /**
+   * The degree WITHIN the sign, 0..30 — the number a reader means when they
+   * say "degree", and the only one that may be shown beside a sign name.
+   * Null on a chart cast before the engine carried it (natal_chart v3 and
+   * earlier); show no degree at all in that case, never `degree`.
+   */
+  sign_degree: number | null;
   nakshatra: string | null;
   /** null on a time-less chart (a pada is 3°20' wide). */
   nakshatra_pada: number | null;
@@ -35,6 +42,8 @@ export interface NatalHouse {
   sign: string;
   /** ABSOLUTE ecliptic longitude of the cusp. */
   degree: number | null;
+  /** The cusp's degree within its sign, 0..30. Null on a pre-v4 chart. */
+  sign_degree: number | null;
   lord: string | null;
 }
 
@@ -60,6 +69,8 @@ export interface NatalChartPayload {
   /** null when `time_known` is false (ASTRAL-9). */
   ascendant: string | null;
   ascendant_degree: number | null;
+  /** The ascendant's degree within its sign, 0..30. Null on a pre-v4 chart. */
+  ascendant_sign_degree: number | null;
   moon_sign: string | null;
   sun_sign: string | null;
   planets: NatalPlanet[];
@@ -185,6 +196,7 @@ function parsePlanet(v: unknown): NatalPlanet | null {
     sign,
     house: num(v.house),
     degree: num(v.degree),
+    sign_degree: num(v.sign_degree),
     nakshatra: str(v.nakshatra),
     nakshatra_pada: num(v.nakshatra_pada),
     retrograde: bool(v.retrograde),
@@ -197,7 +209,10 @@ function parseHouse(v: unknown): NatalHouse | null {
   const house = num(v.house);
   const sign = str(v.sign);
   if (house === null || !sign) return null;
-  return { house, sign, degree: num(v.degree), lord: str(v.lord) };
+  return {
+    house, sign, degree: num(v.degree),
+    sign_degree: num(v.sign_degree), lord: str(v.lord),
+  };
 }
 
 function parseDasha(v: unknown): NatalDashaPeriod | null {
@@ -231,6 +246,8 @@ export function parseNatalChart(value: unknown): NatalChartPayload | null {
     // parser refuses to carry.
     ascendant: timeKnown ? str(value.ascendant) : null,
     ascendant_degree: timeKnown ? num(value.ascendant_degree) : null,
+    ascendant_sign_degree:
+      timeKnown ? num(value.ascendant_sign_degree) : null,
     moon_sign: str(value.moon_sign),
     sun_sign: str(value.sun_sign),
     planets: timeKnown ? planets : planets.map((p) => ({ ...p, house: null, nakshatra_pada: null })),

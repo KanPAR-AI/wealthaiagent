@@ -28,6 +28,7 @@ export const natalTimedPayload = {
   "type": "natal_chart",
   "ascendant": "Gemini",
   "ascendant_degree": 85.25,
+  "ascendant_sign_degree": 25.25,
   "moon_sign": "Gemini",
   "sun_sign": "Aries",
   "planets": [
@@ -36,6 +37,7 @@ export const natalTimedPayload = {
       "sign": "Aries",
       "house": 11,
       "degree": 29.82,
+      "sign_degree": 29.82,
       "nakshatra": "Krittika",
       "nakshatra_pada": 1,
       "retrograde": false,
@@ -46,6 +48,7 @@ export const natalTimedPayload = {
       "sign": "Gemini",
       "house": 12,
       "degree": 73.42,
+      "sign_degree": 13.42,
       "nakshatra": "Ardra",
       "nakshatra_pada": 3,
       "retrograde": false,
@@ -56,6 +59,7 @@ export const natalTimedPayload = {
       "sign": "Taurus",
       "house": 11,
       "degree": 45.55,
+      "sign_degree": 15.55,
       "nakshatra": "Rohini",
       "nakshatra_pada": 2,
       "retrograde": false,
@@ -66,6 +70,7 @@ export const natalTimedPayload = {
       "sign": "Taurus",
       "house": 12,
       "degree": 58.5,
+      "sign_degree": 28.5,
       "nakshatra": "Mrigashira",
       "nakshatra_pada": 2,
       "retrograde": false,
@@ -76,6 +81,7 @@ export const natalTimedPayload = {
       "sign": "Pisces",
       "house": 10,
       "degree": 359.2,
+      "sign_degree": 29.2,
       "nakshatra": "Revati",
       "nakshatra_pada": 4,
       "retrograde": false,
@@ -86,6 +92,7 @@ export const natalTimedPayload = {
       "sign": "Libra",
       "house": 4,
       "degree": 194.22,
+      "sign_degree": 14.22,
       "nakshatra": "Swati",
       "nakshatra_pada": 3,
       "retrograde": true,
@@ -96,6 +103,7 @@ export const natalTimedPayload = {
       "sign": "Aquarius",
       "house": 8,
       "degree": 317.36,
+      "sign_degree": 17.36,
       "nakshatra": "Shatabhisha",
       "nakshatra_pada": 4,
       "retrograde": false,
@@ -106,6 +114,7 @@ export const natalTimedPayload = {
       "sign": "Scorpio",
       "house": 5,
       "degree": 210.01,
+      "sign_degree": 0.01,
       "nakshatra": "Vishakha",
       "nakshatra_pada": 4,
       "retrograde": true,
@@ -116,6 +125,7 @@ export const natalTimedPayload = {
       "sign": "Taurus",
       "house": 11,
       "degree": 30.01,
+      "sign_degree": 0.01,
       "nakshatra": "Krittika",
       "nakshatra_pada": 2,
       "retrograde": true,
@@ -127,72 +137,84 @@ export const natalTimedPayload = {
       "house": 1,
       "sign": "Gemini",
       "degree": 60.0,
+      "sign_degree": 0.0,
       "lord": "Mercury"
     },
     {
       "house": 2,
       "sign": "Cancer",
       "degree": 90.0,
+      "sign_degree": 0.0,
       "lord": "Moon"
     },
     {
       "house": 3,
       "sign": "Leo",
       "degree": 120.0,
+      "sign_degree": 0.0,
       "lord": "Sun"
     },
     {
       "house": 4,
       "sign": "Virgo",
       "degree": 150.0,
+      "sign_degree": 0.0,
       "lord": "Mercury"
     },
     {
       "house": 5,
       "sign": "Libra",
       "degree": 180.0,
+      "sign_degree": 0.0,
       "lord": "Venus"
     },
     {
       "house": 6,
       "sign": "Scorpio",
       "degree": 210.0,
+      "sign_degree": 0.0,
       "lord": "Mars"
     },
     {
       "house": 7,
       "sign": "Sagittarius",
       "degree": 240.0,
+      "sign_degree": 0.0,
       "lord": "Jupiter"
     },
     {
       "house": 8,
       "sign": "Capricorn",
       "degree": 270.0,
+      "sign_degree": 0.0,
       "lord": "Saturn"
     },
     {
       "house": 9,
       "sign": "Aquarius",
       "degree": 300.0,
+      "sign_degree": 0.0,
       "lord": "Saturn"
     },
     {
       "house": 10,
       "sign": "Pisces",
       "degree": 330.0,
+      "sign_degree": 0.0,
       "lord": "Jupiter"
     },
     {
       "house": 11,
       "sign": "Aries",
       "degree": 0.0,
+      "sign_degree": 0.0,
       "lord": "Mars"
     },
     {
       "house": 12,
       "sign": "Taurus",
       "degree": 30.0,
+      "sign_degree": 0.0,
       "lord": "Venus"
     }
   ],
@@ -295,6 +317,7 @@ export const natalTimelessPayload = {
   "type": "natal_chart",
   "ascendant": null,
   "ascendant_degree": null,
+  "ascendant_sign_degree": null,
   "moon_sign": "Gemini",
   "sun_sign": "Aries",
   "planets": [
@@ -303,6 +326,7 @@ export const natalTimelessPayload = {
       "sign": "Aries",
       "house": null,
       "degree": 29.88,
+      "sign_degree": 29.88,
       "nakshatra": "Krittika",
       "nakshatra_pada": null,
       "retrograde": false,
@@ -313,6 +337,7 @@ export const natalTimelessPayload = {
       "sign": "Gemini",
       "house": null,
       "degree": 74.2,
+      "sign_degree": 14.2,
       "nakshatra": "Ardra",
       "nakshatra_pada": null,
       "retrograde": false,
@@ -323,6 +348,7 @@ export const natalTimelessPayload = {
       "sign": "Taurus",
       "house": null,
       "degree": 45.66,
+      "sign_degree": 15.66,
       "nakshatra": "Rohini",
       "nakshatra_pada": null,
       "retrograde": false,
@@ -333,6 +359,7 @@ export const natalTimelessPayload = {
       "sign": "Taurus",
       "house": null,
       "degree": 58.58,
+      "sign_degree": 28.58,
       "nakshatra": "Mrigashira",
       "nakshatra_pada": null,
       "retrograde": false,
@@ -343,6 +370,7 @@ export const natalTimelessPayload = {
       "sign": "Pisces",
       "house": null,
       "degree": 359.25,
+      "sign_degree": 29.25,
       "nakshatra": "Revati",
       "nakshatra_pada": null,
       "retrograde": false,
@@ -353,6 +381,7 @@ export const natalTimelessPayload = {
       "sign": "Libra",
       "house": null,
       "degree": 194.22,
+      "sign_degree": 14.22,
       "nakshatra": "Swati",
       "nakshatra_pada": null,
       "retrograde": true,
@@ -363,6 +392,7 @@ export const natalTimelessPayload = {
       "sign": "Aquarius",
       "house": null,
       "degree": 317.37,
+      "sign_degree": 17.37,
       "nakshatra": "Shatabhisha",
       "nakshatra_pada": null,
       "retrograde": false,
@@ -373,6 +403,7 @@ export const natalTimelessPayload = {
       "sign": "Scorpio",
       "house": null,
       "degree": 210.01,
+      "sign_degree": 0.01,
       "nakshatra": "Vishakha",
       "nakshatra_pada": null,
       "retrograde": true,
@@ -383,6 +414,7 @@ export const natalTimelessPayload = {
       "sign": "Taurus",
       "house": null,
       "degree": 30.01,
+      "sign_degree": 0.01,
       "nakshatra": "Krittika",
       "nakshatra_pada": null,
       "retrograde": true,
@@ -488,6 +520,7 @@ export const natalPartnerPayload = {
   "type": "natal_chart",
   "ascendant": "Libra",
   "ascendant_degree": 190.72,
+  "ascendant_sign_degree": 10.72,
   "moon_sign": "Capricorn",
   "sun_sign": "Libra",
   "planets": [
@@ -496,6 +529,7 @@ export const natalPartnerPayload = {
       "sign": "Libra",
       "house": 1,
       "degree": 196.09,
+      "sign_degree": 16.09,
       "nakshatra": "Swati",
       "nakshatra_pada": 3,
       "retrograde": false,
@@ -506,6 +540,7 @@ export const natalPartnerPayload = {
       "sign": "Capricorn",
       "house": 4,
       "degree": 282.25,
+      "sign_degree": 12.25,
       "nakshatra": "Shravana",
       "nakshatra_pada": 1,
       "retrograde": false,
@@ -516,6 +551,7 @@ export const natalPartnerPayload = {
       "sign": "Scorpio",
       "house": 1,
       "degree": 219.59,
+      "sign_degree": 9.59,
       "nakshatra": "Anuradha",
       "nakshatra_pada": 2,
       "retrograde": false,
@@ -526,6 +562,7 @@ export const natalPartnerPayload = {
       "sign": "Scorpio",
       "house": 2,
       "degree": 232.36,
+      "sign_degree": 22.36,
       "nakshatra": "Jyeshtha",
       "nakshatra_pada": 2,
       "retrograde": false,
@@ -536,6 +573,7 @@ export const natalPartnerPayload = {
       "sign": "Gemini",
       "house": 9,
       "degree": 89.49,
+      "sign_degree": 29.49,
       "nakshatra": "Punarvasu",
       "nakshatra_pada": 3,
       "retrograde": false,
@@ -546,6 +584,7 @@ export const natalPartnerPayload = {
       "sign": "Virgo",
       "house": 12,
       "degree": 160.83,
+      "sign_degree": 10.83,
       "nakshatra": "Hasta",
       "nakshatra_pada": 1,
       "retrograde": false,
@@ -556,6 +595,7 @@ export const natalPartnerPayload = {
       "sign": "Capricorn",
       "house": 4,
       "degree": 288.3,
+      "sign_degree": 18.3,
       "nakshatra": "Shravana",
       "nakshatra_pada": 3,
       "retrograde": false,
@@ -566,6 +606,7 @@ export const natalPartnerPayload = {
       "sign": "Scorpio",
       "house": 2,
       "degree": 238.64,
+      "sign_degree": 28.64,
       "nakshatra": "Jyeshtha",
       "nakshatra_pada": 4,
       "retrograde": true,
@@ -576,6 +617,7 @@ export const natalPartnerPayload = {
       "sign": "Taurus",
       "house": 8,
       "degree": 58.64,
+      "sign_degree": 28.64,
       "nakshatra": "Mrigashira",
       "nakshatra_pada": 2,
       "retrograde": true,
@@ -587,72 +629,84 @@ export const natalPartnerPayload = {
       "house": 1,
       "sign": "Libra",
       "degree": 180.0,
+      "sign_degree": 0.0,
       "lord": "Venus"
     },
     {
       "house": 2,
       "sign": "Scorpio",
       "degree": 210.0,
+      "sign_degree": 0.0,
       "lord": "Mars"
     },
     {
       "house": 3,
       "sign": "Sagittarius",
       "degree": 240.0,
+      "sign_degree": 0.0,
       "lord": "Jupiter"
     },
     {
       "house": 4,
       "sign": "Capricorn",
       "degree": 270.0,
+      "sign_degree": 0.0,
       "lord": "Saturn"
     },
     {
       "house": 5,
       "sign": "Aquarius",
       "degree": 300.0,
+      "sign_degree": 0.0,
       "lord": "Saturn"
     },
     {
       "house": 6,
       "sign": "Pisces",
       "degree": 330.0,
+      "sign_degree": 0.0,
       "lord": "Jupiter"
     },
     {
       "house": 7,
       "sign": "Aries",
       "degree": 0.0,
+      "sign_degree": 0.0,
       "lord": "Mars"
     },
     {
       "house": 8,
       "sign": "Taurus",
       "degree": 30.0,
+      "sign_degree": 0.0,
       "lord": "Venus"
     },
     {
       "house": 9,
       "sign": "Gemini",
       "degree": 60.0,
+      "sign_degree": 0.0,
       "lord": "Mercury"
     },
     {
       "house": 10,
       "sign": "Cancer",
       "degree": 90.0,
+      "sign_degree": 0.0,
       "lord": "Moon"
     },
     {
       "house": 11,
       "sign": "Leo",
       "degree": 120.0,
+      "sign_degree": 0.0,
       "lord": "Sun"
     },
     {
       "house": 12,
       "sign": "Virgo",
       "degree": 150.0,
+      "sign_degree": 0.0,
       "lord": "Mercury"
     }
   ],

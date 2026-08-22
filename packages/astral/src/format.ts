@@ -24,17 +24,22 @@
  *
  *   85.25  ->  "85°15′"
  *
- * IMPORTANT, and it cost an hour to establish: the `degree` on a planet, the
- * `degree` on a house cusp and `ascendant_degree` are all ABSOLUTE ecliptic
- * longitudes in 0..360 (`natal.py` builds them from kerykeion's `abs_pos`),
- * NOT degrees within the sign. The Moon at "Gemini, degree 73.42" is 73.42°
- * of the zodiac, i.e. 13.42° into Gemini.
+ * IMPORTANT: `degree` on a planet, `degree` on a house cusp and
+ * `ascendant_degree` are all ABSOLUTE ecliptic longitudes in 0..360
+ * (`natal.py` builds them from kerykeion's `abs_pos`), NOT degrees within the
+ * sign. The Moon at "Gemini, degree 73.42" is 73.42° of the zodiac.
  *
- * We render the absolute number, labelled as a longitude. Turning it into
- * "13°25′ Gemini" needs a subtraction against a sign boundary, and a
- * subtraction is exactly the "arithmetic that creates a new claim" ASTRAL-19
- * bans — the sign-relative degree is not in the payload, so a renderer may not
- * invent it. Filed as a finding for the engine instead.
+ * This helper only re-notates whatever it is given; it does NOT know which of
+ * the two it received. Callers rendering a degree beside a sign name must pass
+ * `sign_degree` / `ascendant_sign_degree`, never `degree` — "Gemini 73°25′" is
+ * impossible, since a sign spans 30°.
+ *
+ * That was filed as A6#13 when this package was written, because the
+ * sign-relative degree was not in the payload and deriving it here would have
+ * needed a subtraction against a sign boundary — exactly the "arithmetic that
+ * creates a new claim" ASTRAL-19 bans. The engine now supplies it verbatim
+ * (natal_chart v4), so the renderer shows it rather than computing it, and a
+ * pre-v4 chart with a null `sign_degree` shows no degree at all.
  */
 export function formatDegrees(value: unknown): string | null {
   const n = asFiniteNumber(value);

@@ -32,9 +32,15 @@ describe('ASTRAL-15 — a timed chart', () => {
     }
   });
 
-  it('states the Lagna to the arcminute', () => {
+  it('states the Lagna to the arcminute, WITHIN the sign (A6#13)', () => {
+    // The artifact carries ascendant_degree 85.25 (absolute ecliptic
+    // longitude) and ascendant_sign_degree 25.25. This assertion used to read
+    // "Gemini 85°15′", which is impossible — a sign spans 30° — and that is
+    // what shipped on every chart until A6#13.
     const { getByTestId } = renderNatal(natalTimedPayload);
-    expect(getByTestId('astral-natal-ascendant')).toHaveTextContent('Gemini 85°15′');
+    const el = getByTestId('astral-natal-ascendant');
+    expect(el).toHaveTextContent('Gemini 25°15′');
+    expect(el).not.toHaveTextContent('85°');
   });
 
   it('shows the calculation stamp, read off the artifact (INV-3)', () => {

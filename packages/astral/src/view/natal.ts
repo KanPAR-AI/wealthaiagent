@@ -33,7 +33,10 @@ export function placementRows(chart: NatalChartPayload): PlacementRow[] {
   return chart.planets.map((p: NatalPlanet) => ({
     planet: p.planet,
     sign: p.sign,
-    longitude: formatDegrees(p.degree),
+    // A6#13: the within-sign degree is what sits beside a sign name. Null
+    // on a pre-v4 chart, and then the cell is empty rather than showing the
+    // absolute longitude, which reads as an impossible position.
+    longitude: formatDegrees(p.sign_degree),
     house: p.house === null ? null : String(p.house),
     nakshatra: p.nakshatra,
     pada: p.nakshatra_pada === null ? null : String(p.nakshatra_pada),
