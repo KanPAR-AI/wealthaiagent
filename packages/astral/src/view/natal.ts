@@ -19,8 +19,12 @@ export function planetAbbr(name: string): string {
 export interface PlacementRow {
   planet: string;
   sign: string;
-  /** absolute ecliptic longitude, formatted to the arcminute; see format.ts */
-  longitude: string | null;
+  /**
+   * The degree WITHIN the sign, formatted to the arcminute (see format.ts).
+   * Named `degree` and not `longitude` since A6#13: it is not a longitude,
+   * and calling it one is how the absolute value got rendered beside a sign.
+   */
+  degree: string | null;
   /** null on a time-less chart — rendered as an absent cell, not a dash-zero */
   house: string | null;
   nakshatra: string | null;
@@ -36,7 +40,7 @@ export function placementRows(chart: NatalChartPayload): PlacementRow[] {
     // A6#13: the within-sign degree is what sits beside a sign name. Null
     // on a pre-v4 chart, and then the cell is empty rather than showing the
     // absolute longitude, which reads as an impossible position.
-    longitude: formatDegrees(p.sign_degree),
+    degree: formatDegrees(p.sign_degree),
     house: p.house === null ? null : String(p.house),
     nakshatra: p.nakshatra,
     pada: p.nakshatra_pada === null ? null : String(p.nakshatra_pada),

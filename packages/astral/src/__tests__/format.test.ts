@@ -53,8 +53,8 @@ describe('formatDegrees — notation, never a different quantity', () => {
     const row = placementRows(natalTimedPayload as never)
       .find((r) => r.planet === 'Moon')!;
     expect(row.sign).toBe('Gemini');
-    expect(row.longitude).toBe(formatDegrees(moon.sign_degree));
-    expect(row.longitude).not.toBe(formatDegrees(moon.degree));
+    expect(row.degree).toBe(formatDegrees(moon.sign_degree));
+    expect(row.degree).not.toBe(formatDegrees(moon.degree));
     // The within-sign value must be a possible position in a 30° sign.
     expect(moon.sign_degree).toBeGreaterThanOrEqual(0);
     expect(moon.sign_degree).toBeLessThan(30);
@@ -67,7 +67,7 @@ describe('formatDegrees — notation, never a different quantity', () => {
     };
     const row = placementRows(legacy as never).find((r) => r.planet === 'Moon')!;
     expect(row.sign).toBe('Gemini');
-    expect(row.longitude).toBeNull();
+    expect(row.degree).toBeNull();
   });
 });
 

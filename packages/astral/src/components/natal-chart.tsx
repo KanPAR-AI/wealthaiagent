@@ -167,8 +167,8 @@ export function NatalChartView(props: NatalChartViewProps): ReactNode {
                 <Text style={{ fontSize: 13, color: theme.text }}>{row.sign}</Text>
               </Box>
               <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, flex: wide ? 1 : undefined }}>
-                {row.longitude ? (
-                  <Cell ui={ui} theme={theme} label="Longitude" value={row.longitude} />
+                {row.degree ? (
+                  <Cell ui={ui} theme={theme} label="Degree" value={row.degree} />
                 ) : null}
                 {row.house ? <Cell ui={ui} theme={theme} label="House" value={row.house} /> : null}
                 {row.nakshatra ? (
@@ -272,23 +272,37 @@ function Wheel(props: NatalChartViewProps): ReactNode {
         {WHEEL_HOUSE_ANCHORS.map((a) => {
           const x = a.x;
           const y = a.y;
-          // Stack the grahas AWAY from the nearest edge: downward in the top
-          // half, upward in the bottom half. Anchors sit as close as 8.75
-          // units to an edge, so a fixed downward stack runs off the bottom
-          // corner squares.
-          const dir = y > WHEEL_VIEWBOX / 2 ? -1 : 1;
           const grahas = occupants.get(a.house) ?? [];
+          // CENTRE the block (house number + its grahas) on the anchor rather
+          // than growing a stack away from it. Found by rendering the chart
+          // and looking at it: the old shape put line k at y + dir*k*height,
+          // so a house with three grahas ran ~14 units from an anchor that
+          // sits as close as 8.75 units to an edge — the glyphs crossed the
+          // diagonals into the neighbouring house and collided with its
+          // number, worst in the 380px side panel. Centring makes the block's
+          // extent symmetric about the anchor, so it grows half as far in
+          // either direction and stays in its own cell.
+          const lines = grahas.length + 1;
+          // A crowded cell tightens rather than spreading. The top-right
+          // corner square and its neighbouring triangle are the smallest
+          // cells on the board, and a stellium of four grahas there still
+          // reached across the diagonal into the next house's number after
+          // centring. Three or more grahas step the block down one size.
+          const crowded = grahas.length >= 3;
+          const lineH = crowded ? GRAHA_LINE_HEIGHT * 0.78 : GRAHA_LINE_HEIGHT;
+          const glyphSize = crowded ? 3.7 : 4.6;
+          const top = y - ((lines - 1) / 2) * lineH;
           return (
             <Group key={`h${a.house}`}>
-              <SvgText x={x} y={y} fontSize={3.6} fill={theme.textMuted} textAnchor="middle">
+              <SvgText x={x} y={top} fontSize={3.6} fill={theme.textMuted} textAnchor="middle">
                 {String(a.house)}
               </SvgText>
               {grahas.map((g, gi) => (
                 <SvgText
                   key={g}
                   x={x}
-                  y={y + dir * GRAHA_LINE_HEIGHT * (gi + 1)}
-                  fontSize={4.6}
+                  y={top + lineH * (gi + 1)}
+                  fontSize={glyphSize}
                   fontWeight="600"
                   fill={theme.text}
                   textAnchor="middle"
