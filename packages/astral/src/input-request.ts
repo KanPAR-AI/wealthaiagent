@@ -31,7 +31,27 @@
 
 import { formatClockTime } from './format';
 
-export type InputFieldKind = 'date' | 'time' | 'place' | 'choice' | 'text';
+export type InputFieldKind = 'date' | 'time' | 'place' | 'choice' | 'text' | 'image';
+
+/**
+ * The bare file id out of an upload response URL (bug 8dc95a6a).
+ *
+ * Both hosts' upload paths hand back `/api/v1/files/{id}/download` (absolute
+ * on the web, absolute on RN). The engine's `image` field takes the ID and
+ * REFUSES anything with a slash in it — it will not coerce a URL into an id,
+ * because a value the engine cannot vouch for must not be stored and then
+ * discovered as a 404 inside a reading. So the extraction happens here,
+ * once, rather than in each adapter.
+ *
+ * Returns '' when there is no id to find, which the caller treats as a
+ * failed upload rather than sending something unusable.
+ */
+export function fileIdFromUrl(url: string): string {
+  if (!url) return '';
+  const match = /\/files\/([^/?#]+)/.exec(url);
+  if (match) return match[1];
+  return url.indexOf('/') === -1 ? url : '';
+}
 
 export interface InputOption {
   value: string;
@@ -125,6 +145,10 @@ export function parseInputRequest(value: unknown): InputRequestPayload | null {
 
 function displayValue(field: InputField, value: InputValue): string {
   if (value === null) return "I don't know";
+  // A file id is machine plumbing. The echo is what the USER reads back in
+  // their own transcript, and "dominant_palm_file_id: 8f2c-…" tells them
+  // nothing they can dispute or correct.
+  if (field.kind === 'image') return 'photo attached';
   if (field.kind === 'time') return formatClockTime(value);
   if (field.kind === 'choice') {
     const hit = field.options.find((o) => o.value === value);

@@ -104,6 +104,39 @@ function TimeField({ ui, theme, field, value, onChange }: FieldRenderContext) {
   );
 }
 
+/**
+ * A role-labelled photo slot (bug 8dc95a6a).
+ *
+ * The reported failure was a PAIRING failure: two palms, the vision layer
+ * called both the same side, and the engine deduped by side — so a pair read
+ * as a re-shoot and the user got a one-hand reading. Two slots each LABELLED
+ * with the role removes the ambiguity at the source: two roles is
+ * definitionally two hands, whatever the pixels say.
+ *
+ * The picking and the upload belong to the host (`ui.ImagePicker`); what is
+ * shared is the question, the label, the skip and the carrier. Once a photo
+ * is attached the slot SAYS SO — a control that looks identical before and
+ * after a tap is how a user uploads the same hand twice.
+ */
+function ImageField({ ui, theme, field, value, onChange }: FieldRenderContext) {
+  const { Box, ImagePicker, Text } = ui;
+  const attached = typeof value === 'string' && value.length > 0;
+  return (
+    <Box style={{ gap: 8 }}>
+      <ImagePicker
+        value={attached ? (value as string) : null}
+        onChange={onChange}
+        label={field.label}
+        accessibilityLabel={field.label}
+        testID={`input-field-${field.key}`}
+      />
+      <Text style={{ fontSize: 12, color: attached ? theme.accent : theme.textMuted }}>
+        {attached ? '✓ photo attached' : (field.hint ?? 'Palm facing the camera, fingers spread.')}
+      </Text>
+    </Box>
+  );
+}
+
 function ChoiceField({ ui, theme, width, field, value, onChange }: FieldRenderContext) {
   const { Box, Pressable, Text } = ui;
   return (
@@ -162,6 +195,7 @@ const handlers: Record<string, FieldRenderer> = {
   time: TimeField,
   choice: ChoiceField,
   text: TextField,
+  image: ImageField,
 };
 
 /**

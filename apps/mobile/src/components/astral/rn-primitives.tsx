@@ -11,7 +11,9 @@
  * has two scorecards and ASTRAL-18 is broken.
  */
 
+import { useState } from 'react';
 import type {
+  AstralImagePickerProps,
   AstralPrimitives,
   AstralTextInputProps,
   BoxProps,
@@ -25,7 +27,10 @@ import type {
   SvgTextProps,
   TextProps,
 } from '@wealthai/astral';
+import { fileIdFromUrl } from '@wealthai/astral';
+import * as ExpoImagePicker from 'expo-image-picker';
 import {
+  Alert,
   Pressable as RNPressable,
   ScrollView,
   TextInput as RNTextInput,
@@ -33,6 +38,9 @@ import {
   View,
 } from 'react-native';
 import Svg2, { Circle, G, Line, Rect, Text as SvgTextEl } from 'react-native-svg';
+
+import { getToken } from '@/lib/auth';
+import { uploadFileNative } from '@/lib/upload';
 
 function Box({ style, testID, children }: BoxProps) {
   return (
@@ -249,6 +257,80 @@ function TimeWheel({ value, onChange, accessibilityLabel, testID }: TimeWheelPro
   );
 }
 
+/**
+ * A photo slot, on the device (bug 8dc95a6a).
+ *
+ * Both halves are the ones the composer already uses and neither is
+ * reinvented: `expo-image-picker` for the library/camera sheet (the
+ * `pickImage` path in `chat-input.tsx`) and `uploadFileNative` for the
+ * streaming multipart upload (`lib/upload.ts`, which documents the three
+ * FormData dead ends on SDK 57). What arrives back is a URL; the shared
+ * `fileIdFromUrl` turns it into the id the engine's `image` field accepts,
+ * because that field REFUSES a URL rather than coercing one.
+ *
+ * A failure is SHOWN, never swallowed — a control that looks the same
+ * before and after a tap is how the same hand gets sent twice.
+ */
+function ImagePicker({
+  value,
+  onChange,
+  label,
+  accessibilityLabel,
+  testID,
+}: AstralImagePickerProps) {
+  const [busy, setBusy] = useState(false);
+
+  const pick = async () => {
+    if (busy) return;
+    const res = await ExpoImagePicker.launchImageLibraryAsync({
+      mediaTypes: 'images',
+      quality: 0.85,
+    });
+    const asset = res.assets?.[0];
+    if (!asset) return;
+    setBusy(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('Not signed in');
+      const uploaded = await uploadFileNative(token, {
+        uri: asset.uri,
+        name: asset.fileName || `palm_${Date.now()}.jpg`,
+        type: asset.mimeType || 'image/jpeg',
+        size: asset.fileSize,
+      });
+      const id = fileIdFromUrl(uploaded.url);
+      if (!id) throw new Error('The upload came back without a file id');
+      onChange(id);
+    } catch (e: unknown) {
+      Alert.alert('Upload failed',
+        e instanceof Error ? e.message : 'Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <RNPressable
+      onPress={pick}
+      disabled={busy}
+      accessibilityLabel={accessibilityLabel ?? label}
+      testID={testID}
+      style={{
+        paddingVertical: 18,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderStyle: value ? 'solid' : 'dashed',
+        alignItems: 'center',
+        opacity: busy ? 0.5 : 1,
+      }}>
+      <RNText style={{ fontSize: 15, fontWeight: '600' }}>
+        {busy ? 'Uploading…' : value ? 'Replace photo' : 'Add photo'}
+      </RNText>
+    </RNPressable>
+  );
+}
+
 export const rnPrimitives: AstralPrimitives = {
   Box,
   Text,
@@ -261,4 +343,5 @@ export const rnPrimitives: AstralPrimitives = {
   Pressable,
   TextInput,
   TimeWheel,
+  ImagePicker,
 };

@@ -16,9 +16,10 @@
  *     pixels; CSS numbers are unitless and mostly invalid.
  */
 
-import type { CSSProperties } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import type {
   AstralBoxStyle,
+  AstralImagePickerProps,
   AstralPrimitives,
   AstralTextInputProps,
   AstralTextStyle,
@@ -33,6 +34,10 @@ import type {
   SvgTextProps,
   TextProps,
 } from '@wealthai/astral';
+import { fileIdFromUrl } from '@wealthai/astral';
+
+import { getApiUrl } from '@/config/environment';
+import { useAuthStore } from '@/store/auth';
 
 const PX_PROPS = new Set([
   'gap', 'padding', 'paddingTop', 'paddingBottom', 'paddingLeft', 'paddingRight',
@@ -205,7 +210,102 @@ function TimeWheel({ value, onChange, accessibilityLabel, testID }: TimeWheelPro
   );
 }
 
+/**
+ * A photo slot, on the web (bug 8dc95a6a).
+ *
+ * `<input type="file" accept="image/*">` IS the OS camera/library sheet on
+ * every phone browser, so the picking half needs nothing invented. The
+ * upload half is the SAME endpoint and the same response shape the composer
+ * already posts to (`chat-input.tsx`'s `/files/upload`) — deliberately not a
+ * second upload path, and deliberately not a second way for a file id to
+ * reach the engine: the id travels in the typed `input_response` fence like
+ * every other answered field.
+ *
+ * A failure is SHOWN. An upload that quietly does nothing leaves a user
+ * tapping a control that looks unchanged, which is how the same hand gets
+ * sent twice.
+ */
+function ImagePicker({
+  value,
+  onChange,
+  label,
+  accessibilityLabel,
+  testID,
+}: AstralImagePickerProps) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const upload = async (file: File) => {
+    setBusy(true);
+    setError('');
+    try {
+      const token = useAuthStore.getState().idToken || 'dev_token';
+      const form = new FormData();
+      form.append('files', file, file.name);
+      const res = await fetch(getApiUrl('/files/upload'), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        body: form,
+      });
+      if (!res.ok) throw new Error(`Upload failed (${res.status})`);
+      const body = await res.json();
+      const id = fileIdFromUrl(String(body?.files?.[0]?.url ?? ''));
+      if (!id) throw new Error('The upload came back without a file id');
+      onChange(id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Upload failed — try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        data-testid={`${testID}-input`}
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void upload(file);
+        }}
+      />
+      <button
+        type="button"
+        disabled={busy}
+        aria-label={accessibilityLabel ?? label}
+        data-testid={testID}
+        onClick={() => inputRef.current?.click()}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '4px',
+          padding: '18px 12px',
+          borderRadius: '12px',
+          borderWidth: '1px',
+          borderStyle: value ? 'solid' : 'dashed',
+          cursor: busy ? 'default' : 'pointer',
+          font: 'inherit',
+        }}
+      >
+        <span style={{ fontSize: '15px', fontWeight: 600 }}>
+          {busy ? 'Uploading…' : value ? 'Replace photo' : 'Add photo'}
+        </span>
+      </button>
+      {error ? (
+        <span data-testid={`${testID}-error`} style={{ fontSize: '12px' }}>
+          {error}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export const domPrimitives: AstralPrimitives = {
   Box, Text, Svg, Group, SvgRect, SvgLine, SvgCircle, SvgText,
-  Pressable, TextInput, TimeWheel,
+  Pressable, TextInput, TimeWheel, ImagePicker,
 };

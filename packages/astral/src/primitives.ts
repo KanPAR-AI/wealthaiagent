@@ -198,6 +198,33 @@ export interface TimeWheelProps {
   testID?: string;
 }
 
+/**
+ * A photo, chosen and uploaded the way the host does it best (bug 8dc95a6a).
+ *
+ * A PRIMITIVE for the same reason `TimeWheel` is one: picking a photo is
+ * precisely the part that cannot be written once. On the web the honest
+ * answer is `<input type="file" accept="image/*" capture>`, which is the OS
+ * camera/library sheet on every phone browser; React Native has no such
+ * element and goes through `expo-image-picker` and a native streaming
+ * upload. Both hosts already have that code and neither should grow a
+ * second copy.
+ *
+ * `value` is the uploaded FILE ID, or null before anything is chosen — the
+ * host does the upload and hands back the id, so nothing about auth, retry
+ * or multipart leaks into the shared component. `busy` lets the shared
+ * component show an honest in-flight state instead of pretending the tap
+ * did nothing.
+ */
+export interface AstralImagePickerProps {
+  value: string | null;
+  /** called with the uploaded file id once the host has it */
+  onChange: (fileId: string) => void;
+  /** the role this slot is for, shown on the control */
+  label?: string;
+  accessibilityLabel?: string;
+  testID?: string;
+}
+
 export interface AstralPrimitives {
   Box: ComponentType<BoxProps>;
   Text: ComponentType<TextProps>;
@@ -210,6 +237,7 @@ export interface AstralPrimitives {
   Pressable: ComponentType<PressableProps>;
   TextInput: ComponentType<AstralTextInputProps>;
   TimeWheel: ComponentType<TimeWheelProps>;
+  ImagePicker: ComponentType<AstralImagePickerProps>;
 }
 
 /** Colour tokens a host supplies so the shared components carry no palette. */
