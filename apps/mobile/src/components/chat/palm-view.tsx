@@ -128,6 +128,17 @@ export function PalmView({ data }: { data: any }) {
     return () => { alive = false; };
   }, [imageUrl, headers]);
 
+  // What to CALL this hand. The engine stamps `hand_label` in the licensed
+  // vocabulary (role when the user labelled the photo by role, side only
+  // when the side was established) — printing the raw `hand` field named a
+  // side off the vision layer's guess, which a mirrored photo inverts.
+  // The ladder below is for payloads stamped before that existed.
+  const handLabel: string = data.hand_label
+    || (data.hand_role === 'dominant' ? 'Dominant Hand'
+      : data.hand_role === 'non_dominant' ? 'Non-Dominant Hand'
+        : data.hand ? `${String(data.hand)[0].toUpperCase()}${String(data.hand).slice(1)} hand`
+          : '');
+
   // The SVG shares the image's exact box, so normalized coords map 1:1.
   const viewW = Math.min(screenWidth - Spacing.four * 2 - Spacing.three * 2, 340);
   const viewH = aspect ? viewW / aspect : viewW * (4 / 3);
@@ -137,7 +148,7 @@ export function PalmView({ data }: { data: any }) {
   return (
     <View style={[styles.card, { borderColor: colors.backgroundSelected }]}>
       <ThemedText type="smallBold">
-        🤚 Palm Reading{data.hand ? ` — ${String(data.hand)[0].toUpperCase()}${String(data.hand).slice(1)} hand` : ''}
+        🤚 Palm Reading{handLabel ? ` — ${handLabel}` : ''}
       </ThemedText>
 
       {imageUrl && headers && aspect && (
