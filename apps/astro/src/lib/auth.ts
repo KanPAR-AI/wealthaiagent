@@ -9,6 +9,7 @@
 
 import { signInAnonymously as fbSignInAnonymously } from 'firebase/auth';
 
+import { identify } from './analytics';
 import { ensureCoreInitialized } from './core-adapter';
 import { auth } from './firebase';
 
@@ -29,5 +30,8 @@ function authReady(): Promise<void> {
 export async function getToken(): Promise<string> {
   await authReady();
   const user = auth.currentUser ?? (await fbSignInAnonymously(auth)).user;
+  // The analytics stream and the backend agree on who this is: GA4's user id
+  // is the Firebase uid, which is what chatservice hangs chats and memory off.
+  identify(user.uid);
   return user.getIdToken();
 }

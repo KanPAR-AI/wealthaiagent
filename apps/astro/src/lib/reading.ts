@@ -20,6 +20,7 @@ import {
   stripRoutingTag,
 } from '@wealthai/core';
 
+import { track } from './analytics';
 import { getToken } from './auth';
 import { ensureCoreInitialized } from './core-adapter';
 import { PINNED_AGENT } from './env';
@@ -53,8 +54,15 @@ export async function ask(question: string, opts: AskOptions): Promise<AskHandle
 
   const controller = new AbortController();
   let text = '';
+  // The funnel §12 asks for: did they ask, did an answer arrive, how long it
+  // took, and which block types came back. Counted here rather than in the
+  // screen so a second surface cannot forget to count.
+  track('reading_asked', { first_turn: existing ? 0 : 1, chars: question.length });
+  const startedAt = Number(new Date());
 
-  let streamError: Error | null = null;
+  // A holder, not a bare `let`: TypeScript does not track assignments made
+  // inside the stream callbacks and narrows a plain variable to `never`.
+  const stream: { error: Error | null } = { error: null };
 
   const done = (async () => {
     await listenToChatStreamCore(
@@ -67,7 +75,9 @@ export async function ask(question: string, opts: AskOptions): Promise<AskHandle
           // which is the other place it is stripped.
           text = stripRoutingTag(text + chunk);
           onDelta(text);
-        } else if (type.startsWith('widget_') && onWidget) {
+        } else if (type.startsWith('widget_')) {
+          track('reading_widget', { widget: type });
+          if (!onWidget) return;
           try {
             onWidget(type, JSON.parse(chunk));
           } catch {
@@ -79,12 +89,20 @@ export async function ask(question: string, opts: AskOptions): Promise<AskHandle
       (error) => {
         // Recorded, not thrown: this runs inside core's reader loop, where a
         // throw would be swallowed and the caller would wait forever.
-        streamError = error;
+        stream.error = error;
       },
       { forceAgent: PINNED_AGENT, externalSignal: controller.signal },
     );
+    const seconds = Math.round((Number(new Date()) - startedAt) / 1000);
     // A stop is a success with less text, not a failure.
-    if (streamError && !controller.signal.aborted) throw streamError;
+    if (stream.error && !controller.signal.aborted) {
+      track('reading_failed', { seconds, reason: stream.error.name || 'error' });
+      throw stream.error;
+    }
+    track(controller.signal.aborted ? 'reading_stopped' : 'reading_answered', {
+      seconds,
+      chars: text.length,
+    });
     return text;
   })();
 
