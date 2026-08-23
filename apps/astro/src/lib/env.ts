@@ -44,6 +44,19 @@ export const FIREBASE_CONFIG = {
   messagingSenderId: '388592327571',
 };
 
+// The Firebase-managed WEB OAuth client id — the audience the ID token from
+// native Google Sign-In must carry, and what the backend exchange verifies
+// against. Shared across the project's apps (it is the project's web client).
+export const FIREBASE_WEB_CLIENT_ID =
+  '388592327571-onpvgba3j318162sqm5h7brd4ackpl07.apps.googleusercontent.com';
+
+// THIS app's iOS OAuth client, from its own GoogleService-Info.plist
+// (CLIENT_ID). Its reversed form is registered as a URL scheme by the
+// google-signin config plugin in app.json — the two must move together, or the
+// sign-in sheet returns to a dead scheme.
+export const GOOGLE_IOS_CLIENT_ID: string | null =
+  '388592327571-kcul5hg30avcp2irnkoiko722jq6a2i8.apps.googleusercontent.com';
+
 /** docs/48 D3 — the product is pinned to the astrology agent.
  *
  *  A single-purpose app has no use for the platform router, and pinning

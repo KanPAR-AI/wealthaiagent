@@ -3,7 +3,7 @@
 // and palm results) land on top of this; what it proves today is the path —
 // anonymous auth → chatservice → the PINNED agent → a streamed reply.
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -16,6 +16,9 @@ import {
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { router } from 'expo-router';
+
+import { fetchBalance } from '@/lib/credits';
 import { ask, type AskHandle } from '@/lib/reading';
 
 export default function Index() {
@@ -23,9 +26,20 @@ export default function Index() {
   const [answer, setAnswer] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
+  const [unlimited, setUnlimited] = useState(false);
   const chatIdRef = useRef<string | null>(null);
   const handleRef = useRef<AskHandle | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
+
+  // Asking for the balance is what triggers the server's one-time welcome
+  // grant, so this runs before the user can send anything. Without it the
+  // account sits at zero and the first reading is refused.
+  useEffect(() => {
+    fetchBalance()
+      .then((b) => { setCredits(b.balance); setUnlimited(b.unlimited); })
+      .catch((e) => console.warn('[credits]', String(e?.message ?? e)));
+  }, []);
 
   const send = useCallback(async () => {
     const text = question.trim();
@@ -38,6 +52,7 @@ export default function Index() {
       const handle = await ask(text, {
         chatId: chatIdRef.current,
         onDelta: setAnswer,
+        onCredits: (_charged, balance) => setCredits(balance),
       });
       handleRef.current = handle;
       chatIdRef.current = handle.chatId;
@@ -56,7 +71,23 @@ export default function Index() {
     <SafeAreaView style={s.safe}>
       <KeyboardAvoidingView behavior="padding" style={s.fill}>
         <View style={s.header}>
-          <Text style={s.title}>Astral AI</Text>
+          <View style={s.headerRow}>
+            <Text style={s.title}>Astral AI</Text>
+            <Pressable
+              onPress={() => router.push('/settings')}
+              accessibilityRole="button"
+              accessibilityLabel="Settings"
+              hitSlop={12}
+            >
+              <Text style={s.credits}>
+                {credits === null
+                  ? 'Settings'
+                  : unlimited
+                    ? 'Unlimited ›'
+                    : `${credits.toLocaleString()} credits ›`}
+              </Text>
+            </Pressable>
+          </View>
           <Text style={s.tag}>Your birth chart, explained.</Text>
         </View>
 
@@ -107,6 +138,8 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#0e1116' },
   fill: { flex: 1 },
   header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16, gap: 4 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  credits: { color: '#c9a227', fontSize: 13, fontVariant: ['tabular-nums'] },
   title: { color: '#f4efe6', fontSize: 26, fontWeight: '600', letterSpacing: 0.3 },
   tag: { color: '#9aa4b2', fontSize: 14 },
   body: { paddingHorizontal: 20, paddingBottom: 24, gap: 12 },

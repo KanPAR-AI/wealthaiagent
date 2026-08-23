@@ -41,10 +41,12 @@ export interface AskOptions {
   chatId?: string | null;
   onDelta: (fullTextSoFar: string) => void;
   onWidget?: (type: string, payload: unknown) => void;
+  /** Balance after this turn was charged, straight from the stream. */
+  onCredits?: (charged: number, balance: number) => void;
 }
 
 export async function ask(question: string, opts: AskOptions): Promise<AskHandle> {
-  const { chatId: existing, onDelta, onWidget } = opts;
+  const { chatId: existing, onDelta, onWidget, onCredits } = opts;
   const token = await getToken();
 
   // The first message is persisted by createChatSession itself, so a new
@@ -91,7 +93,14 @@ export async function ask(question: string, opts: AskOptions): Promise<AskHandle
         // throw would be swallowed and the caller would wait forever.
         stream.error = error;
       },
-      { forceAgent: PINNED_AGENT, externalSignal: controller.signal },
+      {
+        forceAgent: PINNED_AGENT,
+        externalSignal: controller.signal,
+        onCredits: (charged, balance) => {
+          track('reading_charged', { charged, balance });
+          onCredits?.(charged, balance);
+        },
+      },
     );
     const seconds = Math.round((Number(new Date()) - startedAt) / 1000);
     // A stop is a success with less text, not a failure.
