@@ -231,6 +231,23 @@ describe('ASTRAL-99 — one React Native binding, and it is not inside an app', 
     }
   });
 
+  it('an unregistered block type is REPORTED, not silently dropped', () => {
+    // The claim this pins: an unregistered data block renders nothing visible
+    // and says so once, by name. A `return null` with no report is how three
+    // computed block types went unrendered for months — dropping a block is
+    // indistinguishable from never receiving one, which is the whole reason
+    // `reportUnknown` exists (ASTRAL-20).
+    //
+    // Structural rather than a render test because the root jest project has
+    // no React Native preset (F21 #4) — see the note at the foot of
+    // `packages/astral-native/src/__tests__/host.test.ts`.
+    const host = codeOf(join(WORKSPACE, 'packages/astral-native/src/astral-block.tsx'));
+    expect(host).toContain('reportUnknown');
+    expect(host).toMatch(/astralBlockRegistry\.get\(/);
+    // dispatch is the registry's, not an if-chain that can forget a branch
+    expect(host).not.toMatch(/if \(type === /);
+  });
+
   it('the three host capabilities are declared in one place', () => {
     expect(filesContaining(/export interface AstralHost/, (f) => !isTest(f))).toEqual([
       'packages/astral-native/src/host.ts',
