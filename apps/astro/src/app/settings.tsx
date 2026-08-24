@@ -33,7 +33,7 @@ import {
 import Svg from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ChevronLeft, ChevronRight, Symbol } from '@/components/glyphs';
+import { ChevronLeft, ChevronRight, SymbolIcon } from '@/components/glyphs';
 import { SkyDefs, SkyField, Stars } from '@/components/sky';
 import {
   isAppleSignInAvailable,
@@ -171,7 +171,7 @@ export default function Settings() {
                   accessibilityRole="button"
                   accessibilityLabel={row.label}
                 >
-                  <Symbol name={row.icon} color={tokens.palette.accent.interactive} />
+                  <SymbolIcon name={row.icon} color={tokens.palette.accent.interactive} />
                   <Text style={s.rowLabel}>{row.label}</Text>
                   <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
                 </Pressable>

@@ -99,7 +99,9 @@ export function DotMark({ size, color }: { size: number; color: string }) {
  * the name, so the fallback is not optional decoration — on Android and web it
  * IS the icon.
  */
-export function Symbol({
+// Named `SymbolIcon`, not `Symbol`: the latter shadows the JS global in every
+// module that imports it, which is a trap nobody needs.
+export function SymbolIcon({
   name, size = tokens.size.icon, color, fallback,
 }: {
   name: SFSymbol;
