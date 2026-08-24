@@ -55,6 +55,7 @@ import { useChatStore, type Message } from '@wealthai/core';
 import { ChevronLeft, SymbolIcon } from '@/components/glyphs';
 import { CornerWash } from '@/components/sky';
 import { track } from '@/lib/analytics';
+import { fetchBalance } from '@/lib/credits';
 import { tokens } from '@/theme';
 
 /**
@@ -85,12 +86,32 @@ export default function BirthDetails() {
   // One turn, through the one lifecycle. `started` guards the SEND rather
   // than the mount: `send`'s identity changes as the turn progresses, so an
   // unguarded effect would ask twice.
+  //
+  // The balance call comes FIRST, and it is not decoration. `ensure_welcome`
+  // runs inside `GET /credits/balance` and nowhere else (chatservice
+  // `credits.py:34`), so a brand-new account has ZERO until something asks —
+  // and this screen sends the first turn of the app's life. Measured on the
+  // simulator, fresh install, 2026-08-24: the engine answered "You're out of
+  // credits, so I can't generate this reply" to the very first question,
+  // before any screen that asks for the balance had mounted. `chat.tsx` asks
+  // too; that call is for the resume path and stays.
+  //
+  // Awaited, and a failure is not fatal: if the balance call fails the ask
+  // still goes out, and the engine's own out-of-credits reply is the honest
+  // thing to show.
   const started = useRef(false);
   useEffect(() => {
     if (started.current) return;
     started.current = true;
     track('birth_details_shown');
-    void send(OPENING_TURN, []);
+    void (async () => {
+      try {
+        await fetchBalance();
+      } catch (e: any) {
+        console.warn('[credits]', String(e?.message ?? e));
+      }
+      await send(OPENING_TURN, []);
+    })();
   }, [send]);
 
   // The reply, read out of the SHARED store rather than out of a promise

@@ -89,13 +89,28 @@ export default function Chat() {
   const [chatId, setChatId] = useState<string | null>(null);
   const [washWidth, setWashWidth] = useState(0);
 
-  const onChatCreated = useCallback((id: string) => {
-    setChatId(id);
-    // The lifecycle calls this twice for a new chat — once with the
-    // optimistic local id, once with the backend's — and the second call is
-    // what survives.
-    rememberChat(id);
-  }, []);
+  const onChatCreated = useCallback((id: string) => setChatId(id), []);
+
+  /**
+   * Remember whichever conversation this screen is in — however it got here.
+   *
+   * MEASURED, simulator, 2026-08-24: remembering inside `onChatCreated` was
+   * not enough and the failure was silent. Screen 2 starts the conversation
+   * and hands its id over as a route param, so on the app's FIRST run the
+   * lifecycle never creates a chat on this screen, `onChatCreated` never
+   * fires, nothing is written — and the relaunch showed an empty transcript
+   * while the whole reading sat safe on the server. An effect on the id
+   * covers all three ways it arrives: created here, adopted from screen 2,
+   * or resumed from storage.
+   *
+   * The optimistic local id gets written for the second or so before it
+   * migrates to the backend's. A kill inside that window leaves an id the
+   * server has never heard of, which the resume path below already handles
+   * by forgetting it.
+   */
+  useEffect(() => {
+    if (chatId) rememberChat(chatId);
+  }, [chatId]);
 
   const { send, cancel, isSending, isCreatingChat } = useSendMessage(chatId, onChatCreated);
   const busy = isSending || isCreatingChat;

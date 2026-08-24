@@ -16,7 +16,11 @@ export const astroChatTheme: ChatTheme = {
   colors: {
     background: t.palette.paper.base,
     surface: t.palette.paper.card,
-    surfaceStrong: t.palette.paper.base,
+    // MEASURED on the simulator: mapping this to `paper.base` made the
+    // disabled "Send report" button the same colour as the sheet behind it,
+    // so it read as white text floating on nothing. The rule line is the
+    // brand's next step away from the ground and is visible against both.
+    surfaceStrong: t.palette.paper.line,
     line: t.palette.paper.line,
     text: t.palette.ink.primary,
     textMuted: t.palette.ink.muted,

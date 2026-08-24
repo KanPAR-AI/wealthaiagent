@@ -102,11 +102,20 @@ export function BugReportProvider({ children }: { children: ReactNode }) {
         brand={tokens.wordmark}
         subtitle="Your reading and this screen are attached automatically."
         context={{
-          // `url` is what /admin/bugs already displays for a report's origin;
-          // `route` and `build` are named separately so triage can filter.
-          url: `astro://${route}`,
-          route,
-          build: BUILD,
+          // MEASURED against the live queue, 2026-08-24: the backend's
+          // `BugReportContext` has a FIXED field set (user_agent, url,
+          // viewport, build_sha, selected_agent, section, loop_id, run_id)
+          // and silently drops anything else — a first attempt sent `route`
+          // and `build` as their own keys and both arrived as nothing. So
+          // each fact goes in the field that actually persists it:
+          //   route → url        (what /admin/bugs already displays)
+          //   build → build_sha  (the build field; this app has a build
+          //                       NUMBER rather than a sha, and a triager
+          //                       needs to know which bundle they are on)
+          //   brand → user_agent (prefixed by the shared sheet)
+          // Changing the backend model is out of this slice's scope.
+          url: `astro://astral-ai${route}`,
+          build_sha: BUILD,
         }}
       />
     </BugReportContext.Provider>
