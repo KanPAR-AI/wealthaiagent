@@ -9,7 +9,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "astro",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.yourfinadvisor.astro",
@@ -19,7 +19,7 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "3"
+      "buildNumber": "4"
     },
     "android": {
       "package": "com.yourfinadvisor.astro",
@@ -51,7 +51,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#171233",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
@@ -99,7 +99,8 @@
       "router": {},
       "eas": {
         "projectId": "a29f5cc6-27f6-42ae-a511-8cf905edb3e1"
-      }
+      },
+      "brand": "astro"
     },
     "owner": "ravipradeep89",
     "updates": {

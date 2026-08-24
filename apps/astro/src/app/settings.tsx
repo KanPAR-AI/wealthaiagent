@@ -30,6 +30,7 @@ import {
   type Account,
 } from '@/lib/auth';
 import { fetchBalance } from '@/lib/credits';
+import { tokens } from '@/theme';
 
 export default function Settings() {
   const [account, setAccount] = useState<Account | null>(null);
@@ -86,34 +87,35 @@ export default function Settings() {
 
   return (
     <SafeAreaView style={s.safe}>
-      <View style={s.bar}>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Back">
-          <Text style={s.back}>‹ Back</Text>
-        </Pressable>
-        <Text style={s.barTitle}>Settings</Text>
-        <View style={s.barSpacer} />
+      <View style={s.cosmicHeader}>
+        <View style={s.bar}>
+          <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Back">
+            <Text style={s.back}>‹ Back</Text>
+          </Pressable>
+          <Text style={s.barTitle}>Profile</Text>
+          <View style={s.barSpacer} />
+        </View>
+        {account ? (
+          <View style={s.identity}>
+            <Text style={s.identityName}>
+              {signedIn
+                ? account.displayName || account.email || 'Signed in'
+                : 'Guest'}
+            </Text>
+            <Text style={s.identitySub}>
+              {signedIn
+                ? account.email && account.displayName
+                  ? account.email
+                  : `Signed in with ${providerName(account.provider)}`
+                : 'Sign in to keep your readings if you change phone.'}
+            </Text>
+          </View>
+        ) : (
+          <ActivityIndicator color={tokens.palette.ink.onCosmicMuted} />
+        )}
       </View>
 
       <ScrollView contentContainerStyle={s.body}>
-        <Text style={s.section}>Account</Text>
-        <View style={s.card}>
-          {account ? (
-            <>
-              <Text style={s.line}>
-                {signedIn
-                  ? account.email || account.displayName || 'Signed in'
-                  : 'Not signed in — using a guest account'}
-              </Text>
-              <Text style={s.sub}>
-                {signedIn
-                  ? `Signed in with ${providerName(account.provider)}`
-                  : 'Sign in to keep your readings if you change phone.'}
-              </Text>
-            </>
-          ) : (
-            <ActivityIndicator color="#9aa4b2" />
-          )}
-        </View>
 
         <Text style={s.section}>Credits</Text>
         <View style={s.card}>
@@ -153,10 +155,10 @@ export default function Settings() {
             {showEmail ? (
               <View style={s.card}>
                 <TextInput style={s.input} value={email} onChangeText={setEmail}
-                  placeholder="Email" placeholderTextColor="#6b7480"
+                  placeholder="Email" placeholderTextColor={tokens.palette.ink.muted}
                   autoCapitalize="none" keyboardType="email-address" inputMode="email" />
                 <TextInput style={s.input} value={password} onChangeText={setPassword}
-                  placeholder="Password" placeholderTextColor="#6b7480" secureTextEntry />
+                  placeholder="Password" placeholderTextColor={tokens.palette.ink.muted} secureTextEntry />
                 <View style={s.row}>
                   <Pressable style={[s.btn, s.grow]} disabled={!!busy}
                     onPress={() => run('email', () => signInWithEmail(email, password))}>
@@ -188,7 +190,7 @@ export default function Settings() {
 
         <Text style={s.section}>Build</Text>
         <View style={s.card}>
-          <Text style={s.sub}>Astral AI {version} ({build})</Text>
+          <Text style={s.sub}>{tokens.wordmark} {version} ({build})</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -202,34 +204,59 @@ function providerName(id: string | null): string {
   return 'a linked account';
 }
 
+const t = tokens;
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0e1116' },
+  safe: { flex: 1, backgroundColor: t.palette.paper.base },
+  cosmicHeader: {
+    backgroundColor: t.palette.cosmic.base,
+    paddingBottom: t.space(6),
+    gap: t.space(3),
+  },
   bar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#222933',
+    paddingHorizontal: t.space(4), paddingVertical: t.space(3),
   },
-  back: { color: '#c9a227', fontSize: 16 },
-  barTitle: { color: '#f4efe6', fontSize: 16, fontWeight: '600' },
+  back: { color: t.palette.accent.ceremonial, fontSize: t.type.scale.body },
+  barTitle: { color: t.palette.ink.onCosmic, fontSize: t.type.scale.body, fontWeight: '600' },
   barSpacer: { width: 52 },
-  body: { padding: 20, gap: 10, paddingBottom: 48 },
-  section: { color: '#6b7480', fontSize: 12, letterSpacing: 1, marginTop: 14, textTransform: 'uppercase' },
-  card: { backgroundColor: '#161b22', borderRadius: 14, padding: 16, gap: 8 },
-  line: { color: '#f4efe6', fontSize: 17 },
-  sub: { color: '#9aa4b2', fontSize: 13, lineHeight: 19 },
-  row: { flexDirection: 'row', gap: 10 },
+  identity: { alignItems: 'center', gap: t.space(1), paddingHorizontal: t.space(6) },
+  identityName: {
+    color: t.palette.ink.onCosmic,
+    fontFamily: t.type.display.fontFamily,
+    fontWeight: t.type.display.weight,
+    fontSize: t.type.scale.title,
+  },
+  identitySub: { color: t.palette.ink.onCosmicMuted, fontSize: t.type.scale.sub, textAlign: 'center' },
+  body: { padding: t.space(5), gap: t.space(2.5), paddingBottom: t.space(12) },
+  section: {
+    color: t.palette.ink.muted, fontSize: t.type.scale.caption,
+    letterSpacing: 1, marginTop: t.space(3.5), textTransform: 'uppercase',
+  },
+  card: {
+    backgroundColor: t.palette.paper.card,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: t.palette.paper.line,
+    borderRadius: t.radius.card, padding: t.space(4), gap: t.space(2),
+  },
+  line: { color: t.palette.ink.primary, fontSize: 17 },
+  sub: { color: t.palette.ink.secondary, fontSize: t.type.scale.sub - 1, lineHeight: 19 },
+  row: { flexDirection: 'row', gap: t.space(2.5) },
   grow: { flex: 1 },
-  btn: { backgroundColor: '#c9a227', borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
-  btnText: { color: '#0e1116', fontSize: 15, fontWeight: '600' },
+  btn: {
+    backgroundColor: t.palette.accent.interactive,
+    borderRadius: t.radius.button, paddingVertical: t.space(3.5), alignItems: 'center',
+  },
+  btnText: { color: t.palette.accent.interactiveInk, fontSize: 15, fontWeight: '600' },
   btnGhost: {
-    borderRadius: 14, paddingVertical: 14, alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth, borderColor: '#3a4350',
+    borderRadius: t.radius.button, paddingVertical: t.space(3.5), alignItems: 'center',
+    borderWidth: 1, borderColor: t.palette.paper.line, backgroundColor: t.palette.paper.card,
   },
-  btnGhostText: { color: '#e8e3da', fontSize: 15 },
+  btnGhostText: { color: t.palette.ink.primary, fontSize: 15 },
   input: {
-    color: '#f4efe6', fontSize: 16, backgroundColor: '#0e1116',
-    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
+    color: t.palette.ink.primary, fontSize: t.type.scale.body,
+    backgroundColor: t.palette.paper.base,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: t.palette.paper.line,
+    borderRadius: 10, paddingHorizontal: t.space(3.5), paddingVertical: t.space(3),
   },
-  notice: { color: '#c9a227', fontSize: 13, lineHeight: 19 },
-  error: { color: '#e0736d', fontSize: 13, lineHeight: 19 },
+  notice: { color: t.palette.accent.interactive, fontSize: 13, lineHeight: 19 },
+  error: { color: t.palette.danger, fontSize: 13, lineHeight: 19 },
 });

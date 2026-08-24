@@ -1,176 +1,139 @@
-// The app's first working surface: ask a question, watch the astrology
-// agent answer. The product screens (docs/49 PH-3's renderers, the chart
-// and palm results) land on top of this; what it proves today is the path —
-// anonymous auth → chatservice → the PINNED agent → a streamed reply.
+// Screen 1 — Splash / Onboarding, as the board draws it (docs/astral-board/
+// 01-splash-onboarding.png; docs/49 ASTRAL-123): the cosmic field, the serif
+// wordmark in a gold ring, the positioning line, the gold "Get Started" and
+// the log-in line. Campaign-parameterised entry variants are ASTRAL-123's
+// later clause; this is the base frame.
+//
+// A returning user skips the ceremony: the flag flips the first time they
+// proceed, and the entry route becomes a redirect. The chart-reveal arc
+// (details → cast → reveal) arrives with PH-11/12's birth-details form.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { router } from 'expo-router';
+import { track } from '@/lib/analytics';
+import { tokens } from '@/theme';
 
-import { fetchBalance } from '@/lib/credits';
-import { ask, type AskHandle } from '@/lib/reading';
+const ENTERED_KEY = 'astro.entered';
 
-export default function Index() {
-  const [question, setQuestion] = useState('');
-  const [answer, setAnswer] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [credits, setCredits] = useState<number | null>(null);
-  const [unlimited, setUnlimited] = useState(false);
-  const chatIdRef = useRef<string | null>(null);
-  const handleRef = useRef<AskHandle | null>(null);
-  const scrollRef = useRef<ScrollView | null>(null);
+/** Deterministic star field — index-hashed positions, no Math.random, so the
+ *  frame is stable across renders and snapshot tests. */
+function stars(count: number, w: number, h: number) {
+  const out: { x: number; y: number; r: number; o: number }[] = [];
+  for (let i = 1; i <= count; i++) {
+    const x = (i * 73) % 97 / 97 * w;
+    const y = (i * 151) % 89 / 89 * h * 0.72;
+    out.push({ x, y, r: i % 5 === 0 ? 1.6 : 0.9, o: 0.35 + ((i * 37) % 50) / 100 });
+  }
+  return out;
+}
 
-  // Asking for the balance is what triggers the server's one-time welcome
-  // grant, so this runs before the user can send anything. Without it the
-  // account sits at zero and the first reading is refused.
+export default function Onboarding() {
+  const { width, height } = useWindowDimensions();
+  const [checked, setChecked] = useState(false);
+
   useEffect(() => {
-    fetchBalance()
-      .then((b) => { setCredits(b.balance); setUnlimited(b.unlimited); })
-      .catch((e) => console.warn('[credits]', String(e?.message ?? e)));
+    AsyncStorage.getItem(ENTERED_KEY).then((v) => {
+      if (v) router.replace('/chat');
+      else {
+        setChecked(true);
+        track('onboarding_shown');
+      }
+    }).catch(() => setChecked(true));
   }, []);
 
-  const send = useCallback(async () => {
-    const text = question.trim();
-    if (!text || busy) return;
-    setQuestion('');
-    setAnswer('');
-    setError(null);
-    setBusy(true);
-    try {
-      const handle = await ask(text, {
-        chatId: chatIdRef.current,
-        onDelta: setAnswer,
-        onCredits: (_charged, balance) => setCredits(balance),
-      });
-      handleRef.current = handle;
-      chatIdRef.current = handle.chatId;
-      await handle.done;
-    } catch (e: any) {
-      // Surfaced, never swallowed: a reading that quietly returns nothing is
-      // indistinguishable from one the agent refused to give.
-      setError(e?.message ? String(e.message) : 'The reading did not come through.');
-    } finally {
-      handleRef.current = null;
-      setBusy(false);
-    }
-  }, [question, busy]);
+  const begin = (to: '/chat' | '/settings') => {
+    void AsyncStorage.setItem(ENTERED_KEY, '1');
+    track('onboarding_proceed', { to });
+    router.replace(to);
+  };
+
+  if (!checked) return <View style={s.field} />;
+
+  const ringR = Math.min(width * 0.42, 175);
 
   return (
-    <SafeAreaView style={s.safe}>
-      <KeyboardAvoidingView behavior="padding" style={s.fill}>
-        <View style={s.header}>
-          <View style={s.headerRow}>
-            <Text style={s.title}>Astral AI</Text>
-            <Pressable
-              onPress={() => router.push('/settings')}
-              accessibilityRole="button"
-              accessibilityLabel="Settings"
-              hitSlop={12}
-            >
-              <Text style={s.credits}>
-                {credits === null
-                  ? 'Settings'
-                  : unlimited
-                    ? 'Unlimited ›'
-                    : `${credits.toLocaleString()} credits ›`}
-              </Text>
-            </Pressable>
-          </View>
-          <Text style={s.tag}>Your birth chart, explained.</Text>
+    <View style={s.field}>
+      <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <RadialGradient id="glow" cx="50%" cy="38%" r="75%">
+            <Stop offset="0%" stopColor={tokens.palette.cosmic.glow} />
+            <Stop offset="55%" stopColor={tokens.palette.cosmic.base} />
+            <Stop offset="100%" stopColor={tokens.palette.cosmic.deep} />
+          </RadialGradient>
+        </Defs>
+        <Rect width={width} height={height} fill="url(#glow)" />
+        {stars(70, width, height).map((st, i) => (
+          <Circle key={i} cx={st.x} cy={st.y} r={st.r}
+            fill={tokens.palette.accent.ceremonial} opacity={st.o} />
+        ))}
+        <Circle cx={width / 2} cy={height * 0.38} r={ringR}
+          stroke={tokens.palette.accent.ceremonial} strokeWidth={1.2}
+          opacity={0.75} fill="none" />
+      </Svg>
+
+      <SafeAreaView style={s.safe}>
+        <View style={s.hero}>
+          <Text style={s.wordmark}>{tokens.wordmark}</Text>
+          <Text style={s.tagline}>{tokens.tagline}</Text>
+          <Text style={s.sub}>Understand your path.{'\n'}Align with the cosmos.</Text>
         </View>
 
-        <ScrollView
-          ref={scrollRef}
-          style={s.fill}
-          contentContainerStyle={s.body}
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
-        >
-          {answer ? (
-            <Text style={s.answer}>{answer}</Text>
-          ) : busy ? (
-            <ActivityIndicator color="#9aa4b2" />
-          ) : (
-            <Text style={s.hint}>
-              Ask anything — start with your birth date, time and place.
+        <View style={s.foot}>
+          <Pressable style={s.cta} onPress={() => begin('/chat')}
+            accessibilityRole="button" accessibilityLabel="Get Started">
+            <Text style={s.ctaText}>Get Started</Text>
+          </Pressable>
+          <Pressable onPress={() => begin('/settings')} hitSlop={10}
+            accessibilityRole="button" accessibilityLabel="Log in">
+            <Text style={s.login}>
+              Already have an account? <Text style={s.loginLink}>Log in</Text>
             </Text>
-          )}
-          {error ? <Text style={s.error}>{error}</Text> : null}
-        </ScrollView>
-
-        <View style={s.composer}>
-          <TextInput
-            style={s.input}
-            value={question}
-            onChangeText={setQuestion}
-            placeholder="Ask about your chart"
-            placeholderTextColor="#6b7480"
-            multiline
-            editable={!busy}
-            onSubmitEditing={send}
-          />
-          <Pressable
-            style={[s.send, (!question.trim() || busy) && s.sendOff]}
-            onPress={busy ? () => handleRef.current?.stop() : send}
-            accessibilityRole="button"
-            accessibilityLabel={busy ? 'Stop the reading' : 'Send'}
-          >
-            <Text style={s.sendText}>{busy ? 'Stop' : 'Ask'}</Text>
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
+const t = tokens;
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0e1116' },
-  fill: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16, gap: 4 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  credits: { color: '#c9a227', fontSize: 13, fontVariant: ['tabular-nums'] },
-  title: { color: '#f4efe6', fontSize: 26, fontWeight: '600', letterSpacing: 0.3 },
-  tag: { color: '#9aa4b2', fontSize: 14 },
-  body: { paddingHorizontal: 20, paddingBottom: 24, gap: 12 },
-  hint: { color: '#6b7480', fontSize: 15, lineHeight: 22 },
-  answer: { color: '#e8e3da', fontSize: 16, lineHeight: 24 },
-  error: { color: '#e0736d', fontSize: 14, lineHeight: 20 },
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#222933',
+  field: { flex: 1, backgroundColor: t.palette.cosmic.deep },
+  safe: { flex: 1, justifyContent: 'space-between' },
+  hero: { alignItems: 'center', marginTop: '38%', gap: t.space(3), paddingHorizontal: t.space(8) },
+  wordmark: {
+    color: t.palette.ink.onCosmic,
+    fontFamily: t.type.display.fontFamily,
+    fontWeight: t.type.display.weight,
+    fontSize: t.type.scale.hero,
+    letterSpacing: 0.5,
   },
-  input: {
-    flex: 1,
-    maxHeight: 120,
-    color: '#f4efe6',
-    fontSize: 16,
-    backgroundColor: '#161b22',
-    borderRadius: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  tagline: {
+    color: t.palette.ink.onCosmic,
+    fontFamily: t.type.display.fontFamily,
+    fontSize: t.type.scale.title,
+    textAlign: 'center',
   },
-  send: {
-    backgroundColor: '#c9a227',
-    borderRadius: 18,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+  sub: {
+    color: t.palette.ink.onCosmicMuted,
+    fontSize: t.type.scale.sub,
+    textAlign: 'center',
+    lineHeight: 21,
+    marginTop: t.space(2),
   },
-  sendOff: { opacity: 0.4 },
-  sendText: { color: '#0e1116', fontSize: 15, fontWeight: '600' },
+  foot: { alignItems: 'center', gap: t.space(4), paddingBottom: t.space(6), paddingHorizontal: t.space(6) },
+  cta: {
+    alignSelf: 'stretch',
+    backgroundColor: t.palette.accent.ceremonial,
+    borderRadius: t.radius.button,
+    paddingVertical: t.space(4),
+    alignItems: 'center',
+  },
+  ctaText: { color: t.palette.accent.ceremonialInk, fontSize: t.type.scale.body, fontWeight: '600' },
+  login: { color: t.palette.ink.onCosmicMuted, fontSize: t.type.scale.sub },
+  loginLink: { color: t.palette.accent.ceremonial, fontWeight: '600' },
 });
