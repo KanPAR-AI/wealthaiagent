@@ -7,7 +7,6 @@
  */
 
 import {
-  DARK_THEME,
   InputRequestView,
   LIGHT_THEME,
   MatchScorecard,
@@ -20,7 +19,7 @@ import {
   type AstralTheme,
 } from '@wealthai/astral';
 import { getPlatform } from '@wealthai/core';
-import { useColorScheme, useWindowDimensions } from 'react-native';
+import { useWindowDimensions } from 'react-native';
 
 import { rnPrimitives } from '@/components/astral/rn-primitives';
 import { QUICK_REPLY_EVENT } from '@/lib/events';
@@ -28,8 +27,15 @@ import { QUICK_REPLY_EVENT } from '@/lib/events';
 /** chat bubble padding either side; keeps the wheel off the screen edge */
 const BUBBLE_INSET = 48;
 
+/**
+ * docs/49 ASTRAL-124 (AMB-22 ruled (a)): the block does NOT follow the OS.
+ *
+ * These are working surfaces — a wheel, a scorecard, a form — so they take the
+ * light theme always. Following the phone left the palette to nobody, and a
+ * light block inside dark chrome (or the reverse) was the visible symptom.
+ */
 function useAstralTheme(): AstralTheme {
-  return useColorScheme() === 'dark' ? DARK_THEME : LIGHT_THEME;
+  return LIGHT_THEME;
 }
 
 export function AstralBlock({ type, data }: { type: string; data: unknown }) {
