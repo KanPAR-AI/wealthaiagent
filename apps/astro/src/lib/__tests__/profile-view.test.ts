@@ -11,7 +11,7 @@
  * them instead would let a `—` in the lagna row pass this file.
  */
 
-import type { ChartSummary, EditImpact, PersonView } from '../people';
+import type { ChartSummary, EditImpact, PersonView } from '../people-shapes';
 import {
   PLACE_EDIT_BLOCKED,
   chartIsReadable,

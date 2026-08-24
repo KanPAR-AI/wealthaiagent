@@ -22,7 +22,7 @@
 
 import { formatIsoDate, splitIsoInstant, titleCase } from '@wealthai/astral';
 
-import type { ChartSummary, EditImpact, Fact, PersonView, Undetermined } from './people';
+import type { ChartSummary, EditImpact, Fact, PersonView, Undetermined } from './people-shapes';
 
 // ── birth facts, with where each one came from ─────────────────────────────
 
