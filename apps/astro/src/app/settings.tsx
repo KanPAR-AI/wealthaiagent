@@ -1,11 +1,25 @@
-// Settings — who you are, what you have, and how to become someone.
+// Screen 12 — Profile / Settings, as the board draws it (docs/astral-board/
+// 12-profile-settings.png; docs/49 ASTRAL-109): the cosmic header with the
+// avatar, name and email; the light sheet riding up over it with rounded
+// corners; and the rows.
 //
-// The out-of-credits message the backend sends points at "Settings → Credits"
-// (chatservice `chats.py:1001`). Until this screen existed, that instruction
-// named a place that did not exist in this app.
+// The rows are DERIVED from `lib/capabilities.ts`, not typed out here. Four
+// of ASTRAL-109's five "ships" rows render; Birth Details is declared and
+// absent, because ASTRAL-67's reconcile-routed editor does not exist and a
+// capability marked absent REMOVES a row rather than greying it.
+//
+// What must NOT be here, and is not: the "Premium Member · Renews …" bar,
+// Subscription & Billing (AMB-1/AMB-2 open, no entitlement backend),
+// Notifications (FR-019 has no transport to a phone) and Saved Readings
+// (ASTRAL-66's store does not exist). The board draws all four. They are the
+// three-plus-one this row explicitly forbids.
+//
+// The credits view stays: it is what the out-of-credits message points at
+// ("Settings → Credits", chatservice `chats.py:1001`) and, per ASTRAL-109, the
+// interim honest surface in place of a billing row.
 
-import Constants from 'expo-constants';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,8 +30,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Svg from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ChevronLeft, ChevronRight, Symbol } from '@/components/glyphs';
+import { SkyDefs, SkyField, Stars } from '@/components/sky';
 import {
   isAppleSignInAvailable,
   isGoogleSignInAvailable,
@@ -30,7 +47,10 @@ import {
   type Account,
 } from '@/lib/auth';
 import { fetchBalance } from '@/lib/credits';
+import { visibleRows, type SettingsRow } from '@/lib/settings-rows';
 import { tokens } from '@/theme';
+
+const HEADER_HEIGHT = 260;
 
 export default function Settings() {
   const [account, setAccount] = useState<Account | null>(null);
@@ -42,6 +62,7 @@ export default function Settings() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showEmail, setShowEmail] = useState(false);
+  const [openRow, setOpenRow] = useState<string | null>(null);
 
   useEffect(() => subscribeToAccount(setAccount), []);
 
@@ -82,119 +103,168 @@ export default function Settings() {
   }, [account]);
 
   const signedIn = account && !account.anonymous;
-  const version = Constants.expoConfig?.version ?? '—';
-  const build = Constants.expoConfig?.ios?.buildNumber ?? '—';
+  const name = signedIn ? account.displayName || account.email || 'Signed in' : 'Guest';
+  const rows = visibleRows();
+
+  const press = (row: SettingsRow) => {
+    if (row.action.kind === 'expand') setOpenRow((v) => (v === row.id ? null : row.id));
+    else router.push(row.action.to as never);
+  };
 
   return (
-    <SafeAreaView style={s.safe}>
-      <View style={s.cosmicHeader}>
-        <View style={s.bar}>
-          <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Back">
-            <Text style={s.back}>‹ Back</Text>
-          </Pressable>
-          <Text style={s.barTitle}>Profile</Text>
-          <View style={s.barSpacer} />
-        </View>
-        {account ? (
-          <View style={s.identity}>
-            <Text style={s.identityName}>
-              {signedIn
-                ? account.displayName || account.email || 'Signed in'
-                : 'Guest'}
-            </Text>
-            <Text style={s.identitySub}>
-              {signedIn
-                ? account.email && account.displayName
-                  ? account.email
-                  : `Signed in with ${providerName(account.provider)}`
-                : 'Sign in to keep your readings if you change phone.'}
-            </Text>
-          </View>
-        ) : (
-          <ActivityIndicator color={tokens.palette.ink.onCosmicMuted} />
-        )}
+    <View style={s.fill}>
+      <StatusBar style="light" />
+
+      <View style={s.header}>
+        <Svg width="100%" height={HEADER_HEIGHT}>
+          <SkyDefs id="profile" />
+          <SkyField id="profile" width={2000} height={HEADER_HEIGHT} />
+          <Stars width={2000} height={HEADER_HEIGHT} until={0.45} scale={0.8} />
+        </Svg>
       </View>
 
-      <ScrollView contentContainerStyle={s.body}>
+      <SafeAreaView style={s.fill} edges={['top']}>
+        {/* Cream, not gold, and no title: the "‹ Back · Profile" bar that
+            shipped was invented — frame 12 has neither, and gold belongs to
+            ceremony rather than to chrome. */}
+        <Pressable
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/chat'))}
+          style={s.back}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          hitSlop={12}
+        >
+          <ChevronLeft size={tokens.size.icon} color={tokens.palette.ink.onCosmic} />
+        </Pressable>
 
-        <Text style={s.section}>Credits</Text>
-        <View style={s.card}>
-          <Text style={s.line}>
-            {credits === null ? '—' : unlimited ? 'Unlimited' : credits.toLocaleString()}
-          </Text>
-          <Text style={s.sub}>
-            Each reading spends credits. New accounts start with a free balance.
-          </Text>
-        </View>
-
-        {!signedIn ? (
-          <>
-            <Text style={s.section}>Sign in</Text>
-            {isAppleSignInAvailable() ? (
-              <Pressable style={s.btn} disabled={!!busy}
-                onPress={() => run('apple', signInWithApple)}>
-                <Text style={s.btnText}>
-                  {busy === 'apple' ? 'Signing in…' : 'Continue with Apple'}
-                </Text>
-              </Pressable>
-            ) : null}
-            {isGoogleSignInAvailable() ? (
-              <Pressable style={s.btn} disabled={!!busy}
-                onPress={() => run('google', signInWithGoogle)}>
-                <Text style={s.btnText}>
-                  {busy === 'google' ? 'Signing in…' : 'Continue with Google'}
-                </Text>
-              </Pressable>
-            ) : null}
-            <Pressable style={s.btnGhost} onPress={() => setShowEmail((v) => !v)}>
-              <Text style={s.btnGhostText}>
-                {showEmail ? 'Hide email sign-in' : 'Use email instead'}
-              </Text>
-            </Pressable>
-
-            {showEmail ? (
-              <View style={s.card}>
-                <TextInput style={s.input} value={email} onChangeText={setEmail}
-                  placeholder="Email" placeholderTextColor={tokens.palette.ink.muted}
-                  autoCapitalize="none" keyboardType="email-address" inputMode="email" />
-                <TextInput style={s.input} value={password} onChangeText={setPassword}
-                  placeholder="Password" placeholderTextColor={tokens.palette.ink.muted} secureTextEntry />
-                <View style={s.row}>
-                  <Pressable style={[s.btn, s.grow]} disabled={!!busy}
-                    onPress={() => run('email', () => signInWithEmail(email, password))}>
-                    <Text style={s.btnText}>
-                      {busy === 'email' ? 'Signing in…' : 'Sign in'}
-                    </Text>
-                  </Pressable>
-                  <Pressable style={[s.btnGhost, s.grow]} disabled={!!busy}
-                    onPress={() => run('signup', () => signUpWithEmail(email, password))}>
-                    <Text style={s.btnGhostText}>
-                      {busy === 'signup' ? 'Creating…' : 'Create account'}
-                    </Text>
-                  </Pressable>
-                </View>
+        <View style={s.identity}>
+          {account ? (
+            <>
+              {/* The board's photograph, without a photograph: the account's
+                  own initial on a violet disc inside a light ring. There is
+                  no avatar upload in this build, and a grey silhouette would
+                  be an affordance pointing at nothing. */}
+              <View style={s.avatar}>
+                <Text style={s.avatarInitial}>{initialOf(name)}</Text>
               </View>
-            ) : null}
-          </>
-        ) : (
-          <Pressable style={s.btnGhost} disabled={!!busy}
-            onPress={() => run('signout', signOut)}>
-            <Text style={s.btnGhostText}>
-              {busy === 'signout' ? 'Signing out…' : 'Sign out'}
-            </Text>
-          </Pressable>
-        )}
-
-        {notice ? <Text style={s.notice}>{notice}</Text> : null}
-        {error ? <Text style={s.error}>{error}</Text> : null}
-
-        <Text style={s.section}>Build</Text>
-        <View style={s.card}>
-          <Text style={s.sub}>{tokens.wordmark} {version} ({build})</Text>
+              <Text style={s.name}>{name}</Text>
+              <Text style={s.email}>
+                {signedIn
+                  ? account.email && account.displayName
+                    ? account.email
+                    : `Signed in with ${providerName(account.provider)}`
+                  : 'Sign in to keep your readings if you change phone.'}
+              </Text>
+            </>
+          ) : (
+            <ActivityIndicator color={tokens.palette.ink.onCosmicMuted} />
+          )}
         </View>
-      </ScrollView>
-    </SafeAreaView>
+
+        <ScrollView style={s.sheet} contentContainerStyle={s.body}>
+          <View style={s.card}>
+            {rows.map((row, i) => (
+              <View key={row.id}>
+                <Pressable
+                  style={s.row}
+                  onPress={() => press(row)}
+                  accessibilityRole="button"
+                  accessibilityLabel={row.label}
+                >
+                  <Symbol name={row.icon as never} color={tokens.palette.accent.interactive} />
+                  <Text style={s.rowLabel}>{row.label}</Text>
+                  <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
+                </Pressable>
+
+                {openRow === row.id && row.id === 'account' ? (
+                  <View style={s.expanded}>
+                    {!signedIn ? (
+                      <>
+                        {isAppleSignInAvailable() ? (
+                          <Pressable style={s.btn} disabled={!!busy}
+                            onPress={() => run('apple', signInWithApple)}>
+                            <Text style={s.btnText}>
+                              {busy === 'apple' ? 'Signing in…' : 'Continue with Apple'}
+                            </Text>
+                          </Pressable>
+                        ) : null}
+                        {isGoogleSignInAvailable() ? (
+                          <Pressable style={s.btn} disabled={!!busy}
+                            onPress={() => run('google', signInWithGoogle)}>
+                            <Text style={s.btnText}>
+                              {busy === 'google' ? 'Signing in…' : 'Continue with Google'}
+                            </Text>
+                          </Pressable>
+                        ) : null}
+                        <Pressable style={s.btnGhost} onPress={() => setShowEmail((v) => !v)}>
+                          <Text style={s.btnGhostText}>
+                            {showEmail ? 'Hide email sign-in' : 'Use email instead'}
+                          </Text>
+                        </Pressable>
+
+                        {showEmail ? (
+                          <>
+                            <TextInput style={s.input} value={email} onChangeText={setEmail}
+                              placeholder="Email" placeholderTextColor={tokens.palette.ink.muted}
+                              autoCapitalize="none" keyboardType="email-address" inputMode="email" />
+                            <TextInput style={s.input} value={password} onChangeText={setPassword}
+                              placeholder="Password" placeholderTextColor={tokens.palette.ink.muted}
+                              secureTextEntry />
+                            <View style={s.split}>
+                              <Pressable style={[s.btn, s.grow]} disabled={!!busy}
+                                onPress={() => run('email', () => signInWithEmail(email, password))}>
+                                <Text style={s.btnText}>
+                                  {busy === 'email' ? 'Signing in…' : 'Sign in'}
+                                </Text>
+                              </Pressable>
+                              <Pressable style={[s.btnGhost, s.grow]} disabled={!!busy}
+                                onPress={() => run('signup', () => signUpWithEmail(email, password))}>
+                                <Text style={s.btnGhostText}>
+                                  {busy === 'signup' ? 'Creating…' : 'Create account'}
+                                </Text>
+                              </Pressable>
+                            </View>
+                          </>
+                        ) : null}
+                      </>
+                    ) : (
+                      <Pressable style={s.btnGhost} disabled={!!busy}
+                        onPress={() => run('signout', signOut)}>
+                        <Text style={s.btnGhostText}>
+                          {busy === 'signout' ? 'Signing out…' : 'Sign out'}
+                        </Text>
+                      </Pressable>
+                    )}
+                    {notice ? <Text style={s.notice}>{notice}</Text> : null}
+                    {error ? <Text style={s.error}>{error}</Text> : null}
+                  </View>
+                ) : null}
+
+                {i < rows.length - 1 ? <View style={s.divider} /> : null}
+              </View>
+            ))}
+          </View>
+
+          <Text style={s.section}>Credits</Text>
+          <View style={s.card}>
+            <View style={s.creditsBody}>
+              <Text style={s.creditsValue}>
+                {credits === null ? '—' : unlimited ? 'Unlimited' : credits.toLocaleString()}
+              </Text>
+              <Text style={s.creditsNote}>
+                Each reading spends credits. New accounts start with a free balance.
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
+}
+
+function initialOf(name: string): string {
+  const first = name.trim()[0];
+  return first ? first.toUpperCase() : '★';
 }
 
 function providerName(id: string | null): string {
@@ -206,40 +276,74 @@ function providerName(id: string | null): string {
 
 const t = tokens;
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: t.palette.paper.base },
-  cosmicHeader: {
-    backgroundColor: t.palette.cosmic.base,
-    paddingBottom: t.space(6),
-    gap: t.space(3),
+  fill: { flex: 1, backgroundColor: t.palette.paper.base },
+  header: {
+    position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_HEIGHT,
+    backgroundColor: t.palette.cosmic.deep,
+    overflow: 'hidden',
   },
-  bar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: t.space(4), paddingVertical: t.space(3),
+  back: { paddingHorizontal: t.space(3), paddingVertical: t.space(2), alignSelf: 'flex-start' },
+  identity: { alignItems: 'center', gap: t.space(1.5), paddingHorizontal: t.space(6) },
+  avatar: {
+    width: t.size.avatar,
+    height: t.size.avatar,
+    borderRadius: t.radius.pill,
+    backgroundColor: t.palette.accent.interactive,
+    borderWidth: 2,
+    borderColor: t.palette.ink.onCosmic,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: t.space(1),
   },
-  back: { ...t.type.scale.body, color: t.palette.accent.ceremonial },
-  barTitle: { ...t.type.scale.body, color: t.palette.ink.onCosmic, fontWeight: '600' },
-  barSpacer: { width: 52 },
-  identity: { alignItems: 'center', gap: t.space(1), paddingHorizontal: t.space(6) },
-  identityName: {
-    ...t.type.scale.title,
+  avatarInitial: {
+    ...t.type.scale.hero,
     ...t.type.display,
     color: t.palette.ink.onCosmic,
   },
-  identitySub: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted, textAlign: 'center' },
-  body: { padding: t.space(5), gap: t.space(2.5), paddingBottom: t.space(12) },
+  // Bold SANS: the serif is the wordmark's face, and a person's name set in
+  // it read as a second logo.
+  name: { ...t.type.scale.title, color: t.palette.ink.onCosmic, fontWeight: '700' },
+  email: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted, textAlign: 'center' },
+  sheet: {
+    flex: 1,
+    // the light sheet rides UP over the cosmic header, as frame 12 draws it
+    marginTop: t.space(5),
+    backgroundColor: t.palette.paper.base,
+    borderTopLeftRadius: t.space(6),
+    borderTopRightRadius: t.space(6),
+  },
+  body: { padding: t.space(4), paddingBottom: t.space(12), gap: t.space(2.5) },
+  card: {
+    backgroundColor: t.palette.paper.card,
+    borderRadius: t.radius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.palette.paper.line,
+    overflow: 'hidden',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: t.space(3),
+    paddingHorizontal: t.space(4),
+    paddingVertical: t.space(3.5),
+  },
+  rowLabel: { ...t.type.scale.label, color: t.palette.ink.primary, flex: 1 },
+  /** inset divider — starts past the icon, as the board draws it */
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: t.palette.paper.line,
+    marginLeft: t.space(11),
+  },
+  expanded: { paddingHorizontal: t.space(4), paddingBottom: t.space(4), gap: t.space(2.5) },
   section: {
     ...t.type.scale.caption,
     color: t.palette.ink.muted,
     letterSpacing: 1, marginTop: t.space(3.5), textTransform: 'uppercase',
   },
-  card: {
-    backgroundColor: t.palette.paper.card,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: t.palette.paper.line,
-    borderRadius: t.radius.card, padding: t.space(4), gap: t.space(2),
-  },
-  line: { ...t.type.scale.lead, color: t.palette.ink.primary },
-  sub: { ...t.type.scale.sub, color: t.palette.ink.secondary },
-  row: { flexDirection: 'row', gap: t.space(2.5) },
+  creditsBody: { padding: t.space(4), gap: t.space(2) },
+  creditsValue: { ...t.type.scale.lead, color: t.palette.ink.primary },
+  creditsNote: { ...t.type.scale.sub, color: t.palette.ink.secondary },
+  split: { flexDirection: 'row', gap: t.space(2.5) },
   grow: { flex: 1 },
   btn: {
     backgroundColor: t.palette.accent.interactive,
@@ -248,7 +352,7 @@ const s = StyleSheet.create({
   btnText: { ...t.type.scale.label, color: t.palette.accent.interactiveInk, fontWeight: '600' },
   btnGhost: {
     borderRadius: t.radius.button, paddingVertical: t.space(3.5), alignItems: 'center',
-    borderWidth: 1, borderColor: t.palette.paper.line, backgroundColor: t.palette.paper.card,
+    borderWidth: 1, borderColor: t.palette.paper.line, backgroundColor: t.palette.paper.base,
   },
   btnGhostText: { ...t.type.scale.label, color: t.palette.ink.primary },
   input: {

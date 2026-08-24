@@ -2,6 +2,11 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // `jest` because this app's pure-logic modules (capability map, row
+    // derivation) are unit-tested in the ROOT jest project — there is no RN
+    // test renderer here, so anything testable is deliberately kept free of
+    // react-native imports and tested from the workspace root.
+    "types": ["jest"],
     "paths": {
       "@/*": [
         "./src/*"
