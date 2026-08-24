@@ -1,8 +1,13 @@
 // Screen 1 — Splash / Onboarding, as the board draws it (docs/astral-board/
 // 01-splash-onboarding.png; docs/49 ASTRAL-123): the cosmic field, the serif
 // wordmark in a gold ring, the positioning line, the gold "Get Started" and
-// the log-in line. Campaign-parameterised entry variants are ASTRAL-123's
-// later clause; this is the base frame.
+// the log-in line.
+//
+// Campaign-parameterised entry (four to six distinct flows, §4.2) is
+// ASTRAL-123's other clause and is NOT deferred on engineering: it is
+// awaiting the owner's sign-off on decision 13. Deliberately not guessed —
+// a variant that promises what the build cannot draw is the row's own
+// negative space.
 //
 // A returning user skips the ceremony: the flag flips the first time they
 // proceed, and the entry route becomes a redirect. The chart-reveal arc

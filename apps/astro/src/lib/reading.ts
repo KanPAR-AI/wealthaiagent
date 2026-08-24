@@ -82,8 +82,16 @@ export async function ask(question: string, opts: AskOptions): Promise<AskHandle
           if (!onWidget) return;
           try {
             onWidget(type, JSON.parse(chunk));
-          } catch {
-            /* a truncated widget payload is not worth failing the turn over */
+          } catch (e: any) {
+            // Loud, not silent. A bare `catch {}` around a computation is how
+            // this codebase lost two grahas from every chart for months
+            // (docs/49 §5a-0): the block simply stopped arriving and nothing
+            // anywhere said so. The turn still survives a truncated payload —
+            // that part was right — but the type is named in the console and
+            // counted in the funnel, so "the widget never showed up" is a
+            // number somebody can look at rather than a silence.
+            console.warn('[reading] unparseable widget payload', type, String(e?.message ?? e));
+            track('reading_widget_parse_error', { widget: type, bytes: chunk.length });
           }
         }
       },
