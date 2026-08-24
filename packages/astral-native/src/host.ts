@@ -78,6 +78,21 @@ export interface AstralHost {
    * its own chat send.
    */
   send: (text: string) => void;
+
+  /**
+   * Per-field helper copy, keyed by field `key` then field `kind`
+   * (docs/49 ASTRAL-104's amendment).
+   *
+   * OPTIONAL and app-owned, because it is BRAND copy and this package serves
+   * two brands in two markets: the board's own place hint is "City, State, or
+   * ZIP code", which is a form asking an Indian user for something that does
+   * not exist. The engine does not send it either — a hint is how a product
+   * talks, not a fact about the belief — and an engine-supplied `hint` on a
+   * field always wins over this.
+   *
+   * A host that supplies none gets no hint, which is what shipped.
+   */
+  fieldHints?: Record<string, string>;
 }
 
 let host: AstralHost | null = null;

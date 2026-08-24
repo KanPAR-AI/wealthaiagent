@@ -40,7 +40,7 @@ import {
 import type { ReactElement } from 'react';
 import { useWindowDimensions } from 'react-native';
 
-import { getAstralHost } from './host';
+import { getAstralHost, isAstralHostInstalled } from './host';
 import { rnPrimitives } from './rn-primitives';
 
 /** chat bubble padding either side; keeps the wheel off the screen edge */
@@ -63,12 +63,14 @@ interface BlockContext {
   width: number;
   /** the ONE way an answer leaves a block on this surface */
   send: (text: string) => void;
+  /** the host's brand copy for field hints, if it has any (ASTRAL-104) */
+  fieldHints?: Record<string, string>;
 }
 
 type BlockRenderer = (ctx: BlockContext) => ReactElement | null;
 
 const handlers: Record<string, BlockRenderer> = {
-  input_request: ({ data, theme, width, send }) => {
+  input_request: ({ data, theme, width, send, fieldHints }) => {
     const request = parseInputRequest(data);
     // The answer rides the host's send capability. What travels is the typed
     // fence the shared component builds; nothing here assembles a sentence
@@ -80,6 +82,7 @@ const handlers: Record<string, BlockRenderer> = {
         width={width}
         request={request}
         onSend={send}
+        hints={fieldHints}
       />
     ) : null;
   },
@@ -129,5 +132,11 @@ export function AstralBlock({ type, data }: { type: string; data: unknown }) {
   // a wiring bug, and the throw belongs where somebody is watching rather
   // than in the middle of a paint.
   const send = (text: string) => getAstralHost().send(text);
-  return render({ data, theme, width, send });
+  // …but the COPY is needed at paint time, so it is asked for explicitly
+  // rather than through the throwing accessor: a missing host is a wiring
+  // bug worth a loud throw when somebody taps, and not a reason for a chart
+  // to fail to draw. Guarded, never swallowed — `isAstralHostInstalled` is
+  // the honest question and there is no `try {} catch {}` here.
+  const fieldHints = isAstralHostInstalled() ? getAstralHost().fieldHints : undefined;
+  return render({ data, theme, width, send, fieldHints });
 }

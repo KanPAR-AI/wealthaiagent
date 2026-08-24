@@ -27,6 +27,7 @@ import type {
   GroupProps,
   PressableProps,
   TimeWheelProps,
+  DateWheelProps,
   SvgCircleProps,
   SvgLineProps,
   SvgProps,
@@ -266,6 +267,99 @@ function TimeWheel({ value, onChange, accessibilityLabel, testID }: TimeWheelPro
 }
 
 /**
+ * The React Native date wheel (docs/49 ASTRAL-96).
+ *
+ * Built from `ScrollView` + `Pressable` for the SAME reason `TimeWheel`
+ * above is, and it is worth restating rather than assuming: this app is
+ * built locally with Xcode, not EAS, so a new native module means every
+ * developer and every device needs a rebuild before the widget works at
+ * all — and a picker that red-screens on an un-rebuilt binary is worse than
+ * one that is merely not the OS control.
+ *
+ * Months are NAMED, never numbered. `03/04/1989` is the ambiguity this
+ * picker exists to remove (ASTRAL-96), and three numeric columns would put
+ * it straight back: a user scrolling "3" and "4" has told us nothing more
+ * than typing it did. `onChange` always emits ISO `YYYY-MM-DD`.
+ *
+ * The day column is clamped to the month's real length, so 31 February
+ * cannot be assembled here — but a date that is nonetheless impossible is
+ * still refused BY THE ENGINE with a named reason. This adapter knows
+ * nothing about astrology and validates nothing on its behalf.
+ */
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+
+function daysInMonth(year: number, month1: number): number {
+  return new Date(year, month1, 0).getDate();
+}
+
+function DateWheel({ value, onChange, minYear, maxYear, accessibilityLabel, testID }: DateWheelProps) {
+  const parsed = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value ?? '');
+  const today = new Date();
+  const year = parsed ? Number(parsed[1]) : Math.min(maxYear, today.getFullYear() - 25);
+  const month = parsed ? Number(parsed[2]) : 1;
+  const day = parsed ? Number(parsed[3]) : 1;
+
+  const emit = (y: number, m: number, d: number) => {
+    const clamped = Math.min(d, daysInMonth(y, m));
+    onChange(
+      `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(clamped).padStart(2, '0')}`,
+    );
+  };
+
+  const years: number[] = [];
+  for (let y = maxYear; y >= minYear; y -= 1) years.push(y);
+  const days: number[] = [];
+  for (let d = 1; d <= daysInMonth(year, month); d += 1) days.push(d);
+
+  const column = (
+    items: number[],
+    selected: number,
+    onPick: (n: number) => void,
+    render: (n: number) => string,
+    width: number,
+    id: string,
+  ) => (
+    <ScrollView style={{ height: 132, width }} testID={`${testID}-${id}`}>
+      {items.map((n) => (
+        <RNPressable
+          key={n}
+          onPress={() => onPick(n)}
+          testID={`${testID}-${id}-${n}`}
+          style={{ paddingVertical: 6, alignItems: 'center' }}>
+          <RNText
+            style={{
+              fontSize: 17,
+              fontWeight: n === selected ? '700' : '400',
+              opacity: n === selected ? 1 : 0.5,
+            }}>
+            {render(n)}
+          </RNText>
+        </RNPressable>
+      ))}
+    </ScrollView>
+  );
+
+  return (
+    <View
+      accessibilityLabel={accessibilityLabel}
+      testID={testID}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      {column(days, day, (d) => emit(year, month, d), (d) => String(d), 52, 'day')}
+      {column(
+        MONTHS.map((_m, i) => i + 1),
+        month,
+        (m) => emit(year, m, day),
+        (m) => MONTHS[m - 1].slice(0, 3),
+        76,
+        'month',
+      )}
+      {column(years, year, (y) => emit(y, month, day), (y) => String(y), 72, 'year')}
+    </View>
+  );
+}
+
+/**
  * A photo slot, on the device (bug 8dc95a6a).
  *
  * The picking half is `expo-image-picker`, the same sheet the composer
@@ -411,5 +505,6 @@ export const rnPrimitives: AstralPrimitives = {
   Pressable,
   TextInput,
   TimeWheel,
+  DateWheel,
   ImagePicker,
 };

@@ -11,6 +11,8 @@
 import { installAstralHost } from '@wealthai/astral-native';
 import { getPlatform } from '@wealthai/core';
 
+import { tokens } from '@/theme';
+
 import { getToken } from './auth';
 import { ensureCoreInitialized } from './core-adapter';
 
@@ -34,5 +36,12 @@ export function ensureAstralHostInstalled(): void {
     // worked, which is the failure the role-labelled slot exists to prevent.
 
     send: (text) => getPlatform().events.emit(WIDGET_ANSWER_EVENT, { text }),
+
+    // Brand copy for the widget's field hints (docs/49 ASTRAL-104). Keyed by
+    // the engine's field `kind`, so one token covers every place field the
+    // engine can ask for — in chat and on screen 2 alike — and neither the
+    // shared component nor the shared binding carries a market's postal
+    // conventions.
+    fieldHints: { place: tokens.copy.fieldHints.placeBirthHint },
   });
 }

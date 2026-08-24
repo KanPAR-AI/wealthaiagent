@@ -17,6 +17,30 @@ export interface BrandTokens {
   /** One line under the wordmark on ceremonial surfaces. */
   tagline: string;
 
+  /**
+   * Per-brand COPY (docs/49 ASTRAL-104, amended 2026-08-24).
+   *
+   * Colour is not the only thing a brand owns. The board's frame 2 hints
+   * "Austin, Texas, USA" and "City, State, or ZIP code" — US postal
+   * conventions, and a ZIP-code hint in India is a form asking for something
+   * that does not exist. So the hint is a token like every other value, and
+   * the screen that shows it names the token rather than the sentence.
+   *
+   * `fieldHints` is keyed the way the shared widget reads it: by the
+   * engine's field `key` first, then by field `kind`. An engine-supplied
+   * `hint` always wins — the engine knows things about a particular ask that
+   * a brand does not.
+   */
+  copy: {
+    /** the heading over the birth-details form (screen 2) */
+    birthDetailsTitle: string;
+    /** the line under it */
+    birthDetailsSubtitle: string;
+    /** the reassurance the board puts at the foot of screen 2 */
+    privacyFooter: string;
+    fieldHints: { placeBirthHint: string; dateBirthHint: string; timeBirthHint: string };
+  };
+
   palette: {
     /** Ceremonial ground — the deep cosmic field (screens 1, 3, 6, 12's header).
      *  `horizon` is the warm apricot the board burns into the lower third of

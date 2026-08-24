@@ -25,6 +25,15 @@
  *   inputRequest    the birth-time ask (docs/49 ASTRAL-83), captured from
  *                   `node_ask_user(rt, "birth_time_unlocks")` on a natal
  *                   belief that already has a date and a place
+ *   birthDetailsAsk the ask a FRESH user meets (docs/49 ASTRAL-96), captured
+ *                   from `_input_request_block("required_slots_missing",
+ *                   Belief(intent="natal"), "en")` on 2026-08-24 — three
+ *                   fields, `date`/`time`/`place`, with the time optional in
+ *                   the only sense that matters: it carries "I don't know"
+ *   placeChoiceAsk  the contested place (docs/49 ASTRAL-94/95), captured from
+ *                   `_input_request_block("place_zone_unresolved", …)` with
+ *                   the real gazetteer's two Springfields. The options are
+ *                   PLACES; there is no IANA identifier anywhere in it
  */
 
 export const natalTimedPayload = {
@@ -1287,6 +1296,54 @@ export const inputRequestPayload = {
       "options": [
         { "value": "exact", "label": "Exact \u2014 off a record or a clock" },
         { "value": "approximate", "label": "Approximate \u2014 roughly that" }
+      ]
+    }
+  ]
+};
+
+export const birthDetailsAskPayload = {
+  "type": "input_request",
+  "ask": "required_slots_missing",
+  "reason": "Your birth details are all I need. The time is optional \u2014 but it is what unlocks the Lagna, the twelve bhavas and 21 of the 36 gunas, so give it if you have it and say you don't if you don't.",
+  "fields": [
+    {
+      "key": "dob",
+      "kind": "date",
+      "label": "Date of birth",
+      "required": true,
+      "allow_unknown": false
+    },
+    {
+      "key": "tob",
+      "kind": "time",
+      "label": "Birth time",
+      "required": true,
+      "allow_unknown": true
+    },
+    {
+      "key": "pob",
+      "kind": "place",
+      "label": "Birth place",
+      "required": true,
+      "allow_unknown": false
+    }
+  ]
+};
+
+export const placeChoiceAskPayload = {
+  "type": "input_request",
+  "ask": "place_zone_unresolved",
+  "reason": "More than one place answers to that name, and they keep different clocks \u2014 which changes the Lagna. Which one is yours?",
+  "fields": [
+    {
+      "key": "pob",
+      "kind": "choice",
+      "label": "Birth place",
+      "required": true,
+      "allow_unknown": false,
+      "options": [
+        { "value": "Springfield, MO, United States", "label": "Springfield, MO, United States" },
+        { "value": "Springfield, MA, United States", "label": "Springfield, MA, United States" }
       ]
     }
   ]

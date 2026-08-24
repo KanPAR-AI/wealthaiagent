@@ -199,6 +199,35 @@ export interface TimeWheelProps {
 }
 
 /**
+ * A date, entered the way the host does it best (docs/49 ASTRAL-96).
+ *
+ * A PRIMITIVE for exactly the reason `TimeWheel` is one, and the reason is
+ * not symmetry: `<input type="date">` IS the OS date picker on every phone
+ * browser and React Native has no equivalent element, so "native picker" is
+ * the one part that cannot be written once. Everything around it — the
+ * question, the progress, the validation, the carrier — stays shared.
+ *
+ * `value` is ISO `YYYY-MM-DD` or null when nothing has been chosen. ISO on
+ * the wire is deliberate and it is the whole reason ASTRAL-96 asks for a
+ * picker at all: `03/04/1989` is the 3rd of April to half the world and the
+ * 4th of March to the other half, and the ambiguous form never leaves the
+ * host.
+ *
+ * `minYear`/`maxYear` bound the wheel to plausible birth years. They are a
+ * COURTESY, not a validation: the engine refuses an implausible year with a
+ * named reason (`_validate_input_value`), because a client-side bound that
+ * silently clamps is how a wrong date gets charted as a right one.
+ */
+export interface DateWheelProps {
+  value: string | null;
+  onChange: (value: string) => void;
+  minYear: number;
+  maxYear: number;
+  accessibilityLabel?: string;
+  testID?: string;
+}
+
+/**
  * A photo, chosen and uploaded the way the host does it best (bug 8dc95a6a).
  *
  * A PRIMITIVE for the same reason `TimeWheel` is one: picking a photo is
@@ -237,6 +266,7 @@ export interface AstralPrimitives {
   Pressable: ComponentType<PressableProps>;
   TextInput: ComponentType<AstralTextInputProps>;
   TimeWheel: ComponentType<TimeWheelProps>;
+  DateWheel: ComponentType<DateWheelProps>;
   ImagePicker: ComponentType<AstralImagePickerProps>;
 }
 

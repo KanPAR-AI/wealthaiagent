@@ -27,6 +27,7 @@ import type {
   GroupProps,
   PressableProps,
   TimeWheelProps,
+  DateWheelProps,
   SvgCircleProps,
   SvgLineProps,
   SvgProps,
@@ -211,6 +212,32 @@ function TimeWheel({ value, onChange, accessibilityLabel, testID }: TimeWheelPro
 }
 
 /**
+ * `<input type="date">` — the same argument as the time control above, one
+ * ambiguity down (docs/49 ASTRAL-96). It is the OS date picker on every phone
+ * browser and it hands back ISO `YYYY-MM-DD`, so `03/04/1989` never has to be
+ * guessed at by anyone.
+ *
+ * `min`/`max` bound the visible range to plausible birth years. The ENGINE
+ * still refuses an out-of-range year by name — a browser that ignores the
+ * attribute (they do) must not be the only thing standing between a typo and
+ * a chart.
+ */
+function DateWheel({ value, onChange, minYear, maxYear, accessibilityLabel, testID }: DateWheelProps) {
+  return (
+    <input
+      type="date"
+      value={value ?? ''}
+      min={`${minYear}-01-01`}
+      max={`${maxYear}-12-31`}
+      aria-label={accessibilityLabel}
+      data-testid={testID}
+      onChange={(e) => onChange(e.target.value)}
+      style={{ fontSize: '16px', padding: '10px 12px', borderRadius: '10px' }}
+    />
+  );
+}
+
+/**
  * A photo slot, on the web (bug 8dc95a6a).
  *
  * `<input type="file" accept="image/*">` IS the OS camera/library sheet on
@@ -350,5 +377,5 @@ function ImagePicker({
 
 export const domPrimitives: AstralPrimitives = {
   Box, Text, Svg, Group, SvgRect, SvgLine, SvgCircle, SvgText,
-  Pressable, TextInput, TimeWheel, ImagePicker,
+  Pressable, TextInput, TimeWheel, DateWheel, ImagePicker,
 };

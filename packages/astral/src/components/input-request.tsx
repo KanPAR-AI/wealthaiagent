@@ -49,6 +49,31 @@ export interface InputRequestViewProps extends AstralRenderProps {
   onSend: (message: string) => void;
   /** test seam — defaults to `console.warn` through the registry */
   warn?: (message: string) => void;
+  /**
+   * Per-field helper copy the HOST supplies, keyed by field `key` first and
+   * field `kind` second (docs/49 ASTRAL-104's amendment).
+   *
+   * It lives here rather than in this file because it is BRAND copy, and the
+   * board's own hints are US postal conventions: "Austin, Texas, USA" and
+   * "City, State, or ZIP code" are a form asking an Indian user for something
+   * that does not exist. The engine does not send it either — a hint is how a
+   * product talks, not a fact about the belief.
+   *
+   * The engine's own `hint` on a field always wins: if it ever has something
+   * to say about a specific ask, that is not a brand's business to overwrite.
+   */
+  hints?: Record<string, string>;
+  /** the label on the last step's button ("Done" by default) */
+  submitLabel?: string;
+  /**
+   * `page` renders every field at once under one heading — the full-screen
+   * form of docs/49 ASTRAL-104's screen 2. It is the SAME component, the same
+   * fields and the same carrier with different chrome; a screen that drew its
+   * own date/time/place fields would be the second implementation ASTRAL-91
+   * forbids, and would drift from the engine's payload the first time a kind
+   * changed.
+   */
+  layout?: 'card' | 'page';
 }
 
 interface FieldRenderContext {
@@ -58,17 +83,19 @@ interface FieldRenderContext {
   field: InputField;
   value: InputValue | undefined;
   onChange: (value: InputValue) => void;
+  /** the engine's `hint` if it sent one, otherwise the host's brand copy */
+  hint?: string;
 }
 
 type FieldRenderer = (ctx: FieldRenderContext) => ReactNode;
 
-function TextField({ ui, theme, field, value, onChange }: FieldRenderContext) {
+function TextField({ ui, theme, field, value, onChange, hint }: FieldRenderContext) {
   const { TextInput } = ui;
   return (
     <TextInput
       value={typeof value === 'string' ? value : ''}
       onChangeText={onChange}
-      placeholder={field.hint ?? ''}
+      placeholder={hint ?? ''}
       accessibilityLabel={field.label}
       testID={`input-field-${field.key}`}
       style={{
@@ -87,7 +114,7 @@ function TextField({ ui, theme, field, value, onChange }: FieldRenderContext) {
   );
 }
 
-function TimeField({ ui, theme, field, value, onChange }: FieldRenderContext) {
+function TimeField({ ui, theme, field, value, onChange, hint }: FieldRenderContext) {
   const { Box, TimeWheel } = ui;
   return (
     <Box style={{ gap: 8 }}>
@@ -97,8 +124,69 @@ function TimeField({ ui, theme, field, value, onChange }: FieldRenderContext) {
         accessibilityLabel={field.label}
         testID={`input-field-${field.key}`}
       />
-      {field.hint ? (
-        <ui.Text style={{ fontSize: 12, color: theme.textMuted }}>{field.hint}</ui.Text>
+      {hint ? (
+        <ui.Text style={{ fontSize: 12, color: theme.textMuted }}>{hint}</ui.Text>
+      ) : null}
+    </Box>
+  );
+}
+
+/**
+ * The date of birth (docs/49 ASTRAL-96).
+ *
+ * The picker exists to remove ONE ambiguity: `03/04/1989` is two different
+ * dates depending on where the reader grew up, and a chart cast on the wrong
+ * one is wrong by a month with nothing on its face to say so. The host draws
+ * the control (`ui.DateWheel`); what is shared is the question, the bound and
+ * the carrier.
+ *
+ * The year bound is a courtesy, not a validation. The engine refuses an
+ * implausible year with a named reason and never clamps one — a clamp is how
+ * a typo becomes a chart that looks like any other.
+ */
+function DateField({ ui, theme, field, value, onChange, hint }: FieldRenderContext) {
+  const { Box, DateWheel } = ui;
+  const thisYear = new Date().getFullYear();
+  return (
+    <Box style={{ gap: 8 }}>
+      <DateWheel
+        value={typeof value === 'string' ? value : null}
+        onChange={onChange}
+        minYear={EARLIEST_BIRTH_YEAR}
+        maxYear={thisYear}
+        accessibilityLabel={field.label}
+        testID={`input-field-${field.key}`}
+      />
+      {hint ? (
+        <ui.Text style={{ fontSize: 12, color: theme.textMuted }}>{hint}</ui.Text>
+      ) : null}
+    </Box>
+  );
+}
+
+/**
+ * The place of birth (docs/49 ASTRAL-96 / ASTRAL-69).
+ *
+ * A text field, and DELIBERATELY nothing more. There is no geocoding library
+ * and no autocomplete on this side of the wire — the standing rule from
+ * ASTRAL-57/69/96, and a structural test greps both bundles for one. The
+ * engine resolves the place, refuses an implausible match with a designed
+ * message instead of guessing, and when a name turns out to be several real
+ * places it asks again as a `choice` over PLACES (ASTRAL-94/95). All three
+ * of those come back as ordinary turns; nothing here predicts them.
+ *
+ * The placeholder is brand copy from the host, because "City, State, or ZIP
+ * code" is a US postal convention and this product ships in India too
+ * (ASTRAL-104's amendment).
+ */
+function PlaceField(ctx: FieldRenderContext) {
+  const { ui, theme, hint } = ctx;
+  const { Box } = ui;
+  return (
+    <Box style={{ gap: 6 }}>
+      {TextField(ctx)}
+      {hint ? (
+        <ui.Text style={{ fontSize: 12, color: theme.textMuted }}>{hint}</ui.Text>
       ) : null}
     </Box>
   );
@@ -118,7 +206,7 @@ function TimeField({ ui, theme, field, value, onChange }: FieldRenderContext) {
  * is attached the slot SAYS SO — a control that looks identical before and
  * after a tap is how a user uploads the same hand twice.
  */
-function ImageField({ ui, theme, field, value, onChange }: FieldRenderContext) {
+function ImageField({ ui, theme, field, value, onChange, hint }: FieldRenderContext) {
   const { Box, ImagePicker, Text } = ui;
   const attached = typeof value === 'string' && value.length > 0;
   return (
@@ -131,7 +219,7 @@ function ImageField({ ui, theme, field, value, onChange }: FieldRenderContext) {
         testID={`input-field-${field.key}`}
       />
       <Text style={{ fontSize: 12, color: attached ? theme.accent : theme.textMuted }}>
-        {attached ? '✓ photo attached' : (field.hint ?? 'Palm facing the camera, fingers spread.')}
+        {attached ? '✓ photo attached' : (hint ?? 'Palm facing the camera, fingers spread.')}
       </Text>
     </Box>
   );
@@ -184,15 +272,22 @@ function ChoiceField({ ui, theme, width, field, value, onChange }: FieldRenderCo
 }
 
 /**
- * Kinds this build renders natively. `date` and `place` are DECLARED but not
- * yet built — PH-12 / ASTRAL-96 owns them, and until then they render the
- * text input WITHOUT a warning, because a warning that says "unknown" about
- * a kind we know is coming is noise that trains people to ignore warnings.
+ * The earliest year the date wheel offers. A person born before it can still
+ * type their date in prose (ASTRAL-90) and the engine accepts any year from
+ * 1900 — this is where the wheel STARTS, not what the product will believe.
  */
-const DEFERRED_KINDS = ['date', 'place'];
+const EARLIEST_BIRTH_YEAR = 1900;
 
+/**
+ * Every kind the engine can emit now has a renderer. `date` and `place` were
+ * DEFERRED_KINDS until PH-12 (ASTRAL-96) — declared by the engine, drawn as a
+ * plain text box here — and that list is gone rather than emptied, so nothing
+ * is left that quietly downgrades a kind without saying so.
+ */
 const handlers: Record<string, FieldRenderer> = {
   time: TimeField,
+  date: DateField,
+  place: PlaceField,
   choice: ChoiceField,
   text: TextField,
   image: ImageField,
@@ -218,7 +313,6 @@ export const inputFieldRegistry = createBlockRegistry<FieldRenderer>(handlers, {
 function rendererFor(kind: string, warn?: (message: string) => void): FieldRenderer {
   const handler = inputFieldRegistry.get(kind);
   if (handler) return handler;
-  if (DEFERRED_KINDS.indexOf(kind) !== -1) return TextField;
   activeWarn = warn ?? null;
   try {
     inputFieldRegistry.reportUnknown(kind);
@@ -285,6 +379,9 @@ export function InputRequestView({
   request,
   onSend,
   warn,
+  hints,
+  submitLabel,
+  layout = 'card',
 }: InputRequestViewProps) {
   const { Box, Pressable, Text } = ui;
   const [step, setStep] = useState(0);
@@ -294,6 +391,12 @@ export function InputRequestView({
   const total = request.fields.length;
   const field = request.fields[Math.min(step, total - 1)];
   const isLast = step >= total - 1;
+
+  // The engine's hint wins; the host's brand copy fills the silence. Keyed by
+  // field first so a specific ask can be spoken to, then by kind so one token
+  // covers every place field in the product.
+  const hintFor = (f: InputField): string | undefined =>
+    f.hint ?? hints?.[f.key] ?? hints?.[f.kind];
 
   const setValue = (key: string, value: InputValue) =>
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -309,6 +412,82 @@ export function InputRequestView({
     if (isLast) submit(next);
     else setStep(step + 1);
   };
+
+  /** a field is answered when it holds a value OR an explicit "I don't know" */
+  const answeredKey = (f: InputField) => f.key in values;
+  const missingRequired = request.fields.filter((f) => f.required && !answeredKey(f));
+
+  if (layout === 'page') {
+    // The full-screen form (docs/49 ASTRAL-104). One heading, every field,
+    // one button — the pacing of ASTRAL-92 is a CARD-in-a-transcript
+    // affordance, and a screen whose whole job is this form has no bubble to
+    // pace inside. What does not change: the fields are the engine's, the
+    // answer leaves through `buildInputResponseMessage`, and a required birth
+    // time is still answerable with "I don't know".
+    if (outcome === 'submitted') {
+      return (
+        <Box testID="input-request-submitted" style={{ gap: 4 }}>
+          <Text style={{ fontSize: 13, color: theme.textMuted }}>
+            {`✓ ${echoFor(request, values)}`}
+          </Text>
+        </Box>
+      );
+    }
+    return (
+      <Box testID="input-request-page" style={{ gap: 20, width, maxWidth: width }}>
+        {request.reason ? (
+          <Text
+            testID="input-request-reason"
+            style={{ fontSize: 15, color: theme.textMuted, lineHeight: 22 }}
+          >
+            {request.reason}
+          </Text>
+        ) : null}
+
+        {request.fields.map((f) => {
+          const render = rendererFor(f.kind, warn);
+          return (
+            <Box key={f.key} style={{ gap: 8 }}>
+              <Text
+                testID={`input-request-label-${f.key}`}
+                style={{ fontSize: 14, fontWeight: '600', color: theme.text }}
+              >
+                {f.label}
+              </Text>
+              {render({
+                ui,
+                theme,
+                width,
+                field: f,
+                value: values[f.key],
+                onChange: (value) => setValue(f.key, value),
+                hint: hintFor(f),
+              })}
+              {f.allowUnknown ? (
+                <Button
+                  ui={ui}
+                  theme={theme}
+                  label="I don't know"
+                  testID={`input-request-unknown-${f.key}`}
+                  onPress={() => setValue(f.key, null)}
+                />
+              ) : null}
+            </Box>
+          );
+        })}
+
+        <Button
+          ui={ui}
+          theme={theme}
+          emphasis
+          label={submitLabel ?? 'Continue'}
+          testID="input-request-submit"
+          disabled={missingRequired.length > 0}
+          onPress={() => submit(values)}
+        />
+      </Box>
+    );
+  }
 
   if (outcome === 'submitted') {
     // The answer stays readable in the transcript as its own user turn
@@ -410,6 +589,7 @@ export function InputRequestView({
         field,
         value: values[field.key],
         onChange: (value) => setValue(field.key, value),
+        hint: hintFor(field),
       })}
 
       <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>

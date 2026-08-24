@@ -63,6 +63,10 @@ export function renderInputRequest(
   payload: unknown,
   width = APP_WIDTH,
   warn?: (message: string) => void,
+  /** the host's brand copy for field hints (docs/49 ASTRAL-104) */
+  hints?: Record<string, string>,
+  /** `page` is screen 2's full-screen chrome over the SAME component */
+  layout?: 'card' | 'page',
 ) {
   const request = parseInputRequest(payload);
   if (!request) throw new Error('fixture did not parse');
@@ -76,6 +80,8 @@ export function renderInputRequest(
       request={request}
       onSend={(text) => sent.push(text)}
       warn={warn}
+      hints={hints}
+      layout={layout}
     />,
   );
   return { ...view, sent };

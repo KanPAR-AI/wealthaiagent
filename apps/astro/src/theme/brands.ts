@@ -14,6 +14,27 @@ const SPACE_UNIT = 4;
 const astro: BrandTokens = {
   wordmark: 'Astral AI',
   tagline: 'Your Birth Chart, Explained.',
+  copy: {
+    // Frame 02's own words for the heading and the footer. The HINTS are not
+    // the board's: "Austin, Texas, USA" and "City, State, or ZIP code" are US
+    // postal conventions (docs/49 ASTRAL-104, amended) and this brand ships in
+    // a market with no ZIP codes. What replaces them is the same information
+    // the resolver actually wants — a city, and enough to tell two of them
+    // apart, which is exactly what the contested-place ask is about.
+    birthDetailsTitle: "Let's Build\nYour Chart",
+    birthDetailsSubtitle: 'Accurate birth details help us deliver precise insights.',
+    privacyFooter: 'Your data is private & secure',
+    fieldHints: {
+      placeBirthHint: 'City or town — add the state or country if the name is common',
+      dateBirthHint: '',
+      // The board captions this "Exact time is important". It is not a
+      // caption: under AMB-13(c) the birth time decides whether there is a
+      // Lagna, a bhava chart, a pada, a dasha and a full gun milan at all —
+      // so the ENGINE says it, in the ask's own `reason`, and nothing here
+      // repeats it in grey. Empty on purpose, not unfinished.
+      timeBirthHint: '',
+    },
+  },
   palette: {
     // Sampled off the board rather than guessed: frame 01's sky runs #010518
     // at the crown, #0b173a at mid-height and #1e2b5b through the glow, and
@@ -82,5 +103,17 @@ const astro: BrandTokens = {
 
 export const BRANDS: Record<BrandId, BrandTokens> = {
   astro,
-  jyotish: { ...astro, wordmark: 'Jyotish AI', tagline: 'Your Kundli, Explained.' },
+  jyotish: {
+    ...astro,
+    wordmark: 'Jyotish AI',
+    tagline: 'Your Kundli, Explained.',
+    copy: {
+      ...astro.copy,
+      birthDetailsTitle: "Let's Build\nYour Kundli",
+      fieldHints: {
+        ...astro.copy.fieldHints,
+        placeBirthHint: 'City or town — add the district or state if the name is common',
+      },
+    },
+  },
 };
