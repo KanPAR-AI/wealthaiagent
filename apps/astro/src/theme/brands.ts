@@ -37,9 +37,23 @@ const astro: BrandTokens = {
       interactiveInk: '#ffffff',
     },
     danger: '#b3453e',
+    // The illustrated scene, tuned by rendering it (scratchpad scene2.png):
+    // ridges and silhouette sit BELOW the sky's values so the glow carries.
+    scene: {
+      ridgeFar: '#0d1737', ridgeNear: '#070d26',
+      waterTop: '#131c40', waterBottom: '#050a20',
+      silhouette: '#05091f', rock: '#04081c',
+      cloud: '#243468', cloudNear: '#2c3a6b',
+    },
   },
   type: {
-    display: { fontFamily: 'Georgia', fontWeight: '600' },
+    // Playfair Display (OFL, bundled at assets/fonts/) — the high-contrast
+    // transitional serif the board's wordmark reads as (F26). Loaded in
+    // _layout via useFonts under this exact key; the F26 test fails the
+    // suite when the asset or the wiring drifts, so the OS never silently
+    // substitutes. Weight 400: Playfair's Didone contrast carries the
+    // presence Georgia faked with 600.
+    display: { fontFamily: 'PlayfairDisplay', fontWeight: '400' },
     scale: {
       hero: { fontSize: 34, lineHeight: 40, letterSpacing: 0.5 },
       title: { fontSize: 22, lineHeight: 28 },

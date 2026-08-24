@@ -24,7 +24,7 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg from 'react-native-svg';
+import Svg, { G, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -36,10 +36,14 @@ import {
   Sparkle,
   Stars,
 } from '@/components/sky';
+import { LakeScene, SCENE_RATIO } from '@/components/scene';
 import { track } from '@/lib/analytics';
 import { tokens } from '@/theme';
 
 const ENTERED_KEY = 'astro.entered';
+
+/** Height kept free below the scene for the CTA + log-in line. */
+const FOOT_RESERVE = 108;
 
 /** Where the board hangs its three bursts and its planet, as fractions. */
 const SPARKLES: [number, number, number][] = [
@@ -92,6 +96,19 @@ export default function Onboarding() {
         {SPARKLES.map(([x, y, size], i) => (
           <Sparkle key={i} x={width * x} y={height * y} size={size} />
         ))}
+        {/* Frame 01's lower half: the meditating figure on the lake. Raised
+            clear of the footer — on the first sim render the CTA sat on the
+            figure's head — with the water carried on beneath it so the
+            buttons float on the lake, as the frame draws them. */}
+        <G translateY={height - width * SCENE_RATIO - FOOT_RESERVE}>
+          <LakeScene width={width} />
+        </G>
+        <Rect
+          y={height - FOOT_RESERVE - 2}
+          width={width}
+          height={FOOT_RESERVE + 2}
+          fill={tokens.palette.scene.waterBottom}
+        />
       </Svg>
 
       <SafeAreaView style={s.safe}>

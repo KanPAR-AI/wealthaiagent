@@ -1,4 +1,6 @@
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import * as Updates from 'expo-updates';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
@@ -10,6 +12,10 @@ import { ensureCoreInitialized } from '@/lib/core-adapter';
 // Install this app's PlatformAdapter into @wealthai/core before any screen
 // imports the shared chat client.
 ensureCoreInitialized();
+
+// Hold the native splash until the display serif is loaded — a first frame
+// in the fallback face is a brand flash nobody designed (F26).
+SplashScreen.preventAutoHideAsync();
 
 /**
  * Take a published update on THIS launch, not the next one.
@@ -49,6 +55,21 @@ function useApplyUpdatesPromptly() {
 /** Root layout for the standalone astrology app (docs/49 ASTRAL-68). */
 export default function RootLayout() {
   useApplyUpdatesPromptly();
+  const [fontsLoaded] = useFonts({
+    // Static asset reference: Metro needs the literal require, and the lint
+    // rule is right for everything except font/image assets.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    PlayfairDisplay: require('../../assets/fonts/PlayfairDisplay.ttf'),
+  });
+  useEffect(() => {
+    // Loaded or failed: either way the app shows. A font error must never
+    // hold the splash forever — the fallback face is worse than no app.
+    if (fontsLoaded) void SplashScreen.hideAsync();
+  }, [fontsLoaded]);
+  useEffect(() => {
+    const t = setTimeout(() => void SplashScreen.hideAsync(), 3000);
+    return () => clearTimeout(t);
+  }, []);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>

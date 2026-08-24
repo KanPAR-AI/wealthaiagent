@@ -34,6 +34,13 @@ export interface BrandTokens {
       interactiveInk: string;
     };
     danger: string;
+    /** The screen-1 illustration's layers (drawn, not an asset). */
+    scene: {
+      ridgeFar: string; ridgeNear: string;
+      waterTop: string; waterBottom: string;
+      silhouette: string; rock: string;
+      cloud: string; cloudNear: string;
+    };
   };
 
   type: {
