@@ -1,7 +1,15 @@
-// Send-message orchestration — the mobile counterpart of the web's
-// use-message-sending hook, driving the SAME @wealthai/core primitives
-// (createChatSession, sendChatMessage, listenToChatStreamCore) and the
-// SAME shared zustand store.
+// The ONE message lifecycle (docs/49 ASTRAL-105).
+//
+// Moved out of `apps/mobile/src/hooks/use-send-message.ts`, where it was the
+// only real one: `apps/astro/src/lib/reading.ts` said so in its own header —
+// "NOT a second chat client… that hook moves into a shared package before
+// this app grows a real chat screen". This is that move. What was in
+// reading.ts and not here — the §12 funnel counters — came WITH it, because
+// counting in the screen is how a second surface forgets to count.
+//
+// Driving the SAME @wealthai/core primitives (createChatSession,
+// sendChatMessage, listenToChatStreamCore) and the SAME shared zustand store
+// the web app uses.
 //
 // Web-parity semantics preserved:
 //   - Optimistic local nanoids for both bubbles, swapped for backend ids
@@ -11,7 +19,7 @@
 //     (which stores it), so no separate POST /messages for message #1.
 //   - Widget SSE events accumulate into contentBlocks in stream order.
 //
-// Mobile-specific: streaming store updates are THROTTLED (~90ms flushes).
+// Native-specific: streaming store updates are THROTTLED (~90ms flushes).
 // The web updates the store on every chunk; on low-end Android that
 // re-renders markdown hundreds of times per reply and stutters the list.
 // (Quality bar: ChatGPT-smooth streaming.)
@@ -29,7 +37,7 @@ import {
   type MessageFile,
 } from '@wealthai/core';
 
-import { getToken } from '@/lib/auth';
+import { getChatHost } from './host';
 
 const FLUSH_INTERVAL_MS = 90;
 
@@ -69,7 +77,18 @@ export function useSendMessage(
       const trimmed = text.trim();
       if ((!trimmed && files.length === 0) || state.isSending || state.isCreatingChat) return;
 
-      const token = await getToken();
+      const host = getChatHost();
+      const track = (event: string, params?: Record<string, unknown>) =>
+        host.track?.(event, params);
+
+      // (c) Routing disabled is a LIFECYCLE fact, not a hidden picker. With
+      // `routing: false` the store's selection is ignored outright, so no
+      // stray `setSelectedAgent` anywhere in that app can send a turn
+      // somewhere the product does not go (docs/49 D3, F4's caveat aside).
+      const forceAgent = host.routing ? selectedAgent : (host.pinnedAgent ?? null);
+      const modelTier = host.routing ? selectedModelTier : null;
+
+      const token = await host.getToken();
       if (!token) {
         console.warn('[useSendMessage] no auth token — user signed out?');
         return;
@@ -84,6 +103,20 @@ export function useSendMessage(
       let activeChatId = chatId ?? nanoid();
       if (isFirstMessage) onChatCreated(activeChatId);   // switch to chat view now
       setState({ isSending: true, isCreatingChat: isFirstMessage });
+
+      // §12's funnel, counted where the turn actually happens.
+      track('reading_asked', { first_turn: isFirstMessage ? 1 : 0, chars: trimmed.length });
+      const startedAt = Number(new Date());
+      let settledCount = false;
+      /** Count the turn's outcome exactly once, whichever path settles it. */
+      const countOutcome = (outcome: 'answered' | 'stopped' | 'failed', extra?: Record<string, unknown>) => {
+        if (settledCount) return;
+        settledCount = true;
+        track(`reading_${outcome}`, {
+          seconds: Math.round((Number(new Date()) - startedAt) / 1000),
+          ...extra,
+        });
+      };
 
       let userMessageIdLive = nanoid();
       addMessage(activeChatId, {
@@ -125,6 +158,7 @@ export function useSendMessage(
             error: "Couldn't start the chat. Tap to retry.",
           });
           setState({ isSending: false, isCreatingChat: false });
+          countOutcome('failed', { reason: 'create_chat' });
           throw e;
         }
       }
@@ -229,11 +263,17 @@ export function useSendMessage(
       // Shared failure path for stream error + send exception: reconcile
       // first (bubble keeps its streaming shimmer), error only if the
       // server truly has nothing.
-      const failWithReconcile = async (errorText: string) => {
+      const failWithReconcile = async (errorText: string, reason: string) => {
         const recovered = await reconcileFromServer();
-        if (!recovered) {
+        if (recovered) {
+          countOutcome('answered', { chars: receivedText.length, reconciled: 1 });
+        } else if (controller.signal.aborted) {
           // A stop during reconciliation is still a stop, not an error.
-          finalFlush(controller.signal.aborted ? {} : { error: errorText });
+          finalFlush({});
+          countOutcome('stopped', { chars: receivedText.length });
+        } else {
+          finalFlush({ error: errorText });
+          countOutcome('failed', { reason });
         }
         setState({ isSending: false, isCreatingChat: false });
       };
@@ -272,11 +312,20 @@ export function useSendMessage(
                 contentBlocks.push({ type: 'text', content: currentTextBlock });
               }
               currentTextBlock = '';
+              track('reading_widget', { widget: type });
               try {
                 const widgetData = JSON.parse(chunk);
                 contentBlocks.push({ type: 'widget', widget: { ...widgetData, type } });
-              } catch (e) {
-                console.warn('[useSendMessage] unparseable widget payload:', e);
+              } catch (e: any) {
+                // Loud, not silent. A bare `catch {}` around a computation is
+                // how this codebase lost two grahas from every chart for
+                // months (docs/49 §5a-0): the block simply stopped arriving
+                // and nothing anywhere said so. The turn still survives a
+                // truncated payload — that part was right — but the type is
+                // named in the console AND counted, so "the widget never
+                // showed up" is a number somebody can look at.
+                console.warn('[useSendMessage] unparseable widget payload:', type, e);
+                track('reading_widget_parse_error', { widget: type, bytes: chunk.length });
               }
               scheduleFlush();
             }
@@ -284,6 +333,7 @@ export function useSendMessage(
           () => {
             settled = true;
             finalFlush({});
+            countOutcome('answered', { chars: receivedText.length });
             setState({ isSending: false, isCreatingChat: false });
           },
           (error) => {
@@ -294,6 +344,7 @@ export function useSendMessage(
             // success, not an error: freeze the partial text, no banner.
             if (controller.signal.aborted) {
               finalFlush({});
+              countOutcome('stopped', { chars: receivedText.length });
               setState({ isSending: false, isCreatingChat: false });
               return;
             }
@@ -302,13 +353,17 @@ export function useSendMessage(
               isTimeout
                 ? 'Connection timed out. Tap to retry.'
                 : 'Response interrupted. Tap to retry.',
+              error?.name || (isTimeout ? 'TimeoutError' : 'error'),
             );
           },
           {
-            forceAgent: selectedAgent,
-            modelTier: selectedModelTier,
+            forceAgent,
+            modelTier,
             externalSignal: controller.signal,
-            onCredits: (charged) => { if (charged) addCreditsConsumed(activeChatId!, charged); },
+            onCredits: (charged, balance) => {
+              track('reading_charged', { charged, balance });
+              if (charged) addCreditsConsumed(activeChatId!, charged);
+            },
             onAssistantId: (backendBotId) => {
               if (backendBotId && backendBotId !== aiMessageIdLive) {
                 updateMessage(activeChatId!, aiMessageIdLive, { id: backendBotId });
@@ -328,22 +383,24 @@ export function useSendMessage(
         if (!settled) {
           if (controller.signal.aborted) {
             finalFlush({});
+            countOutcome('stopped', { chars: receivedText.length });
             setState({ isSending: false, isCreatingChat: false });
           } else {
-            await failWithReconcile('Response interrupted. Tap to retry.');
+            await failWithReconcile('Response interrupted. Tap to retry.', 'eof');
           }
         }
       } catch (error: any) {
         if (error?.name !== 'AbortError') {
           console.error('[useSendMessage] send failed:', error);
-          await failWithReconcile("Couldn't get a response. Tap to retry.");
+          await failWithReconcile("Couldn't get a response. Tap to retry.", error?.name || 'error');
         } else {
           if (!settled) finalFlush({});
+          countOutcome('stopped', { chars: receivedText.length });
           setState({ isSending: false, isCreatingChat: false });
         }
       }
     },
-    [chatId, state.isSending, state.isCreatingChat, addMessage, updateMessage, selectedAgent, selectedModelTier, addCreditsConsumed, onChatCreated],
+    [chatId, state.isSending, state.isCreatingChat, addMessage, updateMessage, migrateChat, selectedAgent, selectedModelTier, addCreditsConsumed, onChatCreated],
   );
 
   return { ...state, send, cancel };

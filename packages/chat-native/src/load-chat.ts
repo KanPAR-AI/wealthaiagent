@@ -1,12 +1,17 @@
 // Hydrate a past conversation from the backend into the shared chat store.
 //
+// Moved out of `apps/mobile/src/lib/load-chat.ts` with the rest of the
+// lifecycle (docs/49 ASTRAL-105): a transcript that only survives while the
+// process does is not a transcript, and BOTH apps need the same reload or
+// "reopen the app" means two different things.
+//
 // Uses core's fetchChatHistory + mapHistoryMessage — the exact mapping the
 // web app applies (assistant→bot, widgets_json→contentBlocks) — so a chat
-// started on web resumes identically on mobile and vice versa.
+// started on web resumes identically on a phone and vice versa.
 
 import { fetchChatHistory, mapHistoryMessage, useChatStore } from '@wealthai/core';
 
-import { getToken } from './auth';
+import { getChatHost } from './host';
 
 /** Returns true if the chat loaded (or was already loaded). */
 export async function loadChatIntoStore(chatId: string): Promise<boolean> {
@@ -15,7 +20,7 @@ export async function loadChatIntoStore(chatId: string): Promise<boolean> {
   // skipping the fetch makes reopening a chat from history instant.
   if ((store.chats[chatId]?.messages?.length ?? 0) > 0) return true;
 
-  const token = await getToken();
+  const token = await getChatHost().getToken();
   if (!token) return false;
 
   const history = await fetchChatHistory(token, chatId);

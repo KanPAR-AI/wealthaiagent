@@ -8,6 +8,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { ensureAstralHostInstalled } from '@/lib/astral-host';
+import { ensureChatHostInstalled } from '@/lib/chat-host';
 import { ensureCoreInitialized } from '@/lib/core-adapter';
 
 // Install the mobile PlatformAdapter into @wealthai/core before any screen
@@ -16,6 +17,9 @@ ensureCoreInitialized();
 // ...and this app's capabilities into the shared React Native astral binding,
 // which no longer reaches into `@/lib/*` for them (docs/49 ASTRAL-99).
 ensureAstralHostInstalled();
+// ...and this app's capabilities into the shared chat surface, which is the
+// same surface apps/astro renders (docs/49 ASTRAL-105).
+ensureChatHostInstalled();
 
 SplashScreen.preventAutoHideAsync();
 

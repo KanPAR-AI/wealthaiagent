@@ -33,7 +33,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Colors, Spacing } from '@/constants/theme';
 import { getToken, signOut } from '@/lib/auth';
 import { PROD_BASE_URL, getBaseUrl, setBaseUrl } from '@/lib/server-config';
-import { loadChatIntoStore } from '@/lib/load-chat';
+import { loadChatIntoStore } from '@wealthai/chat-native';
 import { useUiStore } from '@/store/ui';
 import { useAuth } from '@/hooks/use-auth';
 import { getCreditBalance, type CreditBalance } from '@/services/credits-service';

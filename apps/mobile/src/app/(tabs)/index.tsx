@@ -12,6 +12,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getPlatform, useChatStore, type MessageFile } from '@wealthai/core';
+import { useSendMessage } from '@wealthai/chat-native';
 
 import { DEFAULT_TILES, getHomeSuggestions, type HomeTile } from '@/services/home-service';
 import { track } from '@/lib/analytics';
@@ -24,7 +25,6 @@ import { MessageList } from '@/components/chat/message-list';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
-import { useSendMessage } from '@/hooks/use-send-message';
 import { useUiStore } from '@/store/ui';
 import { StandaloneBadge, StandaloneToggle } from '@/components/chat/standalone-toggle';
 

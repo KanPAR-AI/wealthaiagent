@@ -18,6 +18,7 @@ export default {
     // package.json "exports"-to-TS-source arrangement, so map directly.
     '^@wealthai/core$': '<rootDir>/packages/core/src/index.ts',
     '^@wealthai/astral$': '<rootDir>/packages/astral/src/index.ts',
+    '^@wealthai/chat-native$': '<rootDir>/packages/chat-native/src/index.ts',
     // Captured-payload fixtures are a subpath export so they stay OUT of the
     // app bundle; tests import them explicitly.
     '^@wealthai/astral/fixtures$': '<rootDir>/packages/astral/src/fixtures/payloads.ts',
