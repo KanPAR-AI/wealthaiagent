@@ -171,7 +171,7 @@ export default function Settings() {
                   accessibilityRole="button"
                   accessibilityLabel={row.label}
                 >
-                  <Symbol name={row.icon as never} color={tokens.palette.accent.interactive} />
+                  <Symbol name={row.icon} color={tokens.palette.accent.interactive} />
                   <Text style={s.rowLabel}>{row.label}</Text>
                   <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
                 </Pressable>

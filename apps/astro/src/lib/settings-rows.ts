@@ -4,6 +4,11 @@
 // can be unit-tested in the root jest project, which has no React Native
 // renderer. The screen renders whatever this returns and decides nothing.
 
+// Type-only, so this module still imports nothing at runtime and still runs
+// under the root jest project: it buys real checking of the five symbol names
+// below, instead of a cast at the call site.
+import type { SFSymbol } from 'sf-symbols-typescript';
+
 import { CAPABILITIES, type Capabilities } from './capabilities';
 
 export type SettingsRowId =
@@ -17,7 +22,7 @@ export interface SettingsRow {
   id: SettingsRowId;
   label: string;
   /** SF Symbol name; every host passes a drawn fallback (see glyphs.tsx). */
-  icon: string;
+  icon: SFSymbol;
   /** where it goes, or `expand` for the rows that open in place */
   action: { kind: 'route'; to: string } | { kind: 'expand' };
   /** the capability that has to be true for this row to exist at all */

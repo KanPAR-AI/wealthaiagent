@@ -125,31 +125,38 @@ export function Sparkle({
  * the crown for a star to sit in, as frame 1 draws it.
  */
 export function BeadedRing({
-  cx, cy, r, nodes = 12,
-}: { cx: number; cy: number; r: number; nodes?: number }) {
+  cx, cy, r, beads = 60,
+}: { cx: number; cy: number; r: number; beads?: number }) {
   const gold = tokens.palette.accent.ceremonial;
   const circumference = 2 * Math.PI * r;
   const gap = circumference * 0.055; // the crown opening
+  const crown = 0.2; // radians of bead-free arc either side of the top
   return (
     <G>
       <Circle
         cx={cx} cy={cy} r={r}
-        stroke={gold} strokeWidth={0.8} fill="none" opacity={0.55}
-        strokeDasharray={`${(circumference - gap) * 0.999} ${gap}`}
-        strokeDashoffset={(circumference - gap) / 2 + circumference * 0.25}
+        stroke={gold} strokeWidth={0.7} fill="none" opacity={0.28}
+        strokeDasharray={`${circumference - gap} ${gap}`}
+        // An SVG circle's path starts at 3 o'clock and runs clockwise, so a
+        // naive offset of `dash/2 + C/4` puts the opening at the BOTTOM. It
+        // did, until this was rendered and looked at. The crown is at 0.75C,
+        // so `0.25C - gap/2` lands the gap centred there.
+        strokeDashoffset={circumference * 0.25 - gap / 2}
       />
-      {Array.from({ length: nodes }, (_, i) => {
-        const a = (2 * Math.PI * i) / nodes - Math.PI / 2;
-        // skip the two nodes either side of the crown gap
-        if (i === 0) return null;
+      {Array.from({ length: beads }, (_, i) => {
+        const a = (2 * Math.PI * i) / beads - Math.PI / 2;
+        // leave the crown clear for the star that sits in it
+        const fromTop = Math.abs(((a + Math.PI / 2 + Math.PI) % (2 * Math.PI)) - Math.PI);
+        if (fromTop < crown) return null;
+        const bright = i % 5 === 0;
         return (
           <Circle
             key={i}
             cx={cx + r * Math.cos(a)}
             cy={cy + r * Math.sin(a)}
-            r={i % 3 === 0 ? 1.6 : 1}
+            r={bright ? 1.5 : 0.9}
             fill={gold}
-            opacity={i % 3 === 0 ? 0.9 : 0.55}
+            opacity={bright ? 0.85 : 0.5}
           />
         );
       })}
@@ -191,10 +198,17 @@ export function Horizon({
  * The wash the board bleeds out of screen 4's top-right corner: the cosmic
  * field arriving on a working surface, and gone again within half the width.
  *
- * A flat rectangle at low opacity does not do this — frame 4 is nearly opaque
- * navy in the corner (#060c23) and clean paper by 60% across. So the fade is
- * IN the paint: the same nightSky stops, anchored at the corner, running to
- * zero alpha. Stars ride along, dimmed and confined to the same corner.
+ * Two things were got wrong first and fixed by rendering it and looking:
+ *  - a flat rectangle at low opacity does not do what the frame does. Frame 4
+ *    is near-opaque navy in the corner and clean paper a short way in, so the
+ *    fade is IN the paint — the nightSky stops, anchored at the corner,
+ *    running to zero alpha.
+ *  - and it must stay OFF the wordmark. The first version spanned the header
+ *    and put a grey haze across "Your cosmic advisor". This one is drawn into
+ *    a box the caller keeps narrow, and its falloff is tight.
+ *
+ * `width`/`height` are the box, not the screen; the corner stars are mapped
+ * into it so they arrive with the wash rather than floating past it.
  */
 export function CornerWash({
   id, width, height,
@@ -203,10 +217,10 @@ export function CornerWash({
   return (
     <G>
       <Defs>
-        <RadialGradient id={`${id}-corner`} cx="100%" cy="0%" r="105%">
-          <Stop offset="0%" stopColor={near.color} stopOpacity={0.98} />
-          <Stop offset="42%" stopColor={mid.color} stopOpacity={0.72} />
-          <Stop offset="78%" stopColor={far.color} stopOpacity={0.18} />
+        <RadialGradient id={`${id}-corner`} cx="100%" cy="0%" r="75%">
+          <Stop offset="0%" stopColor={near.color} stopOpacity={0.72} />
+          <Stop offset="35%" stopColor={mid.color} stopOpacity={0.34} />
+          <Stop offset="70%" stopColor={far.color} stopOpacity={0.08} />
           <Stop offset="100%" stopColor={far.color} stopOpacity={0} />
         </RadialGradient>
       </Defs>
@@ -215,10 +229,10 @@ export function CornerWash({
         {STARS.filter(([x, y]) => x > 0.5 && y < 0.36).map(([x, y, r, o, gold], i) => (
           <Circle
             key={i}
-            cx={x * width}
+            cx={(x - 0.5) * 2 * width}
             cy={(y / 0.36) * height}
-            r={r * 0.75}
-            opacity={o * 0.8}
+            r={r * 0.7}
+            opacity={o * 0.75}
             fill={gold ? tokens.palette.accent.ceremonial : tokens.palette.ink.onCosmic}
           />
         ))}

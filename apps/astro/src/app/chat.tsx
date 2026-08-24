@@ -46,6 +46,9 @@ import { tokens } from '@/theme';
 const SUGGESTIONS = ['Yes, please', 'Tell me more', 'Another question'];
 
 const WASH_HEIGHT = 132;
+/** how far across the header the corner bleed reaches — it must not touch the
+ *  wordmark, which is what a full-width wash did */
+const WASH_WIDTH = 0.45;
 
 export default function Chat() {
   const [question, setQuestion] = useState('');
@@ -105,8 +108,8 @@ export default function Chat() {
                 the ceremonial field, just visible, on a working surface. */}
             {washWidth ? (
               <View pointerEvents="none" style={s.wash}>
-                <Svg width={washWidth} height={WASH_HEIGHT}>
-                  <CornerWash id="chat" width={washWidth} height={WASH_HEIGHT} />
+                <Svg width={washWidth * WASH_WIDTH} height={WASH_HEIGHT}>
+                  <CornerWash id="chat" width={washWidth * WASH_WIDTH} height={WASH_HEIGHT} />
                 </Svg>
               </View>
             ) : null}
@@ -247,7 +250,7 @@ const s = StyleSheet.create({
   },
   // The wash covers the whole header box; the fade lives in the gradient
   // itself (see CornerWash), so nothing here needs an opacity.
-  wash: { position: 'absolute', top: 0, left: 0, right: 0, height: WASH_HEIGHT },
+  wash: { position: 'absolute', top: 0, right: 0, height: WASH_HEIGHT },
   headerSide: { width: t.space(11) },
   headerRight: { alignItems: 'flex-end' },
   headerMid: { flex: 1, alignItems: 'center', gap: 1 },
