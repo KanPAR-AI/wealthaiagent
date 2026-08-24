@@ -27,6 +27,12 @@
 //     screen, which owns the ONE send path — so the answer, the echo and the
 //     streaming chart all happen in the place that can show them, and there
 //     is no second chat client (ASTRAL-105's standing rule).
+//
+// The opening turn goes out through the SHARED lifecycle (ASTRAL-105), not
+// through a helper of its own: `lib/reading.ts` is gone. This screen sends
+// one message and then READS the reply out of the shared chat store — which
+// is also why the conversation it starts is already in the transcript by the
+// time the chat screen opens, rather than being re-fetched or re-sent.
 
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -43,11 +49,12 @@ import {
   type InputRequestPayload,
 } from '@wealthai/astral';
 import { rnPrimitives } from '@wealthai/astral-native';
+import { useSendMessage } from '@wealthai/chat-native';
+import { useChatStore, type Message } from '@wealthai/core';
 
 import { ChevronLeft, SymbolIcon } from '@/components/glyphs';
 import { CornerWash } from '@/components/sky';
 import { track } from '@/lib/analytics';
-import { ask } from '@/lib/reading';
 import { tokens } from '@/theme';
 
 /**
@@ -68,48 +75,70 @@ export default function BirthDetails() {
   const [request, setRequest] = useState<InputRequestPayload | null>(null);
   const [prose, setProse] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [chatId, setChatId] = useState<string | null>(null);
   const chatIdRef = useRef<string | null>(null);
+  const { send } = useSendMessage(chatId, (id) => {
+    chatIdRef.current = id;
+    setChatId(id);
+  });
 
+  // One turn, through the one lifecycle. `started` guards the SEND rather
+  // than the mount: `send`'s identity changes as the turn progresses, so an
+  // unguarded effect would ask twice.
+  const started = useRef(false);
   useEffect(() => {
-    let live = true;
+    if (started.current) return;
+    started.current = true;
     track('birth_details_shown');
-    (async () => {
-      try {
-        const handle = await ask(OPENING_TURN, { chatId: null, onDelta: () => {} });
-        chatIdRef.current = handle.chatId;
-        const full = await handle.done;
-        if (!live) return;
-        // The block arrives as a fenced data block inside the text stream —
-        // the same convention every other astrology block uses, read with the
-        // same splitter, so this screen cannot drift from the chat surface.
-        const segments = splitDataBlocks(full, ['input_request']);
-        const block = segments.find((seg) => seg.kind === 'block');
-        const parsed = block ? parseInputRequest(block.value) : null;
-        setProse(
-          segments
-            .filter((seg) => seg.kind === 'text')
-            .map((seg) => (seg.kind === 'text' ? seg.text : ''))
-            .join('')
-            .trim(),
-        );
-        setRequest(parsed);
-        if (!parsed) {
-          // No block and no words: without this the spinner spins forever —
-          // the one state this screen's own comment says it avoids (Role-3).
-          setProse((p) =>
-            p || 'The reading did not come back as a form. Continue in chat and I will ask you there.',
-          );
-        }
-        track('birth_details_ask', { fields: parsed ? parsed.fields.length : 0 });
-      } catch (e: any) {
-        if (!live) return;
-        setError(e?.message ? String(e.message) : 'I could not reach the reading just now.');
-      }
-    })();
-    return () => {
-      live = false;
-    };
-  }, []);
+    void send(OPENING_TURN, []);
+  }, [send]);
+
+  // The reply, read out of the SHARED store rather than out of a promise
+  // this screen owns — same message, same place the chat screen will read it
+  // from a moment later.
+  const reply = useChatStore((s) => {
+    const id = chatId;
+    if (!id) return null;
+    const msgs = s.chats[id]?.messages ?? [];
+    for (let i = msgs.length - 1; i >= 0; i -= 1) {
+      if (msgs[i].sender === 'bot') return msgs[i] as Message;
+    }
+    return null;
+  });
+
+  const parsed = useRef(false);
+  useEffect(() => {
+    if (parsed.current || !reply || reply.isStreaming) return;
+    parsed.current = true;
+    if (reply.error) {
+      // ASTRAL-69's designed failure: the reading did not come through at
+      // all. Named, never a spinner that never ends.
+      setError(reply.error);
+      return;
+    }
+    // The block arrives as a fenced data block inside the text stream — the
+    // same convention every other astrology block uses, read with the same
+    // splitter, so this screen cannot drift from the chat surface.
+    const segments = splitDataBlocks(reply.message ?? '', ['input_request']);
+    const block = segments.find((seg) => seg.kind === 'block');
+    const asked = block ? parseInputRequest(block.value) : null;
+    setProse(
+      segments
+        .filter((seg) => seg.kind === 'text')
+        .map((seg) => (seg.kind === 'text' ? seg.text : ''))
+        .join('')
+        .trim(),
+    );
+    setRequest(asked);
+    if (!asked) {
+      // No block and no words: without this the spinner spins forever —
+      // the one state this screen's own comment says it avoids (Role-3).
+      setProse((p) =>
+        p || 'The reading did not come back as a form. Continue in chat and I will ask you there.',
+      );
+    }
+    track('birth_details_ask', { fields: asked ? asked.fields.length : 0 });
+  }, [reply]);
 
   // Continue: hand the typed carrier to the chat screen, which sends it.
   // Nothing is flattened into a sentence for the extractor to re-read (F18) —

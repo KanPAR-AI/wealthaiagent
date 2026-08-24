@@ -1,73 +1,84 @@
-// Screen 4 — AI Chat as the board draws it (docs/astral-board/04-ai-chat.png;
-// docs/49 ASTRAL-106): a WORKING surface per AMB-22(a) — warm paper ground,
-// dark ink, a back chevron and the dot-grid menu either side of the serif
-// wordmark over "Your cosmic advisor", a cosmic wash bleeding out of the
-// top-right corner, the user's words in a violet bubble, the reply on a
-// floating light card, the suggestion chips, and the send disc sitting inside
-// the composer's pill.
+// Screen 4 — AI Chat (docs/astral-board/04-ai-chat.png; docs/49 ASTRAL-106),
+// and it is now the yourfinadvisor chat wearing this brand.
 //
-// Same engine path as before the restyle: anonymous auth → chatservice → the
-// PINNED astrology agent, streaming.
+// ── what this file is, after ASTRAL-105 ───────────────────────────────────
 //
-// STILL one exchange at a time. A real transcript is ASTRAL-105's shared
-// message lifecycle, and inventing a second one here is exactly what
-// `reading.ts`'s header warns against.
+// The owner's ruling, verbatim: "is chat page same as yourfinadvisor app, it
+// should be — just some branding details, and memory extraction and widget…
+// with routing disabled." So the conversation — the lifecycle, the
+// transcript, the bubble, the composer, the interactive widgets — is
+// `<ChatSurface>` from `@wealthai/chat-native`, the same component
+// `apps/mobile` renders. What is left in this file is the CHROME the board
+// draws around it: the paper ground, the back chevron and the dot-grid menu
+// either side of the serif wordmark over "Your cosmic advisor", and the
+// cosmic wash bleeding out of the top-right corner.
 //
-// The data blocks ARE rendered now (docs/49 ASTRAL-99, F22). The engine emits
-// them as fenced JSON inside the text stream, and until this change they went
-// through `react-native-markdown-display` — so a computed chart reached the
-// owner as a screenful of raw JSON. The fences are split out here with the
-// SAME rule web and mobile use (`splitDataBlocks` → `readDataBlock`: the
-// fence language must equal the body's own `type`) and drawn through the ONE
-// React Native binding, now shared rather than trapped in `apps/mobile`.
+// The three things this app is allowed to differ in, and where each lives:
+//   (a) brand    → `lib/chat-theme.ts` (values) and the copy below
+//   (b) widgets  → `lib/chat-widgets.tsx` (the astral blocks)
+//   (c) routing  → `lib/chat-host.ts`: routing off, agent pinned, no picker
+// Memory extraction needs nothing: it is server-side and already runs on
+// every turn this app sends.
 //
-// Three outcomes, and the third is the one that matters: a registered type
-// draws its view; an unparseable payload draws NOTHING; an UNREGISTERED type
-// draws nothing and says so once, by name, in the console. What never
-// happens is raw JSON on a user's screen.
+// ── what it replaces ──────────────────────────────────────────────────────
+//
+// One `asked` string and one `answer` string — so the previous turn vanished
+// the moment the next one began, and a relaunch showed an empty screen even
+// though the conversation was safe on the server. There is a real transcript
+// now, hydrated from history on mount, which is the point of the slice:
+// close the app mid-reading, come back, and the reading is still there.
+//
+// `lib/reading.ts` is gone. Its own header said it was "NOT a second chat
+// client" and that the real lifecycle would move here; it did, and its §12
+// funnel counters moved with it into the lifecycle rather than being left
+// behind in a screen.
 
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import Markdown from 'react-native-markdown-display';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { splitDataBlocks, stripInputResponse } from '@wealthai/astral';
-import { AstralBlock, astralBlockRegistry } from '@wealthai/astral-native';
-import { getPlatform } from '@wealthai/core';
+import {
+  CHAT_RETRY_EVENT,
+  CHAT_SEND_EVENT,
+  ChatSurface,
+  loadChatIntoStore,
+  useSendMessage,
+} from '@wealthai/chat-native';
+import { getPlatform, useChatStore } from '@wealthai/core';
 
 import { ArrowUp, ChevronLeft, DotGrid, StopSquare } from '@/components/glyphs';
 import { CornerWash } from '@/components/sky';
-import { WIDGET_ANSWER_EVENT } from '@/lib/astral-host';
+import { astroChatTheme } from '@/lib/chat-theme';
+import { ASTRO_DATA_LANGUAGES, AstroWidget } from '@/lib/chat-widgets';
 import { fetchBalance } from '@/lib/credits';
-import { ask, type AskHandle } from '@/lib/reading';
 import { tokens } from '@/theme';
 
 /**
- * The block types this build can draw, asked for rather than restated.
+ * Which conversation this app was last in.
  *
- * `splitDataBlocks` uses them for one job: a TRAILING half-written fence is
- * withheld until it closes, so the seconds between "```natal_chart" and its
- * closing fence are not seconds of raw JSON scrolling past the reader.
+ * `apps/mobile` has a drawer full of chats and picks one; this app has one
+ * running reading and simply resumes it. Screen-level state, deliberately
+ * not in the shared surface: WHICH conversation to show is a product
+ * decision, and these two products answer it differently.
  */
-const DATA_LANGUAGES = astralBlockRegistry.types();
+const LAST_CHAT_KEY = 'astro.lastChatId';
 
 /**
- * The board's three chips, which are also the honest ones: each is a plain
- * follow-up that any reply can take. They appear only once a reply has
- * ARRIVED — a chip that says "Tell me more" over an empty screen is an
- * affordance pointing at nothing.
+ * The board's three chips.
+ *
+ * They are a STAND-IN and nothing more: the engine writes contextual
+ * follow-ups for every reply (`widget_action_tiles`) and those render inline
+ * in the transcript, through the shared widget path, exactly where the board
+ * draws them once you are at the foot of the conversation. Rendering the
+ * static three beside the engine's own was the "suggestion is not proper"
+ * the owner saw on-device, so the surface shows these only when a settled
+ * reply carried none.
+ *
+ * Copy, so it belongs to the brand — it should become a `copy.*` token in
+ * ASTRAL-124's sweep, alongside the hint below.
  */
 const FALLBACK_SUGGESTIONS = ['Yes, please', 'Tell me more', 'Another question'];
 
@@ -79,29 +90,29 @@ const WASH_WIDTH = 0.45;
 export default function Chat() {
   // Screen 2 (docs/49 ASTRAL-104) opens the chat, renders the engine's
   // `input_request` full-screen, and hands the composed answer here rather
-  // than sending it: this screen owns the ONE send path, and it is the only
-  // surface that can show the echo and the chart streaming back. `chatId`
-  // carries the conversation the form already started — without it the answer
-  // would land in a NEW chat, where the ask it answers never happened.
+  // than sending it: this screen owns the ONE send path. `chatId` carries the
+  // conversation the form already started — without it the answer would land
+  // in a NEW chat, where the ask it answers never happened.
   const handoff = useLocalSearchParams<{ chatId?: string; pending?: string }>();
-  const [question, setQuestion] = useState('');
-  const [asked, setAsked] = useState<string | null>(null);
-  const [answer, setAnswer] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState<string[]>(FALLBACK_SUGGESTIONS);
-  const [settled, setSettled] = useState(false);
-  const chatIdRef = useRef<string | null>(null);
-  /** label → full message for engine-authored chips (a label is a chip; the
-   *  message is what actually gets sent, which may be longer). */
-  const suggestionMessages = useRef<Record<string, string>>({});
-  const handleRef = useRef<AskHandle | null>(null);
-  const scrollRef = useRef<ScrollView | null>(null);
+  const [chatId, setChatId] = useState<string | null>(null);
   const [washWidth, setWashWidth] = useState(0);
+
+  const onChatCreated = useCallback((id: string) => {
+    setChatId(id);
+    // Remembered here rather than on unmount: the app can be killed at any
+    // moment, and a chat id written "later" is a transcript that comes back
+    // empty. The lifecycle calls this twice for a new chat — once with the
+    // optimistic local id, once with the backend's — and the second call is
+    // what survives.
+    void getPlatform().storage.setItem(LAST_CHAT_KEY, id);
+  }, []);
+
+  const { send, cancel, isSending, isCreatingChat } = useSendMessage(chatId, onChatCreated);
+  const busy = isSending || isCreatingChat;
 
   // Asking for the balance triggers the server's one-time welcome grant —
   // without this call a fresh account sits at zero and the first reading is
-  // refused (the build-3 defect). The NUMBER now lives on the settings screen,
+  // refused (the build-3 defect). The NUMBER lives on the settings screen,
   // where the out-of-credits message points ("Settings → Credits"), because
   // the board's header carries a chevron, the wordmark and the menu and
   // nothing else. The call stays regardless of who displays the result.
@@ -109,242 +120,148 @@ export default function Chat() {
     fetchBalance().catch((e) => console.warn('[credits]', String(e?.message ?? e)));
   }, []);
 
-  const send = useCallback(async (text: string) => {
-    const body = text.trim();
-    if (!body || busy) return;
-    setQuestion('');
-    setAsked(body);
-    setAnswer('');
-    setError(null);
-    setSettled(false);
-    setBusy(true);
-    try {
-      setSuggestions(FALLBACK_SUGGESTIONS);
-      const handle = await ask(body, {
-        chatId: chatIdRef.current,
-        onDelta: setAnswer,
-        // The engine already writes contextual follow-ups for every reply
-        // (widget_action_tiles). Rendering the static three beside them was
-        // the "suggestion is not proper" the owner saw on-device: the chips
-        // are the engine's own, and the board's three only stand in when a
-        // reply carried none.
-        onWidget: (type, payload) => {
-          if (type !== 'widget_action_tiles') return;
-          try {
-            const actions = (payload as any)?.data?.actions;
-            const labels = Array.isArray(actions)
-              ? actions
-                  .map((a: any) => ({
-                    label: String(a?.label ?? ''),
-                    message: String(a?.message ?? a?.label ?? ''),
-                  }))
-                  .filter((a: { label: string }) => a.label)
-              : [];
-            if (labels.length) {
-              suggestionMessages.current = Object.fromEntries(
-                labels.map((a: { label: string; message: string }) => [a.label, a.message]),
-              );
-              setSuggestions(labels.map((a: { label: string }) => a.label).slice(0, 3));
-            }
-          } catch {
-            /* a malformed tile payload keeps the fallback chips */
-          }
-        },
-      });
-      handleRef.current = handle;
-      chatIdRef.current = handle.chatId;
-      await handle.done;
-      setSettled(true);
-    } catch (e: any) {
-      setError(e?.message ? String(e.message) : 'The reading did not come through.');
-    } finally {
-      handleRef.current = null;
-      setBusy(false);
+  // ── which conversation are we in? ───────────────────────────────────────
+  // Either the one screen 2 started (route param) or the one this device was
+  // last in (storage). Both are hydrated from the server through the SAME
+  // loader mobile's drawer uses, so a reading resumes identically on both.
+  const adopted = useRef(false);
+  useEffect(() => {
+    if (adopted.current) return;
+    adopted.current = true;
+    const incoming = handoff.chatId?.trim();
+    if (incoming) {
+      setChatId(incoming);
+      void loadChatIntoStore(incoming).catch((e) =>
+        console.warn('[chat] could not load the handed-off reading', String(e?.message ?? e)),
+      );
+      return;
     }
-  }, [busy]);
+    // A handoff with no chat id is a NEW conversation; resuming the previous
+    // one under it would answer this question inside the last reading.
+    if (handoff.pending) return;
+    void getPlatform()
+      .storage.getItem(LAST_CHAT_KEY)
+      .then(async (id) => {
+        if (!id) return;
+        setChatId(id);
+        await loadChatIntoStore(id);
+      })
+      .catch((e) => {
+        // The remembered chat is gone (deleted, or a different account).
+        // Forget it rather than showing an empty screen that never fills.
+        console.warn('[chat] could not resume the last reading', String(e?.message ?? e));
+        void getPlatform().storage.removeItem(LAST_CHAT_KEY);
+      });
+  }, [handoff.chatId, handoff.pending]);
 
-  // The handed-off turn, sent exactly once. `sentHandoff` guards the second
-  // render rather than the second visit: expo-router keeps the params on the
-  // route, so a re-render must not re-post the same answer.
+  // The handed-off turn, sent exactly once — and only once the chat it
+  // belongs to has been adopted, because the lifecycle reads the chat id
+  // from its argument and would otherwise open a second conversation.
   const sentHandoff = useRef(false);
   useEffect(() => {
-    if (sentHandoff.current) return;
-    if (handoff.chatId) chatIdRef.current = handoff.chatId;
-    if (!handoff.pending) return;
+    const pending = handoff.pending;
+    if (!pending || sentHandoff.current) return;
+    const incoming = handoff.chatId?.trim();
+    if (incoming && chatId !== incoming) return;
     sentHandoff.current = true;
-    void send(handoff.pending);
-  }, [handoff.chatId, handoff.pending, send]);
+    void send(pending, []);
+  }, [handoff.pending, handoff.chatId, chatId, send]);
 
-  // A widget answer arrives on the host channel `lib/astral-host.ts` installs
-  // — the analogue of mobile's shipped quick-reply event — and goes out
-  // through the one send path this screen already owns. No second send path,
-  // and nothing flattened into a sentence for the extractor to re-read (F18):
-  // what travels is the typed `input_response` fence the shared component
-  // builds.
+  // A widget answer — a chip, a picker, the input widget's typed
+  // `input_response` carrier — arrives on the ONE channel the shared surface
+  // declares, and goes out through the ONE send path this screen owns. No
+  // second send path, and nothing flattened into a sentence for the extractor
+  // to re-read (F18).
   useEffect(() => {
-    return getPlatform().events.on(WIDGET_ANSWER_EVENT, (payload) => {
+    return getPlatform().events.on(CHAT_SEND_EVENT, (payload) => {
       const text = (payload as { text?: string } | undefined)?.text;
-      if (text) void send(text);
+      if (typeof text === 'string' && text.trim()) void send(text, []);
     });
   }, [send]);
 
-  // Text runs and data blocks, in the order the engine streamed them.
-  const segments = splitDataBlocks(answer, DATA_LANGUAGES);
+  // ↻ Retry on an errored reply: resend the last user message. Same
+  // behaviour, same channel, same component as mobile — a dropped stream
+  // must not mean two different things in two apps (ASTRAL-105).
+  useEffect(() => {
+    return getPlatform().events.on(CHAT_RETRY_EVENT, () => {
+      if (!chatId) return;
+      const msgs = useChatStore.getState().chats[chatId]?.messages || [];
+      const lastUser = [...msgs].reverse().find((m) => m.sender === 'user');
+      if (lastUser) void send(lastUser.message, lastUser.files || []);
+    });
+  }, [chatId, send]);
 
   return (
     <View style={s.fill}>
       <StatusBar style="dark" />
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-        <KeyboardAvoidingView behavior="padding" style={s.fill}>
-          <View style={s.header} onLayout={(e) => setWashWidth(e.nativeEvent.layout.width)}>
-            {/* The cosmic wash the board bleeds out of the top-right corner:
-                the ceremonial field, just visible, on a working surface. */}
-            {washWidth ? (
-              <View pointerEvents="none" style={s.wash}>
-                <Svg width={washWidth * WASH_WIDTH} height={WASH_HEIGHT}>
-                  <CornerWash id="chat" width={washWidth * WASH_WIDTH} height={WASH_HEIGHT} />
-                </Svg>
-              </View>
-            ) : null}
-
-            <Pressable
-              onPress={() => (router.canGoBack() ? router.back() : undefined)}
-              style={s.headerSide}
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              hitSlop={10}
-            >
-              <ChevronLeft size={tokens.size.icon} color={tokens.palette.ink.primary} />
-            </Pressable>
-
-            <View style={s.headerMid}>
-              <Text style={s.headerTitle}>{tokens.wordmark}</Text>
-              <Text style={s.headerSub}>Your cosmic advisor</Text>
-            </View>
-
-            <Pressable
-              onPress={() => router.push('/settings')}
-              style={[s.headerSide, s.headerRight]}
-              accessibilityRole="button"
-              accessibilityLabel="Settings"
-              hitSlop={10}
-            >
-              <DotGrid size={tokens.size.icon} color={tokens.palette.ink.primary} />
-            </Pressable>
-          </View>
-
-          <ScrollView
-            ref={scrollRef}
-            style={s.fill}
-            contentContainerStyle={s.body}
-            keyboardDismissMode="interactive"
-            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
-          >
-            {asked ? (
-              <View style={s.userBubble}>
-                {/* AMB-17 (a)'s declared cost: a widget answer travels as a
-                    fenced `input_response` block inside the user's own
-                    message, so the raw fence is suppressed on the user bubble
-                    exactly as data fences are on an assistant one. The
-                    human-readable echo is what remains. */}
-                <Text style={s.userText}>{stripInputResponse(asked)}</Text>
-              </View>
-            ) : null}
-            {segments.length ? (
-              segments.map((seg, i) =>
-                seg.kind === 'block' ? (
-                  // Outside the reply card on purpose: a wheel and a
-                  // scorecard draw their own surface, and nesting them in one
-                  // gives the artifact two borders and 32px less width than
-                  // it was told it had.
-                  <AstralBlock key={`b${i}`} type={seg.type} data={seg.value} />
-                ) : seg.text.trim() ? (
-                  <View key={`t${i}`} style={s.replyCard}>
-                    {/* The engine writes structured prose — bold claim leads,
-                        lists of transits. Rendered as plain Text it arrived
-                        with its asterisks showing. */}
-                    <Markdown style={markdown}>{seg.text}</Markdown>
-                  </View>
-                ) : null,
-              )
-            ) : busy ? (
-              <ActivityIndicator color={tokens.palette.accent.interactive} style={s.spinner} />
-            ) : !asked ? (
-              <Text style={s.hint}>
-                Ask anything — start with your birth date, time and place.
-              </Text>
-            ) : null}
-            {error ? <Text style={s.error}>{error}</Text> : null}
-          </ScrollView>
-
-          {settled && !busy ? (
-            <View style={s.chips}>
-              {suggestions.map((chip) => (
-                <Pressable
-                  key={chip}
-                  style={s.chip}
-                  onPress={() => void send(suggestionMessages.current[chip] ?? chip)}
-                  accessibilityRole="button"
-                  accessibilityLabel={chip}
-                >
-                  <Text style={s.chipText}>{chip}</Text>
-                </Pressable>
-              ))}
+        <View style={s.header} onLayout={(e) => setWashWidth(e.nativeEvent.layout.width)}>
+          {/* The cosmic wash the board bleeds out of the top-right corner:
+              the ceremonial field, just visible, on a working surface. */}
+          {washWidth ? (
+            <View pointerEvents="none" style={s.wash}>
+              <Svg width={washWidth * WASH_WIDTH} height={WASH_HEIGHT}>
+                <CornerWash id="chat" width={washWidth * WASH_WIDTH} height={WASH_HEIGHT} />
+              </Svg>
             </View>
           ) : null}
 
-          <View style={s.composer}>
-            <View style={s.field}>
-              <TextInput
-                style={s.input}
-                value={question}
-                onChangeText={setQuestion}
-                placeholder={`Message ${tokens.wordmark}...`}
-                placeholderTextColor={tokens.palette.ink.muted}
-                multiline
-                editable={!busy}
-                onSubmitEditing={() => void send(question)}
-              />
-              {/* Inside the pill's right edge, as the board draws it — not a
-                  second control sitting beside the field. */}
-              <Pressable
-                style={[s.send, !question.trim() && !busy && s.sendOff]}
-                onPress={busy ? () => handleRef.current?.stop() : () => void send(question)}
-                accessibilityRole="button"
-                accessibilityLabel={busy ? 'Stop the reading' : 'Send'}
-              >
-                {busy ? (
-                  <StopSquare size={tokens.size.icon} color={tokens.palette.accent.interactiveInk} />
-                ) : (
-                  <ArrowUp size={tokens.size.icon} color={tokens.palette.accent.interactiveInk} />
-                )}
-              </Pressable>
-            </View>
+          <Pressable
+            onPress={() => (router.canGoBack() ? router.back() : undefined)}
+            style={s.headerSide}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            hitSlop={10}
+          >
+            <ChevronLeft size={tokens.size.icon} color={tokens.palette.ink.primary} />
+          </Pressable>
+
+          <View style={s.headerMid}>
+            <Text style={s.headerTitle}>{tokens.wordmark}</Text>
+            <Text style={s.headerSub}>Your cosmic advisor</Text>
           </View>
-        </KeyboardAvoidingView>
+
+          <Pressable
+            onPress={() => router.push('/settings')}
+            style={[s.headerSide, s.headerRight]}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+            hitSlop={10}
+          >
+            <DotGrid size={tokens.size.icon} color={tokens.palette.ink.primary} />
+          </Pressable>
+        </View>
+
+        <ChatSurface
+          chatId={chatId}
+          theme={astroChatTheme}
+          busy={busy}
+          onSend={send}
+          onStop={cancel}
+          renderWidget={(widget, key) => (
+            <AstroWidget key={key} widget={widget} theme={astroChatTheme} />
+          )}
+          dataLanguages={ASTRO_DATA_LANGUAGES}
+          fallbackSuggestions={FALLBACK_SUGGESTIONS}
+          placeholder={`Message ${tokens.wordmark}...`}
+          renderSendIcon={(streaming, color, size) =>
+            streaming ? <StopSquare size={size} color={color} /> : <ArrowUp size={size} color={color} />
+          }
+          empty={
+            <View style={s.emptyBody}>
+              <Text style={s.hint}>
+                Ask anything — start with your birth date, time and place.
+              </Text>
+            </View>
+          }
+          pending={<View style={s.emptyBody} />}
+        />
       </SafeAreaView>
     </View>
   );
 }
 
 const t = tokens;
-
-/** Markdown element styles, composed from the same steps every screen uses. */
-const markdown = StyleSheet.create({
-  body: { ...t.type.scale.body, color: t.palette.ink.primary },
-  paragraph: { marginTop: 0, marginBottom: t.space(3) },
-  strong: { fontWeight: '700' },
-  em: { fontStyle: 'italic', color: t.palette.ink.secondary },
-  bullet_list: { marginBottom: t.space(2) },
-  ordered_list: { marginBottom: t.space(2) },
-  list_item: { marginBottom: t.space(1) },
-  heading1: { ...t.type.scale.title, ...t.type.display, color: t.palette.ink.primary, marginBottom: t.space(2) },
-  heading2: { ...t.type.scale.lead, ...t.type.display, color: t.palette.ink.primary, marginBottom: t.space(2) },
-  heading3: { ...t.type.scale.label, color: t.palette.ink.primary, fontWeight: '700', marginBottom: t.space(1) },
-  link: { color: t.palette.accent.interactive },
-  code_inline: { backgroundColor: t.palette.paper.base, color: t.palette.ink.secondary },
-  hr: { backgroundColor: t.palette.paper.line, height: StyleSheet.hairlineWidth },
-});
 
 const s = StyleSheet.create({
   fill: { flex: 1 },
@@ -368,81 +285,6 @@ const s = StyleSheet.create({
     color: t.palette.ink.primary,
   },
   headerSub: { ...t.type.scale.caption, color: t.palette.ink.muted },
-  body: { padding: t.space(4), gap: t.space(3), paddingBottom: t.space(6) },
-  userBubble: {
-    alignSelf: 'flex-end',
-    maxWidth: '82%',
-    backgroundColor: t.palette.accent.interactive,
-    borderRadius: t.radius.card,
-    borderBottomRightRadius: t.radius.tail,
-    paddingHorizontal: t.space(4),
-    paddingVertical: t.space(3),
-  },
-  userText: { ...t.type.scale.body, color: t.palette.accent.interactiveInk },
-  replyCard: {
-    backgroundColor: t.palette.paper.card,
-    borderRadius: t.radius.card,
-    paddingHorizontal: t.space(4),
-    paddingTop: t.space(4),
-    paddingBottom: t.space(1),
-    // the board floats this card rather than outlining it
-    shadowColor: t.elevation.card.color,
-    shadowOpacity: t.elevation.card.opacity,
-    shadowRadius: t.elevation.card.radius,
-    shadowOffset: { width: 0, height: t.elevation.card.offsetY },
-    elevation: 3,
-  },
-  spinner: { marginTop: t.space(4) },
+  emptyBody: { flex: 1, padding: t.space(4) },
   hint: { ...t.type.scale.sub, color: t.palette.ink.muted, marginTop: t.space(2) },
-  error: { ...t.type.scale.sub, color: t.palette.danger },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: t.space(2),
-    paddingHorizontal: t.space(4),
-    paddingBottom: t.space(2),
-  },
-  chip: {
-    borderRadius: t.radius.chip,
-    borderWidth: 1,
-    borderColor: t.palette.accent.interactive,
-    paddingHorizontal: t.space(3.5),
-    paddingVertical: t.space(2),
-    backgroundColor: t.palette.paper.card,
-  },
-  chipText: { ...t.type.scale.sub, color: t.palette.accent.interactive },
-  composer: {
-    paddingHorizontal: t.space(4),
-    paddingTop: t.space(1),
-    paddingBottom: t.space(3),
-    backgroundColor: t.palette.paper.base,
-  },
-  field: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    backgroundColor: t.palette.paper.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.palette.paper.line,
-    borderRadius: t.radius.input,
-    paddingLeft: t.space(4),
-    paddingRight: t.space(1.5),
-    paddingVertical: t.space(1.5),
-  },
-  input: {
-    ...t.type.scale.body,
-    flex: 1,
-    maxHeight: t.space(30),
-    color: t.palette.ink.primary,
-    paddingVertical: t.space(2),
-    paddingRight: t.space(2),
-  },
-  send: {
-    width: t.size.disc,
-    height: t.size.disc,
-    borderRadius: t.radius.pill,
-    backgroundColor: t.palette.accent.interactive,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendOff: { opacity: 0.35 },
 });

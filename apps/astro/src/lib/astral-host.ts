@@ -9,17 +9,13 @@
 // DIFFERENT modules rather than failing (docs/49 F22).
 
 import { installAstralHost } from '@wealthai/astral-native';
+import { CHAT_SEND_EVENT } from '@wealthai/chat-native';
 import { getPlatform } from '@wealthai/core';
 
 import { tokens } from '@/theme';
 
 import { getToken } from './auth';
 import { ensureCoreInitialized } from './core-adapter';
-
-/** The channel a widget answer travels on inside this app. The analogue of
- *  mobile's shipped quick-reply event: the chat screen listens, and the
- *  message goes out through the one send path it already owns. */
-export const WIDGET_ANSWER_EVENT = 'astral-widget-answer';
 
 export function ensureAstralHostInstalled(): void {
   ensureCoreInitialized();
@@ -35,7 +31,10 @@ export function ensureAstralHostInstalled(): void {
     // then the photo slot REFUSES VISIBLY here instead of looking like it
     // worked, which is the failure the role-labelled slot exists to prevent.
 
-    send: (text) => getPlatform().events.emit(WIDGET_ANSWER_EVENT, { text }),
+    // ONE channel, shared with apps/mobile (`CHAT_SEND_EVENT`). It used to
+    // be this app's own name for the same hop, which is how a widget works on
+    // one surface and quietly does nothing on the other.
+    send: (text) => getPlatform().events.emit(CHAT_SEND_EVENT, { text }),
 
     // Brand copy for the widget's field hints (docs/49 ASTRAL-104). Keyed by
     // the engine's field `kind`, so one token covers every place field the
