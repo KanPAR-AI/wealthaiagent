@@ -13,6 +13,8 @@ import { CAPABILITIES, type Capabilities } from './capabilities';
 
 export type SettingsRowId =
   | 'account'
+  | 'profile'
+  | 'matches'
   | 'privacy'
   | 'birthDetails'
   | 'help'
@@ -45,6 +47,25 @@ const DECLARED: SettingsRow[] = [
     icon: 'person.crop.circle',
     action: { kind: 'expand' },
     needs: 'accountSettings',
+  },
+  {
+    // docs/49 ASTRAL-135/136. Sits directly under the account block because
+    // that is what the board's frame 12 groups it with — who you are, then
+    // what we hold about you.
+    id: 'profile',
+    label: 'Your Profile',
+    icon: 'person.text.rectangle',
+    action: { kind: 'route', to: '/profile' },
+    needs: 'profile',
+  },
+  {
+    // docs/49 ASTRAL-140..146. The board draws this as a shortlist inside
+    // the extension (frame 18); in the app it is a screen of its own.
+    id: 'matches',
+    label: 'My Matches',
+    icon: 'heart.text.square',
+    action: { kind: 'route', to: '/matches' },
+    needs: 'matches',
   },
   {
     id: 'privacy',

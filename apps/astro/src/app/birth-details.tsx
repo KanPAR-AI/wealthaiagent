@@ -34,7 +34,7 @@
 // is also why the conversation it starts is already in the transcript by the
 // time the chat screen opens, rather than being re-fetched or re-sent.
 
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
@@ -65,6 +65,13 @@ import { tokens } from '@/theme';
  * transcript the user can scroll back through, and "cast my kundli" is what
  * somebody would actually say. The ENGINE decides what it needs from it; this
  * string does not name a field, a slot or a kind.
+ *
+ * The `opening` route param overrides it, and that is how ASTRAL-138's
+ * correction arrives: Profile hands over a sentence of INTENT ("I need to
+ * correct my birth time.") and this screen renders whatever the engine asks
+ * for in reply. A sentence, never a value — no route param of this app
+ * carries a birth fact, because a fact that travelled that way would have
+ * reached state without `reconcile` (INV-1).
  */
 const OPENING_TURN = "I'd like my birth chart.";
 
@@ -73,6 +80,7 @@ const WASH_WIDTH = 0.62;
 
 export default function BirthDetails() {
   const { width } = useWindowDimensions();
+  const { opening } = useLocalSearchParams<{ opening?: string }>();
   const [request, setRequest] = useState<InputRequestPayload | null>(null);
   const [prose, setProse] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -110,9 +118,9 @@ export default function BirthDetails() {
       } catch (e: any) {
         console.warn('[credits]', String(e?.message ?? e));
       }
-      await send(OPENING_TURN, []);
+      await send(opening?.trim() || OPENING_TURN, []);
     })();
-  }, [send]);
+  }, [send, opening]);
 
   // The reply, read out of the SHARED store rather than out of a promise
   // this screen owns — same message, same place the chat screen will read it
@@ -208,7 +216,9 @@ export default function BirthDetails() {
           // …and a tap on Continue while the keyboard is up must submit,
           // not just dismiss the keyboard and be swallowed.
           keyboardShouldPersistTaps="handled">
-          <Text style={s.title}>{tokens.copy.birthDetailsTitle}</Text>
+          <Text style={s.title}>
+            {opening ? tokens.copy.correctionTitle : tokens.copy.birthDetailsTitle}
+          </Text>
 
           {request ? (
             <>

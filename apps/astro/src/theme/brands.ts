@@ -22,6 +22,7 @@ const astro: BrandTokens = {
     // the resolver actually wants — a city, and enough to tell two of them
     // apart, which is exactly what the contested-place ask is about.
     birthDetailsTitle: "Let's Build\nYour Chart",
+    correctionTitle: 'Correct Your\nDetails',
     birthDetailsSubtitle: 'Accurate birth details help us deliver precise insights.',
     privacyFooter: 'Your data is private & secure',
     fieldHints: {
@@ -58,6 +59,9 @@ const astro: BrandTokens = {
       interactiveInk: '#ffffff',
     },
     danger: '#b3453e',
+    // The cosmic deep, carried under a sheet — the ceremonial ground doing
+    // the dimming rather than a neutral black nobody chose.
+    scrim: 'rgba(2, 6, 27, 0.45)',
     // The illustrated scene, tuned by rendering it (scratchpad scene2.png):
     // ridges and silhouette sit BELOW the sky's values so the glow carries.
     scene: {

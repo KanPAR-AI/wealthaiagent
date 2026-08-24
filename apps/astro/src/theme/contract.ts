@@ -34,6 +34,10 @@ export interface BrandTokens {
   copy: {
     /** the heading over the birth-details form (screen 2) */
     birthDetailsTitle: string;
+    /** …and over the same form when it was opened to CORRECT something
+     *  (docs/49 ASTRAL-138). "Let's Build Your Chart" over a correction is
+     *  the onboarding copy showing up in a settings flow. */
+    correctionTitle: string;
     /** the line under it */
     birthDetailsSubtitle: string;
     /** the reassurance the board puts at the foot of screen 2 */
@@ -58,6 +62,9 @@ export interface BrandTokens {
       interactiveInk: string;
     };
     danger: string;
+    /** The wash behind a modal sheet. A colour like any other: two screens
+     *  each picking their own "black at 40%" is two scrims. */
+    scrim: string;
     /** The screen-1 illustration's layers (drawn, not an asset). */
     scene: {
       ridgeFar: string; ridgeNear: string;

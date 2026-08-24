@@ -17,14 +17,42 @@ describe('the settings rows this build may render', () => {
   // relaxed. The new row is held to the same rule as the other five: it
   // exists because `reportProblem` is true, and turning that off removes it
   // (the case at the foot of this block).
-  it('ships the five rows that have something behind them', () => {
+  //
+  // AMENDED AGAIN 2026-08-24 by ASTRAL-135/140 (PH-18): "Your Profile" and
+  // "My Matches" join it, for the reason this whole file is about — the
+  // capability behind them now EXISTS. `GET /people/self` and
+  // `GET /people/matches` are live, so the rows point at reads that answer
+  // rather than at screens that would have had to recompute a chart to have
+  // anything to show. Same pin, same strictness, one more turn of the spec.
+  it('ships the rows that have something behind them', () => {
     expect(visibleRows().map((r) => r.label)).toEqual([
       'Account Settings',
+      'Your Profile',
+      'My Matches',
       'Privacy & Data',
       'Help & Support',
       'About',
       'Report a problem',
     ]);
+  });
+
+  it('ASTRAL-135 — Profile and Matches obey the same rule as every other row', () => {
+    // They are capabilities, not decorations: each exists because a
+    // user-scoped READ exists behind it (F23 — there was none before PH-6).
+    // Turning one off removes exactly that row.
+    expect(visibleRows({ ...CAPABILITIES, profile: false }).map((r) => r.id))
+      .toEqual(['account', 'matches', 'privacy', 'help', 'about', 'reportProblem']);
+    expect(visibleRows({ ...CAPABILITIES, matches: false }).map((r) => r.id))
+      .toEqual(['account', 'profile', 'privacy', 'help', 'about', 'reportProblem']);
+  });
+
+  it('ASTRAL-138 — Profile is not the birth-details EDITOR', () => {
+    // The two are different capabilities and the difference is INV-1: the
+    // profile screen shows facts and hands a correction to the chat carrier;
+    // `birthDetails` would be a row that writes one. Profile being on must
+    // never quietly turn that on.
+    expect(CAPABILITIES.profile).toBe(true);
+    expect(CAPABILITIES.birthDetails).toBe(false);
   });
 
   it('omits Birth Details, because the reconcile-routed editor does not exist', () => {
@@ -45,14 +73,15 @@ describe('the settings rows this build may render', () => {
     expect(after).toContain('birthDetails');
     // and it lands in the board's order, between Privacy and Help
     expect(after).toEqual([
-      'account', 'privacy', 'birthDetails', 'help', 'about', 'reportProblem',
+      'account', 'profile', 'matches', 'privacy', 'birthDetails', 'help',
+      'about', 'reportProblem',
     ]);
   });
 
   it('turning a capability off removes exactly that row', () => {
     const off: Capabilities = { ...CAPABILITIES, privacyAndData: false };
     expect(visibleRows(off).map((r) => r.id)).toEqual([
-      'account', 'help', 'about', 'reportProblem',
+      'account', 'profile', 'matches', 'help', 'about', 'reportProblem',
     ]);
   });
 

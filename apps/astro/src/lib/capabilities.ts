@@ -33,8 +33,36 @@ export interface Capabilities {
    * settings screen that writes birth details around `reconcile` is the
    * classic place the cascade gets broken (ASTRAL-39). The row is therefore
    * ABSENT rather than disabled — the honest form of "not yet".
+   *
+   * NOT the same thing as `profile` below, and the difference is the whole
+   * of ASTRAL-138: Profile shows the details and hands a CORRECTION to the
+   * chat carrier; it never writes one. A row that edited them here would be
+   * the second fact-writer INV-1 forbids.
    */
   birthDetails: boolean;
+
+  /**
+   * Your own profile: birth details with their provenance, and the stamped
+   * chart summary (docs/49 ASTRAL-135/136/137).
+   *
+   * TRUE since PH-6 shipped `GET /people/self` — the first user-scoped read
+   * in this product (F23). Before it existed this row could not have been
+   * turned on honestly: nothing could show a user their own chart outside
+   * the turn that computed it, so the screen would have had to recompute
+   * one, which is what ASTRAL-135 forbids. The capability IS the read.
+   */
+  profile: boolean;
+
+  /**
+   * The saved matches list (docs/49 ASTRAL-140..146).
+   *
+   * TRUE since `GET /people/matches` — matches are keyed to a PAIR of person
+   * ids and outlive the chat that computed them. Under the old shape (one
+   * `gun_milan_data` key, 24-hour TTL, overwritten by the next partner —
+   * F37) a "My Matches" row would have pointed at a list that could hold one
+   * entry until tomorrow.
+   */
+  matches: boolean;
   helpAndSupport: boolean;
   about: boolean;
   /**
@@ -69,6 +97,8 @@ export const CAPABILITIES: Capabilities = {
   credits: true,
   privacyAndData: true,
   birthDetails: false,
+  profile: true,
+  matches: true,
   helpAndSupport: true,
   about: true,
   reportProblem: true,
