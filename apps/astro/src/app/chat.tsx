@@ -69,7 +69,7 @@ const DATA_LANGUAGES = astralBlockRegistry.types();
  * ARRIVED — a chip that says "Tell me more" over an empty screen is an
  * affordance pointing at nothing.
  */
-const SUGGESTIONS = ['Yes, please', 'Tell me more', 'Another question'];
+const FALLBACK_SUGGESTIONS = ['Yes, please', 'Tell me more', 'Another question'];
 
 const WASH_HEIGHT = 132;
 /** how far across the header the corner bleed reaches — it must not touch the
@@ -89,8 +89,12 @@ export default function Chat() {
   const [answer, setAnswer] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>(FALLBACK_SUGGESTIONS);
   const [settled, setSettled] = useState(false);
   const chatIdRef = useRef<string | null>(null);
+  /** label → full message for engine-authored chips (a label is a chip; the
+   *  message is what actually gets sent, which may be longer). */
+  const suggestionMessages = useRef<Record<string, string>>({});
   const handleRef = useRef<AskHandle | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
   const [washWidth, setWashWidth] = useState(0);
@@ -115,9 +119,37 @@ export default function Chat() {
     setSettled(false);
     setBusy(true);
     try {
+      setSuggestions(FALLBACK_SUGGESTIONS);
       const handle = await ask(body, {
         chatId: chatIdRef.current,
         onDelta: setAnswer,
+        // The engine already writes contextual follow-ups for every reply
+        // (widget_action_tiles). Rendering the static three beside them was
+        // the "suggestion is not proper" the owner saw on-device: the chips
+        // are the engine's own, and the board's three only stand in when a
+        // reply carried none.
+        onWidget: (type, payload) => {
+          if (type !== 'widget_action_tiles') return;
+          try {
+            const actions = (payload as any)?.data?.actions;
+            const labels = Array.isArray(actions)
+              ? actions
+                  .map((a: any) => ({
+                    label: String(a?.label ?? ''),
+                    message: String(a?.message ?? a?.label ?? ''),
+                  }))
+                  .filter((a: { label: string }) => a.label)
+              : [];
+            if (labels.length) {
+              suggestionMessages.current = Object.fromEntries(
+                labels.map((a: { label: string; message: string }) => [a.label, a.message]),
+              );
+              setSuggestions(labels.map((a: { label: string }) => a.label).slice(0, 3));
+            }
+          } catch {
+            /* a malformed tile payload keeps the fallback chips */
+          }
+        },
       });
       handleRef.current = handle;
       chatIdRef.current = handle.chatId;
@@ -247,11 +279,11 @@ export default function Chat() {
 
           {settled && !busy ? (
             <View style={s.chips}>
-              {SUGGESTIONS.map((chip) => (
+              {suggestions.map((chip) => (
                 <Pressable
                   key={chip}
                   style={s.chip}
-                  onPress={() => void send(chip)}
+                  onPress={() => void send(suggestionMessages.current[chip] ?? chip)}
                   accessibilityRole="button"
                   accessibilityLabel={chip}
                 >

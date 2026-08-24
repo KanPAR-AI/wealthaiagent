@@ -93,6 +93,13 @@ export default function BirthDetails() {
             .trim(),
         );
         setRequest(parsed);
+        if (!parsed) {
+          // No block and no words: without this the spinner spins forever —
+          // the one state this screen's own comment says it avoids (Role-3).
+          setProse((p) =>
+            p || 'The reading did not come back as a form. Continue in chat and I will ask you there.',
+          );
+        }
         track('birth_details_ask', { fields: parsed ? parsed.fields.length : 0 });
       } catch (e: any) {
         if (!live) return;

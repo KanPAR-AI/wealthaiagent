@@ -421,7 +421,13 @@ export function InputRequestView({
   };
 
   /** a field is answered when it holds a value OR an explicit "I don't know" */
-  const answeredKey = (f: InputField) => f.key in values;
+  // A key whose value was typed then cleared is NOT answered — '' enabling
+  // Continue sent an empty place the engine then refused by name (Role-3).
+  // `null` stays answered: it is the deliberate "I don't know" sentinel
+  // (ASTRAL-87), not an empty string.
+  const answeredKey = (f: InputField) =>
+    f.key in values &&
+    (values[f.key] === null || String(values[f.key] ?? '').trim() !== '');
   const missingRequired = request.fields.filter((f) => f.required && !answeredKey(f));
 
   if (layout === 'page') {

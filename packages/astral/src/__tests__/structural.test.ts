@@ -556,3 +556,36 @@ describe('F28 — no template brand asset survives', () => {
     expect(appJson.expo.ios.icon).toBeUndefined();
   });
 });
+
+describe('no client-side geocoding (ASTRAL-57/69/96)', () => {
+  // The place of birth is resolved by the ENGINE, which can refuse an
+  // implausible match. A client-side geocoder or places-autocomplete
+  // library would resolve it optimistically on the phone — the exact
+  // failure the resolver's exit boundary exists to prevent. The comment in
+  // input-request.tsx promises this test; here it is.
+  const FORBIDDEN = /geocod|places-autocomplete|react-native-google-places|node-geocoder|opencage|mapbox|@googlemaps/i;
+  it('no workspace manifest carries a geocoding dependency', () => {
+    const manifests = [
+      'package.json',
+      'packages/astral/package.json',
+      'packages/astral-native/package.json',
+      'packages/core/package.json',
+      'apps/mobile/package.json',
+      'apps/astro/package.json',
+    ];
+    for (const m of manifests) {
+      const p = join(WORKSPACE, m);
+      let raw: string;
+      try {
+        raw = readFileSync(p, 'utf8');
+      } catch {
+        continue;
+      }
+      const deps = JSON.parse(raw);
+      const all = Object.keys({ ...deps.dependencies, ...deps.devDependencies });
+      const hits = all.filter((d) => FORBIDDEN.test(d));
+      expect({ manifest: m, hits }).toEqual({ manifest: m, hits: [] });
+    }
+  });
+});
+
