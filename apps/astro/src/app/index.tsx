@@ -24,7 +24,7 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import Svg from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -107,21 +107,12 @@ export default function Onboarding() {
         <View style={s.foot}>
           <Pressable style={s.cta} onPress={() => begin('/chat')}
             accessibilityRole="button" accessibilityLabel="Get Started">
-            {/* The board's CTA is a vertical gold gradient with a lighter rim,
-                not a flat fill — painted rather than approximated. */}
-            <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
-              <Defs>
-                <LinearGradient id="cta-fill" x1="0" y1="0" x2="0" y2="1">
-                  <Stop offset="0%" stopColor={tokens.gradients.goldCta.from} />
-                  <Stop offset="100%" stopColor={tokens.gradients.goldCta.to} />
-                </LinearGradient>
-              </Defs>
-              <Rect
-                width="100%" height="100%" rx={tokens.radius.button}
-                fill="url(#cta-fill)"
-                stroke={tokens.gradients.goldCta.rim} strokeWidth={1}
-              />
-            </Svg>
+            {/* Flat ceremonial fill, rim as a border: the board's vertical
+                gold gradient was painted in SVG here, but react-native-svg
+                composites its layer above sibling Text regardless of zIndex
+                (sim pass, defect A) — a gradient nobody can read the button
+                through is worse than a flat gold everyone can. The goldCta
+                gradient token still paints non-interactive art. */}
             <Text style={s.ctaText}>Get Started</Text>
           </Pressable>
 
@@ -175,12 +166,18 @@ const s = StyleSheet.create({
   foot: { alignItems: 'center', gap: t.space(4), paddingBottom: t.space(6), paddingHorizontal: t.space(6) },
   cta: {
     alignSelf: 'stretch',
+    backgroundColor: t.palette.accent.ceremonial,
+    borderColor: t.gradients.goldCta.rim,
+    borderWidth: 1,
     borderRadius: t.radius.button,
     paddingVertical: t.space(4),
     alignItems: 'center',
-    overflow: 'hidden',
   },
-  ctaText: { ...t.type.scale.body, color: t.palette.accent.ceremonialInk, fontWeight: '600' },
+  ctaText: {
+    ...t.type.scale.body,
+    color: t.palette.accent.ceremonialInk,
+    fontWeight: '600',
+  },
   login: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
   loginLink: { color: t.palette.ink.onCosmic, fontWeight: '700' },
 });

@@ -123,7 +123,7 @@ export default function Settings() {
         </Svg>
       </View>
 
-      <SafeAreaView style={s.fill} edges={['top']}>
+      <SafeAreaView style={s.overlay} edges={['top']}>
         {/* Cream, not gold, and no title: the "‹ Back · Profile" bar that
             shipped was invented — frame 12 has neither, and gold belongs to
             ceremony rather than to chrome. */}
@@ -277,6 +277,9 @@ function providerName(id: string | null): string {
 const t = tokens;
 const s = StyleSheet.create({
   fill: { flex: 1, backgroundColor: t.palette.paper.base },
+  // Transparent on purpose: this layer rides over the absolute cosmic
+  // header, and a paper background here erases the sky (sim pass, defect B).
+  overlay: { flex: 1 },
   header: {
     position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_HEIGHT,
     backgroundColor: t.palette.cosmic.deep,

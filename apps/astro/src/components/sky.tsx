@@ -218,9 +218,9 @@ export function CornerWash({
     <G>
       <Defs>
         <RadialGradient id={`${id}-corner`} cx="100%" cy="0%" r="75%">
-          <Stop offset="0%" stopColor={near.color} stopOpacity={0.72} />
-          <Stop offset="35%" stopColor={mid.color} stopOpacity={0.34} />
-          <Stop offset="70%" stopColor={far.color} stopOpacity={0.08} />
+          <Stop offset="0%" stopColor={near.color} stopOpacity={0.96} />
+          <Stop offset="40%" stopColor={mid.color} stopOpacity={0.5} />
+          <Stop offset="75%" stopColor={far.color} stopOpacity={0.1} />
           <Stop offset="100%" stopColor={far.color} stopOpacity={0} />
         </RadialGradient>
       </Defs>
