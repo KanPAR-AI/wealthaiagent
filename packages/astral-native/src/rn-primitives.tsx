@@ -289,6 +289,9 @@ function TimeWheel({ value, onChange, accessibilityLabel, testID }: TimeWheelPro
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 
+/** row height of a date column: 17pt text + 6pt padding either side */
+const DATE_ROW_HEIGHT = 29;
+
 function daysInMonth(year: number, month1: number): number {
   return new Date(year, month1, 0).getDate();
 }
@@ -312,6 +315,12 @@ function DateWheel({ value, onChange, minYear, maxYear, accessibilityLabel, test
   const days: number[] = [];
   for (let d = 1; d <= daysInMonth(year, month); d += 1) days.push(d);
 
+  // Each column opens ON its own selection rather than at the top of its
+  // list. Measured on the simulator: the year column runs from this year
+  // downwards, so an unscrolled wheel offered 2026 as the first birth year a
+  // user sees — and the value it would actually emit was 25 years down, out
+  // of sight. `contentOffset` is an initial position, not state: scrolling
+  // still does whatever the finger says.
   const column = (
     items: number[],
     selected: number,
@@ -320,7 +329,13 @@ function DateWheel({ value, onChange, minYear, maxYear, accessibilityLabel, test
     width: number,
     id: string,
   ) => (
-    <ScrollView style={{ height: 132, width }} testID={`${testID}-${id}`}>
+    <ScrollView
+      style={{ height: 132, width }}
+      testID={`${testID}-${id}`}
+      contentOffset={{
+        x: 0,
+        y: Math.max(0, items.indexOf(selected) - 1) * DATE_ROW_HEIGHT,
+      }}>
       {items.map((n) => (
         <RNPressable
           key={n}

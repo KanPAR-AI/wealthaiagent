@@ -15,9 +15,11 @@
 // the beaded ring and the warm horizon that keeps the lower half from reading
 // as an empty rectangle. When the artwork lands it drops in behind these.
 //
-// A returning user skips the ceremony: the flag flips the first time they
-// proceed, and the entry route becomes a redirect. The chart-reveal arc
-// (details → cast → reveal) arrives with PH-11/12's birth-details form.
+// A returning user skips the ceremony AND the form: the flag flips the first
+// time they proceed, and the entry route becomes a redirect straight to chat.
+// "Get Started" now opens screen 2 (docs/49 ASTRAL-104) rather than the chat —
+// the details come first, and the chart streams into the conversation behind
+// them.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -68,7 +70,7 @@ export default function Onboarding() {
     }).catch(() => setChecked(true));
   }, []);
 
-  const begin = (to: '/chat' | '/settings') => {
+  const begin = (to: '/birth-details' | '/settings') => {
     void AsyncStorage.setItem(ENTERED_KEY, '1');
     track('onboarding_proceed', { to });
     router.replace(to);
@@ -122,7 +124,7 @@ export default function Onboarding() {
         </View>
 
         <View style={s.foot}>
-          <Pressable style={s.cta} onPress={() => begin('/chat')}
+          <Pressable style={s.cta} onPress={() => begin('/birth-details')}
             accessibilityRole="button" accessibilityLabel="Get Started">
             {/* Flat ceremonial fill, rim as a border: the board's vertical
                 gold gradient was painted in SVG here, but react-native-svg

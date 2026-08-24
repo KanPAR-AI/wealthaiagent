@@ -29,7 +29,7 @@
  * echo, ever.
  */
 
-import { formatClockTime } from './format';
+import { formatClockTime, formatIsoDate } from './format';
 
 export type InputFieldKind = 'date' | 'time' | 'place' | 'choice' | 'text' | 'image';
 
@@ -150,6 +150,12 @@ function displayValue(field: InputField, value: InputValue): string {
   // nothing they can dispute or correct.
   if (field.kind === 'image') return 'photo attached';
   if (field.kind === 'time') return formatClockTime(value);
+  // A date goes out ISO on the wire and comes back as a SENTENCE in the
+  // transcript. Seen on the simulator: the echo read "Date of birth:
+  // 1990-08-02", which is the machine's form of the one field this widget
+  // exists to disambiguate — and the user is meant to be able to read their
+  // own answer back and dispute it (ASTRAL-89).
+  if (field.kind === 'date') return formatIsoDate(value) ?? value;
   if (field.kind === 'choice') {
     const hit = field.options.find((o) => o.value === value);
     return hit ? hit.label : value;

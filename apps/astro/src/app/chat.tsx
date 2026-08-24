@@ -26,7 +26,7 @@
 // draws nothing and says so once, by name, in the console. What never
 // happens is raw JSON on a user's screen.
 
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -77,6 +77,13 @@ const WASH_HEIGHT = 132;
 const WASH_WIDTH = 0.45;
 
 export default function Chat() {
+  // Screen 2 (docs/49 ASTRAL-104) opens the chat, renders the engine's
+  // `input_request` full-screen, and hands the composed answer here rather
+  // than sending it: this screen owns the ONE send path, and it is the only
+  // surface that can show the echo and the chart streaming back. `chatId`
+  // carries the conversation the form already started — without it the answer
+  // would land in a NEW chat, where the ask it answers never happened.
+  const handoff = useLocalSearchParams<{ chatId?: string; pending?: string }>();
   const [question, setQuestion] = useState('');
   const [asked, setAsked] = useState<string | null>(null);
   const [answer, setAnswer] = useState('');
@@ -123,6 +130,18 @@ export default function Chat() {
       setBusy(false);
     }
   }, [busy]);
+
+  // The handed-off turn, sent exactly once. `sentHandoff` guards the second
+  // render rather than the second visit: expo-router keeps the params on the
+  // route, so a re-render must not re-post the same answer.
+  const sentHandoff = useRef(false);
+  useEffect(() => {
+    if (sentHandoff.current) return;
+    if (handoff.chatId) chatIdRef.current = handoff.chatId;
+    if (!handoff.pending) return;
+    sentHandoff.current = true;
+    void send(handoff.pending);
+  }, [handoff.chatId, handoff.pending, send]);
 
   // A widget answer arrives on the host channel `lib/astral-host.ts` installs
   // — the analogue of mobile's shipped quick-reply event — and goes out

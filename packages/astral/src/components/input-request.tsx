@@ -66,6 +66,16 @@ export interface InputRequestViewProps extends AstralRenderProps {
   /** the label on the last step's button ("Done" by default) */
   submitLabel?: string;
   /**
+   * A small glyph per field KIND, drawn by the host and shown beside the
+   * field's label in the `page` layout (the board's frame 2 puts a calendar,
+   * a clock and a pin on its three rows).
+   *
+   * The host draws them because an icon set is a brand asset and this package
+   * has no icons, no font and no opinion about either. Absent is fine: the
+   * form is complete without them.
+   */
+  fieldIcons?: Record<string, ReactNode>;
+  /**
    * `page` renders every field at once under one heading — the full-screen
    * form of docs/49 ASTRAL-104's screen 2. It is the SAME component, the same
    * fields and the same carrier with different chrome; a screen that drew its
@@ -180,16 +190,12 @@ function DateField({ ui, theme, field, value, onChange, hint }: FieldRenderConte
  * (ASTRAL-104's amendment).
  */
 function PlaceField(ctx: FieldRenderContext) {
-  const { ui, theme, hint } = ctx;
-  const { Box } = ui;
-  return (
-    <Box style={{ gap: 6 }}>
-      {TextField(ctx)}
-      {hint ? (
-        <ui.Text style={{ fontSize: 12, color: theme.textMuted }}>{hint}</ui.Text>
-      ) : null}
-    </Box>
-  );
+  // The hint is the PLACEHOLDER and nothing else. It was briefly both — a
+  // placeholder and a caption under it — and the simulator showed the same
+  // sentence twice, three lines apart. The board carries two different
+  // strings there (an example and a helper); one brand token is one string,
+  // and saying it twice is not two strings.
+  return TextField(ctx);
 }
 
 /**
@@ -381,6 +387,7 @@ export function InputRequestView({
   warn,
   hints,
   submitLabel,
+  fieldIcons,
   layout = 'card',
 }: InputRequestViewProps) {
   const { Box, Pressable, Text } = ui;
@@ -448,12 +455,15 @@ export function InputRequestView({
           const render = rendererFor(f.kind, warn);
           return (
             <Box key={f.key} style={{ gap: 8 }}>
-              <Text
-                testID={`input-request-label-${f.key}`}
-                style={{ fontSize: 14, fontWeight: '600', color: theme.text }}
-              >
-                {f.label}
-              </Text>
+              <Box style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text
+                  testID={`input-request-label-${f.key}`}
+                  style={{ fontSize: 14, fontWeight: '600', color: theme.text }}
+                >
+                  {f.label}
+                </Text>
+                {fieldIcons?.[f.kind] ?? null}
+              </Box>
               {render({
                 ui,
                 theme,
@@ -464,13 +474,18 @@ export function InputRequestView({
                 hint: hintFor(f),
               })}
               {f.allowUnknown ? (
-                <Button
-                  ui={ui}
-                  theme={theme}
-                  label="I don't know"
-                  testID={`input-request-unknown-${f.key}`}
-                  onPress={() => setValue(f.key, null)}
-                />
+                // Hugs its content: full-width it reads as a second primary
+                // action competing with Continue, which is the opposite of
+                // what it is (ASTRAL-87 — a way out, not a call to action).
+                <Box style={{ alignSelf: 'flex-start' }}>
+                  <Button
+                    ui={ui}
+                    theme={theme}
+                    label={values[f.key] === null ? "✓ I don't know" : "I don't know"}
+                    testID={`input-request-unknown-${f.key}`}
+                    onPress={() => setValue(f.key, null)}
+                  />
+                </Box>
               ) : null}
             </Box>
           );

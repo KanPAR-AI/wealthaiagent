@@ -201,9 +201,12 @@ describe('ASTRAL-104 — the same block, full-screen (the `page` layout)', () =>
     expect(body.ask).toBe('required_slots_missing');
     expect(body.values).toEqual({ dob: '1990-08-02', tob: '23:45', pob: 'Ranchi' });
     // …and the echo is presentation: strip the fence and NOTHING is left to
-    // parse, which is the property the whole feature exists for (F18).
+    // parse, which is the property the whole feature exists for (F18). It is
+    // also a SENTENCE — the simulator showed "Date of birth: 1990-08-02" in
+    // the transcript, which is the machine's form of the very field the date
+    // picker exists to disambiguate.
     expect(sent[0].split('```')[0].trim()).toBe(
-      'Date of birth: 1990-08-02 · Birth time: 11:45 pm · Birth place: Ranchi',
+      'Date of birth: 2 Aug 1990 · Birth time: 11:45 pm · Birth place: Ranchi',
     );
   });
 
