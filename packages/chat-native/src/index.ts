@@ -34,3 +34,23 @@ export type { ChatHost, ChatUploadAsset } from './host';
 
 export { useSendMessage, type SendState } from './use-send-message';
 export { loadChatIntoStore } from './load-chat';
+
+// ── the surface (all React Native; the lifecycle above is not) ─────────────
+export { ChatSurface, type ChatSurfaceProps } from './chat-surface';
+export { MessageList, type MessageListProps } from './message-list';
+export {
+  ChatText,
+  MessageBubble,
+  chatMarkdownStyles,
+  type MessageBubbleProps,
+} from './message-bubble';
+export { ChatInput, type ChatInputProps } from './chat-input';
+export {
+  Chip,
+  MultiSelect,
+  TileRow,
+  sendFromWidget,
+  sharedWidgetHandlers,
+  type ChatWidgetHandler,
+} from './widgets';
+export type { ChatTheme, ChatTypeStep } from './theme';

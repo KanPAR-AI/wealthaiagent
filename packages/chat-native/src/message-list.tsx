@@ -1,6 +1,7 @@
-// Chat message list on FlashList v2.
+// The ONE transcript (docs/49 ASTRAL-105).
 //
-// The ChatGPT-scroll contract (quality bar):
+// Moved out of `apps/mobile/src/components/chat/message-list.tsx`. FlashList
+// v2, and the ChatGPT-scroll contract (the quality bar):
 //   - render pinned to the bottom on entry (startRenderingFromBottom)
 //   - autoscroll as streamed tokens grow the last message, BUT ONLY when
 //     the user is already near the bottom (autoscrollToBottomThreshold) —
@@ -11,17 +12,37 @@
 //     not id: the optimistic local id gets swapped for the backend uuid
 //     moments later and must not retrigger the scroll.
 //   - interactive keyboard dismiss (drag the list down over the keyboard)
+//
+// This is the half of "a real transcript" that `apps/astro` did not have at
+// all: its chat screen held ONE asked string and ONE answer string, so the
+// previous turn was gone the moment the next one started (ASTRAL-106).
 
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { Keyboard } from 'react-native';
-import { useChatStore, type Message } from '@wealthai/core';
+import { useChatStore, type Message, type Widget } from '@wealthai/core';
 
 import { MessageBubble } from './message-bubble';
+import type { ChatTheme } from './theme';
 
 const EMPTY: Message[] = [];
 
-export function MessageList({ chatId }: { chatId: string }) {
+export interface MessageListProps {
+  chatId: string;
+  theme: ChatTheme;
+  /** (b) the surface's widget set — passed straight through to the bubble. */
+  renderWidget?: (widget: Widget, key: string) => ReactNode;
+  dataLanguages?: string[];
+  renderText?: (text: string, key: string, theme: ChatTheme) => ReactNode;
+}
+
+export function MessageList({
+  chatId,
+  theme,
+  renderWidget,
+  dataLanguages,
+  renderText,
+}: MessageListProps) {
   // Subscribe narrowly: only this chat's messages array. The store swaps
   // the array reference on every mutation, so FlashList sees new data.
   const messages = useChatStore((s) => s.chats[chatId]?.messages ?? EMPTY);
@@ -68,8 +89,16 @@ export function MessageList({ chatId }: { chatId: string }) {
   }, []);
 
   const renderItem = useCallback(
-    ({ item }: { item: Message }) => <MessageBubble message={item} />,
-    [],
+    ({ item }: { item: Message }) => (
+      <MessageBubble
+        message={item}
+        theme={theme}
+        renderWidget={renderWidget}
+        dataLanguages={dataLanguages}
+        renderText={renderText}
+      />
+    ),
+    [theme, renderWidget, dataLanguages, renderText],
   );
 
   return (

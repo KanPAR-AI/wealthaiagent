@@ -6,22 +6,28 @@
 // same chat client, and the same backend the web app uses.
 
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Keyboard, Pressable, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import Markdown from 'react-native-markdown-display';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getPlatform, useChatStore, type MessageFile } from '@wealthai/core';
-import { useSendMessage } from '@wealthai/chat-native';
+import { getPlatform, useChatStore, type Widget } from '@wealthai/core';
+import {
+  ChatSurface,
+  chatMarkdownStyles,
+  useSendMessage,
+  type ChatTheme,
+} from '@wealthai/chat-native';
 
 import { DEFAULT_TILES, getHomeSuggestions, type HomeTile } from '@/services/home-service';
 import { track } from '@/lib/analytics';
 import { BugReportSheet } from '@/components/bug-report-sheet';
-import { ChatInput } from '@/components/chat/chat-input';
 import { ChatDrawer } from '@/components/drawer/chat-drawer';
-import { RETRY_EVENT } from '@/components/chat/message-bubble';
-import { QUICK_REPLY_EVENT } from '@/components/chat/widget-view';
-import { MessageList } from '@/components/chat/message-list';
+import { VideoEmbed } from '@/components/chat/video-embed';
+import { WidgetView } from '@/components/chat/widget-view';
+import { QUICK_REPLY_EVENT, RETRY_EVENT } from '@/lib/events';
+import { splitVideoSegments } from '@/lib/video-links';
+import { useChatTheme } from '@/lib/chat-theme';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors, Spacing } from '@/constants/theme';
@@ -38,6 +44,31 @@ export default function ChatScreen() {
   const setChatId = useUiStore((st) => st.setCurrentChatId);
   const newChat = useUiStore((st) => st.newChat);
   const { send, cancel, isSending, isCreatingChat } = useSendMessage(chatId, setChatId);
+  // (a) this app's values for the shared surface's token contract.
+  const chatTheme = useChatTheme();
+  // (b) this app's widget set.
+  const renderWidget = useCallback(
+    (widget: Widget, key: string) => <WidgetView key={key} widget={widget} theme={chatTheme} />,
+    [chatTheme],
+  );
+  // Corpus-media citations become inline players; the markdown link alone
+  // would dump the user into a raw browser stream (web parity:
+  // response.tsx embedCorpusMediaLinks). apps/astro has no corpus media, so
+  // this renderer is this app's and arrives through the seam rather than
+  // living in the shared bubble.
+  const renderText = useCallback(
+    (text: string, key: string, theme: ChatTheme) =>
+      splitVideoSegments(text).map((seg, j) =>
+        seg.kind === 'video' ? (
+          <VideoEmbed key={`${key}v${j}`} segment={seg} />
+        ) : (
+          <Markdown key={`${key}s${j}`} style={chatMarkdownStyles(theme)}>
+            {seg.text}
+          </Markdown>
+        ),
+      ),
+    [],
+  );
   const selectedAgent = useChatStore((st) => st.selectedAgent);
   const setSelectedAgent = useChatStore((st) => st.setSelectedAgent);
   const modelTier = useChatStore((st) => st.selectedModelTier) || 'auto';
@@ -177,19 +208,23 @@ export default function ChatScreen() {
           )}
         </Pressable>
 
-        <KeyboardAvoidingView behavior="padding" style={styles.body}>
-          {chatId ? (
-            <MessageList chatId={chatId} />
-          ) : busy ? (
-            // New-chat creation in flight — show immediate feedback instead of
-            // the stale suggestions screen (bug e6797e57: looked frozen).
+        <ChatSurface
+          chatId={chatId}
+          theme={chatTheme}
+          busy={busy}
+          onSend={send}
+          onStop={cancel}
+          renderWidget={renderWidget}
+          renderText={renderText}
+          pending={
             <View style={[styles.empty, { justifyContent: 'center' }]}>
               <ActivityIndicator color={colors.textSecondary} />
               <ThemedText type="small" themeColor="textSecondary" style={{ marginTop: Spacing.two }}>
                 Starting your chat…
               </ThemedText>
             </View>
-          ) : (
+          }
+          empty={
             <View style={styles.empty}>
               <ThemedText type="title" style={styles.emptyTitle}>
                 How can I help you today?
@@ -213,10 +248,9 @@ export default function ChatScreen() {
                 ))}
               </View>
             </View>
-          )}
-          {standaloneMode && msgCount > 0 && <StandaloneBadge />}
-          <ChatInput onSend={send} onStop={cancel} busy={busy} />
-        </KeyboardAvoidingView>
+          }
+          belowTranscript={standaloneMode && msgCount > 0 ? <StandaloneBadge /> : null}
+        />
       </SafeAreaView>
       <ChatDrawer
         open={drawerOpen}

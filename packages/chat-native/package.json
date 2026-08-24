@@ -2,7 +2,7 @@
   "name": "@wealthai/chat-native",
   "version": "0.1.0",
   "private": true,
-  "description": "The ONE React Native chat surface (docs/49 ASTRAL-105, amended by the owner ruling of 2026-08-24). The message lifecycle, the transcript, the bubble and the composer live here rather than inside one app, so `apps/mobile` and `apps/astro` are the SAME chat differing only in (a) brand tokens and copy, (b) the widget/block set they register, and (c) whether the platform router runs at all. Everything app-local the surface needs — a token, an upload, a transcription, an analytics counter, the routing decision — is INJECTED through `installChatHost`, never imported from `@/lib/*` (F22's lesson, ASTRAL-99's pattern).",
+  "description": "The ONE React Native chat surface (docs/49 ASTRAL-105, amended by the owner ruling of 2026-08-24). The message lifecycle, the transcript, the bubble and the composer live here rather than inside one app, so `apps/mobile` and `apps/astro` are the SAME chat differing only in (a) brand tokens and copy, (b) the widget/block set they register, and (c) whether the platform router runs at all. Everything app-local the surface needs \u2014 a token, an upload, a transcription, an analytics counter, the routing decision \u2014 is INJECTED through `installChatHost`, never imported from `@/lib/*` (F22's lesson, ASTRAL-99's pattern).",
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
@@ -10,17 +10,18 @@
     ".": "./src/index.ts"
   },
   "peerDependencies": {
-    "react": ">=18",
-    "react-native": ">=0.76",
     "@shopify/flash-list": ">=2",
-    "react-native-markdown-display": ">=7",
+    "@wealthai/astral": "*",
+    "@wealthai/core": "*",
     "expo-audio": "*",
     "expo-document-picker": "*",
     "expo-haptics": "*",
     "expo-image-manipulator": "*",
     "expo-image-picker": "*",
-    "@wealthai/astral": "*",
-    "@wealthai/core": "*"
+    "react": ">=18",
+    "react-native": ">=0.76",
+    "react-native-keyboard-controller": "*",
+    "react-native-markdown-display": ">=7"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
