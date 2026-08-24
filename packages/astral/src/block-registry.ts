@@ -111,3 +111,75 @@ export function readDataBlock(lang: string | undefined, raw: string): { type: st
   if (typeof type !== 'string' || type !== lang) return null;
   return { type, value: parsed };
 }
+
+/**
+ * One text run, or one data block, in the order the engine streamed them.
+ *
+ * `value` is `null` for a block whose fence has not closed yet — see
+ * `splitDataBlocks`. Every renderer already treats an unparseable payload as
+ * "render nothing", so a not-yet-complete block needs no special case
+ * downstream: it simply draws nothing until the closing fence arrives.
+ */
+export type StreamSegment =
+  | { kind: 'text'; text: string }
+  | { kind: 'block'; type: string; value: unknown };
+
+const FENCE_RE = /```([a-z_][a-z0-9_]*)[ \t]*\r?\n([\s\S]*?)```/g;
+/** an opening fence with no closer after it — the tail of a live stream */
+const OPEN_FENCE_RE = /```([a-z_][a-z0-9_]*)[ \t]*\r?\n([\s\S]*)$/;
+
+/**
+ * Split assistant text into its text runs and its DATA blocks, in stream
+ * order (docs/49 ASTRAL-20, ASTRAL-106).
+ *
+ * Which fences are data is `readDataBlock`'s rule and only that rule: the
+ * fence language must equal the JSON body's own `type`. An ordinary ```json
+ * or ```python fence is left in the text where it belongs.
+ *
+ * ── the second clause, and why it is not cosmetic ──────────────────────────
+ *
+ * A block arrives one chunk at a time, so for the seconds between the opening
+ * fence and the closing one the body is a half-written JSON object sitting at
+ * the end of the text. Rendered as markdown, that is raw JSON scrolling past
+ * the user — which is the exact defect this function exists to remove, just
+ * during the stream instead of after it.
+ *
+ * `dataLanguages` closes that window. A TRAILING unterminated fence whose
+ * language is one of them is emitted as a block with a null value, so it
+ * draws nothing until it closes. Callers that pass nothing get the settled
+ * behaviour unchanged, which is why the existing host can adopt this function
+ * without a behaviour change.
+ *
+ * The list is asked for rather than restated here: a second hand-kept list of
+ * block types is how one of them goes stale.
+ */
+export function splitDataBlocks(
+  text: string,
+  dataLanguages: readonly string[] = [],
+): StreamSegment[] {
+  if (!text) return [];
+  const out: StreamSegment[] = [];
+  let last = 0;
+  FENCE_RE.lastIndex = 0;
+  for (const m of text.matchAll(FENCE_RE)) {
+    const [whole, lang, body] = m;
+    const start = m.index ?? 0;
+    const data = readDataBlock(lang, body.trim());
+    if (!data) continue;
+    if (start > last) out.push({ kind: 'text', text: text.slice(last, start) });
+    out.push({ kind: 'block', type: data.type, value: data.value });
+    last = start + whole.length;
+  }
+  const tail = text.slice(last);
+  if (tail) {
+    const open = dataLanguages.length ? OPEN_FENCE_RE.exec(tail) : null;
+    if (open && dataLanguages.indexOf(open[1]) !== -1) {
+      const before = tail.slice(0, open.index);
+      if (before) out.push({ kind: 'text', text: before });
+      out.push({ kind: 'block', type: open[1], value: null });
+    } else {
+      out.push({ kind: 'text', text: tail });
+    }
+  }
+  return out;
+}

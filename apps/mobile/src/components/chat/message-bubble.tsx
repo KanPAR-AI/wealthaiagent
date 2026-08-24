@@ -11,7 +11,7 @@
 import { memo, useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import Markdown from 'react-native-markdown-display';
-import { readDataBlock, stripInputResponse } from '@wealthai/astral';
+import { splitDataBlocks, stripInputResponse } from '@wealthai/astral';
 import type { ContentBlock, Message } from '@wealthai/core';
 
 import { ThemedText } from '@/components/themed-text';
@@ -44,35 +44,30 @@ function AuthImage({ uri, style, onError }: { uri: string; style: any; onError?:
 
 // ```some_widget_type\n{...json...}\n``` → widget block.
 //
-// "Is this fence data?" is decided by `readDataBlock` from @wealthai/astral,
-// the SAME rule web uses (docs/49 ASTRAL-20): the fence language must equal
-// the JSON body's own `type` field, which is the backend's convention for
-// every data block it emits (natal_chart, match_report, muhurta_results,
-// palm_*, bedtime_video — all verified against the emitters).
+// "Is this fence data?" is decided by `splitDataBlocks` from @wealthai/astral
+// — the SAME rule web uses and the same one `apps/astro` uses (docs/49
+// ASTRAL-20): the fence language must equal the JSON body's own `type` field,
+// which is the backend's convention for every data block it emits
+// (natal_chart, match_report, muhurta_results, palm_*, bedtime_video — all
+// verified against the emitters).
 //
 // Sharing the rule fixes a small mobile-only wart: previously ANY fenced JSON
 // object became a widget, so an ordinary ```json fence turned into a
 // "json — interactive view coming to mobile soon" chip instead of rendering
 // as code the way it does on web. Now it stays text.
-const FENCE_RE = /```([a-z_][a-z0-9_]*)\s*\n([\s\S]*?)```/g;
-
+//
+// No `dataLanguages` argument on purpose: that opt-in withholds a trailing
+// HALF-WRITTEN fence during a stream, and this surface's behaviour is
+// deliberately unchanged by the move to the shared splitter.
 function splitFencedWidgets(block: ContentBlock): ContentBlock[] {
   if (block.type !== 'text') return [block];
-  const text = block.content;
-  const out: ContentBlock[] = [];
-  let last = 0;
-  for (const m of text.matchAll(FENCE_RE)) {
-    const [whole, lang, body] = m;
-    const start = m.index ?? 0;
-    const data = readDataBlock(lang, body.trim());
-    if (!data) continue;
-    if (start > last) out.push({ type: 'text', content: text.slice(last, start) });
-    out.push({ type: 'widget', widget: data.value as any });
-    last = start + whole.length;
-  }
-  if (last === 0) return [block];
-  if (last < text.length) out.push({ type: 'text', content: text.slice(last) });
-  return out;
+  const segments = splitDataBlocks(block.content);
+  if (!segments.some((s) => s.kind === 'block')) return [block];
+  return segments.map((s) =>
+    s.kind === 'block'
+      ? ({ type: 'widget', widget: s.value as any } as ContentBlock)
+      : ({ type: 'text', content: s.text } as ContentBlock),
+  );
 }
 
 export const MessageBubble = memo(function MessageBubble({ message }: { message: Message }) {

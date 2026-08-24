@@ -25,7 +25,7 @@ import { useState, type ReactElement } from 'react';
 import { Pressable, StyleSheet, useColorScheme, View } from 'react-native';
 import { getPlatform, type Widget } from '@wealthai/core';
 
-import { AstralBlock } from '@/components/astral/astral-block';
+import { AstralBlock } from '@wealthai/astral-native';
 
 import { ChartWidget, TableWidget } from '@/components/chat/chart-widgets';
 import { OnboardingForm } from '@/components/chat/onboarding-form';

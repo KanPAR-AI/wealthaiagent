@@ -1,14 +1,21 @@
 /**
- * The React Native adapter for `@wealthai/astral` (docs/49 ASTRAL-18).
+ * The React Native adapter for `@wealthai/astral` (docs/49 ASTRAL-18/99).
  *
  * Counterpart to `wealthaiagent/src/components/astral/dom-primitives.tsx`.
  * Between them, ONE chart implementation and ONE scorecard implementation
- * serve the web app, the 380 px AstroMatch extension panel and this app. This
- * file knows nothing about kootas, grahas or muhurtas — it maps a dozen style
- * keys onto `View`, `Text` and `react-native-svg`, and nothing else.
+ * serve the web app, the 380 px AstroMatch extension panel and BOTH native
+ * apps. This file knows nothing about kootas, grahas or muhurtas — it maps a
+ * dozen style keys onto `View`, `Text` and `react-native-svg`, and nothing
+ * else.
  *
  * Keep it that way. The moment domain rendering appears here, the workspace
  * has two scorecards and ASTRAL-18 is broken.
+ *
+ * It lives in a PACKAGE rather than in an app because it used to live in
+ * `apps/mobile` and import `@/lib/auth` and `@/lib/upload` — and `@/*` maps
+ * to `./src/*` in both apps, so copying it into the second app would have
+ * compiled rather than failed (F22). The two capabilities it needs now
+ * arrive through `getAstralHost()`.
  */
 
 import { useState } from 'react';
@@ -41,8 +48,7 @@ import {
 } from 'react-native';
 import Svg2, { Circle, G, Line, Rect, Text as SvgTextEl } from 'react-native-svg';
 
-import { getToken } from '@/lib/auth';
-import { uploadFileNative } from '@/lib/upload';
+import { getAstralHost } from './host';
 
 function Box({ style, testID, children }: BoxProps) {
   return (
@@ -262,13 +268,20 @@ function TimeWheel({ value, onChange, accessibilityLabel, testID }: TimeWheelPro
 /**
  * A photo slot, on the device (bug 8dc95a6a).
  *
- * Both halves are the ones the composer already uses and neither is
- * reinvented: `expo-image-picker` for the library/camera sheet (the
- * `pickImage` path in `chat-input.tsx`) and `uploadFileNative` for the
- * streaming multipart upload (`lib/upload.ts`, which documents the three
- * FormData dead ends on SDK 57). What arrives back is a URL; the shared
- * `fileIdFromUrl` turns it into the id the engine's `image` field accepts,
- * because that field REFUSES a URL rather than coercing one.
+ * The picking half is `expo-image-picker`, the same sheet the composer
+ * already uses. The uploading half belongs to the HOST: it is a native
+ * multipart upload with three documented SDK-57 dead ends behind it
+ * (`apps/mobile/src/lib/upload.ts`), and it is exactly the kind of app-local
+ * capability F22 says must not be imported across an app boundary. What
+ * arrives back is a URL; the shared `fileIdFromUrl` turns it into the id the
+ * engine's `image` field accepts, because that field REFUSES a URL rather
+ * than coercing one.
+ *
+ * Two refusals here, both VISIBLE, neither silent:
+ *   - a host with no upload capability (`apps/astro` today) says so;
+ *   - a null token — the case mobile's `Promise<string | null>` carries and
+ *     a narrower contract would have erased — is an honest refusal to
+ *     upload, never an unauthenticated request.
  *
  * A failure is SHOWN, never swallowed — a control that looks the same
  * before and after a tap is how the same hand gets sent twice.
@@ -312,7 +325,11 @@ function ImagePicker({
     setPreview(asset.uri);          // instant feedback, before the upload
     setBusy(true);
     try {
-      const token = await getToken();
+      const host = getAstralHost();
+      if (!host.upload) {
+        throw new Error('This app cannot attach photos yet.');
+      }
+      const token = await host.getToken();
       if (!token) throw new Error('Not signed in');
       // Downscale before uploading. A full-res palm photo is several MB and
       // uploads crawl on a slow or LAN connection (bug af85427f, solved the
@@ -331,7 +348,7 @@ function ImagePicker({
           /* keep the original on any manipulation failure */
         }
       }
-      const uploaded = await uploadFileNative(token, {
+      const uploaded = await host.upload(token, {
         uri,
         name: asset.fileName || `palm_${Date.now()}.jpg`,
         type: mime,

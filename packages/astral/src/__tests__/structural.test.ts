@@ -12,8 +12,46 @@ import { readdirSync, readFileSync, statSync } from 'fs';
 import { join, relative, sep } from 'path';
 
 const WORKSPACE = join(__dirname, '..', '..', '..', '..');
-const SEARCH_ROOTS = ['src', 'packages', 'apps/mobile/src', 'apps/astro/src'];
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'coverage', 'ios', 'android', '.expo']);
+
+/**
+ * The search roots are DERIVED from the workspace globs, not listed
+ * (docs/49 ASTRAL-100, from F20).
+ *
+ * The listed version named three roots and `apps/astro/src` was not one of
+ * them, so every guarantee below — one scorecard, one diamond geometry, one
+ * `ringDash`, one input widget, one `input_response` carrier, renderers
+ * derive nothing — was unenforced inside the app the S13 rows are about. A
+ * second scorecard copied there was green.
+ *
+ * Adding one string to the array would have reproduced the defect for the
+ * next workspace member, and D10 has already decided there will be one
+ * (Jyotish AI, ASTRAL-110). So the globs in `package.json` are expanded
+ * here instead: a package or app created tomorrow is covered the day it
+ * exists rather than the day somebody remembers.
+ *
+ * `src` is the web app, which sits at the repo root and is not a workspace
+ * member — it is the one root that has to be named.
+ */
+function workspaceMembers(): string[] {
+  const globs: string[] = JSON.parse(
+    readFileSync(join(WORKSPACE, 'package.json'), 'utf8'),
+  ).workspaces ?? [];
+  const members: string[] = [];
+  for (const glob of globs) {
+    const [parent, star] = glob.split('/');
+    if (star !== '*') throw new Error(`unhandled workspace glob ${glob}`);
+    for (const entry of readdirSync(join(WORKSPACE, parent)).sort()) {
+      if (entry.startsWith('.')) continue;
+      if (!statSync(join(WORKSPACE, parent, entry)).isDirectory()) continue;
+      members.push(`${parent}/${entry}`);
+    }
+  }
+  return members;
+}
+
+const WORKSPACE_MEMBERS = workspaceMembers();
+const SEARCH_ROOTS = ['src', ...WORKSPACE_MEMBERS];
 
 function walk(dir: string, out: string[] = []): string[] {
   let entries: string[];
@@ -33,6 +71,24 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 const ALL_FILES = SEARCH_ROOTS.flatMap((root) => walk(join(WORKSPACE, root)));
+
+/**
+ * The two per-platform primitive adapters and the two block hosts.
+ *
+ * These are `readFileSync` targets, so a move that does not update them
+ * THROWS rather than passing quietly — which is the desired loudness, and is
+ * how ASTRAL-99's move announced itself. The React Native pair now sits in
+ * `packages/astral-native` rather than inside `apps/mobile`: the assertions
+ * about them moved WITH the files instead of being dropped in the move.
+ */
+const ADAPTERS = [
+  'src/components/astral/dom-primitives.tsx',
+  'packages/astral-native/src/rn-primitives.tsx',
+];
+const HOSTS = [
+  'src/components/astral/astral-block.tsx',
+  'packages/astral-native/src/astral-block.tsx',
+];
 const rel = (f: string) => relative(WORKSPACE, f).split(sep).join('/');
 const isTest = (f: string) => /__tests__|\.test\.tsx?$/.test(f);
 const isFixture = (f: string) => rel(f).includes('/fixtures/');
@@ -67,6 +123,20 @@ describe('the workspace was actually searched', () => {
       'packages/astral/src/components/match-scorecard.tsx',
     );
   });
+
+  it('represents EVERY workspace member in the scanned set', () => {
+    // ASTRAL-100's real assertion. The file-count guard above cannot catch a
+    // missing app: 200+ files and one known path both hold with a whole
+    // workspace member absent, which is precisely how `apps/astro/src` went
+    // unsearched. This one fails when a member contributes nothing.
+    expect(WORKSPACE_MEMBERS.length).toBeGreaterThan(3);
+    const scanned = ALL_FILES.map(rel);
+    for (const member of WORKSPACE_MEMBERS) {
+      expect(
+        scanned.some((f) => f.startsWith(`${member}/`)),
+      ).toBe(true);
+    }
+  });
 });
 
 describe('ASTRAL-18 — exactly one match scorecard in the workspace', () => {
@@ -100,14 +170,76 @@ describe('ASTRAL-18 — exactly one match scorecard in the workspace', () => {
   });
 
   it('keeps the per-platform adapters free of domain rendering', () => {
-    for (const adapter of [
-      'src/components/astral/dom-primitives.tsx',
-      'apps/mobile/src/components/astral/rn-primitives.tsx',
-    ]) {
+    for (const adapter of ADAPTERS) {
       expect(codeOf(join(WORKSPACE, adapter))).not.toMatch(
         /koota|guna|nakshatra|muhurta|lagna|dosha|graha/i,
       );
     }
+  });
+});
+
+describe('ASTRAL-99 — one React Native binding, and it is not inside an app', () => {
+  /**
+   * Role-3's gate criterion, run as a test: "exactly one `rnPrimitives`, one
+   * RN `AstralBlock`, and neither inside an app directory".
+   *
+   * The copy this forbids is not hypothetical and would not have failed to
+   * compile. `@/*` maps to `./src/*` in BOTH apps' tsconfigs, so the old
+   * binding's `@/lib/auth` / `@/lib/upload` / `@/lib/events` imports RESOLVE
+   * in the second app — to different modules — which is why "just copy it
+   * over" was the cheap-looking wrong answer (F22).
+   */
+  it('has one React Native primitives adapter', () => {
+    expect(filesContaining(/export const rnPrimitives/, (f) => !isTest(f))).toEqual([
+      'packages/astral-native/src/rn-primitives.tsx',
+    ]);
+  });
+
+  it('has one React Native block host', () => {
+    // The web host is a different file with the same component name, so the
+    // grep is anchored on the React Native import that only the native one
+    // has.
+    const owners = filesContaining(
+      /export function AstralBlock/,
+      (f) => !isTest(f) && /react-native/.test(codeOf(f)),
+    );
+    expect(owners).toEqual(['packages/astral-native/src/astral-block.tsx']);
+  });
+
+  it('keeps the binding out of every app directory', () => {
+    const strays = ALL_FILES.filter((f) => rel(f).startsWith('apps/'))
+      .filter((f) => !isTest(f))
+      .filter((f) => /rnPrimitives|NatalChartView|MatchScorecard|InputRequestView/.test(codeOf(f)))
+      .map(rel)
+      .sort();
+    // An app may NAME the shared component when it imports it; what it may
+    // not do is declare one. `function`/`const` before the name is the
+    // difference between using the single implementation and being a second.
+    for (const f of strays) {
+      const code = codeOf(join(WORKSPACE, f));
+      expect(code).not.toMatch(/(function|const)\s+(NatalChartView|MatchScorecard|InputRequestView)\b/);
+      expect(code).not.toMatch(/const\s+rnPrimitives\b/);
+    }
+  });
+
+  it('the binding imports no app-local module', () => {
+    // The whole point of the move. `@/...` inside the package would resolve
+    // to whichever app compiled it, which is the defect, not the fix.
+    for (const f of [...ADAPTERS, ...HOSTS]) {
+      if (!f.startsWith('packages/')) continue;
+      expect(codeOf(join(WORKSPACE, f))).not.toMatch(/from '@\/[^']*'/);
+    }
+  });
+
+  it('the three host capabilities are declared in one place', () => {
+    expect(filesContaining(/export interface AstralHost/, (f) => !isTest(f))).toEqual([
+      'packages/astral-native/src/host.ts',
+    ]);
+    const host = codeOf(join(WORKSPACE, 'packages/astral-native/src/host.ts'));
+    // F22's type seam, asserted rather than trusted: the CONTRACT is the
+    // wider signature, so mobile's null case survives and astro's narrower
+    // function is assignable without a cast.
+    expect(host).toMatch(/getToken:\s*\(\)\s*=>\s*Promise<string \| null>/);
   });
 });
 
@@ -132,10 +264,7 @@ describe('ASTRAL-91 — exactly one input widget in the workspace', () => {
   });
 
   it('keeps the per-platform adapters free of widget logic', () => {
-    for (const adapter of [
-      'src/components/astral/dom-primitives.tsx',
-      'apps/mobile/src/components/astral/rn-primitives.tsx',
-    ]) {
+    for (const adapter of ADAPTERS) {
       const code = codeOf(join(WORKSPACE, adapter));
       expect(code).not.toContain('input_response');
       expect(code).not.toContain('buildInputResponseMessage');
@@ -163,10 +292,7 @@ describe('F18 — the answer is never flattened into a sentence to be re-parsed'
   });
 
   it('the two hosts pass the message through rather than building one', () => {
-    for (const host of [
-      'src/components/astral/astral-block.tsx',
-      'apps/mobile/src/components/astral/astral-block.tsx',
-    ]) {
+    for (const host of HOSTS) {
       const code = codeOf(join(WORKSPACE, host));
       // no host-side string assembly of an answer at all
       expect(code).not.toMatch(/: \$\{/);
@@ -346,6 +472,7 @@ describe('ASTRAL-124 — nothing follows the OS', () => {
       (f) =>
         !isTest(f) &&
         (rel(f).startsWith('apps/astro/src/') ||
+          rel(f).startsWith('packages/astral-native/src/') ||
           rel(f).includes('/components/astral/')),
     );
     expect(followers).toEqual([]);

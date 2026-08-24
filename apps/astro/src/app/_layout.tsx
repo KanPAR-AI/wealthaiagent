@@ -7,11 +7,16 @@ import { AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
+import { ensureAstralHostInstalled } from '@/lib/astral-host';
 import { ensureCoreInitialized } from '@/lib/core-adapter';
 
 // Install this app's PlatformAdapter into @wealthai/core before any screen
 // imports the shared chat client.
 ensureCoreInitialized();
+// ...and this app's capabilities into the shared React Native astral binding,
+// so the chart wheel and the input widget render from ONE implementation
+// rather than a copy (docs/49 ASTRAL-99).
+ensureAstralHostInstalled();
 
 // Hold the native splash until the display serif is loaded — a first frame
 // in the fallback face is a brand flash nobody designed (F26).

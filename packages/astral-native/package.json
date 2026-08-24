@@ -1,0 +1,27 @@
+{
+  "name": "@wealthai/astral-native",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The React Native BINDING for @wealthai/astral (docs/49 ASTRAL-99). `packages/astral` is platform-neutral source; this is its RN host binding — the primitives adapter and the block dispatcher — living in a package rather than inside one app, so apps/mobile and apps/astro render ONE wheel, ONE scorecard and ONE input widget. The three app-local capabilities it needs (an auth token, a native multipart upload, a way to send a message) are INJECTED through `installAstralHost`, never imported from `@/lib/*` (F22).",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-native": ">=0.76",
+    "react-native-svg": ">=15",
+    "expo-image": "*",
+    "expo-image-manipulator": "*",
+    "expo-image-picker": "*",
+    "@wealthai/astral": "*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2"
+  }
+}

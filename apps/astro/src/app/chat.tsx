@@ -11,8 +11,20 @@
 //
 // STILL one exchange at a time. A real transcript is ASTRAL-105's shared
 // message lifecycle, and inventing a second one here is exactly what
-// `reading.ts`'s header warns against; likewise the data blocks are still
-// counted rather than rendered (ASTRAL-99 owns the RN renderer binding).
+// `reading.ts`'s header warns against.
+//
+// The data blocks ARE rendered now (docs/49 ASTRAL-99, F22). The engine emits
+// them as fenced JSON inside the text stream, and until this change they went
+// through `react-native-markdown-display` — so a computed chart reached the
+// owner as a screenful of raw JSON. The fences are split out here with the
+// SAME rule web and mobile use (`splitDataBlocks` → `readDataBlock`: the
+// fence language must equal the body's own `type`) and drawn through the ONE
+// React Native binding, now shared rather than trapped in `apps/mobile`.
+//
+// Three outcomes, and the third is the one that matters: a registered type
+// draws its view; an unparseable payload draws NOTHING; an UNREGISTERED type
+// draws nothing and says so once, by name, in the console. What never
+// happens is raw JSON on a user's screen.
 
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -31,11 +43,25 @@ import Markdown from 'react-native-markdown-display';
 import Svg from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { splitDataBlocks, stripInputResponse } from '@wealthai/astral';
+import { AstralBlock, astralBlockRegistry } from '@wealthai/astral-native';
+import { getPlatform } from '@wealthai/core';
+
 import { ArrowUp, ChevronLeft, DotGrid, StopSquare } from '@/components/glyphs';
 import { CornerWash } from '@/components/sky';
+import { WIDGET_ANSWER_EVENT } from '@/lib/astral-host';
 import { fetchBalance } from '@/lib/credits';
 import { ask, type AskHandle } from '@/lib/reading';
 import { tokens } from '@/theme';
+
+/**
+ * The block types this build can draw, asked for rather than restated.
+ *
+ * `splitDataBlocks` uses them for one job: a TRAILING half-written fence is
+ * withheld until it closes, so the seconds between "```natal_chart" and its
+ * closing fence are not seconds of raw JSON scrolling past the reader.
+ */
+const DATA_LANGUAGES = astralBlockRegistry.types();
 
 /**
  * The board's three chips, which are also the honest ones: each is a plain
@@ -98,6 +124,22 @@ export default function Chat() {
     }
   }, [busy]);
 
+  // A widget answer arrives on the host channel `lib/astral-host.ts` installs
+  // — the analogue of mobile's shipped quick-reply event — and goes out
+  // through the one send path this screen already owns. No second send path,
+  // and nothing flattened into a sentence for the extractor to re-read (F18):
+  // what travels is the typed `input_response` fence the shared component
+  // builds.
+  useEffect(() => {
+    return getPlatform().events.on(WIDGET_ANSWER_EVENT, (payload) => {
+      const text = (payload as { text?: string } | undefined)?.text;
+      if (text) void send(text);
+    });
+  }, [send]);
+
+  // Text runs and data blocks, in the order the engine streamed them.
+  const segments = splitDataBlocks(answer, DATA_LANGUAGES);
+
   return (
     <View style={s.fill}>
       <StatusBar style="dark" />
@@ -149,16 +191,31 @@ export default function Chat() {
           >
             {asked ? (
               <View style={s.userBubble}>
-                <Text style={s.userText}>{asked}</Text>
+                {/* AMB-17 (a)'s declared cost: a widget answer travels as a
+                    fenced `input_response` block inside the user's own
+                    message, so the raw fence is suppressed on the user bubble
+                    exactly as data fences are on an assistant one. The
+                    human-readable echo is what remains. */}
+                <Text style={s.userText}>{stripInputResponse(asked)}</Text>
               </View>
             ) : null}
-            {answer ? (
-              <View style={s.replyCard}>
-                {/* The engine writes structured prose — bold claim leads,
-                    lists of transits. Rendered as plain Text it arrived with
-                    its asterisks showing. */}
-                <Markdown style={markdown}>{answer}</Markdown>
-              </View>
+            {segments.length ? (
+              segments.map((seg, i) =>
+                seg.kind === 'block' ? (
+                  // Outside the reply card on purpose: a wheel and a
+                  // scorecard draw their own surface, and nesting them in one
+                  // gives the artifact two borders and 32px less width than
+                  // it was told it had.
+                  <AstralBlock key={`b${i}`} type={seg.type} data={seg.value} />
+                ) : seg.text.trim() ? (
+                  <View key={`t${i}`} style={s.replyCard}>
+                    {/* The engine writes structured prose — bold claim leads,
+                        lists of transits. Rendered as plain Text it arrived
+                        with its asterisks showing. */}
+                    <Markdown style={markdown}>{seg.text}</Markdown>
+                  </View>
+                ) : null,
+              )
             ) : busy ? (
               <ActivityIndicator color={tokens.palette.accent.interactive} style={s.spinner} />
             ) : !asked ? (
