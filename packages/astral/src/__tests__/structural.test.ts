@@ -12,6 +12,15 @@ import { readdirSync, readFileSync, statSync } from 'fs';
 import { join, relative, sep } from 'path';
 
 const WORKSPACE = join(__dirname, '..', '..', '..', '..');
+
+// The web app's Docker image bakes `npm run test:ci` with a context that
+// EXCLUDES apps/ (.dockerignore) — there is nothing for a workspace scan to
+// guard there, and ENOENT failed four deploys in a row (2026-08-24). The
+// suite binds wherever the workspace is real: local, CI checkout, and the
+// cloudbuild test step all have apps/, and the anti-vacuity assertions
+// (the walk must FIND the astro files) still hold there. Skip — with the
+// reason on the record — only when the directory itself is absent.
+
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'coverage', 'ios', 'android', '.expo']);
 
 /**
@@ -41,7 +50,13 @@ function workspaceMembers(): string[] {
   for (const glob of globs) {
     const [parent, star] = glob.split('/');
     if (star !== '*') throw new Error(`unhandled workspace glob ${glob}`);
-    for (const entry of readdirSync(join(WORKSPACE, parent)).sort()) {
+    // The web Docker context has no apps/ (.dockerignore) — a workspace
+    // glob whose parent is absent contributes nothing there, and the
+    // apps-dependent suites are skipped wholesale via describeWithApps.
+    let entries: string[];
+    try { entries = readdirSync(join(WORKSPACE, parent)).sort(); }
+    catch { continue; }
+    for (const entry of entries) {
       if (entry.startsWith('.')) continue;
       if (!statSync(join(WORKSPACE, parent, entry)).isDirectory()) continue;
       members.push(`${parent}/${entry}`);
@@ -70,7 +85,14 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const ALL_FILES = SEARCH_ROOTS.flatMap((root) => walk(join(WORKSPACE, root)));
+// Only roots present in THIS build context — the web image excludes apps/,
+// and a module-level walk of a missing root would throw before any skip
+// could apply. The vacuity guards below still bind wherever apps exists.
+const PRESENT_ROOTS = SEARCH_ROOTS.filter((root) => {
+  try { return statSync(join(WORKSPACE, root)).isDirectory(); }
+  catch { return false; }
+});
+const ALL_FILES = PRESENT_ROOTS.flatMap((root) => walk(join(WORKSPACE, root)));
 
 /**
  * The two per-platform primitive adapters and the two block hosts.
@@ -114,7 +136,22 @@ function filesContaining(pattern: RegExp, predicate: (f: string) => boolean = ()
     .sort();
 }
 
-describe('the workspace was actually searched', () => {
+const APPS_PRESENT = (() => {
+  try { return statSync(join(WORKSPACE, 'apps')).isDirectory(); }
+  catch { return false; }
+})();
+const describeWithApps = APPS_PRESENT ? describe : describe.skip;
+
+/** A describe body runs at collection even under describe.skip, so a direct
+ *  readFileSync of an apps/ path would still throw in the apps-less Docker
+ *  context. Absent file → empty string; the suites that consume these are
+ *  all describeWithApps, so the empty value is never asserted against. */
+function readAppsFile(p: string, enc: 'utf8'): string {
+  try { return readFileSync(p, enc); } catch { return ''; }
+}
+
+
+describeWithApps('the workspace was actually searched', () => {
   it('found a realistic number of source files', () => {
     // A broken walk that finds nothing would make every assertion below pass
     // vacuously — the exact shape of green-proving-nothing this suite is for.
@@ -178,7 +215,7 @@ describe('ASTRAL-18 — exactly one match scorecard in the workspace', () => {
   });
 });
 
-describe('ASTRAL-99 — one React Native binding, and it is not inside an app', () => {
+describeWithApps('ASTRAL-99 — one React Native binding, and it is not inside an app', () => {
   /**
    * Role-3's gate criterion, run as a test: "exactly one `rnPrimitives`, one
    * RN `AstralBlock`, and neither inside an app directory".
@@ -290,7 +327,7 @@ describe('ASTRAL-91 — exactly one input widget in the workspace', () => {
   });
 });
 
-describe('F18 — the answer is never flattened into a sentence to be re-parsed', () => {
+describeWithApps('F18 — the answer is never flattened into a sentence to be re-parsed', () => {
   const COMPONENT = 'packages/astral/src/components/input-request.tsx';
 
   it('every send goes through the typed carrier', () => {
@@ -340,7 +377,7 @@ describe('F18 — the answer is never flattened into a sentence to be re-parsed'
   });
 });
 
-describe('ASTRAL-19 — renderers derive nothing', () => {
+describeWithApps('ASTRAL-19 — renderers derive nothing', () => {
   const RENDERER_FILES = ALL_FILES.filter((f) => {
     const r = rel(f);
     return (
@@ -397,7 +434,7 @@ describe('ASTRAL-19 — renderers derive nothing', () => {
  * The rules bind SCREENS, not the token module: `theme/brands.ts` is where
  * values are supposed to live, so it is the one exempt file.
  */
-describe('ASTRAL-97 — one token module, and no screen declares a value', () => {
+describeWithApps('ASTRAL-97 — one token module, and no screen declares a value', () => {
   const ASTRO_ROOT = 'apps/astro/src/';
   /** The one file allowed to state a VALUE. */
   const VALUE_MODULE = 'apps/astro/src/theme/brands.ts';
@@ -478,7 +515,7 @@ describe('ASTRAL-97 — one token module, and no screen declares a value', () =>
   });
 });
 
-describe('ASTRAL-124 — nothing follows the OS', () => {
+describeWithApps('ASTRAL-124 — nothing follows the OS', () => {
   it('no astro screen and no astral binding consults the colour scheme', () => {
     // AMB-22 ruled (a): the split is by ROLE (working vs ceremonial), chosen
     // in the token layer. A surface that follows the phone is a palette
@@ -501,15 +538,15 @@ describe('ASTRAL-124 — nothing follows the OS', () => {
 
   it('the app itself is pinned light', () => {
     const appJson = JSON.parse(
-      readFileSync(join(WORKSPACE, 'apps/astro/app.json'), 'utf8'),
+      readAppsFile(join(WORKSPACE, 'apps/astro/app.json'), 'utf8'),
     );
     expect(appJson.expo.userInterfaceStyle).toBe('light');
   });
 });
 
-describe('F28 — no template brand asset survives', () => {
+describeWithApps('F28 — no template brand asset survives', () => {
   const appJson = JSON.parse(
-    readFileSync(join(WORKSPACE, 'apps/astro/app.json'), 'utf8'),
+    readAppsFile(join(WORKSPACE, 'apps/astro/app.json'), 'utf8') || '{}',
   );
   /** Expo's template blues. The first frame of every cold start was #208AEF. */
   const TEMPLATE = ['#208AEF', '#E6F4FE'];
@@ -572,7 +609,7 @@ describe('F28 — no template brand asset survives', () => {
  * assertions, and for the same reason: a copy into the second app COMPILES
  * (`@/*` resolves per app) and review is what did not catch it last time.
  */
-describe('ASTRAL-105 — one chat surface, and it is not inside an app', () => {
+describeWithApps('ASTRAL-105 — one chat surface, and it is not inside an app', () => {
   /** Every component the conversation is made of. */
   const SURFACE = [
     ['export function useSendMessage', 'packages/chat-native/src/use-send-message.ts'],
@@ -660,7 +697,7 @@ describe('ASTRAL-105 — one chat surface, and it is not inside an app', () => {
   });
 });
 
-describe('no client-side geocoding (ASTRAL-57/69/96)', () => {
+describeWithApps('no client-side geocoding (ASTRAL-57/69/96)', () => {
   // The place of birth is resolved by the ENGINE, which can refuse an
   // implausible match. A client-side geocoder or places-autocomplete
   // library would resolve it optimistically on the phone — the exact

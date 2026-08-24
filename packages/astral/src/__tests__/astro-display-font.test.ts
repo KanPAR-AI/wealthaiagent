@@ -10,9 +10,19 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const ROOT = path.resolve(__dirname, '../../../..');
+
+// The web app's Docker image bakes `npm run test:ci` with a context that
+// EXCLUDES apps/ (.dockerignore) — there is nothing for a workspace scan to
+// guard there, and ENOENT failed four deploys in a row (2026-08-24). The
+// suite binds wherever the workspace is real: local, CI checkout, and the
+// cloudbuild test step all have apps/, and the anti-vacuity assertions
+// (the walk must FIND the astro files) still hold there. Skip — with the
+// reason on the record — only when the directory itself is absent.
+
 const astro = (...p: string[]) => path.join(ROOT, 'apps/astro', ...p);
 
-describe('the astro display serif (F26)', () => {
+const APPS_PRESENT = fs.existsSync(path.join(ROOT, 'apps'));
+(APPS_PRESENT ? describe : describe.skip)('the astro display serif (F26)', () => {
   it('ships the font file, with its licence beside it', () => {
     const font = astro('assets/fonts/PlayfairDisplay.ttf');
     expect(fs.existsSync(font)).toBe(true);
