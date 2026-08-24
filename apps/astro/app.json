@@ -11,7 +11,6 @@
     "scheme": "astro",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.yourfinadvisor.astro",
       "usesAppleSignIn": true,
       "supportsTablet": false,
@@ -25,7 +24,7 @@
       "package": "com.yourfinadvisor.astro",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#02061b",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -51,9 +50,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#171233",
+          "backgroundColor": "#02061b",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 120
         }
       ],
       "expo-web-browser",
