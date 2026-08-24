@@ -23,6 +23,7 @@ import {
   frameLine,
   provenancePhrase,
   registerTitle,
+  shouldRecordOffer,
   timeAskState,
   undeterminedNotes,
 } from '../profile-view';
@@ -177,11 +178,34 @@ describe('ASTRAL-137 — a chart with no birth time', () => {
     expect(timeAskState({ tob_known: false }, true)).toBe('state_only');
     expect(timeAskState({ tob_known: true }, false)).toBe('none');
   });
+
+  it('spends the ask on SHOWING it, not on tapping it', () => {
+    // The row's words: "the ask renders once and not on re-open". Recording
+    // it at tap time would leave it rendering on every open, which is the
+    // second ask the row forbids.
+    expect(shouldRecordOffer('offer')).toBe(true);
+    expect(shouldRecordOffer('state_only')).toBe(false);
+    expect(shouldRecordOffer('none')).toBe(false);
+  });
 });
 
 describe('ASTRAL-136 / ASTRAL-118 — the frame is named, and an unstamped chart is not drawn', () => {
   it('names zodiac mode, ayanamsa and house system', () => {
     expect(frameLine(TIMED_CHART)).toBe('Sidereal · Lahiri · Whole Sign');
+  });
+
+  it('NAMES the house system the artifact stores as a code', () => {
+    // Measured on the simulator: a stored chart carries `house_system: "W"`
+    // and `ayanamsa: "LAHIRI"`. "Sidereal · LAHIRI · W" names the frame to
+    // nobody, which is ASTRAL-118 unmet by a rendering detail.
+    expect(frameLine({ ...TIMED_CHART, ayanamsa: 'LAHIRI', house_system: 'W' }))
+      .toBe('Sidereal · Lahiri · Whole Sign');
+  });
+
+  it('prints a frame value it does not recognise AS IT IS', () => {
+    // An unknown frame stated opaquely is honest; a guessed one is the
+    // failure ASTRAL-118 exists to prevent.
+    expect(frameLine({ ...TIMED_CHART, house_system: 'Z' })).toBe('Sidereal · Lahiri · Z');
   });
 
   it('says nothing rather than half a frame', () => {

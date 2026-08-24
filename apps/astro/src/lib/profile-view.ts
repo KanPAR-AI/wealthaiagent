@@ -140,6 +140,20 @@ export function timeAskState(person: { tob_known: boolean }, alreadyOffered: boo
   return alreadyOffered ? 'state_only' : 'offer';
 }
 
+/**
+ * The ask is spent when it is SHOWN, not when it is tapped.
+ *
+ * ASTRAL-137's obligation is "the ask renders once and not on re-open" — a
+ * button that waits to be pressed before it counts is a button that renders
+ * on every open, which is the second ask the row forbids. What survives the
+ * first showing is the STATEMENT, which is not an ask: it is the explanation
+ * for the rows that are absent, and the chat can still take a birth time at
+ * any time.
+ */
+export function shouldRecordOffer(state: TimeAskState): boolean {
+  return state === 'offer';
+}
+
 export const TIME_UNKNOWN_STATEMENT =
   'Your birth time is not known, so this chart is what can be read without it.';
 
@@ -206,10 +220,47 @@ export function chartLines(chart: ChartSummary | undefined): ChartLine[] {
  * rendered as a chart at all (that is the `unstamped` state below). When it
  * can, it says so here.
  */
+/**
+ * The house-system CODES the artifact actually carries.
+ *
+ * MEASURED, simulator, 2026-08-24: `house_system` on a stored chart is `"W"`
+ * — the Swiss Ephemeris single-letter code, not a name. ASTRAL-118 requires
+ * the frame to be NAMED on screen, and "W" names nothing to the person
+ * reading it.
+ *
+ * This map is a LABEL for a code, not a derivation: it changes no value and
+ * decides nothing about the chart. A code this map does not know is printed
+ * AS IT IS rather than guessed at — an unknown frame stated opaquely is
+ * honest; an invented one is the failure ASTRAL-118 exists to prevent. The
+ * right long-term home for this is the artifact itself, which is a finding
+ * for the engine rather than something a screen should be doing.
+ */
+const HOUSE_SYSTEM_NAMES: Record<string, string> = {
+  W: 'Whole Sign',
+  P: 'Placidus',
+  K: 'Koch',
+  E: 'Equal',
+  O: 'Porphyry',
+  R: 'Regiomontanus',
+  C: 'Campanus',
+};
+
+/** `LAHIRI` → `Lahiri`. Shouted stamp values are a storage convention, not a
+ *  thing to shout at a reader; two-letter tokens are left alone because they
+ *  are far more likely to be initialisms than words. */
+function readable(value: unknown): string | null {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw) return null;
+  const named = HOUSE_SYSTEM_NAMES[raw];
+  if (named) return named;
+  if (raw.length > 2 && raw === raw.toUpperCase()) return titleCase(raw.toLowerCase());
+  return titleCase(raw);
+}
+
 export function frameLine(chart: ChartSummary | undefined): string | null {
   if (!chart) return null;
   const parts = [chart.zodiac_mode, chart.ayanamsa, chart.house_system]
-    .map((p) => titleCase(p))
+    .map((p) => readable(p))
     .filter((p): p is string => !!p);
   return parts.length === 3 ? parts.join(' · ') : null;
 }

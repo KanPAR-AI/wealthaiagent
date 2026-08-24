@@ -57,6 +57,7 @@ import {
   editDisclosure,
   factRows,
   frameLine,
+  shouldRecordOffer,
   timeAskState,
   undeterminedNotes,
   type FactRow,
@@ -158,9 +159,11 @@ export default function Profile() {
               askOffered={askOffered}
               editBusy={editBusy}
               onEdit={(row) => openEdit(load.person, row)}
-              onOfferTime={() => {
+              onOffered={() => {
                 rememberTimeAskOffered(load.person.id);
                 setAskOffered(true);
+              }}
+              onOfferTime={() => {
                 track('profile_time_ask');
                 router.push({
                   pathname: '/birth-details',
@@ -239,13 +242,14 @@ function NotEstablished({ reason }: { reason: string }) {
 }
 
 function Established({
-  person, askOffered, editBusy, onEdit, onOfferTime,
+  person, askOffered, editBusy, onEdit, onOfferTime, onOffered,
 }: {
   person: PersonView;
   askOffered: boolean;
   editBusy: string | null;
   onEdit: (row: FactRow) => void;
   onOfferTime: () => void;
+  onOffered: () => void;
 }) {
   const rows = factRows(person);
   const state = chartState(person.chart);
@@ -254,6 +258,13 @@ function Established({
   const frame = readable ? frameLine(person.chart) : null;
   const notes = undeterminedNotes(person.chart);
   const ask = timeAskState(person, askOffered);
+
+  // Spent on SHOWING, not on tapping (ASTRAL-137). `onOffered` records it;
+  // the effect is here rather than in the parent so the rule sits next to
+  // the thing it is about.
+  useEffect(() => {
+    if (shouldRecordOffer(ask)) onOffered();
+  }, [ask, onOffered]);
 
   return (
     <View style={s.gap}>
