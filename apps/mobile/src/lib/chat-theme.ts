@@ -41,6 +41,8 @@ export function useChatTheme(): ChatTheme {
       accent: c.textSecondary,
     },
     type: {
+      // ThemedText's `subtitle`, which is what the bug sheet's heading was.
+      title: { fontSize: 32, lineHeight: 44, fontWeight: '600' },
       body: { fontSize: 16, lineHeight: 24 },
       bubble: { fontSize: 16, lineHeight: 24, fontWeight: '500' },
       small: { fontSize: 14, lineHeight: 20, fontWeight: '500' },

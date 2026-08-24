@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { ensureAstralHostInstalled } from '@/lib/astral-host';
+import { BugReportProvider } from '@/lib/bug-report';
 import { ensureChatHostInstalled } from '@/lib/chat-host';
 import { ensureCoreInitialized } from '@/lib/core-adapter';
 
@@ -83,12 +84,16 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>
+        {/* Every screen is inside the reporter, so every screen can be
+            photographed and every screen can raise the sheet (ASTRAL-163). */}
+        <BugReportProvider>
         {/* No StatusBar here on purpose: one global `style="light"` put white
             time-and-battery over screen 4's and 12's paper surfaces, where it
             is invisible. The bar belongs to whatever is UNDER it, so each
             screen declares its own (docs/49 ASTRAL-124 — the light/ceremonial
             split is per surface). */}
         <Stack screenOptions={{ headerShown: false }} />
+        </BugReportProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>
   );

@@ -62,6 +62,8 @@ export interface ChatTheme {
   };
 
   type: {
+    /** a sheet or section heading — the one step outside the transcript */
+    title: ChatTypeStep;
     /** running prose in a reply (the markdown body) */
     body: ChatTypeStep;
     /** the user's own words in their bubble. Separate from `body` because

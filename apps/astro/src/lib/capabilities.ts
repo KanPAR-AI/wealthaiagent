@@ -37,6 +37,16 @@ export interface Capabilities {
   birthDetails: boolean;
   helpAndSupport: boolean;
   about: boolean;
+  /**
+   * Reporting a problem from inside the app (docs/49 ASTRAL-163).
+   *
+   * TRUE, and it is a capability rather than a decoration: the report goes
+   * to the SAME `/bug-reports` endpoint and the same /admin/bugs queue the
+   * rest of the platform uses, through the shared sheet. If that path ever
+   * stopped existing, this flips and the row disappears — which is the
+   * difference between an affordance and a promise.
+   */
+  reportProblem: boolean;
   /** FALSE: ASTRAL-66's store does not exist. Nothing to save into. */
   savedReadings: boolean;
   /**
@@ -61,6 +71,7 @@ export const CAPABILITIES: Capabilities = {
   birthDetails: false,
   helpAndSupport: true,
   about: true,
+  reportProblem: true,
   savedReadings: false,
   subscriptionBilling: false,
   notifications: false,

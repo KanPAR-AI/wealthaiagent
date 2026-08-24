@@ -11,12 +11,19 @@ import { CAPABILITIES, type Capabilities } from '../capabilities';
 import { DECLARED_ROWS, visibleRows } from '../settings-rows';
 
 describe('the settings rows this build may render', () => {
-  it('ships the four rows that have something behind them', () => {
+  // AMENDED 2026-08-24 by ASTRAL-163 (owner): "Report a problem" joins the
+  // set. The exact-set assertions below are pins of the SET, and the set
+  // changed — this is the spec moving, not a failing assertion being
+  // relaxed. The new row is held to the same rule as the other five: it
+  // exists because `reportProblem` is true, and turning that off removes it
+  // (the case at the foot of this block).
+  it('ships the five rows that have something behind them', () => {
     expect(visibleRows().map((r) => r.label)).toEqual([
       'Account Settings',
       'Privacy & Data',
       'Help & Support',
       'About',
+      'Report a problem',
     ]);
   });
 
@@ -37,12 +44,33 @@ describe('the settings rows this build may render', () => {
     expect(after).not.toEqual(before);
     expect(after).toContain('birthDetails');
     // and it lands in the board's order, between Privacy and Help
-    expect(after).toEqual(['account', 'privacy', 'birthDetails', 'help', 'about']);
+    expect(after).toEqual([
+      'account', 'privacy', 'birthDetails', 'help', 'about', 'reportProblem',
+    ]);
   });
 
   it('turning a capability off removes exactly that row', () => {
     const off: Capabilities = { ...CAPABILITIES, privacyAndData: false };
-    expect(visibleRows(off).map((r) => r.id)).toEqual(['account', 'help', 'about']);
+    expect(visibleRows(off).map((r) => r.id)).toEqual([
+      'account', 'help', 'about', 'reportProblem',
+    ]);
+  });
+
+  it('ASTRAL-163 — the report row obeys the same rule as every other', () => {
+    // It is a capability, not a decoration: the report goes to the same
+    // /bug-reports endpoint the rest of the platform uses, and if that path
+    // stopped existing the row would go with it rather than becoming a
+    // button that reports into nothing.
+    expect(visibleRows().map((r) => r.id)).toContain('reportProblem');
+    const off: Capabilities = { ...CAPABILITIES, reportProblem: false };
+    expect(visibleRows(off).map((r) => r.id)).not.toContain('reportProblem');
+  });
+
+  it('ASTRAL-163 — the report row raises the sheet in place, it does not route', () => {
+    // The sheet photographs the screen it was raised FROM, before opening.
+    // A row that navigated first would attach a picture of the wrong screen.
+    const row = DECLARED_ROWS.find((r) => r.id === 'reportProblem')!;
+    expect(row.action.kind).toBe('report');
   });
 
   it('declares no row for the three ASTRAL-109 forbids', () => {

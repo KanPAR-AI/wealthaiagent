@@ -36,7 +36,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActionSheetIOS, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -51,20 +51,12 @@ import { getPlatform, useChatStore } from '@wealthai/core';
 
 import { ArrowUp, ChevronLeft, DotGrid, StopSquare } from '@/components/glyphs';
 import { CornerWash } from '@/components/sky';
+import { useReportProblem } from '@/lib/bug-report';
+import { forgetChat, lastChatId, rememberChat } from '@/lib/chat-session';
 import { astroChatTheme } from '@/lib/chat-theme';
 import { ASTRO_DATA_LANGUAGES, AstroWidget } from '@/lib/chat-widgets';
 import { fetchBalance } from '@/lib/credits';
 import { tokens } from '@/theme';
-
-/**
- * Which conversation this app was last in.
- *
- * `apps/mobile` has a drawer full of chats and picks one; this app has one
- * running reading and simply resumes it. Screen-level state, deliberately
- * not in the shared surface: WHICH conversation to show is a product
- * decision, and these two products answer it differently.
- */
-const LAST_CHAT_KEY = 'astro.lastChatId';
 
 /**
  * The board's three chips.
@@ -99,16 +91,38 @@ export default function Chat() {
 
   const onChatCreated = useCallback((id: string) => {
     setChatId(id);
-    // Remembered here rather than on unmount: the app can be killed at any
-    // moment, and a chat id written "later" is a transcript that comes back
-    // empty. The lifecycle calls this twice for a new chat — once with the
+    // The lifecycle calls this twice for a new chat — once with the
     // optimistic local id, once with the backend's — and the second call is
     // what survives.
-    void getPlatform().storage.setItem(LAST_CHAT_KEY, id);
+    rememberChat(id);
   }, []);
 
   const { send, cancel, isSending, isCreatingChat } = useSendMessage(chatId, onChatCreated);
   const busy = isSending || isCreatingChat;
+
+  // The board draws a MENU glyph in the header's right slot, and it used to
+  // push Settings directly. ASTRAL-163 needs a report entry reachable from
+  // chat, and a menu icon that opens a menu costs the frame nothing — no
+  // fourth control, no re-centred wordmark.
+  const reportProblem = useReportProblem();
+  const openMenu = useCallback(() => {
+    const settings = () => router.push('/settings');
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancel', 'Report a problem', 'Settings'], cancelButtonIndex: 0 },
+        (i) => {
+          if (i === 1) reportProblem();
+          if (i === 2) settings();
+        },
+      );
+      return;
+    }
+    Alert.alert('Menu', undefined, [
+      { text: 'Report a problem', onPress: reportProblem },
+      { text: 'Settings', onPress: settings },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [reportProblem]);
 
   // Asking for the balance triggers the server's one-time welcome grant —
   // without this call a fresh account sits at zero and the first reading is
@@ -139,18 +153,15 @@ export default function Chat() {
     // A handoff with no chat id is a NEW conversation; resuming the previous
     // one under it would answer this question inside the last reading.
     if (handoff.pending) return;
-    void getPlatform()
-      .storage.getItem(LAST_CHAT_KEY)
+    void lastChatId()
       .then(async (id) => {
         if (!id) return;
         setChatId(id);
         await loadChatIntoStore(id);
       })
       .catch((e) => {
-        // The remembered chat is gone (deleted, or a different account).
-        // Forget it rather than showing an empty screen that never fills.
         console.warn('[chat] could not resume the last reading', String(e?.message ?? e));
-        void getPlatform().storage.removeItem(LAST_CHAT_KEY);
+        forgetChat();
       });
   }, [handoff.chatId, handoff.pending]);
 
@@ -222,10 +233,10 @@ export default function Chat() {
           </View>
 
           <Pressable
-            onPress={() => router.push('/settings')}
+            onPress={openMenu}
             style={[s.headerSide, s.headerRight]}
             accessibilityRole="button"
-            accessibilityLabel="Settings"
+            accessibilityLabel="Menu"
             hitSlop={10}
           >
             <DotGrid size={tokens.size.icon} color={tokens.palette.ink.primary} />

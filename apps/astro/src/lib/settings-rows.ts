@@ -16,15 +16,18 @@ export type SettingsRowId =
   | 'privacy'
   | 'birthDetails'
   | 'help'
-  | 'about';
+  | 'about'
+  | 'reportProblem';
 
 export interface SettingsRow {
   id: SettingsRowId;
   label: string;
   /** SF Symbol name; every host passes a drawn fallback (see glyphs.tsx). */
   icon: SFSymbol;
-  /** where it goes, or `expand` for the rows that open in place */
-  action: { kind: 'route'; to: string } | { kind: 'expand' };
+  /** where it goes, `expand` for the rows that open in place, or `report`
+   *  for the one that raises the shared bug sheet over this screen
+   *  (docs/49 ASTRAL-163) */
+  action: { kind: 'route'; to: string } | { kind: 'expand' } | { kind: 'report' };
   /** the capability that has to be true for this row to exist at all */
   needs: keyof Capabilities;
 }
@@ -70,6 +73,16 @@ const DECLARED: SettingsRow[] = [
     icon: 'info.circle',
     action: { kind: 'route', to: '/about' },
     needs: 'about',
+  },
+  {
+    // ASTRAL-163, owner 2026-08-24. Not one of the board's eight rows: the
+    // board was drawn before this was asked for, and a row with a live path
+    // behind it is exactly what ASTRAL-102 says may exist.
+    id: 'reportProblem',
+    label: 'Report a problem',
+    icon: 'exclamationmark.bubble',
+    action: { kind: 'report' },
+    needs: 'reportProblem',
   },
 ];
 

@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getPlatform, useChatStore, type Widget } from '@wealthai/core';
 import {
+  BugReportSheet,
   ChatSurface,
   chatMarkdownStyles,
   useSendMessage,
@@ -21,7 +22,6 @@ import {
 
 import { DEFAULT_TILES, getHomeSuggestions, type HomeTile } from '@/services/home-service';
 import { track } from '@/lib/analytics';
-import { BugReportSheet } from '@/components/bug-report-sheet';
 import { ChatDrawer } from '@/components/drawer/chat-drawer';
 import { VideoEmbed } from '@/components/chat/video-embed';
 import { WidgetView } from '@/components/chat/widget-view';
@@ -262,7 +262,9 @@ export default function ChatScreen() {
         onClose={() => setBugSheetOpen(false)}
         screenShotUri={bugScreenshot}
         chatId={chatId}
-        selectedAgent={selectedAgent}
+        theme={chatTheme}
+        brand="YourFinAdvisor"
+        context={{ url: 'app://mobile/chat', selected_agent: selectedAgent || undefined }}
       />
     </ThemedView>
   );

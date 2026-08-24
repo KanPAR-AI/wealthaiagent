@@ -251,7 +251,7 @@ export function ChatText({
   ...rest
 }: {
   theme: ChatTheme;
-  step?: 'body' | 'bubble' | 'small' | 'smallBold';
+  step?: 'title' | 'body' | 'bubble' | 'small' | 'smallBold';
   tone?: 'default' | 'muted' | 'danger' | 'accent' | 'onUserBubble' | 'onPrimary';
   style?: any;
   selectable?: boolean;

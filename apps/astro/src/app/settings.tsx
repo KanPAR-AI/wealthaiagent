@@ -47,6 +47,7 @@ import {
   type Account,
 } from '@/lib/auth';
 import { fetchBalance } from '@/lib/credits';
+import { useReportProblem } from '@/lib/bug-report';
 import { visibleRows, type SettingsRow } from '@/lib/settings-rows';
 import { tokens } from '@/theme';
 
@@ -102,12 +103,16 @@ export default function Settings() {
     }
   }, [account]);
 
+  const reportProblem = useReportProblem();
   const signedIn = account && !account.anonymous;
   const name = signedIn ? account.displayName || account.email || 'Signed in' : 'Guest';
   const rows = visibleRows();
 
   const press = (row: SettingsRow) => {
     if (row.action.kind === 'expand') setOpenRow((v) => (v === row.id ? null : row.id));
+    // The sheet photographs THIS screen before it opens, which is why the row
+    // raises it in place rather than routing anywhere (docs/49 ASTRAL-163).
+    else if (row.action.kind === 'report') reportProblem();
     else router.push(row.action.to as never);
   };
 

@@ -33,6 +33,7 @@ export const astroChatTheme: ChatTheme = {
     accent: t.palette.accent.interactive,
   },
   type: {
+    title: { ...t.type.scale.title },
     body: { ...t.type.scale.body },
     bubble: { ...t.type.scale.body },
     small: { ...t.type.scale.sub },

@@ -490,6 +490,10 @@ describe('ASTRAL-124 — nothing follows the OS', () => {
         !isTest(f) &&
         (rel(f).startsWith('apps/astro/src/') ||
           rel(f).startsWith('packages/astral-native/src/') ||
+          // The chat surface moved here (ASTRAL-105) and apps/astro renders
+          // it, so a `useColorScheme` in this package IS astro following the
+          // phone — one indirection further away, which is worse.
+          rel(f).startsWith('packages/chat-native/src/') ||
           rel(f).includes('/components/astral/')),
     );
     expect(followers).toEqual([]);
@@ -554,6 +558,105 @@ describe('F28 — no template brand asset survives', () => {
     // fill plus `expo-symbol 2.svg`) and it is what TestFlight 1.0(3) shows.
     expect(found.some((f) => f.startsWith('expo.icon/'))).toBe(false);
     expect(appJson.expo.ios.icon).toBeUndefined();
+  });
+});
+
+/**
+ * ASTRAL-105 (amended 2026-08-24) — ONE chat surface, and ASTRAL-163 — one
+ * bug-report sheet.
+ *
+ * The owner's ruling: the astro chat page IS the yourfinadvisor chat,
+ * differing only in (a) brand tokens and copy, (b) the widget/block set, and
+ * (c) routing disabled. A divergence beyond those three is a SPEC-DEVIATION,
+ * so it is greppable rather than reviewable — the same shape as ASTRAL-99's
+ * assertions, and for the same reason: a copy into the second app COMPILES
+ * (`@/*` resolves per app) and review is what did not catch it last time.
+ */
+describe('ASTRAL-105 — one chat surface, and it is not inside an app', () => {
+  /** Every component the conversation is made of. */
+  const SURFACE = [
+    ['export function useSendMessage', 'packages/chat-native/src/use-send-message.ts'],
+    ['export function ChatSurface', 'packages/chat-native/src/chat-surface.tsx'],
+    ['export function MessageList', 'packages/chat-native/src/message-list.tsx'],
+    ['function MessageBubble', 'packages/chat-native/src/message-bubble.tsx'],
+    ['export function ChatInput', 'packages/chat-native/src/chat-input.tsx'],
+    ['export function BugReportSheet', 'packages/chat-native/src/bug-report-sheet.tsx'],
+    ['export async function loadChatIntoStore', 'packages/chat-native/src/load-chat.ts'],
+  ] as const;
+
+  it.each(SURFACE)('has exactly one %s', (declaration, owner) => {
+    expect(filesContaining(new RegExp(declaration), (f) => !isTest(f))).toEqual([owner]);
+  });
+
+  it('no app declares a piece of the conversation', () => {
+    // The row that matters. A second send hook, transcript, bubble, composer
+    // or bug sheet inside an app is the thing this slice existed to remove:
+    // `apps/astro/src/lib/reading.ts` was one, and it said so in its own
+    // header for two months while both apps drifted.
+    const strays = ALL_FILES.filter((f) => rel(f).startsWith('apps/'))
+      .filter((f) => !isTest(f))
+      .filter((f) =>
+        /(function|const)\s+(useSendMessage|ChatSurface|MessageList|MessageBubble|ChatInput|BugReportSheet)\b/.test(
+          codeOf(f),
+        ),
+      )
+      .map(rel)
+      .sort();
+    expect(strays).toEqual([]);
+  });
+
+  it('exactly one module wires the stream callbacks', () => {
+    // ASTRAL-105's literal gate. Two entries, and the second is NAMED rather
+    // than excluded: `src/services/chat-service.ts` is the WEB app's shim,
+    // which layers web-only policy (its mock SSE service, its force-agent
+    // default) over core and passes the caller's callbacks straight through.
+    // The web app is not one of the two surfaces this row is about; if it is
+    // ever folded in, this list is where that shows up.
+    expect(filesContaining(/listenToChatStreamCore\(/, (f) => !isTest(f))).toEqual([
+      'packages/chat-native/src/use-send-message.ts',
+      'src/services/chat-service.ts',
+    ]);
+  });
+
+  it('no app opens a stream of its own', () => {
+    const owners = filesContaining(/listenToChatStreamCore\(/, (f) => rel(f).startsWith('apps/'));
+    expect(owners).toEqual([]);
+  });
+
+  it('one channel carries a composed message, declared once', () => {
+    // It was two names for one hop — mobile's `chat-quick-reply` and astro's
+    // `astral-widget-answer` — which is how a widget works on one surface and
+    // quietly does nothing on the other.
+    expect(filesContaining(/'chat-quick-reply'/, (f) => !isTest(f) && !rel(f).startsWith('src/')))
+      .toEqual(['packages/chat-native/src/host.ts']);
+    expect(filesContaining(/astral-widget-answer/, (f) => !isTest(f))).toEqual([]);
+  });
+
+  it('(c) routing is disabled where it cannot be re-enabled', () => {
+    // The pin is a lifecycle fact, not a hidden picker. apps/astro must not
+    // select an agent, select a model tier, or hand-build either query
+    // parameter anywhere.
+    const astro = ALL_FILES.filter((f) => rel(f).startsWith('apps/astro/src/') && !isTest(f));
+    expect(filesContaining(/setSelectedAgent|setSelectedModelTier/, (f) => astro.includes(f)))
+      .toEqual([]);
+    expect(filesContaining(/force_agent|model_tier/, (f) => astro.includes(f))).toEqual([]);
+    // and it says so where it is installed
+    const host = codeOf(join(WORKSPACE, 'apps/astro/src/lib/chat-host.ts'));
+    expect(host).toMatch(/routing:\s*false/);
+    expect(host).toMatch(/pinnedAgent:\s*PINNED_AGENT/);
+  });
+
+  it('the surface imports no app-local module', () => {
+    // The whole point of the move: `@/...` inside the package would resolve
+    // to whichever app compiled it, which is the defect, not the fix.
+    for (const [, owner] of SURFACE) {
+      expect(codeOf(join(WORKSPACE, owner))).not.toMatch(/from '@\/[^']*'/);
+    }
+  });
+
+  it('apps/astro has no second chat client left behind', () => {
+    // ASTRAL-105's negative space, named file and all.
+    expect(ALL_FILES.map(rel)).not.toContain('apps/astro/src/lib/reading.ts');
   });
 });
 

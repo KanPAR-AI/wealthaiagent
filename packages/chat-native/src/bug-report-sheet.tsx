@@ -1,16 +1,27 @@
-// Report-a-bug sheet with attachments.
+// The ONE bug-report sheet (docs/49 ASTRAL-163).
 //
-// Replaces the bare Alert.prompt: a modal with a description field and ONE
-// optional image attachment, sourced either from a screenshot of the screen
-// the user was just looking at (captured BEFORE this sheet opens, so the
-// sheet itself is never in the shot) or from the photo library.
+// Moved out of `apps/mobile/src/components/bug-report-sheet.tsx`. A modal
+// with a description field and ONE optional image, sourced either from a
+// screenshot of the screen the user was just looking at — captured BEFORE
+// this sheet opens, so the sheet is never in its own shot — or from the
+// photo library.
 //
 // Upload path: the backend takes multipart POST /bug-reports with a
-// `screenshot` file part. RN FormData {uri} parts are rejected by
-// expo/fetch ("Unsupported FormDataPart implementation"), so when an image
-// is attached we post the WHOLE report via expo-file-system uploadAsync —
-// its `parameters` map carries description/chat_id/context as ordinary
-// form fields. With no image we use the shared submitBugReportCore.
+// `screenshot` file part. RN FormData {uri} parts are rejected by expo/fetch
+// ("Unsupported FormDataPart implementation"), so when an image is attached
+// we post the WHOLE report via expo-file-system uploadAsync — its
+// `parameters` map carries description/chat_id/context as ordinary form
+// fields. With no image we use the shared `submitBugReportCore`. Neither
+// path is a second report route: both land in the same /admin/bugs queue.
+//
+// ── what the two apps differ in ───────────────────────────────────────────
+//
+// The token comes from the installed chat host; the API base comes from the
+// platform adapter's `getApiUrl`, which each app already owns (mobile's
+// honours its runtime backend switcher, astro's is its own). The CONTEXT —
+// route, build, brand — is the caller's, because only the app knows which
+// product it is; it is merged over the platform facts collected here so
+// /admin/bugs triage can tell the products apart.
 
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
@@ -25,24 +36,35 @@ import {
   Pressable,
   StyleSheet,
   TextInput,
-  useColorScheme,
   View,
 } from 'react-native';
 import { uploadAsync, FileSystemUploadType } from 'expo-file-system/legacy';
-import { submitBugReportCore } from '@wealthai/core';
+import { getPlatform, submitBugReportCore } from '@wealthai/core';
 
-import { ThemedText } from '@/components/themed-text';
-import { Colors, Spacing } from '@/constants/theme';
-import { getToken } from '@/lib/auth';
-import { apiUrl } from '@/lib/server-config';
+import { getChatHost } from './host';
+import { ChatText } from './message-bubble';
+import type { ChatTheme } from './theme';
 
 export interface BugReportSheetProps {
   visible: boolean;
   onClose: () => void;
-  /** file:// URI of the screen captured just before the sheet opened. */
+  /** file:// URI of the screen captured just before the sheet opened.
+   *  null is a real state: a capture can fail, and the report matters more
+   *  than the picture, so the sheet still opens. */
   screenShotUri: string | null;
   chatId: string | null;
-  selectedAgent: string | null;
+  theme: ChatTheme;
+  /** (a) which product this report came from. It prefixes the user agent AND
+   *  travels as its own context field, so /admin/bugs triage can tell two
+   *  products over one backend apart at a glance. */
+  brand: string;
+  /**
+   * What this app knows about where the report came from — route, build,
+   * brand, selected agent. Merged OVER the platform facts collected here.
+   */
+  context?: Record<string, unknown>;
+  /** (a) one line of brand copy under the title. */
+  subtitle?: string;
 }
 
 export function BugReportSheet({
@@ -50,10 +72,13 @@ export function BugReportSheet({
   onClose,
   screenShotUri,
   chatId,
-  selectedAgent,
+  theme,
+  brand,
+  context: appContext,
+  subtitle = 'The current chat transcript is attached automatically.',
 }: BugReportSheetProps) {
-  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
-  const colors = Colors[scheme];
+  const { colors } = theme;
+  const styles = stylesFor(theme);
 
   const [description, setDescription] = useState('');
   // Default to the captured screen — "attach what I'm looking at" is the
@@ -98,15 +123,15 @@ export function BugReportSheet({
     if (desc.length < 3 || sending) return;
     setSending(true);
     const context = {
-      url: 'app://mobile/chat',
-      selected_agent: selectedAgent || undefined,
       // Was hardcoded to "iOS" on every platform, so an Android report came
       // in labelled iOS and platform-specific bugs could not be triaged from
       // the report itself.
-      user_agent: `YourFinAdvisor ${Platform.OS} ${Platform.Version} (Expo)`,
-    };
+      user_agent: `${brand} ${Platform.OS} ${Platform.Version} (Expo)`,
+      brand,
+      ...appContext,
+    } as Record<string, unknown>;
     try {
-      const token = await getToken();
+      const token = await getChatHost().getToken();
       if (attachmentUri) {
         // Downscale + compress before upload. A full-resolution screen capture
         // (or library photo) is several MB, so "send report" took forever (the
@@ -127,7 +152,7 @@ export function BugReportSheet({
           /* keep the original on any manipulation failure */
         }
         const result = await uploadAsync(
-          apiUrl('/bug-reports'),
+          getPlatform().getApiUrl('/bug-reports'),
           uploadUri,
           {
             httpMethod: 'POST',
@@ -146,7 +171,11 @@ export function BugReportSheet({
           throw new Error(`Upload failed (${result.status})`);
         }
       } else {
-        await submitBugReportCore(token ?? undefined, { description: desc, chatId }, context);
+        await submitBugReportCore(
+          token ?? undefined,
+          { description: desc, chatId },
+          context as any,
+        );
       }
       reset();
       onClose();
@@ -157,6 +186,8 @@ export function BugReportSheet({
       setSending(false);
     }
   };
+
+  const ready = description.trim().length >= 3 && !sending;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -169,24 +200,19 @@ export function BugReportSheet({
         // they were typing (bug ef26fdb0).
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={[styles.sheet, { backgroundColor: colors.background }]}>
+        <View style={styles.sheet}>
           <View style={styles.grabber} />
-          <ThemedText type="subtitle">Report an issue</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            The current chat transcript is attached automatically.
-          </ThemedText>
+          <ChatText theme={theme} step="title">Report an issue</ChatText>
+          <ChatText theme={theme} step="small" tone="muted">{subtitle}</ChatText>
 
           <TextInput
             value={description}
             onChangeText={setDescription}
             placeholder="What went wrong?"
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.textMuted}
             multiline
             autoFocus
-            style={[
-              styles.input,
-              { backgroundColor: colors.backgroundElement, color: colors.text },
-            ]}
+            style={styles.input}
           />
 
           {/* Attachment preview + sources */}
@@ -194,11 +220,11 @@ export function BugReportSheet({
             <View style={styles.previewRow}>
               <Image source={{ uri: attachmentUri }} style={styles.preview} />
               <View style={styles.previewMeta}>
-                <ThemedText type="small" themeColor="textSecondary">
+                <ChatText theme={theme} step="small" tone="muted">
                   {usedCapture ? 'Screenshot of current screen' : 'Image from library'}
-                </ThemedText>
+                </ChatText>
                 <Pressable onPress={() => setAttachmentUri(null)} hitSlop={8}>
-                  <ThemedText type="small" style={styles.remove}>Remove</ThemedText>
+                  <ChatText theme={theme} step="small" tone="danger">Remove</ChatText>
                 </Pressable>
               </View>
             </View>
@@ -206,37 +232,26 @@ export function BugReportSheet({
 
           <View style={styles.actions}>
             {screenShotUri && !usedCapture ? (
-              <Pressable
-                onPress={useCapturedScreen}
-                style={[styles.actionButton, { backgroundColor: colors.backgroundElement }]}>
-                <ThemedText type="small">📸 Current screen</ThemedText>
+              <Pressable onPress={useCapturedScreen} style={styles.actionButton}>
+                <ChatText theme={theme} step="small">📸 Current screen</ChatText>
               </Pressable>
             ) : null}
-            <Pressable
-              onPress={pickImage}
-              style={[styles.actionButton, { backgroundColor: colors.backgroundElement }]}>
-              <ThemedText type="small">🖼 Attach image</ThemedText>
+            <Pressable onPress={pickImage} style={styles.actionButton}>
+              <ChatText theme={theme} step="small">🖼 Attach image</ChatText>
             </Pressable>
           </View>
 
           <Pressable
             onPress={submit}
-            disabled={description.trim().length < 3 || sending}
+            disabled={!ready}
             style={[
               styles.submit,
-              {
-                backgroundColor:
-                  description.trim().length >= 3 && !sending
-                    ? colors.text
-                    : colors.backgroundSelected,
-              },
+              { backgroundColor: ready ? colors.primary : colors.surfaceStrong },
             ]}>
             {sending ? (
-              <ActivityIndicator color={colors.background} />
+              <ActivityIndicator color={colors.onPrimary} />
             ) : (
-              <ThemedText type="smallBold" style={{ color: colors.background }}>
-                Send report
-              </ThemedText>
+              <ChatText theme={theme} step="smallBold" tone="onPrimary">Send report</ChatText>
             )}
           </Pressable>
         </View>
@@ -245,53 +260,59 @@ export function BugReportSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
-  sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: Spacing.four,
-    paddingBottom: Spacing.five,
-    gap: Spacing.three,
-  },
-  grabber: {
-    alignSelf: 'center',
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(128,128,128,0.4)',
-  },
-  input: {
-    minHeight: 88,
-    maxHeight: 160,
-    borderRadius: 14,
-    padding: Spacing.three,
-    fontSize: 16,
-    textAlignVertical: 'top',
-  },
-  previewRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  preview: {
-    width: 72,
-    height: 72,
-    borderRadius: 10,
-    backgroundColor: 'rgba(128,128,128,0.15)',
-  },
-  previewMeta: { gap: 4, flex: 1 },
-  remove: { color: '#e5484d' },
-  actions: { flexDirection: 'row', gap: Spacing.two },
-  actionButton: {
-    borderRadius: 14,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two + 2,
-  },
-  submit: {
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+function stylesFor(theme: ChatTheme) {
+  const { colors, metrics } = theme;
+  return StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      backgroundColor: 'rgba(0,0,0,0.45)',
+    },
+    sheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: metrics.rowPaddingX,
+      paddingBottom: metrics.rowPaddingX + metrics.widgetGap,
+      gap: metrics.bubblePaddingX,
+    },
+    grabber: {
+      alignSelf: 'center',
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: 'rgba(128,128,128,0.4)',
+    },
+    input: {
+      minHeight: 88,
+      maxHeight: 160,
+      borderRadius: 14,
+      padding: metrics.bubblePaddingX,
+      backgroundColor: colors.surface,
+      color: colors.text,
+      ...(theme.type.input as object),
+      textAlignVertical: 'top',
+    },
+    previewRow: { flexDirection: 'row', alignItems: 'center', gap: metrics.bubblePaddingX },
+    preview: {
+      width: 72,
+      height: 72,
+      borderRadius: 10,
+      backgroundColor: 'rgba(128,128,128,0.15)',
+    },
+    previewMeta: { gap: 4, flex: 1 },
+    actions: { flexDirection: 'row', gap: metrics.widgetGap },
+    actionButton: {
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      paddingHorizontal: metrics.bubblePaddingX,
+      paddingVertical: metrics.bubblePaddingY,
+    },
+    submit: {
+      height: 48,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  });
+}
