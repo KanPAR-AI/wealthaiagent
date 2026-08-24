@@ -249,7 +249,19 @@ export interface AstralTheme {
   line: string;
   surface: string;
   surfaceAlt: string;
+  /** Violet: INTERACTION — buttons, chips, links, the send disc, the
+   *  "current" marker. Everything a finger is meant to reach for. */
   accent: string;
+  /**
+   * Gold: CEREMONY — the compatibility ring, and nothing a finger reaches for.
+   *
+   * docs/49 ASTRAL-98 / F25: the board has two accents with different jobs and
+   * one token cannot serve both — supplying a gold `accent` to get the ring
+   * right turns every button gold. REQUIRED, so a host that constructs a theme
+   * without choosing a ceremonial colour fails to compile rather than
+   * silently falling back to the interactive one.
+   */
+  ceremonial: string;
   warn: string;
   border: string;
 }
@@ -261,7 +273,11 @@ export const LIGHT_THEME: AstralTheme = {
   line: '#3b3548',
   surface: '#ffffff',
   surfaceAlt: '#f5f3f8',
-  accent: '#7c3aed',
+  // The board's violet, sampled off frame 04's user bubble (#5b3a93). The
+  // ceremonial gold is DEEPER here than on the dark theme: the board's
+  // #e8c986 on a white card is a 7px ring nobody can see.
+  accent: '#5a378e',
+  ceremonial: '#c9a227',
   warn: '#b45309',
   border: '#e3dfea',
 };
@@ -274,6 +290,8 @@ export const DARK_THEME: AstralTheme = {
   surface: '#17141f',
   surfaceAlt: '#221d2e',
   accent: '#a78bfa',
+  // the board's own gold, which is drawn on the cosmic field
+  ceremonial: '#e8c986',
   warn: '#fbbf24',
   border: '#332c42',
 };

@@ -246,7 +246,9 @@ function Ring(props: MatchScorecardProps): ReactNode {
               cx={RING_CENTRE}
               cy={RING_CENTRE}
               r={RING_RADIUS}
-              stroke={theme.accent}
+              // Gold, not violet: the ring is ceremony, and every affordance
+              // on this card stays interactive-violet (ASTRAL-98).
+              stroke={theme.ceremonial}
               strokeWidth={7}
               fill="none"
               strokeLinecap="round"
