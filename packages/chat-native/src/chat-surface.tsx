@@ -117,9 +117,15 @@ export function ChatSurface({
       ) : busy ? (
         // New-chat creation in flight — immediate feedback instead of the
         // stale suggestions screen (bug e6797e57: looked frozen).
-        <View style={styles.fill}>{pending}</View>
+        //
+        // Rendered bare, not inside a wrapper: both hosts' empty states are
+        // already `flex: 1`, and an extra view here is a layout difference
+        // between what apps/mobile shipped and what it renders now. The
+        // ONE-surface rule cuts both ways — the shared component must not
+        // quietly restructure a live app's tree either.
+        pending
       ) : (
-        <View style={styles.fill}>{empty}</View>
+        empty
       )}
       {belowTranscript}
       {showChips ? (
@@ -152,7 +158,6 @@ function stylesFor(theme: ChatTheme) {
   const { colors, metrics, radius } = theme;
   return StyleSheet.create({
     body: { flex: 1 },
-    fill: { flex: 1 },
     chips: {
       flexDirection: 'row',
       flexWrap: 'wrap',
