@@ -1,5 +1,4 @@
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import * as Updates from 'expo-updates';
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
@@ -53,8 +52,12 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>
+        {/* No StatusBar here on purpose: one global `style="light"` put white
+            time-and-battery over screen 4's and 12's paper surfaces, where it
+            is invisible. The bar belongs to whatever is UNDER it, so each
+            screen declares its own (docs/49 ASTRAL-124 — the light/ceremonial
+            split is per surface). */}
         <Stack screenOptions={{ headerShown: false }} />
-        <StatusBar style="light" />
       </KeyboardProvider>
     </GestureHandlerRootView>
   );

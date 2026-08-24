@@ -1,7 +1,7 @@
 // Screen 1 — Splash / Onboarding, as the board draws it (docs/astral-board/
 // 01-splash-onboarding.png; docs/49 ASTRAL-123): the cosmic field, the serif
-// wordmark in a gold ring, the positioning line, the gold "Get Started" and
-// the log-in line.
+// wordmark inside a beaded gold ring, the positioning lines, the gold
+// "Get Started" and the log-in line.
 //
 // Campaign-parameterised entry (four to six distinct flows, §4.2) is
 // ASTRAL-123's other clause and is NOT deferred on engineering: it is
@@ -9,37 +9,50 @@
 // a variant that promises what the build cannot draw is the row's own
 // negative space.
 //
+// The board's illustration (mountains, water, the seated figure) is a
+// commissioned asset that does not exist. Everything else in the frame is
+// drawn: the field, the star clusters, the sparkle bursts, the ringed planet,
+// the beaded ring and the warm horizon that keeps the lower half from reading
+// as an empty rectangle. When the artwork lands it drops in behind these.
+//
 // A returning user skips the ceremony: the flag flips the first time they
 // proceed, and the entry route becomes a redirect. The chart-reveal arc
 // (details → cast → reveal) arrives with PH-11/12's birth-details form.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  BeadedRing,
+  Horizon,
+  RingedPlanet,
+  SkyDefs,
+  SkyField,
+  Sparkle,
+  Stars,
+} from '@/components/sky';
 import { track } from '@/lib/analytics';
 import { tokens } from '@/theme';
 
 const ENTERED_KEY = 'astro.entered';
 
-/** Deterministic star field — index-hashed positions, no Math.random, so the
- *  frame is stable across renders and snapshot tests. */
-function stars(count: number, w: number, h: number) {
-  const out: { x: number; y: number; r: number; o: number }[] = [];
-  for (let i = 1; i <= count; i++) {
-    const x = (i * 73) % 97 / 97 * w;
-    const y = (i * 151) % 89 / 89 * h * 0.72;
-    out.push({ x, y, r: i % 5 === 0 ? 1.6 : 0.9, o: 0.35 + ((i * 37) % 50) / 100 });
-  }
-  return out;
-}
+/** Where the board hangs its three bursts and its planet, as fractions. */
+const SPARKLES: [number, number, number][] = [
+  [0.14, 0.115, 13],
+  [0.93, 0.218, 15],
+  [0.51, 0.176, 6],
+];
+const PLANET: [number, number] = [0.79, 0.12];
 
 export default function Onboarding() {
   const { width, height } = useWindowDimensions();
   const [checked, setChecked] = useState(false);
+  const [heroHeight, setHeroHeight] = useState(0);
 
   useEffect(() => {
     AsyncStorage.getItem(ENTERED_KEY).then((v) => {
@@ -59,30 +72,33 @@ export default function Onboarding() {
 
   if (!checked) return <View style={s.field} />;
 
-  const ringR = Math.min(width * 0.42, 175);
+  // Frame 1's ring spans ~89% of the screen width and is centred a little
+  // above the middle; the hero sits optically centred INSIDE it rather than
+  // at a fixed margin, which is why the block is measured.
+  const ringR = Math.min(width * 0.445, 190);
+  const ringCx = width * 0.52;
+  const ringCy = height * 0.357;
 
   return (
     <View style={s.field}>
+      <StatusBar style="light" />
       <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
-        <Defs>
-          <RadialGradient id="glow" cx="50%" cy="38%" r="75%">
-            {tokens.gradients.nightSky.map((stop) => (
-              <Stop key={stop.offset} offset={stop.offset} stopColor={stop.color} />
-            ))}
-          </RadialGradient>
-        </Defs>
-        <Rect width={width} height={height} fill="url(#glow)" />
-        {stars(70, width, height).map((st, i) => (
-          <Circle key={i} cx={st.x} cy={st.y} r={st.r}
-            fill={tokens.palette.accent.ceremonial} opacity={st.o} />
+        <SkyDefs id="entry" />
+        <SkyField id="entry" width={width} height={height} />
+        <Horizon id="entry" width={width} height={height} />
+        <Stars width={width} height={height} />
+        <BeadedRing cx={ringCx} cy={ringCy} r={ringR} />
+        <RingedPlanet x={width * PLANET[0]} y={height * PLANET[1]} r={width * 0.05} />
+        {SPARKLES.map(([x, y, size], i) => (
+          <Sparkle key={i} x={width * x} y={height * y} size={size} />
         ))}
-        <Circle cx={width / 2} cy={height * 0.38} r={ringR}
-          stroke={tokens.palette.accent.ceremonial} strokeWidth={1.2}
-          opacity={0.75} fill="none" />
       </Svg>
 
       <SafeAreaView style={s.safe}>
-        <View style={s.hero}>
+        <View
+          style={[s.hero, heroHeight ? { top: ringCy - heroHeight / 2 } : s.heroHidden]}
+          onLayout={(e) => setHeroHeight(e.nativeEvent.layout.height)}
+        >
           <Text style={s.wordmark}>{tokens.wordmark}</Text>
           <Text style={s.tagline}>{tokens.tagline}</Text>
           <Text style={s.sub}>Understand your path.{'\n'}Align with the cosmos.</Text>
@@ -91,10 +107,28 @@ export default function Onboarding() {
         <View style={s.foot}>
           <Pressable style={s.cta} onPress={() => begin('/chat')}
             accessibilityRole="button" accessibilityLabel="Get Started">
+            {/* The board's CTA is a vertical gold gradient with a lighter rim,
+                not a flat fill — painted rather than approximated. */}
+            <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+              <Defs>
+                <LinearGradient id="cta-fill" x1="0" y1="0" x2="0" y2="1">
+                  <Stop offset="0%" stopColor={tokens.gradients.goldCta.from} />
+                  <Stop offset="100%" stopColor={tokens.gradients.goldCta.to} />
+                </LinearGradient>
+              </Defs>
+              <Rect
+                width="100%" height="100%" rx={tokens.radius.button}
+                fill="url(#cta-fill)"
+                stroke={tokens.gradients.goldCta.rim} strokeWidth={1}
+              />
+            </Svg>
             <Text style={s.ctaText}>Get Started</Text>
           </Pressable>
+
           <Pressable onPress={() => begin('/settings')} hitSlop={10}
             accessibilityRole="button" accessibilityLabel="Log in">
+            {/* One cream string with a bold link inside it — the board does not
+                colour this line gold; gold is reserved for ceremony. */}
             <Text style={s.login}>
               Already have an account? <Text style={s.loginLink}>Log in</Text>
             </Text>
@@ -108,17 +142,28 @@ export default function Onboarding() {
 const t = tokens;
 const s = StyleSheet.create({
   field: { flex: 1, backgroundColor: t.palette.cosmic.deep },
-  safe: { flex: 1, justifyContent: 'space-between' },
-  hero: { alignItems: 'center', marginTop: '38%', gap: t.space(3), paddingHorizontal: t.space(8) },
+  safe: { flex: 1, justifyContent: 'flex-end' },
+  hero: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    gap: t.space(3),
+    paddingHorizontal: t.space(8),
+  },
+  /** first paint only, before the block has been measured */
+  heroHidden: { opacity: 0 },
   wordmark: {
     ...t.type.scale.hero,
     ...t.type.display,
     color: t.palette.ink.onCosmic,
   },
   tagline: {
+    // SANS semibold: the serif is the WORDMARK's, and using it for the
+    // tagline too made the two compete (F26 — one display face, one job).
     ...t.type.scale.title,
-    ...t.type.display,
     color: t.palette.ink.onCosmic,
+    fontWeight: '600',
     textAlign: 'center',
   },
   sub: {
@@ -130,12 +175,12 @@ const s = StyleSheet.create({
   foot: { alignItems: 'center', gap: t.space(4), paddingBottom: t.space(6), paddingHorizontal: t.space(6) },
   cta: {
     alignSelf: 'stretch',
-    backgroundColor: t.palette.accent.ceremonial,
     borderRadius: t.radius.button,
     paddingVertical: t.space(4),
     alignItems: 'center',
+    overflow: 'hidden',
   },
   ctaText: { ...t.type.scale.body, color: t.palette.accent.ceremonialInk, fontWeight: '600' },
   login: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
-  loginLink: { color: t.palette.accent.ceremonial, fontWeight: '600' },
+  loginLink: { color: t.palette.ink.onCosmic, fontWeight: '700' },
 });
