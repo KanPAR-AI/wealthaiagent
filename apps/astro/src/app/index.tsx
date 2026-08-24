@@ -61,9 +61,9 @@ export default function Onboarding() {
       <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
         <Defs>
           <RadialGradient id="glow" cx="50%" cy="38%" r="75%">
-            <Stop offset="0%" stopColor={tokens.palette.cosmic.glow} />
-            <Stop offset="55%" stopColor={tokens.palette.cosmic.base} />
-            <Stop offset="100%" stopColor={tokens.palette.cosmic.deep} />
+            {tokens.gradients.nightSky.map((stop) => (
+              <Stop key={stop.offset} offset={stop.offset} stopColor={stop.color} />
+            ))}
           </RadialGradient>
         </Defs>
         <Rect width={width} height={height} fill="url(#glow)" />
@@ -106,23 +106,20 @@ const s = StyleSheet.create({
   safe: { flex: 1, justifyContent: 'space-between' },
   hero: { alignItems: 'center', marginTop: '38%', gap: t.space(3), paddingHorizontal: t.space(8) },
   wordmark: {
+    ...t.type.scale.hero,
+    ...t.type.display,
     color: t.palette.ink.onCosmic,
-    fontFamily: t.type.display.fontFamily,
-    fontWeight: t.type.display.weight,
-    fontSize: t.type.scale.hero,
-    letterSpacing: 0.5,
   },
   tagline: {
+    ...t.type.scale.title,
+    ...t.type.display,
     color: t.palette.ink.onCosmic,
-    fontFamily: t.type.display.fontFamily,
-    fontSize: t.type.scale.title,
     textAlign: 'center',
   },
   sub: {
+    ...t.type.scale.sub,
     color: t.palette.ink.onCosmicMuted,
-    fontSize: t.type.scale.sub,
     textAlign: 'center',
-    lineHeight: 21,
     marginTop: t.space(2),
   },
   foot: { alignItems: 'center', gap: t.space(4), paddingBottom: t.space(6), paddingHorizontal: t.space(6) },
@@ -133,7 +130,7 @@ const s = StyleSheet.create({
     paddingVertical: t.space(4),
     alignItems: 'center',
   },
-  ctaText: { color: t.palette.accent.ceremonialInk, fontSize: t.type.scale.body, fontWeight: '600' },
-  login: { color: t.palette.ink.onCosmicMuted, fontSize: t.type.scale.sub },
+  ctaText: { ...t.type.scale.body, color: t.palette.accent.ceremonialInk, fontWeight: '600' },
+  login: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
   loginLink: { color: t.palette.accent.ceremonial, fontWeight: '600' },
 });

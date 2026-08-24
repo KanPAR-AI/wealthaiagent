@@ -18,8 +18,10 @@ export interface BrandTokens {
   tagline: string;
 
   palette: {
-    /** Ceremonial ground — the deep cosmic field (screens 1, 3, 6, 12's header). */
-    cosmic: { base: string; deep: string; glow: string };
+    /** Ceremonial ground — the deep cosmic field (screens 1, 3, 6, 12's header).
+     *  `horizon` is the warm apricot the board burns into the lower third of
+     *  screen 1 where the sky meets the water. */
+    cosmic: { base: string; deep: string; glow: string; horizon: string };
     /** Working ground — light card surfaces with dark ink (screens 2, 4, 5, 7, 8). */
     paper: { base: string; card: string; line: string };
     ink: { primary: string; secondary: string; muted: string; onCosmic: string; onCosmicMuted: string };
@@ -36,13 +38,51 @@ export interface BrandTokens {
 
   type: {
     /** Serif display face for the wordmark and ceremonial headings.
-     *  No font file ships yet (F26): these are platform stacks. */
-    display: { fontFamily: string; weight: '400' | '600' | '700' };
-    scale: { hero: number; title: number; body: number; sub: number; caption: number };
+     *
+     *  F26 — INTERIM STACK, not a decision: no font file exists anywhere in
+     *  the workspace, so this resolves to Georgia on iOS and to the platform
+     *  serif on Android. ASTRAL-97 makes the face an asset decision with a
+     *  test that FAILS when the asset is missing; that test cannot be written
+     *  until an asset exists, and this token is the single place it lands. */
+    display: { fontFamily: string; fontWeight: '400' | '600' | '700' };
+    /** Named steps that carry their own leading. ASTRAL-97: "as named steps
+     *  with line-heights, not call-site numbers" — a screen SPREADS a step, so
+     *  leading can never drift away from the size it belongs to. */
+    scale: Record<TypeStep, TypeStyle>;
   };
 
-  radius: { card: number; button: number; input: number; chip: number };
+  /** The two gradients the board actually draws (ASTRAL-97). Data, not a
+   *  component: each platform paints them with its own primitive. */
+  gradients: {
+    /** The night-sky field — radial, brightest just above centre. */
+    nightSky: ReadonlyArray<{ offset: string; color: string }>;
+    /** The gold CTA — vertical, with a lighter rim along the top edge. */
+    goldCta: { from: string; to: string; rim: string };
+  };
+
+  /** Elevation for surfaces the board floats rather than outlines. */
+  elevation: { card: { color: string; opacity: number; radius: number; offsetY: number } };
+
+  radius: { card: number; button: number; input: number; chip: number; tail: number; pill: number };
+  /** Fixed control sizes, so a 42px disc is one decision and not four. */
+  size: { disc: number; avatar: number; icon: number };
   space: (n: number) => number;
+}
+
+/** The seven steps the board actually uses across screens 1, 4 and 12. */
+export type TypeStep =
+  | 'hero'
+  | 'title'
+  | 'lead'
+  | 'body'
+  | 'label'
+  | 'sub'
+  | 'caption';
+
+export interface TypeStyle {
+  fontSize: number;
+  lineHeight: number;
+  letterSpacing?: number;
 }
 
 export type BrandId = 'astro' | 'jyotish';

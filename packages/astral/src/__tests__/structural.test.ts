@@ -12,7 +12,7 @@ import { readdirSync, readFileSync, statSync } from 'fs';
 import { join, relative, sep } from 'path';
 
 const WORKSPACE = join(__dirname, '..', '..', '..', '..');
-const SEARCH_ROOTS = ['src', 'packages', 'apps/mobile/src'];
+const SEARCH_ROOTS = ['src', 'packages', 'apps/mobile/src', 'apps/astro/src'];
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'coverage', 'ios', 'android', '.expo']);
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -239,5 +239,176 @@ describe('ASTRAL-19 — renderers derive nothing', () => {
     }
     const geometry = readFileSync(join(WORKSPACE, 'packages/astral/src/geometry.ts'), 'utf8');
     expect(geometry).toContain('ringDash');
+  });
+});
+
+/**
+ * ASTRAL-97 / ASTRAL-123 / ASTRAL-124 — the token layer, enforced.
+ *
+ * These replace `apps/astro/scripts/check-tokens.sh`, which was deleted for
+ * being vacuous: it grepped for six-digit hex only, so `rgb(…)`, `'white'`,
+ * `fontSize: 17` and `fontFamily: 'Georgia'` all sailed through it, and it was
+ * never wired into CI in the first place. Run in the root jest project, the
+ * greps are a build failure rather than a habit.
+ *
+ * The rules bind SCREENS, not the token module: `theme/brands.ts` is where
+ * values are supposed to live, so it is the one exempt file.
+ */
+describe('ASTRAL-97 — one token module, and no screen declares a value', () => {
+  const ASTRO_ROOT = 'apps/astro/src/';
+  /** The one file allowed to state a VALUE. */
+  const VALUE_MODULE = 'apps/astro/src/theme/brands.ts';
+  /** contract.ts declares the SHAPE (`fontSize: number`) and index.ts picks the
+   *  brand; neither carries a colour, so the colour greps below still bind
+   *  them — only the type/size greps step around the declarations. */
+  const TOKEN_DIR = 'apps/astro/src/theme/';
+
+  const astroFiles = ALL_FILES.filter((f) => rel(f).startsWith(ASTRO_ROOT));
+  /** every astro source file EXCEPT the one allowed to carry values */
+  const screens = astroFiles.filter((f) => rel(f) !== VALUE_MODULE && !isTest(f));
+  /** every astro source file OUTSIDE the token module altogether */
+  const outsideTokens = astroFiles.filter((f) => !rel(f).startsWith(TOKEN_DIR) && !isTest(f));
+
+  it('actually walked the app', () => {
+    // Same vacuity guard as the workspace check above: a search root that
+    // resolves to nothing would make every assertion below pass green.
+    expect(astroFiles.length).toBeGreaterThan(10);
+    expect(astroFiles.map(rel)).toContain('apps/astro/src/app/chat.tsx');
+    expect(astroFiles.map(rel)).toContain(VALUE_MODULE);
+    expect(screens.map(rel)).not.toContain(VALUE_MODULE);
+    expect(outsideTokens.map(rel)).not.toContain('apps/astro/src/theme/contract.ts');
+    expect(outsideTokens.map(rel)).toContain('apps/astro/src/app/settings.tsx');
+  });
+
+  it('the value module carries the colours, so the grep below means something', () => {
+    // If the palette ever moved out from under the exemption, the "zero hex
+    // outside brands.ts" assertion would still pass while meaning nothing.
+    const values = codeOf(join(WORKSPACE, VALUE_MODULE));
+    expect((values.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []).length).toBeGreaterThan(10);
+  });
+
+  it('declares zero colour literals outside the token module', () => {
+    // Hex in any length, and the two function forms `check-tokens.sh` missed.
+    const COLOUR = /#[0-9a-fA-F]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(/;
+    expect(filesContaining(COLOUR, (f) => screens.includes(f))).toEqual([]);
+  });
+
+  it('declares zero NAMED colour literals outside the token module', () => {
+    // `'white'` is a colour the same way `#ffffff` is. `transparent` and the
+    // SVG `none` are absences, not palette choices, so they stay legal.
+    const NAMED =
+      /(?:color|Color|stroke|fill|tintColor|backgroundColor|shadowColor)\s*[:=]\s*['"](?!transparent|none|url\()[a-z]+['"]/;
+    expect(filesContaining(NAMED, (f) => screens.includes(f))).toEqual([]);
+  });
+
+  it('declares zero numeric fontSize outside the token module', () => {
+    // The type scale is named steps WITH line-heights (ASTRAL-97), so a screen
+    // spreads a step; it never states a number. `fontSize: t.type...` would
+    // still be a call-site size decision, so the grep is on the KEY.
+    expect(filesContaining(/fontSize\s*:/, (f) => outsideTokens.includes(f))).toEqual([]);
+  });
+
+  it('declares zero lineHeight outside the token module', () => {
+    // Leading travels with its size or it drifts from it; three of the four
+    // shipped screens had hand-tuned line-heights next to token sizes.
+    expect(filesContaining(/lineHeight\s*:/, (f) => outsideTokens.includes(f))).toEqual([]);
+  });
+
+  it('declares zero fontFamily outside the token module', () => {
+    // F26: the display face is one decision. Two call sites is two faces the
+    // day a font file lands.
+    expect(filesContaining(/fontFamily/, (f) => outsideTokens.includes(f))).toEqual([]);
+  });
+
+  it('declares zero radius literals outside the token module', () => {
+    expect(
+      filesContaining(/[bB]orderRadius\s*:\s*\d/, (f) => outsideTokens.includes(f)),
+    ).toEqual([]);
+  });
+
+  it('F35 — the wordmark is a token, not a string in a screen', () => {
+    // Six literal sites today per F35; the three that are TypeScript are
+    // pinned here. `app.json`'s brand block is the other three and is not a
+    // .ts file, so it is out of this grep's reach by construction.
+    expect(filesContaining(/['"]Astral AI['"]|['"]Jyotish AI['"]/, (f) => screens.includes(f)))
+      .toEqual([]);
+  });
+});
+
+describe('ASTRAL-124 — nothing follows the OS', () => {
+  it('no astro screen and no astral binding consults the colour scheme', () => {
+    // AMB-22 ruled (a): the split is by ROLE (working vs ceremonial), chosen
+    // in the token layer. A surface that follows the phone is a palette
+    // nobody chose — the state this row retires. F34: the component fix and
+    // the config fix are both required, hence the app.json assertion below.
+    const followers = filesContaining(
+      /useColorScheme/,
+      (f) =>
+        !isTest(f) &&
+        (rel(f).startsWith('apps/astro/src/') ||
+          rel(f).includes('/components/astral/')),
+    );
+    expect(followers).toEqual([]);
+  });
+
+  it('the app itself is pinned light', () => {
+    const appJson = JSON.parse(
+      readFileSync(join(WORKSPACE, 'apps/astro/app.json'), 'utf8'),
+    );
+    expect(appJson.expo.userInterfaceStyle).toBe('light');
+  });
+});
+
+describe('F28 — no template brand asset survives', () => {
+  const appJson = JSON.parse(
+    readFileSync(join(WORKSPACE, 'apps/astro/app.json'), 'utf8'),
+  );
+  /** Expo's template blues. The first frame of every cold start was #208AEF. */
+  const TEMPLATE = ['#208AEF', '#E6F4FE'];
+
+  it('no Expo template colour is left in the app config', () => {
+    const config = JSON.stringify(appJson);
+    for (const hex of TEMPLATE) {
+      expect(config.toLowerCase()).not.toContain(hex.toLowerCase());
+    }
+  });
+
+  it('the splash and adaptive-icon grounds are the brand cosmic ground', () => {
+    const splash = (appJson.expo.plugins as unknown[]).find(
+      (p) => Array.isArray(p) && p[0] === 'expo-splash-screen',
+    ) as [string, { backgroundColor: string }];
+    // Read from the token module rather than restated here, so a re-hue of
+    // the palette moves this assertion with it.
+    const brands = readFileSync(
+      join(WORKSPACE, 'apps/astro/src/theme/brands.ts'),
+      'utf8',
+    );
+    const deep = /deep:\s*'(#[0-9a-fA-F]{6})'/.exec(brands)?.[1];
+    expect(deep).toBeTruthy();
+    expect(splash[1].backgroundColor.toLowerCase()).toBe(deep!.toLowerCase());
+    expect(appJson.expo.android.adaptiveIcon.backgroundColor.toLowerCase()).toBe(
+      deep!.toLowerCase(),
+    );
+  });
+
+  it('ships no Expo template artwork', () => {
+    const dir = join(WORKSPACE, 'apps/astro/assets');
+    const found: string[] = [];
+    const walkAny = (d: string) => {
+      for (const e of readdirSync(d)) {
+        const full = join(d, e);
+        if (statSync(full).isDirectory()) walkAny(full);
+        else found.push(relative(dir, full).split(sep).join('/'));
+      }
+    };
+    walkAny(dir);
+    expect(found.length).toBeGreaterThan(4);
+    for (const f of found) {
+      expect(f).not.toMatch(/react-logo|expo-logo|expo-badge|tutorial-web|expo-symbol/i);
+    }
+    // The iOS Icon Composer bundle was Expo's own (a blue automatic-gradient
+    // fill plus `expo-symbol 2.svg`) and it is what TestFlight 1.0(3) shows.
+    expect(found.some((f) => f.startsWith('expo.icon/'))).toBe(false);
+    expect(appJson.expo.ios.icon).toBeUndefined();
   });
 });
