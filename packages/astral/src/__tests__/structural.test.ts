@@ -515,11 +515,16 @@ describeWithApps('ASTRAL-97 — one token module, and no screen declares a value
     // Same vacuity guard as the workspace check above: a search root that
     // resolves to nothing would make every assertion below pass green.
     expect(astroFiles.length).toBeGreaterThan(10);
-    expect(astroFiles.map(rel)).toContain('apps/astro/src/app/chat.tsx');
+    // The two named files MOVED into the `(tabs)` group when the five-tab
+    // shell landed (docs/49 ASTRAL-119). The paths are updated rather than
+    // relaxed: this guard exists so a search root that resolved to nothing
+    // could not make every assertion below pass green, and a glob would
+    // give that guarantee away.
+    expect(astroFiles.map(rel)).toContain('apps/astro/src/app/(tabs)/chat.tsx');
     expect(astroFiles.map(rel)).toContain(VALUE_MODULE);
     expect(screens.map(rel)).not.toContain(VALUE_MODULE);
     expect(outsideTokens.map(rel)).not.toContain('apps/astro/src/theme/contract.ts');
-    expect(outsideTokens.map(rel)).toContain('apps/astro/src/app/settings.tsx');
+    expect(outsideTokens.map(rel)).toContain('apps/astro/src/app/(tabs)/settings.tsx');
   });
 
   it('the value module carries the colours, so the grep below means something', () => {

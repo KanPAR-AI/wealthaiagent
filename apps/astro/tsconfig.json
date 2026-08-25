@@ -6,7 +6,11 @@
     // derivation) are unit-tested in the ROOT jest project — there is no RN
     // test renderer here, so anything testable is deliberately kept free of
     // react-native imports and tested from the workspace root.
-    "types": ["jest"],
+    // `node` because those same root-jest tests read FIXTURES off disk and
+    // grep this repo's own source (the ASTRAL-119 gate-order check reads the
+    // engine's node registry) — `fs`, `path` and `__dirname` are test-time
+    // APIs, and nothing under `src/app` may import them.
+    "types": ["jest", "node"],
     "paths": {
       "@/*": [
         "./src/*"

@@ -54,6 +54,48 @@ export interface Capabilities {
   profile: boolean;
 
   /**
+   * Screen 3, Home — the day's card (docs/49 ASTRAL-125).
+   *
+   * TRUE since `GET /people/self/daily`. Before that read existed a Home
+   * screen could only have composed "today" out of raw positions on the
+   * client, which is exactly what ASTRAL-112/125 forbid: the screen renders
+   * ONE dated artifact the engine assembled and stamped, or it renders a
+   * stated absence. The capability IS the read.
+   */
+  home: boolean;
+
+  /**
+   * Screen 8, Daily Guidance — the same artifact, faceted (ASTRAL-126).
+   *
+   * Deliberately a SEPARATE capability from `home` even though one endpoint
+   * serves both: the two screens can be withdrawn independently, and a
+   * single flag would make "we removed Insights" impossible to say without
+   * removing Home too. Both are false together only if the read goes away.
+   */
+  dailyGuidance: boolean;
+
+  /**
+   * Screen 9, Timeline — the dasha periods with transit windows folded in
+   * (ASTRAL-127).
+   *
+   * TRUE since `GET /people/self/timeline`. The year pills filter ONE
+   * computed set that arrives whole, so this capability is also the reason
+   * the screen can promise an instant year change.
+   */
+  timeline: boolean;
+
+  /**
+   * The conversation itself (docs/49 ASTRAL-105/106).
+   *
+   * TRUE, and it is a capability rather than a constant because the tab bar
+   * derives from this map with no exceptions. A hard-coded chat tab beside
+   * four derived ones would be the one entry nobody could turn off, and the
+   * mechanism ASTRAL-119 asks for is that the SET is derived — not that
+   * four fifths of it is.
+   */
+  aiChat: boolean;
+
+  /**
    * The saved matches list (docs/49 ASTRAL-140..146).
    *
    * TRUE since `GET /people/matches` — matches are keyed to a PAIR of person
@@ -97,6 +139,10 @@ export const CAPABILITIES: Capabilities = {
   credits: true,
   privacyAndData: true,
   birthDetails: false,
+  home: true,
+  dailyGuidance: true,
+  timeline: true,
+  aiChat: true,
   profile: true,
   matches: true,
   helpAndSupport: true,

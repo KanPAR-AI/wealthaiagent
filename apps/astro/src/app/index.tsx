@@ -62,7 +62,10 @@ export default function Onboarding() {
 
   useEffect(() => {
     AsyncStorage.getItem(ENTERED_KEY).then((v) => {
-      if (v) router.replace('/chat');
+      // A returning user lands on Home, not in the chat: the tab shell
+      // (docs/49 ASTRAL-119) exists so the app opens on the day's card, and
+      // the conversation is one tap away with its transcript intact.
+      if (v) router.replace('/home');
       else {
         setChecked(true);
         track('onboarding_shown');

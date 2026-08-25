@@ -27,12 +27,14 @@
 export * from './people-shapes';
 
 import type {
+  DailyResponse,
   EditImpact,
   MatchesResponse,
   PeopleResponse,
   PersonView,
   PrioritiesResponse,
   SelfResponse,
+  TimelineResponse,
 } from './people-shapes';
 import { getToken } from './auth';
 import { apiUrl } from './core-adapter';
@@ -68,6 +70,33 @@ export function fetchSelf(): Promise<SelfResponse> {
 
 export function fetchMatches(): Promise<MatchesResponse> {
   return call<MatchesResponse>('people/matches');
+}
+
+/**
+ * Screens 3 and 8 read THIS — one dated artifact with its four facets
+ * (docs/49 ASTRAL-125/126).
+ *
+ * It takes no arguments and must not grow any. The day is the person's own
+ * local day, decided server-side from their chart's timezone: a client that
+ * could pass a date could ask for yesterday's card, which is the single
+ * request the whole N1 artifact exists to refuse.
+ *
+ * ONE call serves both screens. Daily Guidance's four tabs are a filter over
+ * `facets` in the response the app already holds — so switching a tab makes
+ * no request, which is a property of this signature rather than of a
+ * screen's good behaviour.
+ */
+export function fetchDaily(): Promise<DailyResponse> {
+  return call<DailyResponse>('people/self/daily');
+}
+
+/**
+ * Screen 9 (docs/49 ASTRAL-127). The WHOLE computed set arrives once, with
+ * the years it covers — the board's year pills filter what is already here
+ * and never ask the server for a year (ASTRAL-52).
+ */
+export function fetchTimeline(): Promise<TimelineResponse> {
+  return call<TimelineResponse>('people/self/timeline');
 }
 
 /**

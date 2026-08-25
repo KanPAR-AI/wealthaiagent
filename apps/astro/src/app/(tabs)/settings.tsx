@@ -18,8 +18,8 @@
 // ("Settings → Credits", chatservice `chats.py:1001`) and, per ASTRAL-109, the
 // interim honest surface in place of a billing row.
 
-import { router } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { router, useFocusEffect } from 'expo-router';
+import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -54,6 +54,12 @@ import { tokens } from '@/theme';
 const HEADER_HEIGHT = 260;
 
 export default function Settings() {
+  // Per-tab status bar, set ON FOCUS. Every tab screen stays MOUNTED, so a
+  // declarative `<StatusBar style=…>` leaves whichever screen mounted last in
+  // charge — measured: Home → Timeline → Home left the clock dark on the
+  // night sky, where it cannot be read.
+  useFocusEffect(useCallback(() => setStatusBarStyle('light'), []));
+
   const [account, setAccount] = useState<Account | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
   const [unlimited, setUnlimited] = useState(false);

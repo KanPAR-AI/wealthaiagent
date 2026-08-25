@@ -271,3 +271,199 @@ export interface EditImpact {
   affected: { kind: 'chart' | 'match' | string; person_id?: string; pair_key?: string }[];
   derived_keys: string[];
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// The derived reads screens 3, 8 and 9 open with (docs/49 PH-16)
+//
+// Mirrors of `chatservice/services/people/artifacts.py` and
+// `services/agents/astrology/daily_facets.py`. Written as a DISCRIMINATED
+// UNION on `state`, because the alternative — one optional-everything
+// interface — is how a screen ends up rendering a card that is not there.
+// TypeScript refuses `res.card` until the code has proved `state === 'ready'`,
+// which is ASTRAL-125's "a stated absence, never yesterday's card" enforced
+// by the compiler rather than by review.
+// ══════════════════════════════════════════════════════════════════════════
+
+/** Why there is nothing to show. Each one asks for a DIFFERENT action from
+ *  the reader, which is why they are not one string (`artifacts.py`). */
+export type ReadState =
+  | 'ready'
+  | 'not_established'
+  | 'chart_absent'
+  | 'chart_stale'
+  | 'chart_unstamped'
+  | 'chart_unprovable'
+  | 'refused';
+
+export interface ReadAbsent {
+  state: Exclude<ReadState, 'ready'>;
+  reason: string;
+  chart?: { status: string; computed_at?: string | null };
+}
+
+/** A layer the engine could NOT compute, with its reason — never an empty
+ *  slot. `unlocked_by` names the fact that would fix it, when one would. */
+export interface AbsentLayer {
+  layer: string;
+  reason: string;
+  unlocked_by?: string;
+}
+
+export interface DailyDasha {
+  mahadasha?: DashaPeriod;
+  antardasha?: DashaPeriod;
+  selected_by?: string;
+}
+
+export interface TransitPlanet {
+  sign?: string;
+  degree?: number;
+  retrograde?: boolean;
+  house_from_lagna?: number;
+  house_from_moon?: number;
+}
+
+/** F31: the place a panchang is FOR, on the card. A tithi with no city is a
+ *  tithi for somewhere the reader has to guess. */
+export interface PanchangPlace {
+  name?: string | null;
+  basis?: string;
+  latitude?: number;
+  longitude?: number;
+  timezone?: string;
+  pending_decision?: string;
+}
+
+export interface DailyCard {
+  type: string;
+  /** the ARTIFACT's own date — never the device's (ASTRAL-125) */
+  date: string;
+  market: string;
+  shape: string;
+  key: string;
+  inputs_hash: string;
+  layers: string[];
+  absent_layers: AbsentLayer[];
+  omitted_by_shape: string[];
+  undetermined: Undetermined[];
+  time_known: boolean;
+  calculation: Record<string, unknown>;
+  transit?: {
+    as_of?: string;
+    window?: { start: string; end: string };
+    transit_place?: PanchangPlace;
+    natal_anchors?: Record<string, unknown>;
+    planets?: Record<string, TransitPlanet>;
+    rules?: Record<string, Record<string, unknown>>;
+  };
+  dasha?: DailyDasha;
+  panchang?: {
+    tithi?: string;
+    vara?: string;
+    nakshatra?: string;
+    yoga?: string;
+    karana?: string;
+    panchang_place?: PanchangPlace;
+  };
+  narration?: { text: string; task: string; narrated_for: string };
+}
+
+export interface FacetItem {
+  id: string;
+  kind: string;
+  title: string;
+  detail: string;
+  /** dasha items carry their dates as DATA, so the client formats them the
+   *  way it formats every other date (a server-joined range printed raw ISO
+   *  on screen — measured on-sim) */
+  start_date?: string;
+  end_date?: string;
+  /** the adjudicator domains this item touches; empty is a real answer */
+  domains: string[];
+  basis: string;
+  place?: { name?: string | null; basis?: string };
+  alternatives?: string[];
+  unlocked_by?: string | null;
+}
+
+export interface FacetTab {
+  id: string;
+  label: string;
+  domains: string[];
+  items: FacetItem[];
+  /** present when the tab has nothing today, and it says which areas */
+  empty_reason: string | null;
+}
+
+export interface DailyReady {
+  state: 'ready';
+  date: string;
+  card: DailyCard;
+  facets: { version: number; tabs: FacetTab[]; item_count: number; artifact_key?: string; date?: string };
+  narration: { text: string; generated_this_request: boolean; available: boolean };
+  chart: { status: string; computed_at?: string | null };
+  person: { id: string; display_name: string };
+  served_from_store: boolean;
+}
+
+export type DailyResponse = DailyReady | ReadAbsent;
+
+export interface TimelinePeriod {
+  level: 'mahadasha' | 'antardasha' | string;
+  index?: number;
+  parent_index?: number;
+  parent?: string;
+  planet: string;
+  start_date: string;
+  end_date: string;
+  houses_ruled?: number[];
+  /** house significations, decided by the ENGINE (ASTRAL-127: no category
+   *  inferred on the client) */
+  categories?: string[];
+  category_basis?: string;
+}
+
+export interface TimelineWindow {
+  planet?: string;
+  kind?: string;
+  rule?: string;
+  sign?: string;
+  start_date?: string;
+  end_date?: string;
+  description?: string;
+  categories?: string[];
+  houses?: number[];
+}
+
+export interface TimelineArtifact {
+  type: string;
+  as_of: string;
+  key: string;
+  inputs_hash: string;
+  layers: string[];
+  absent_layers: AbsentLayer[];
+  undetermined: Undetermined[];
+  time_known: boolean;
+  calculation: Record<string, unknown>;
+  dasha?: { periods: TimelinePeriod[]; sub_periods: TimelinePeriod[] };
+  transit?: { windows?: TimelineWindow[]; active_without_dates?: unknown[] };
+  cursor: { as_of: string; mahadasha_index: number | null; antardasha_index: number | null };
+  /** ASTRAL-127: the current period, or the NAMED absence in its place */
+  headline:
+    | { kind: 'dasha_period'; mahadasha: TimelinePeriod; antardasha?: TimelinePeriod | null }
+    | { kind: 'absent_layer'; layer: string; reason: string };
+  span: { start: string | null; end: string | null };
+  years: number[];
+}
+
+export interface TimelineReady {
+  state: 'ready';
+  as_of: string;
+  timeline: TimelineArtifact;
+  years: number[];
+  chart: { status: string; computed_at?: string | null };
+  person: { id: string; display_name: string };
+  served_from_store: boolean;
+}
+
+export type TimelineResponse = TimelineReady | ReadAbsent;

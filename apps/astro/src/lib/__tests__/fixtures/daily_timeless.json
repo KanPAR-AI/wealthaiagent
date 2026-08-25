@@ -1,0 +1,356 @@
+{
+ "state": "ready",
+ "date": "2026-08-24",
+ "card": {
+  "type": "daily_card",
+  "date": "2026-08-24",
+  "market": "india",
+  "shape": "full",
+  "key": "31b786aec524cb61:2026-08-24",
+  "inputs_hash": "31b786aec524cb615a93c9017fef6911ed81df7d7cfeca446e9725070efdd600",
+  "layers": [
+   "transit",
+   "panchang"
+  ],
+  "absent_layers": [
+   {
+    "layer": "dasha",
+    "reason": "a Vimshottari dasha is measured from the Moon's exact position at birth, which needs the birth time",
+    "unlocked_by": "time_of_birth"
+   }
+  ],
+  "omitted_by_shape": [],
+  "undetermined": [],
+  "time_known": false,
+  "calculation": {
+   "zodiac_mode": "sidereal",
+   "ayanamsa": "LAHIRI",
+   "house_system": "W",
+   "settings_digest": "5a8b1903a708454f",
+   "fn_version": "daily_card/1+5a8b1903a708454f"
+  },
+  "transit": {
+   "as_of": "2026-08-24",
+   "window": {
+    "start": "2026-08-24",
+    "end": "2026-08-24"
+   },
+   "transit_place": {
+    "name": "Jamshedpur, India",
+    "basis": "birth_place",
+    "latitude": 22.8046,
+    "longitude": 86.2029,
+    "timezone": "Asia/Kolkata"
+   },
+   "natal_anchors": {
+    "lagna_sign": null,
+    "moon_sign": "Aries",
+    "saturn_sign": "Sagittarius",
+    "jupiter_sign": "Gemini",
+    "age": 36
+   },
+   "planets": {
+    "Sun": {
+     "sign": "Leo",
+     "degree": 126.9,
+     "retrograde": false,
+     "house_from_lagna": null,
+     "house_from_moon": 5
+    },
+    "Moon": {
+     "sign": "Sagittarius",
+     "degree": 262.42,
+     "retrograde": false,
+     "house_from_lagna": null,
+     "house_from_moon": 9
+    },
+    "Mars": {
+     "sign": "Gemini",
+     "degree": 74.22,
+     "retrograde": false,
+     "house_from_lagna": null,
+     "house_from_moon": 3
+    },
+    "Mercury": {
+     "sign": "Leo",
+     "degree": 123.39,
+     "retrograde": false,
+     "house_from_lagna": null,
+     "house_from_moon": 5
+    },
+    "Jupiter": {
+     "sign": "Cancer",
+     "degree": 107.83,
+     "retrograde": false,
+     "house_from_lagna": null,
+     "house_from_moon": 4
+    },
+    "Venus": {
+     "sign": "Virgo",
+     "degree": 172.42,
+     "retrograde": false,
+     "house_from_lagna": null,
+     "house_from_moon": 6
+    },
+    "Saturn": {
+     "sign": "Pisces",
+     "degree": 349.84,
+     "retrograde": true,
+     "house_from_lagna": null,
+     "house_from_moon": 12
+    },
+    "Rahu": {
+     "sign": "Aquarius",
+     "degree": 305.6,
+     "retrograde": true,
+     "house_from_lagna": null,
+     "house_from_moon": 11
+    },
+    "Ketu": {
+     "sign": "Leo",
+     "degree": 125.6,
+     "retrograde": true,
+     "house_from_lagna": null,
+     "house_from_moon": 5
+    }
+   },
+   "bodies_expected": [
+    "Sun",
+    "Moon",
+    "Mars",
+    "Mercury",
+    "Jupiter",
+    "Venus",
+    "Saturn",
+    "Rahu",
+    "Ketu"
+   ],
+   "rules": {
+    "saturn_return": {
+     "active": false,
+     "cycle_n": null,
+     "description": ""
+    },
+    "jupiter_return": {
+     "active": false,
+     "cycle_n": 3,
+     "description": ""
+    },
+    "rahu_ketu_axis": {
+     "rahu_sign": "Aquarius",
+     "ketu_sign": "Leo",
+     "rahu_house_from_moon": 11,
+     "ketu_house_from_moon": 5,
+     "description": "Rahu/Ketu axis: Rahu in Aquarius, Ketu in Leo. From Moon: H11/H5."
+    },
+    "jupiter_aspect_to_lagna": {
+     "favourable": false
+    },
+    "sade_sati": {
+     "active": true,
+     "phase": "pre / Aroha",
+     "saturn_sign": "Pisces",
+     "natal_moon_sign": "Aries",
+     "saturn_house_from_moon": 12,
+     "description": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries).",
+     "window": {
+      "start": "2025-03-30",
+      "end": "2027-06-02"
+     }
+    },
+    "kantaka_shani": {
+     "active": false,
+     "saturn_house_from_moon": 12
+    },
+    "ashtama_shani": {
+     "active": false
+    }
+   }
+  },
+  "panchang": {
+   "as_of": "2026-08-24",
+   "tithi": "Dwadashi",
+   "vara": "Somavar",
+   "nakshatra": "Purva Ashadha",
+   "nakshatra_pada": 3,
+   "yoga": "Ayushman",
+   "karana": "Bava",
+   "is_bhadra": false,
+   "overall_quality": "highly auspicious",
+   "overall_score": 0.8,
+   "notes": [],
+   "panchang_place": {
+    "name": "Jamshedpur, India",
+    "basis": "birth_place",
+    "latitude": 22.8046,
+    "longitude": 86.2029,
+    "timezone": "Asia/Kolkata",
+    "pending_decision": "AMB-25"
+   }
+  }
+ },
+ "facets": {
+  "version": 1,
+  "tabs": [
+   {
+    "id": "guidance",
+    "label": "Guidance",
+    "domains": [],
+    "items": [
+     {
+      "id": "rule:sade_sati",
+      "kind": "transit_rule",
+      "title": "Sade Sati",
+      "detail": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries).",
+      "domains": [],
+      "basis": "classical transit rule"
+     },
+     {
+      "id": "transit:Sun",
+      "kind": "transit_position",
+      "title": "Sun in Leo",
+      "detail": "",
+      "domains": [],
+      "basis": ""
+     },
+     {
+      "id": "transit:Moon",
+      "kind": "transit_position",
+      "title": "Moon in Sagittarius",
+      "detail": "",
+      "domains": [],
+      "basis": ""
+     },
+     {
+      "id": "transit:Mars",
+      "kind": "transit_position",
+      "title": "Mars in Gemini",
+      "detail": "",
+      "domains": [],
+      "basis": ""
+     },
+     {
+      "id": "transit:Mercury",
+      "kind": "transit_position",
+      "title": "Mercury in Leo",
+      "detail": "",
+      "domains": [],
+      "basis": ""
+     },
+     {
+      "id": "transit:Jupiter",
+      "kind": "transit_position",
+      "title": "Jupiter in Cancer",
+      "detail": "",
+      "domains": [],
+      "basis": ""
+     },
+     {
+      "id": "transit:Venus",
+      "kind": "transit_position",
+      "title": "Venus in Virgo",
+      "detail": "",
+      "domains": [],
+      "basis": ""
+     },
+     {
+      "id": "transit:Saturn",
+      "kind": "transit_position",
+      "title": "Saturn in Pisces",
+      "detail": "retrograde",
+      "domains": [],
+      "basis": ""
+     },
+     {
+      "id": "transit:Rahu",
+      "kind": "transit_position",
+      "title": "Rahu in Aquarius",
+      "detail": "retrograde",
+      "domains": [],
+      "basis": ""
+     },
+     {
+      "id": "transit:Ketu",
+      "kind": "transit_position",
+      "title": "Ketu in Leo",
+      "detail": "retrograde",
+      "domains": [],
+      "basis": ""
+     },
+     {
+      "id": "panchang",
+      "kind": "panchang",
+      "title": "Dwadashi \u00b7 Somavar \u00b7 Purva Ashadha",
+      "detail": "Yoga Ayushman \u00b7 Karana Bava",
+      "domains": [],
+      "basis": "panchang for Jamshedpur, India",
+      "place": {
+       "name": "Jamshedpur, India",
+       "basis": "birth_place"
+      }
+     },
+     {
+      "id": "absent:dasha",
+      "kind": "absent_layer",
+      "title": "Dasha \u2014 not computed",
+      "detail": "a Vimshottari dasha is measured from the Moon's exact position at birth, which needs the birth time",
+      "domains": [],
+      "basis": "stated absence",
+      "unlocked_by": "time_of_birth"
+     }
+    ],
+    "empty_reason": null
+   },
+   {
+    "id": "love",
+    "label": "Love",
+    "domains": [
+     "marriage",
+     "progeny"
+    ],
+    "items": [],
+    "empty_reason": "Nothing on today's card touches marriage or progeny. That is what the day's positions say, not a gap in the reading."
+   },
+   {
+    "id": "career",
+    "label": "Career",
+    "domains": [
+     "career",
+     "wealth",
+     "litigation"
+    ],
+    "items": [],
+    "empty_reason": "Nothing on today's card touches career, wealth or litigation. That is what the day's positions say, not a gap in the reading."
+   },
+   {
+    "id": "self",
+    "label": "Self",
+    "domains": [
+     "health",
+     "longevity",
+     "education",
+     "travel"
+    ],
+    "items": [],
+    "empty_reason": "Nothing on today's card touches health, longevity, education or travel. That is what the day's positions say, not a gap in the reading."
+   }
+  ],
+  "item_count": 12,
+  "artifact_key": "31b786aec524cb61:2026-08-24",
+  "date": "2026-08-24"
+ },
+ "narration": {
+  "text": "",
+  "generated_this_request": false,
+  "available": false
+ },
+ "chart": {
+  "status": "fresh",
+  "computed_at": "2026-08-25T13:29:38.171382+00:00"
+ },
+ "person": {
+  "id": "self",
+  "display_name": "Asha"
+ },
+ "served_from_store": false
+}

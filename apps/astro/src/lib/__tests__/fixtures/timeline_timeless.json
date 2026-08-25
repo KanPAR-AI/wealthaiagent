@@ -1,0 +1,126 @@
+{
+ "state": "ready",
+ "as_of": "2026-08-24",
+ "timeline": {
+  "type": "life_timeline",
+  "as_of": "2026-08-24",
+  "key": "e9a051a5c052f409:2026-08-24",
+  "inputs_hash": "e9a051a5c052f40975a383bca957ac9a2435a5a220beb29133a3a218859a73e7",
+  "layers": [
+   "transit"
+  ],
+  "absent_layers": [
+   {
+    "layer": "dasha",
+    "reason": "a Vimshottari dasha is measured from the Moon's exact position at birth, which needs the birth time",
+    "unlocked_by": "time_of_birth"
+   }
+  ],
+  "undetermined": [],
+  "time_known": false,
+  "calculation": {
+   "zodiac_mode": "sidereal",
+   "ayanamsa": "LAHIRI",
+   "house_system": "W",
+   "settings_digest": "5a8b1903a708454f",
+   "fn_version": "timeline/1+5a8b1903a708454f"
+  },
+  "transit": {
+   "as_of": "2026-08-24",
+   "transit_place": {
+    "name": "Jamshedpur, India",
+    "basis": "birth_place",
+    "latitude": 22.8046,
+    "longitude": 86.2029,
+    "timezone": "Asia/Kolkata"
+   },
+   "windows": [
+    {
+     "kind": "sign_transit",
+     "planet": "Saturn",
+     "sign": "Pisces",
+     "start_date": "2025-03-30",
+     "end_date": "2027-06-02",
+     "description": "Saturn transits Pisces",
+     "house_from_moon": 12
+    },
+    {
+     "kind": "classical_rule",
+     "rule": "sade_sati",
+     "planet": "Saturn",
+     "start_date": "2025-03-30",
+     "end_date": "2027-06-02",
+     "description": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries)."
+    },
+    {
+     "kind": "sign_transit",
+     "planet": "Ketu",
+     "sign": "Leo",
+     "start_date": "2025-05-30",
+     "end_date": "2026-11-25",
+     "description": "Ketu transits Leo",
+     "house_from_moon": 5
+    },
+    {
+     "kind": "sign_transit",
+     "planet": "Rahu",
+     "sign": "Aquarius",
+     "start_date": "2025-05-30",
+     "end_date": "2026-11-25",
+     "description": "Rahu transits Aquarius",
+     "house_from_moon": 11
+    },
+    {
+     "kind": "sign_transit",
+     "planet": "Jupiter",
+     "sign": "Cancer",
+     "start_date": "2026-06-02",
+     "end_date": "2026-10-31",
+     "description": "Jupiter transits Cancer",
+     "house_from_moon": 4
+    }
+   ],
+   "bodies_expected": [
+    "Saturn",
+    "Jupiter",
+    "Rahu",
+    "Ketu"
+   ],
+   "windows_dropped": [],
+   "active_without_dates": []
+  },
+  "cursor": {
+   "as_of": "2026-08-24",
+   "mahadasha_index": null,
+   "antardasha_index": null
+  },
+  "headline": {
+   "kind": "absent_layer",
+   "layer": "dasha",
+   "reason": "a Vimshottari dasha is measured from the Moon's exact position at birth, which needs the birth time"
+  },
+  "span": {
+   "start": "2025-03-30",
+   "end": "2027-06-02"
+  },
+  "years": [
+   2025,
+   2026,
+   2027
+  ]
+ },
+ "years": [
+  2025,
+  2026,
+  2027
+ ],
+ "chart": {
+  "status": "fresh",
+  "computed_at": "2026-08-25T13:29:38.171382+00:00"
+ },
+ "person": {
+  "id": "self",
+  "display_name": "Asha"
+ },
+ "served_from_store": false
+}

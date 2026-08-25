@@ -33,8 +33,8 @@
 // funnel counters moved with it into the lifecycle rather than being left
 // behind in a screen.
 
-import { router, useLocalSearchParams } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActionSheetIOS, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg from 'react-native-svg';
@@ -80,6 +80,12 @@ const WASH_HEIGHT = 132;
 const WASH_WIDTH = 0.45;
 
 export default function Chat() {
+  // Per-tab status bar, set ON FOCUS. Every tab screen stays MOUNTED, so a
+  // declarative `<StatusBar style=…>` leaves whichever screen mounted last in
+  // charge — measured: Home → Timeline → Home left the clock dark on the
+  // night sky, where it cannot be read.
+  useFocusEffect(useCallback(() => setStatusBarStyle('dark'), []));
+
   // Screen 2 (docs/49 ASTRAL-104) opens the chat, renders the engine's
   // `input_request` full-screen, and hands the composed answer here rather
   // than sending it: this screen owns the ONE send path. `chatId` carries the
@@ -232,15 +238,24 @@ export default function Chat() {
             </View>
           ) : null}
 
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : undefined)}
-            style={s.headerSide}
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            hitSlop={10}
-          >
-            <ChevronLeft size={tokens.size.icon} color={tokens.palette.ink.primary} />
-          </Pressable>
+          {/* The chevron renders only when there IS somewhere to go back to.
+              As a TAB (docs/49 ASTRAL-119) this screen is usually the root of
+              its stack, and a chevron that does nothing is the dead
+              affordance the row forbids — it used to call `undefined`. The
+              header keeps its side slot either way so the wordmark stays
+              optically centred. */}
+          <View style={s.headerSide}>
+            {router.canGoBack() ? (
+              <Pressable
+                onPress={() => router.back()}
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+                hitSlop={10}
+              >
+                <ChevronLeft size={tokens.size.icon} color={tokens.palette.ink.primary} />
+              </Pressable>
+            ) : null}
+          </View>
 
           <View style={s.headerMid}>
             <Text style={s.headerTitle}>{tokens.wordmark}</Text>
