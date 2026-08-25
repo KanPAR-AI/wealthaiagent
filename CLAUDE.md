@@ -2,10 +2,24 @@
 
 React 19 + TypeScript 5.7 frontend for the YourFinAdvisor chat platform. See [`../docs/`](../docs/) for detailed docs.
 
-This repo is also an npm-workspaces monorepo: the **React Native (Expo) mobile
-app** lives at [`apps/mobile/`](apps/mobile/) (own CLAUDE.md/AGENTS.md) with
-shared platform-agnostic services in `packages/core` (`@wealthai/core`). The
-web app stays at the repo root.
+This repo is also an npm-workspaces monorepo with **two shipped React Native
+(Expo) apps**:
+
+| App | Path | Store identity | What it is |
+|---|---|---|---|
+| **Arthur1203** | [`apps/mobile/`](apps/mobile/) (own CLAUDE.md/AGENTS.md) | `com.yourfinadvisor.mobile` | the YourFinAdvisor app — all agents, drawer, credits, Control Centre |
+| **Astral AI** | [`apps/astro/`](apps/astro/) | `com.yourfinadvisor.astro` | the standalone Jyotish app — five tabs, agent pinned, routing off |
+
+Shared platform-agnostic services live in `packages/core` (`@wealthai/core`),
+the chat surface in `packages/chat-native`, the astrology renderers in
+`packages/astral`. The web app stays at the repo root.
+
+**Before running or shipping either app**, read
+[`../docs/51-astral-operations.md`](../docs/51-astral-operations.md): the
+local backend is configured as a real production user, and a client shipped
+ahead of the backend gets 404s that render as an outage. Skills:
+`SKILLS/astral-ai.md` (engineering) and `SKILLS/mobile-release.md`
+(shipping).
 
 ## Commands
 
@@ -119,6 +133,33 @@ scorecard anywhere in the workspace is a SPEC-DEVIATION and
 `packages/astral/src/__tests__/structural.test.ts` fails on it.
 
 Mobile-first: 24px slider thumbs, `touch-none`, `active:scale` feedback.
+
+## apps/astro (Astral AI)
+
+Expo Router with a **five-tab shell** at `src/app/(tabs)/` — Home · Insights ·
+AI Chat · Timeline · Profile. `(tabs)` is a *layout group*, **not a URL
+segment**: `/chat` and `/settings` are unchanged, so every deep link and
+handoff still resolves.
+
+Three rules that are enforced by tests, not by convention:
+
+- **`src/lib/capabilities.ts` is the only thing a surface may consult.** A
+  capability marked `false` **removes** its tab, row or tile — never greys it,
+  never "coming soon". Every `false` carries its reason.
+- **Every screen rule lives in a pure `*-view.ts` module** (no React, no
+  react-native, no expo) so the ROOT jest project can run it. Tests sit in
+  `src/lib/__tests__/` and import by **relative path** — `@/*` maps to the
+  *web* app's `src` there, so `@/lib/foo` silently resolves elsewhere.
+- **The client derives nothing.** No sign from a longitude, no dasha from a
+  date, no "today" from a device clock, no category from a planet. Fixtures
+  under `src/lib/__tests__/fixtures/` are **captured from the running
+  engine**, not hand-written.
+
+```bash
+npx tsc --noEmit -p apps/astro/tsconfig.json
+npx jest apps/astro packages/astral
+cd apps/astro && npx expo lint && npx expo export --platform ios --output-dir /tmp/x
+```
 
 ## Auth
 
