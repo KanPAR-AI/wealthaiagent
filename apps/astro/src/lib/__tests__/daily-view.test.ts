@@ -29,6 +29,7 @@ import {
   transitLines,
   withheld,
 } from '../daily-view';
+import { absentView as timelineAbsentView } from '../timeline-view';
 import type { DailyReady, DailyResponse } from '../people-shapes';
 
 /**
@@ -309,7 +310,10 @@ describe('the honest states (ASTRAL-125, AMB-31(a))', () => {
       state('chart_stale', { chart: { status: 'stale', computed_at: '2026-03-03T10:00:00Z' } }),
     );
     expect(view.body).toContain('3 Mar 2026');
-    expect(view.action).toBe('Recast my chart');
+    // "Recast" became "Update": the old label described what the ENGINE
+    // does, and the user read it as "we are going to ask you for everything
+    // again" — which is what the control then did.
+    expect(view.action).toBe('Update my chart');
   });
 
   it('a stale chart with no recorded date still says something true', () => {
@@ -319,12 +323,47 @@ describe('the honest states (ASTRAL-125, AMB-31(a))', () => {
     expect(view.body).not.toContain('undefined');
   });
 
+  it('a stale chart never sends the user back to the details form', () => {
+    // THE REGRESSION THIS FILE EXISTS FOR NOW. Reported live: "i changed the
+    // date of birth but now its asking in various places to regenerate the
+    // chart its very confusing". The control opened the birth-details arc
+    // with a correction turn, so the engine asked for the date, the time and
+    // the place — which the store already holds. The facts are on file; only
+    // the chart is old, so the ask goes to CHAT and asks for nothing.
+    for (const stale of ['chart_stale', 'chart_unstamped', 'chart_unprovable']) {
+      const view = absentView(state(stale));
+      expect(view.destination).toBe('reading');
+      expect(view.turn).toContain('already have on file');
+      expect(view.turn).not.toMatch(/correct/i);
+    }
+    // …and the two states where details genuinely ARE missing still go to
+    // the form, because something has to ask for them.
+    for (const missing of ['not_established', 'chart_absent']) {
+      expect(absentView(state(missing)).destination).toBe('details');
+    }
+  });
+
+  it('one condition offers ONE ask, worded the same on every surface', () => {
+    // Three tabs raised three differently-worded takeovers for one chart.
+    const daily = absentView(state('chart_stale'));
+    const timeline = timelineAbsentView({ state: 'chart_stale', reason: 'x' } as never);
+    expect(timeline.action).toBe(daily.action);
+    expect(timeline.destination).toBe(daily.destination);
+    expect(timeline.turn).toBe(daily.turn);
+  });
+
+  it('the stale ask says the details are already held', () => {
+    // The sentence has to answer the question the user actually had: am I
+    // about to be asked for everything again?
+    expect(absentView(state('chart_stale')).body).toContain('already on file');
+  });
+
   it('the recast control is a chat TURN, never an endpoint (F24/INV-1)', () => {
     // There is no recompute endpoint and there must not be one on a read
     // API: the chart is recast by the turn that needs it, through
     // `reconcile`. A button here that called something would be writing
     // around the only fact-writer.
-    expect(absentView(state('chart_stale')).turn).toMatch(/recast/i);
+    expect(absentView(state('chart_stale')).turn).toMatch(/update my chart/i);
     const src = codeOf('daily-view.ts');
     expect(src).not.toMatch(/recompute|POST|PATCH/);
   });

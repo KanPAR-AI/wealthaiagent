@@ -246,10 +246,29 @@ export interface AbsentView {
   /** the SENTENCE the action sends into chat. Never a value — no route
    *  param of this app carries anything a fact could be rebuilt from (F24) */
   turn: string | null;
+  /**
+   * Where the action goes, and it is decided by WHAT IS MISSING.
+   *
+   * `details` — the birth-details arc, because the facts genuinely are not
+   * on file and something has to ask for them.
+   *
+   * `reading` — straight to chat. The facts ARE on file and only the chart
+   * is old, so asking for them again is asking a user to retype what they
+   * just told us. That was the whole of "it keeps asking me to regenerate
+   * the chart": the control opened a correction arc, the engine asked for
+   * the date, the time and the place, and the state it was supposed to end
+   * came straight back.
+   */
+  destination: 'details' | 'reading';
 }
 
 const ESTABLISH_TURN = "I'd like my birth chart.";
-const RECAST_TURN = 'Please recast my chart with my corrected details.';
+// Deliberately NOT "with my corrected details": that sentence reads as an
+// offer to supply new ones, and the engine answered it by asking for the
+// date, the time and the place — which the store already holds. This one
+// says the opposite, and it is the difference between one tap and a form.
+const RECAST_TURN =
+  'Please update my chart using the birth details you already have on file.';
 
 /**
  * What a screen shows when there is no card, per state.
@@ -268,6 +287,7 @@ export function absentView(res: Exclude<DailyResponse, DailyReady>): AbsentView 
         body: 'Tell us your birth date, time and place and today’s reading follows from your own chart.',
         action: 'Add my birth details',
         turn: ESTABLISH_TURN,
+        destination: 'details',
       };
     case 'chart_absent':
       return {
@@ -275,21 +295,25 @@ export function absentView(res: Exclude<DailyResponse, DailyReady>): AbsentView 
         body: 'We have your details but no chart to read today against. It takes one message.',
         action: 'Cast my chart',
         turn: ESTABLISH_TURN,
+        destination: 'details',
       };
     case 'chart_stale':
       return {
         title: 'Your chart needs recasting',
         body: recastBody(res.chart?.computed_at),
-        action: 'Recast my chart',
+        action: 'Update my chart',
         turn: RECAST_TURN,
+        // The facts are on file. Nothing needs to be asked for.
+        destination: 'reading',
       };
     case 'chart_unstamped':
     case 'chart_unprovable':
       return {
         title: 'This chart cannot be used',
         body: res.reason || 'We cannot show values from a chart we cannot verify.',
-        action: 'Recast my chart',
+        action: 'Update my chart',
         turn: RECAST_TURN,
+        destination: 'reading',
       };
     case 'refused':
     default:
@@ -298,6 +322,7 @@ export function absentView(res: Exclude<DailyResponse, DailyReady>): AbsentView 
         body: 'Today’s card did not agree with your chart, so we are not showing it. Nothing is wrong with your details.',
         action: null,
         turn: null,
+        destination: 'reading',
       };
   }
 }
@@ -307,9 +332,14 @@ export function absentView(res: Exclude<DailyResponse, DailyReady>): AbsentView 
  *  corrected your birth time" is. */
 function recastBody(computedAt?: string | null): string {
   const when = formatIsoDate((computedAt ?? '').slice(0, 10));
-  return when
-    ? `Your details changed after this chart was cast on ${when}, so today’s reading would be built on the old one.`
-    : 'Your details changed after this chart was cast, so today’s reading would be built on the old one.';
+  // One tap, and it says so. The old sentence explained the problem and left
+  // the reader to guess whether they were about to be asked for their
+  // details all over again — which, before this, they were.
+  const tail =
+    ' Your details are already on file — one tap updates the chart, and Home, Insights and Timeline all follow.';
+  return (when
+    ? `Your birth details changed after this chart was cast on ${when}, so every reading here would still be built on the old one.`
+    : 'Your birth details changed after this chart was cast, so every reading here would still be built on the old one.') + tail;
 }
 
 // ── small helpers ─────────────────────────────────────────────────────────

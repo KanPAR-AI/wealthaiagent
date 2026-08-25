@@ -211,12 +211,12 @@ function capitalise(s: string): string {
 
 // ── the honest states, shared shape with `daily-view` ─────────────────────
 
-export interface AbsentView {
-  title: string;
-  body: string;
-  action: string | null;
-  turn: string | null;
-}
+/** The daily read's shape, IMPORTED and re-exported rather than restated:
+ *  one condition must not be able to grow two different asks, and two copies
+ *  of this interface is exactly how it would (see `daily-view.ts`). */
+import type { AbsentView } from './daily-view';
+
+export type { AbsentView };
 
 /** The same five states the daily read has, said for this screen. Kept here
  *  rather than shared because the SENTENCES differ: "today's reading" and
@@ -224,7 +224,8 @@ export interface AbsentView {
  *  screen ends up telling a user about a card they did not open. */
 export function absentView(res: Exclude<TimelineResponse, TimelineReady>): AbsentView {
   const establish = "I'd like my birth chart.";
-  const recast = 'Please recast my chart with my corrected details.';
+  const recast =
+    'Please update my chart using the birth details you already have on file.';
   switch (res.state) {
     case 'not_established':
       return {
@@ -232,6 +233,7 @@ export function absentView(res: Exclude<TimelineResponse, TimelineReady>): Absen
         body: 'Your dasha periods are measured from where the Moon stood when you were born, so we need your birth details to draw them.',
         action: 'Add my birth details',
         turn: establish,
+        destination: 'details',
       };
     case 'chart_absent':
       return {
@@ -239,21 +241,24 @@ export function absentView(res: Exclude<TimelineResponse, TimelineReady>): Absen
         body: 'The periods below come from your chart, and there is not one on file yet.',
         action: 'Cast my chart',
         turn: establish,
+        destination: 'details',
       };
     case 'chart_stale':
       return {
         title: 'Your chart needs recasting',
-        body: 'Your details changed after this chart was cast, and every date on a timeline moves with them.',
-        action: 'Recast my chart',
+        body: 'Your birth details changed after this chart was cast, and every date on a timeline moves with them. Your details are already on file — one tap updates the chart.',
+        action: 'Update my chart',
         turn: recast,
+        destination: 'reading',
       };
     case 'chart_unstamped':
     case 'chart_unprovable':
       return {
         title: 'This chart cannot be used',
         body: res.reason || 'We cannot draw a timeline from a chart we cannot verify.',
-        action: 'Recast my chart',
+        action: 'Update my chart',
         turn: recast,
+        destination: 'reading',
       };
     case 'refused':
     default:
@@ -262,6 +267,7 @@ export function absentView(res: Exclude<TimelineResponse, TimelineReady>): Absen
         body: 'The timeline did not agree with your chart, so we are not showing it. Nothing is wrong with your details.',
         action: null,
         turn: null,
+        destination: 'reading',
       };
   }
 }

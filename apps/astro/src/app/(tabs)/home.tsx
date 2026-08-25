@@ -331,7 +331,14 @@ function AbsentCard({ res }: { res: Exclude<DailyResponse, { state: 'ready' }> }
           style={s.cta}
           onPress={() => {
             track('home_absent_action', { state: res.state });
-            router.push({ pathname: '/birth-details', params: { opening: view.turn! } });
+            // Where the ask goes depends on what is missing, not on which
+            // screen raised it. A stale chart needs no details — only the
+            // chart redone — so it goes straight to chat.
+            router.push(
+              view.destination === 'details'
+                ? { pathname: '/birth-details', params: { opening: view.turn! } }
+                : { pathname: '/chat', params: { pending: view.turn! } },
+            );
           }}
           accessibilityRole="button"
           accessibilityLabel={view.action}

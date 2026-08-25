@@ -151,12 +151,16 @@ export default function Timeline() {
               {absentView(res).action ? (
                 <Pressable
                   style={s.cta}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/birth-details',
-                      params: { opening: absentView(res).turn! },
-                    })
-                  }
+                  onPress={() => {
+                    // One ask, one destination — the same decision Home
+                    // makes, because it is one condition about one chart.
+                    const v = absentView(res);
+                    router.push(
+                      v.destination === 'details'
+                        ? { pathname: '/birth-details', params: { opening: v.turn! } }
+                        : { pathname: '/chat', params: { pending: v.turn! } },
+                    );
+                  }}
                 >
                   <Text style={s.ctaText}>{absentView(res).action}</Text>
                 </Pressable>
