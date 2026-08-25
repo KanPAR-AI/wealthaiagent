@@ -327,6 +327,68 @@ describe('ASTRAL-91 — exactly one input widget in the workspace', () => {
   });
 });
 
+describe('the native picker seam, and the fallback that must not be silent', () => {
+  const RN = 'packages/astral-native/src/rn-primitives.tsx';
+  const DOM = 'src/components/astral/dom-primitives.tsx';
+
+  it('React Native declares `disclosure`; the DOM adapter declares nothing', () => {
+    // The one capability that decides whether the shared widget draws the
+    // board's row or hands straight through to the host control. If the DOM
+    // adapter ever declares it, a browser grows a tappable row that opens the
+    // OS date sheet inside a SECOND bordered box.
+    expect(codeOf(join(WORKSPACE, RN))).toMatch(/pickerPresentation:\s*'disclosure'/);
+    expect(codeOf(join(WORKSPACE, DOM))).not.toContain('pickerPresentation');
+  });
+
+  it('requires @expo/ui LAZILY — a static import red-screens an old binary', () => {
+    // `@expo/ui` calls `requireNativeView` at MODULE SCOPE, which throws when
+    // the pod is absent. A top-level `import` would therefore take the whole
+    // bundle down on any device whose binary predates the pod — which is the
+    // exact failure the hand-rolled wheels were written to avoid, and the
+    // reason their original comment is quoted in this file's neighbour.
+    const rn = codeOf(join(WORKSPACE, RN));
+    expect(rn).not.toMatch(/^import .*@expo\/ui/m);
+    expect(rn).toMatch(/require\('@expo\/ui\/community\/datetime-picker'\)/);
+  });
+
+  it('names the fallback out loud instead of degrading quietly', () => {
+    // The failure this pins is not a crash, it is a LIE: a silent JS fallback
+    // looks like a shipped native picker to anybody reading a screenshot.
+    //
+    // Read RAW rather than through `codeOf`, which strips comments — a
+    // `catch { /* explained */ }` and a `catch {}` are the same string once
+    // the comment is gone, and the difference between them is the point.
+    const raw = readFileSync(join(WORKSPACE, RN), 'utf8');
+    const fn = raw.slice(raw.indexOf('function nativeDateTimePicker'));
+    const body = fn.slice(0, fn.indexOf('\nfunction '));
+    expect(body).toMatch(/catch \(e: unknown\) \{/);
+    expect(body).toMatch(/console\.warn\(/);
+    // …and nothing in that resolution is swallowed
+    expect(body).not.toMatch(/catch\s*(\([^)]*\))?\s*\{\s*\}/);
+    // …and the two paths are distinguishable on a running device
+    expect(raw).toMatch(/\$\{testID\}-native/);
+    expect(raw).toMatch(/\$\{testID\}-fallback/);
+  });
+
+  it('never uses `toISOString` — it is UTC, and a birthday is local', () => {
+    // `new Date('1990-08-02').toISOString()` moves the date a day west of
+    // Greenwich. The conversion lives in `format.ts` where a test can see it
+    // (`picker-wire.test.ts`); the adapters must not grow their own.
+    for (const adapter of ADAPTERS) {
+      expect(codeOf(join(WORKSPACE, adapter))).not.toContain('toISOString');
+    }
+  });
+
+  it('opens both pickers at ONE shared default year', () => {
+    // PH-12 fixed "the wheel offers the current year as the first birth year
+    // anybody sees" in the fallback. Two implementations of that default is
+    // how the native picker reintroduces it while the fallback stays fixed.
+    const rn = codeOf(join(WORKSPACE, RN));
+    expect((rn.match(/defaultBirthYear\(/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect(rn).not.toMatch(/getFullYear\(\)\s*-\s*\d/);
+  });
+});
+
 describeWithApps('F18 — the answer is never flattened into a sentence to be re-parsed', () => {
   const COMPONENT = 'packages/astral/src/components/input-request.tsx';
 

@@ -40,6 +40,8 @@
  * photo slot ambiguous in the first place.
  */
 
+import type { ReactNode } from 'react';
+
 /** What a host's upload takes. The picker already downscaled it. */
 export interface AstralUploadAsset {
   uri: string;
@@ -93,6 +95,21 @@ export interface AstralHost {
    * A host that supplies none gets no hint, which is what shipped.
    */
   fieldHints?: Record<string, string>;
+
+  /**
+   * A glyph per field KIND, drawn by the host (the board's frame 2 puts a
+   * calendar, a clock and a pin on its three rows).
+   *
+   * Here for the same reason `fieldHints` is here: an icon set is a brand
+   * asset, `@wealthai/astral` owns no icons and no font, and the two apps
+   * that render this binding are two brands. It also means the CHAT bubble
+   * and the full-screen form draw the same rows — the birth-details screen
+   * used to pass icons directly and the bubble did not, so one surface got
+   * the board's field and the other got a bare wheel.
+   *
+   * OPTIONAL. Absent is fine: the form is complete without them.
+   */
+  fieldIcons?: Record<string, ReactNode>;
 }
 
 let host: AstralHost | null = null;

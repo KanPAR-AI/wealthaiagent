@@ -12,6 +12,7 @@ import { installAstralHost } from '@wealthai/astral-native';
 import { CHAT_SEND_EVENT } from '@wealthai/chat-native';
 import { getPlatform } from '@wealthai/core';
 
+import { FIELD_ICONS } from '@/components/field-icons';
 import { tokens } from '@/theme';
 
 import { getToken } from './auth';
@@ -42,5 +43,10 @@ export function ensureAstralHostInstalled(): void {
     // shared component nor the shared binding carries a market's postal
     // conventions.
     fieldHints: { place: tokens.copy.fieldHints.placeBirthHint },
+
+    // …and the board's three row glyphs, keyed the same way. Supplied HERE
+    // rather than by screen 2 alone, so the birth-time ask that arrives mid
+    // chat draws the same field rows the full-screen form does.
+    fieldIcons: FIELD_ICONS,
   });
 }

@@ -38,6 +38,14 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+// The keyboard is handled by the library the app already installs a provider
+// for at the root (`_layout.tsx`), not by `automaticallyAdjustKeyboardInsets`.
+// Measured on the simulator: the inset version moves the SCROLL VIEW after
+// the keyboard has finished animating, so the place field and Continue were
+// briefly behind the keyboard on every focus, and on a short form (which is
+// what the collapsed rows now make this) there was nothing to scroll, so the
+// correction never arrived at all.
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg from 'react-native-svg';
 
@@ -52,6 +60,7 @@ import { rnPrimitives } from '@wealthai/astral-native';
 import { useSendMessage } from '@wealthai/chat-native';
 import { useChatStore, type Message } from '@wealthai/core';
 
+import { FIELD_ICONS } from '@/components/field-icons';
 import { ChevronLeft, SymbolIcon } from '@/components/glyphs';
 import { CornerWash } from '@/components/sky';
 import { track } from '@/lib/analytics';
@@ -74,6 +83,14 @@ import { tokens } from '@/theme';
  * reached state without `reconcile` (INV-1).
  */
 const OPENING_TURN = "I'd like my birth chart.";
+
+/**
+ * How long the "casting your chart" state is on screen before the handoff.
+ *
+ * One beat, deliberately short. It is not a progress bar and it is not
+ * waiting on anything — see `handOff` for why a beat exists at all.
+ */
+const HANDOFF_MS = 450;
 
 const WASH_HEIGHT = 190;
 const WASH_WIDTH = 0.62;
@@ -172,12 +189,38 @@ export default function BirthDetails() {
   // Continue: hand the typed carrier to the chat screen, which sends it.
   // Nothing is flattened into a sentence for the extractor to re-read (F18) —
   // what travels is exactly what `buildInputResponseMessage` produced.
+  //
+  // ── why the handoff is not immediate ──────────────────────────────────────
+  //
+  // It used to be: Continue called `router.replace` inside the tap, so the
+  // form was gone in the same frame and the next thing the user saw was a
+  // different screen mid-transition. The owner read that as abrupt, and it
+  // is — the one moment in the flow where something real is about to happen
+  // is the moment the app says nothing.
+  //
+  // So the screen paints its own honest state first — the answer echoed back,
+  // and "casting your chart" — and hands off on the next tick. The delay is
+  // ONE FRAME's worth of intent, not a fake progress bar: nothing is being
+  // waited on, the chat screen owns the send, and this label is replaced by
+  // the real streaming reply the moment it arrives.
+  const [casting, setCasting] = useState(false);
   const handOff = useCallback((message: string) => {
     track('birth_details_submitted');
-    router.replace({
-      pathname: '/chat',
-      params: { chatId: chatIdRef.current ?? '', pending: message },
-    });
+    setCasting(true);
+    const to = setTimeout(() => {
+      router.replace({
+        pathname: '/chat',
+        params: { chatId: chatIdRef.current ?? '', pending: message },
+      });
+    }, HANDOFF_MS);
+    handoffTimer.current = to;
+  }, []);
+
+  // Cleared on unmount: a `router.replace` fired out of a screen that is
+  // already gone is a warning in dev and a wasted navigation in production.
+  const handoffTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (handoffTimer.current) clearTimeout(handoffTimer.current);
   }, []);
 
   const toChat = () =>
@@ -206,21 +249,28 @@ export default function BirthDetails() {
           <ChevronLeft size={tokens.size.icon} color={tokens.palette.ink.primary} />
         </Pressable>
 
+        <KeyboardAvoidingView behavior="padding" style={s.fill}>
         <ScrollView
           contentContainerStyle={s.body}
           keyboardDismissMode="interactive"
-          // Measured on the simulator: with the keyboard up, the place field
-          // and Continue sat behind it — the user could not see what they had
-          // typed into the one field that is free text.
-          automaticallyAdjustKeyboardInsets
-          // …and a tap on Continue while the keyboard is up must submit,
-          // not just dismiss the keyboard and be swallowed.
+          // A tap on Continue while the keyboard is up must SUBMIT, not just
+          // dismiss the keyboard and be swallowed. (The keyboard itself is
+          // kept off the field by the KeyboardAvoidingView above — see the
+          // note on its import for what it replaced and why.)
           keyboardShouldPersistTaps="handled">
           <Text style={s.title}>
             {opening ? tokens.copy.correctionTitle : tokens.copy.birthDetailsTitle}
           </Text>
 
-          {request ? (
+          {request && casting ? (
+            // The one moment in this flow where something real is about to
+            // happen. It used to be a jump cut; now the screen says what it
+            // is doing and then goes.
+            <View style={s.gap}>
+              <ActivityIndicator color={tokens.palette.accent.interactive} />
+              <Text style={s.subtitle}>{tokens.copy.casting}</Text>
+            </View>
+          ) : request ? (
             <>
               {/* The board's subtitle stands in only when the engine sent no
                   sentence of its own. When it did, that sentence is the one
@@ -236,6 +286,7 @@ export default function BirthDetails() {
                 request={request}
                 layout="page"
                 submitLabel="Continue"
+                requiredNote={tokens.copy.stillNeeded}
                 onSend={handOff}
                 hints={{ place: tokens.copy.fieldHints.placeBirthHint }}
                 fieldIcons={FIELD_ICONS}
@@ -274,19 +325,13 @@ export default function BirthDetails() {
             <Text style={s.footerText}>{tokens.copy.privacyFooter}</Text>
           </View>
         </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );
 }
 
 const t = tokens;
-
-/** Frame 2's three row glyphs, keyed by the engine's field KIND. */
-const FIELD_ICONS = {
-  date: <SymbolIcon name="calendar" color={t.palette.ink.muted} />,
-  time: <SymbolIcon name="clock" color={t.palette.ink.muted} />,
-  place: <SymbolIcon name="mappin.and.ellipse" color={t.palette.ink.muted} />,
-};
 
 const s = StyleSheet.create({
   fill: { flex: 1 },

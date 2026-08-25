@@ -166,3 +166,76 @@ export function formatClockTime(value: string): string {
   const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
   return `${hour12}:${m[2]} ${suffix}`;
 }
+
+// ── the picker's wire format, both directions ────────────────────────────────
+//
+// A native OS picker speaks `Date`; the carrier speaks ISO `YYYY-MM-DD` and
+// 24-hour `HH:MM` (docs/49 ASTRAL-96, and A6#3/A6#8 for why the ambiguous
+// forms never travel). The four functions below are that translation, and
+// they live HERE — in the workspace's one arithmetic-on-a-read-value module,
+// testable in the root jest project — rather than inside a platform adapter
+// no CI test can import.
+//
+// ── the bug they exist to make impossible ────────────────────────────────────
+//
+// `new Date('1990-08-02')` parses as UTC MIDNIGHT. West of Greenwich that is
+// the evening of 1 August, so a birthday round-tripped through the obvious
+// one-liner comes back a day early for every user in the Americas — and a
+// chart cast on 1 August looks exactly as convincing as one cast on the 2nd.
+// So: local constructor in, local getters out, and midday as the anchor,
+// because no real UTC offset can push midday onto an adjacent day.
+
+/** ISO `YYYY-MM-DD` from a LOCAL date. Never `toISOString`. */
+export function isoOfLocalDate(d: Date): string {
+  const y = String(d.getFullYear()).padStart(4, '0');
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** …and back, at LOCAL midday. `null` for anything that is not a plain ISO
+ *  date, so a caller supplies its own default rather than being handed a
+ *  plausible-looking `Invalid Date`. */
+export function localDateOfIso(iso: string | null | undefined): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? '');
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0, 0);
+}
+
+/** 24-hour `HH:MM` from a local date. */
+export function hhmmOfLocalDate(d: Date): string {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** `HH:MM` onto TODAY's date, which is the shape an OS time picker wants.
+ *  The date part is never read back — only `hhmmOfLocalDate` is. */
+export function localDateOfHhmm(value: string | null | undefined): Date | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value ?? '');
+  if (!m) return null;
+  const hour = Number(m[1]);
+  const minute = Number(m[2]);
+  if (hour > 23 || minute > 59) return null;
+  const d = new Date();
+  d.setHours(hour, minute, 0, 0);
+  return d;
+}
+
+/**
+ * Where a birth-date picker OPENS when nothing has been chosen.
+ *
+ * Measured on the simulator and fixed once in PH-12: the year column ran from
+ * this year downwards, so an unscrolled wheel offered the CURRENT year as the
+ * first birth year a user ever sees, while the value it would emit sat 25
+ * years further down, out of sight. One function, so the native picker and
+ * the fallback wheel cannot disagree about it.
+ *
+ * It is a POSITION, not a value. Nothing is written until the user moves the
+ * control, so an untouched form is still an unanswered form — a picker that
+ * commits its own default is how a stranger's birthday becomes a chart.
+ */
+export const DEFAULT_BIRTH_YEARS_AGO = 25;
+
+export function defaultBirthYear(maxYear: number, today: Date = new Date()): number {
+  const plausible = today.getFullYear() - DEFAULT_BIRTH_YEARS_AGO;
+  return plausible < maxYear ? plausible : maxYear;
+}

@@ -255,6 +255,29 @@ export interface AstralImagePickerProps {
 }
 
 export interface AstralPrimitives {
+  /**
+   * How THIS host's date and time controls present themselves — the one
+   * thing about a picker the shared widget cannot know and must not guess.
+   *
+   * `'field'` (the default, and what every host did before this existed):
+   *   the control already draws its own labelled field row. `<input
+   *   type="date">` IS the row in a browser, and wrapping it in a second
+   *   bordered box gives a double border and two hit targets for one answer.
+   *
+   * `'disclosure'`: the control is a PICKER BODY only. React Native has no
+   *   element that draws itself as a field, so the shared widget draws the
+   *   board's frame-2 row — label, formatted value, glyph — and reveals the
+   *   picker underneath when it is tapped. This is what makes the form read
+   *   as three quiet rows instead of three stacked wheels, which is the
+   *   owner's "gives impression of an unpolished app" verbatim.
+   *
+   * It is declared BY THE HOST rather than sniffed from the platform inside
+   * the shared component, for the same reason every other capability here is:
+   * a `Platform.OS` check in `packages/astral` would make one source file
+   * behave differently per platform, which is precisely what ASTRAL-18 says
+   * the adapter seam exists to prevent.
+   */
+  pickerPresentation?: 'field' | 'disclosure';
   Box: ComponentType<BoxProps>;
   Text: ComponentType<TextProps>;
   Svg: ComponentType<SvgProps>;

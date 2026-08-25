@@ -25,6 +25,8 @@ const astro: BrandTokens = {
     correctionTitle: 'Correct Your\nDetails',
     birthDetailsSubtitle: 'Accurate birth details help us deliver precise insights.',
     privacyFooter: 'Your data is private & secure',
+    stillNeeded: 'Still needed',
+    casting: 'Casting your chart…',
     fieldHints: {
       placeBirthHint: 'City or town — add the state or country if the name is common',
       dateBirthHint: '',

@@ -42,6 +42,15 @@ export interface BrandTokens {
     birthDetailsSubtitle: string;
     /** the reassurance the board puts at the foot of screen 2 */
     privacyFooter: string;
+    /** what a DISABLED Continue says above the list of labels it is still
+     *  waiting on. A button that will not move and will not say why is the
+     *  state the owner read as "unpolished"; the labels themselves are the
+     *  engine's, so only this sentence is a brand's to write. */
+    stillNeeded: string;
+    /** shown between "Continue" and the transcript, while the chart is being
+     *  cast. Short and TRUE: the handoff used to be a jump cut, and the
+     *  alternative to a word here is a screen that simply vanishes. */
+    casting: string;
     fieldHints: { placeBirthHint: string; dateBirthHint: string; timeBirthHint: string };
   };
 

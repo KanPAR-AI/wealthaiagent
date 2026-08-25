@@ -13,6 +13,7 @@
     "react": ">=18",
     "react-native": ">=0.76",
     "react-native-svg": ">=15",
+    "@expo/ui": "*",
     "expo-image": "*",
     "expo-image-manipulator": "*",
     "expo-image-picker": "*",

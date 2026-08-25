@@ -37,7 +37,7 @@ import {
   parseNatalChart,
   type AstralTheme,
 } from '@wealthai/astral';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { useWindowDimensions } from 'react-native';
 
 import { getAstralHost, isAstralHostInstalled } from './host';
@@ -65,12 +65,14 @@ interface BlockContext {
   send: (text: string) => void;
   /** the host's brand copy for field hints, if it has any (ASTRAL-104) */
   fieldHints?: Record<string, string>;
+  /** …and its glyphs, so the bubble draws the board's rows too */
+  fieldIcons?: Record<string, ReactNode>;
 }
 
 type BlockRenderer = (ctx: BlockContext) => ReactElement | null;
 
 const handlers: Record<string, BlockRenderer> = {
-  input_request: ({ data, theme, width, send, fieldHints }) => {
+  input_request: ({ data, theme, width, send, fieldHints, fieldIcons }) => {
     const request = parseInputRequest(data);
     // The answer rides the host's send capability. What travels is the typed
     // fence the shared component builds; nothing here assembles a sentence
@@ -83,6 +85,7 @@ const handlers: Record<string, BlockRenderer> = {
         request={request}
         onSend={send}
         hints={fieldHints}
+        fieldIcons={fieldIcons}
       />
     ) : null;
   },
@@ -138,5 +141,6 @@ export function AstralBlock({ type, data }: { type: string; data: unknown }) {
   // to fail to draw. Guarded, never swallowed — `isAstralHostInstalled` is
   // the honest question and there is no `try {} catch {}` here.
   const fieldHints = isAstralHostInstalled() ? getAstralHost().fieldHints : undefined;
-  return render({ data, theme, width, send, fieldHints });
+  const fieldIcons = isAstralHostInstalled() ? getAstralHost().fieldIcons : undefined;
+  return render({ data, theme, width, send, fieldHints, fieldIcons });
 }

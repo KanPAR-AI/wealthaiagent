@@ -25,6 +25,18 @@
  *    cannot draw is a missing question the engine is still waiting on.
  *    Degrade to the working general case, never to a dead card.
  *
+ * 4. A PICKER IS A ROW UNTIL IT IS TAPPED, where the host says so
+ *    (`ui.pickerPresentation === 'disclosure'`). The owner's verbatim
+ *    complaint against the first pass was that the form "gives impression of
+ *    an unpolished app", and the measurable cause was three always-expanded
+ *    scroll wheels stacked down a screen: a wall of grey numbers with no
+ *    answered state, nothing shaped like the board's frame 2, and Continue
+ *    pushed below the fold. So the board's row IS the control here — label,
+ *    formatted value, the host's glyph — and the picker opens under it, ONE
+ *    at a time. Where a host's control already draws itself as a field
+ *    (`<input type="date">` in a browser) the row is skipped, because two
+ *    boxes for one answer is the same defect from the other side.
+ *
  * The answer leaves through `onSend` and only through `onSend`, carrying
  * `buildInputResponseMessage`'s typed fence. Nothing here flattens a value
  * into a sentence for a model to re-read — see `../input-request.ts` for why
@@ -34,6 +46,10 @@
 import { useState, type ReactNode } from 'react';
 
 import { createBlockRegistry } from '../block-registry';
+// Display formatting only, and from the module the ASTRAL-19 structural test
+// DECLARES may do arithmetic on a value a user reads. A renderer that grew its
+// own date formatter would be deriving, which is the thing that row forbids.
+import { formatClockTime, formatIsoDate } from '../format';
 import {
   buildInputResponseMessage,
   echoFor,
@@ -66,6 +82,17 @@ export interface InputRequestViewProps extends AstralRenderProps {
   /** the label on the last step's button ("Done" by default) */
   submitLabel?: string;
   /**
+   * What the `page` layout says UNDER a disabled Continue, above the list of
+   * labels it is still waiting on.
+   *
+   * A disabled button with no reason beside it is the second-worst state a
+   * form has (the worst is an enabled one that does nothing), and it is what
+   * the first pass shipped. The sentence is the HOST's because it is brand
+   * copy in a two-language product; the LABELS after it are the engine's own
+   * words, so they are already in the language of the ask.
+   */
+  requiredNote?: string;
+  /**
    * A small glyph per field KIND, drawn by the host and shown beside the
    * field's label in the `page` layout (the board's frame 2 puts a calendar,
    * a clock and a pin on its three rows).
@@ -95,47 +122,252 @@ interface FieldRenderContext {
   onChange: (value: InputValue) => void;
   /** the engine's `hint` if it sent one, otherwise the host's brand copy */
   hint?: string;
+  /**
+   * The host's glyph for this field (frame 2 puts a calendar, a clock and a
+   * pin on its three rows). Drawn INSIDE the row at the trailing edge, where
+   * the board draws it — an icon set is a brand asset, so the node comes
+   * from the host and this package still owns no icons.
+   */
+  icon?: ReactNode;
+  /**
+   * Disclosure state, owned by the VIEW rather than by each field.
+   *
+   * Two reasons, and the second is not cosmetic. (i) One open picker at a
+   * time is the behaviour the board's screen implies and the only one that
+   * fits on a phone. (ii) A field renderer is called as a plain FUNCTION,
+   * not mounted as a component — `render({...})` — so a `useState` in here
+   * would be a hook of `InputRequestView`, and the hook COUNT would change
+   * with the field list and with the submitted/dismissed early returns.
+   * That is a crash, not a style preference.
+   */
+  open: boolean;
+  toggle: () => void;
 }
 
 type FieldRenderer = (ctx: FieldRenderContext) => ReactNode;
 
-function TextField({ ui, theme, field, value, onChange, hint }: FieldRenderContext) {
-  const { TextInput } = ui;
+/**
+ * The board's frame-2 row, in numbers. One place, so the three fields agree
+ * and a change is one edit rather than three that drift.
+ */
+const ROW_RADIUS = 12;
+const ROW_PAD_H = 14;
+const ROW_PAD_V = 14;
+const ROW_FONT = 16;
+
+/** the row is `disclosure` chrome only where the host asked for it */
+const isDisclosure = (ui: AstralRenderProps['ui']): boolean =>
+  ui.pickerPresentation === 'disclosure';
+
+/**
+ * The bordered field box the board draws around every answer.
+ *
+ * Not a Pressable: the `place` field puts a live text input inside it, and a
+ * button wrapping an input is a hit-target fight on both platforms. The
+ * tappable version is `DisclosureRow` below, which is the same box with the
+ * press on it.
+ */
+function FieldBox({
+  ui,
+  theme,
+  icon,
+  focused,
+  testID,
+  children,
+}: {
+  ui: AstralRenderProps['ui'];
+  theme: AstralRenderProps['theme'];
+  icon?: ReactNode;
+  focused?: boolean;
+  testID?: string;
+  children: ReactNode;
+}) {
+  const { Box } = ui;
   return (
-    <TextInput
-      value={typeof value === 'string' ? value : ''}
-      onChangeText={onChange}
-      placeholder={hint ?? ''}
-      accessibilityLabel={field.label}
-      testID={`input-field-${field.key}`}
+    <Box
+      testID={testID}
       style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
         borderWidth: 1,
-        borderColor: theme.border,
-        borderRadius: 10,
-        paddingTop: 10,
-        paddingBottom: 10,
-        paddingLeft: 12,
-        paddingRight: 12,
-        fontSize: 16,
-        color: theme.text,
+        borderColor: focused ? theme.accent : theme.border,
         backgroundColor: theme.surface,
+        borderRadius: ROW_RADIUS,
+        paddingLeft: ROW_PAD_H,
+        paddingRight: ROW_PAD_H,
       }}
-    />
+    >
+      {children}
+      {icon ?? null}
+    </Box>
   );
 }
 
-function TimeField({ ui, theme, field, value, onChange, hint }: FieldRenderContext) {
-  const { Box, TimeWheel } = ui;
+/**
+ * The collapsed row: what the board actually draws (frame 2).
+ *
+ * The ANSWERED STATE is the whole point of drawing it. An always-open wheel
+ * looks identical before and after a user has answered it, so the only way to
+ * know whether a date has landed is to squint at which number is bold — and
+ * that is what "I can't tell if it took" feels like. Here an answer is the
+ * value, in the ink a value is written in; an unanswered field is the
+ * ENGINE'S OWN LABEL in pending ink, so a Hindi form does not grow an English
+ * "Select date" the moment a placeholder is needed.
+ */
+function DisclosureRow({
+  ui,
+  theme,
+  field,
+  icon,
+  display,
+  open,
+  toggle,
+}: {
+  ui: AstralRenderProps['ui'];
+  theme: AstralRenderProps['theme'];
+  field: InputField;
+  icon?: ReactNode;
+  /** the formatted answer, or undefined when there is not one yet */
+  display?: string;
+  open: boolean;
+  toggle: () => void;
+}) {
+  const { Box, Pressable, Text } = ui;
+  const answered = display !== undefined;
+  return (
+    <Pressable
+      onPress={toggle}
+      accessibilityLabel={field.label}
+      testID={`input-row-${field.key}`}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        borderWidth: 1,
+        borderColor: open ? theme.accent : theme.border,
+        backgroundColor: theme.surface,
+        borderRadius: ROW_RADIUS,
+        paddingLeft: ROW_PAD_H,
+        paddingRight: ROW_PAD_H,
+        paddingTop: ROW_PAD_V,
+        paddingBottom: ROW_PAD_V,
+      }}
+    >
+      <Text
+        testID={`input-row-value-${field.key}`}
+        style={{
+          fontSize: ROW_FONT,
+          flex: 1,
+          color: answered ? theme.text : theme.textPending,
+        }}
+      >
+        {answered ? display : field.label}
+      </Text>
+      <Box style={{ flexDirection: 'row', alignItems: 'center' }}>{icon ?? null}</Box>
+    </Pressable>
+  );
+}
+
+/**
+ * A host picker, presented the way that host said it presents itself.
+ *
+ * `field` — the control IS the row (a browser's `<input type="date">`), so it
+ * is rendered as it always was and the glyph rides beside it.
+ * `disclosure` — the control is a picker BODY, so the row above is the
+ * board's, and the body appears under it only while it is open.
+ */
+function pickerField(
+  ctx: FieldRenderContext,
+  control: ReactNode,
+  display?: string,
+): ReactNode {
+  const { ui, theme, field, icon, open, toggle } = ctx;
+  const { Box } = ui;
+  if (!isDisclosure(ui)) {
+    return <FieldBox ui={ui} theme={theme} icon={icon}>{control}</FieldBox>;
+  }
   return (
     <Box style={{ gap: 8 }}>
-      <TimeWheel
-        value={typeof value === 'string' ? value : null}
-        onChange={onChange}
+      <DisclosureRow
+        ui={ui}
+        theme={theme}
+        field={field}
+        icon={icon}
+        display={display}
+        open={open}
+        toggle={toggle}
+      />
+      {open ? (
+        <Box
+          testID={`input-picker-${field.key}`}
+          style={{
+            borderWidth: 1,
+            borderColor: theme.border,
+            backgroundColor: theme.surfaceAlt,
+            borderRadius: ROW_RADIUS,
+            paddingTop: 4,
+            paddingBottom: 4,
+            paddingLeft: 8,
+            paddingRight: 8,
+            alignItems: 'center',
+          }}
+        >
+          {control}
+        </Box>
+      ) : null}
+    </Box>
+  );
+}
+
+function TextField({ ui, theme, field, value, onChange, hint, icon }: FieldRenderContext) {
+  const { TextInput } = ui;
+  return (
+    <FieldBox ui={ui} theme={theme} icon={icon}>
+      <TextInput
+        value={typeof value === 'string' ? value : ''}
+        onChangeText={onChange}
+        placeholder={hint ?? ''}
         accessibilityLabel={field.label}
         testID={`input-field-${field.key}`}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          borderWidth: 0,
+          paddingTop: ROW_PAD_V,
+          paddingBottom: ROW_PAD_V,
+          fontSize: ROW_FONT,
+          color: theme.text,
+          backgroundColor: theme.surface,
+        }}
       />
+    </FieldBox>
+  );
+}
+
+function TimeField(ctx: FieldRenderContext) {
+  const { ui, theme, field, value, onChange, hint } = ctx;
+  const { Box, Text, TimeWheel } = ui;
+  const picked = typeof value === 'string' && value ? value : null;
+  const control = (
+    <TimeWheel
+      value={picked}
+      onChange={onChange}
+      accessibilityLabel={field.label}
+      testID={`input-field-${field.key}`}
+    />
+  );
+  // `null` is the deliberate ASTRAL-87 sentinel, not an empty field, so the
+  // row says so. A user who declined the time and then sees "Birth time" in
+  // pending grey has been told their answer did not land.
+  const display = value === null
+    ? UNKNOWN_LABEL
+    : picked ? formatClockTime(picked) : undefined;
+  return (
+    <Box style={{ gap: 8 }}>
+      {pickerField(ctx, control, display)}
       {hint ? (
-        <ui.Text style={{ fontSize: 12, color: theme.textMuted }}>{hint}</ui.Text>
+        <Text style={{ fontSize: 12, color: theme.textMuted }}>{hint}</Text>
       ) : null}
     </Box>
   );
@@ -154,21 +386,26 @@ function TimeField({ ui, theme, field, value, onChange, hint }: FieldRenderConte
  * implausible year with a named reason and never clamps one — a clamp is how
  * a typo becomes a chart that looks like any other.
  */
-function DateField({ ui, theme, field, value, onChange, hint }: FieldRenderContext) {
-  const { Box, DateWheel } = ui;
+function DateField(ctx: FieldRenderContext) {
+  const { ui, theme, field, value, onChange, hint } = ctx;
+  const { Box, Text, DateWheel } = ui;
   const thisYear = new Date().getFullYear();
+  const picked = typeof value === 'string' && value ? value : null;
+  const control = (
+    <DateWheel
+      value={picked}
+      onChange={onChange}
+      minYear={EARLIEST_BIRTH_YEAR}
+      maxYear={thisYear}
+      accessibilityLabel={field.label}
+      testID={`input-field-${field.key}`}
+    />
+  );
   return (
     <Box style={{ gap: 8 }}>
-      <DateWheel
-        value={typeof value === 'string' ? value : null}
-        onChange={onChange}
-        minYear={EARLIEST_BIRTH_YEAR}
-        maxYear={thisYear}
-        accessibilityLabel={field.label}
-        testID={`input-field-${field.key}`}
-      />
+      {pickerField(ctx, control, picked ? (formatIsoDate(picked) ?? picked) : undefined)}
       {hint ? (
-        <ui.Text style={{ fontSize: 12, color: theme.textMuted }}>{hint}</ui.Text>
+        <Text style={{ fontSize: 12, color: theme.textMuted }}>{hint}</Text>
       ) : null}
     </Box>
   );
@@ -188,6 +425,10 @@ function DateField({ ui, theme, field, value, onChange, hint }: FieldRenderConte
  * The placeholder is brand copy from the host, because "City, State, or ZIP
  * code" is a US postal convention and this product ships in India too
  * (ASTRAL-104's amendment).
+ *
+ * It stays a live text box in BOTH presentations. A place is typed, so a
+ * disclosure row here would cost a tap and buy nothing — and it is the one
+ * field on frame 2 that already looks exactly like the board.
  */
 function PlaceField(ctx: FieldRenderContext) {
   // The hint is the PLACEHOLDER and nothing else. It was briefly both — a
@@ -387,6 +628,17 @@ function MultiField({ ui, theme, field, value, onChange }: FieldRenderContext) {
 const EARLIEST_BIRTH_YEAR = 1900;
 
 /**
+ * ASTRAL-87's answer, in words, in ONE place.
+ *
+ * It is written twice on screen for a reason: on the ROW, because a field
+ * that has been answered must show its answer and "I don't know" is an
+ * answer, not an absence; and on the CONTROL, because that is the thing the
+ * user tapped and it has to look chosen afterwards. Two sites, one string —
+ * a second literal is how they drift apart.
+ */
+const UNKNOWN_LABEL = "I don't know";
+
+/**
  * Every kind the engine can emit now has a renderer. `date` and `place` were
  * DEFERRED_KINDS until PH-12 (ASTRAL-96) — declared by the engine, drawn as a
  * plain text box here — and that list is gone rather than emptied, so nothing
@@ -494,6 +746,7 @@ export function InputRequestView({
   warn,
   hints,
   submitLabel,
+  requiredNote,
   fieldIcons,
   layout = 'card',
 }: InputRequestViewProps) {
@@ -501,6 +754,12 @@ export function InputRequestView({
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<Record<string, InputValue>>({});
   const [outcome, setOutcome] = useState<'open' | 'submitted' | 'dismissed'>('open');
+  /**
+   * Which disclosure picker is open — at most one, by construction rather
+   * than by discipline. See `FieldRenderContext.open` for why the state
+   * cannot live inside a field renderer.
+   */
+  const [openKey, setOpenKey] = useState<string | null>(null);
 
   const total = request.fields.length;
   const field = request.fields[Math.min(step, total - 1)];
@@ -514,6 +773,41 @@ export function InputRequestView({
 
   const setValue = (key: string, value: InputValue) =>
     setValues((prev) => ({ ...prev, [key]: value }));
+
+  const toggleOpen = (key: string) => setOpenKey((prev) => (prev === key ? null : key));
+
+  /**
+   * Un-answer a field — DELETE the key, never write `''` over it.
+   *
+   * The only caller is the "I don't know" toggle, and the difference is on
+   * the wire: an absent key is a question the user did not answer, and `''`
+   * is an answer the engine has to refuse by name. Writing the empty string
+   * would put a malformed value on the carrier to express "never mind".
+   */
+  const clearValue = (key: string) =>
+    setValues((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+
+  /**
+   * One place that assembles what a field renderer is handed, so the bubble
+   * and the full-screen page cannot drift into two different widgets — which
+   * is the ASTRAL-91 failure mode wearing a layout's clothes.
+   */
+  const fieldContext = (f: InputField): FieldRenderContext => ({
+    ui,
+    theme,
+    width,
+    field: f,
+    value: values[f.key],
+    onChange: (value) => setValue(f.key, value),
+    hint: hintFor(f),
+    icon: fieldIcons?.[f.kind],
+    open: openKey === f.key,
+    toggle: () => toggleOpen(f.key),
+  });
 
   const submit = (finalValues: Record<string, InputValue>) => {
     setValues(finalValues);
@@ -572,55 +866,75 @@ export function InputRequestView({
           </Text>
         ) : null}
 
-        {request.fields.map((f) => {
-          const render = rendererFor(f.kind, warn);
-          return (
-            <Box key={f.key} style={{ gap: 8 }}>
-              <Box style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text
-                  testID={`input-request-label-${f.key}`}
-                  style={{ fontSize: 14, fontWeight: '600', color: theme.text }}
-                >
-                  {f.label}
-                </Text>
-                {fieldIcons?.[f.kind] ?? null}
-              </Box>
-              {render({
-                ui,
-                theme,
-                width,
-                field: f,
-                value: values[f.key],
-                onChange: (value) => setValue(f.key, value),
-                hint: hintFor(f),
-              })}
-              {f.allowUnknown ? (
-                // Hugs its content: full-width it reads as a second primary
-                // action competing with Continue, which is the opposite of
-                // what it is (ASTRAL-87 — a way out, not a call to action).
-                <Box style={{ alignSelf: 'flex-start' }}>
-                  <Button
-                    ui={ui}
-                    theme={theme}
-                    label={values[f.key] === null ? "✓ I don't know" : "I don't know"}
-                    testID={`input-request-unknown-${f.key}`}
-                    onPress={() => setValue(f.key, null)}
-                  />
-                </Box>
-              ) : null}
+        {request.fields.map((f) => (
+          <Box key={f.key} style={{ gap: 8 }}>
+            {/* The board's label sits ABOVE its box; where the host's control
+                is a picker body, the glyph rides inside the row instead (see
+                `pickerField`), which is where frame 2 draws it. */}
+            <Box style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text
+                testID={`input-request-label-${f.key}`}
+                style={{ fontSize: 14, fontWeight: '600', color: theme.text }}
+              >
+                {f.label}
+              </Text>
             </Box>
-          );
-        })}
+            {rendererFor(f.kind, warn)(fieldContext(f))}
+            {f.allowUnknown ? (
+              // ASTRAL-87 — a way OUT, not a call to action. It was a bordered
+              // button beside Continue, which is the shape of a second primary
+              // action; here it is a quiet line under the row it belongs to.
+              <Box style={{ alignSelf: 'flex-start' }}>
+                <Pressable
+                  onPress={() =>
+                    values[f.key] === null ? clearValue(f.key) : setValue(f.key, null)
+                  }
+                  accessibilityLabel={UNKNOWN_LABEL}
+                  testID={`input-request-unknown-${f.key}`}
+                  style={{ paddingTop: 2, paddingBottom: 2, paddingRight: 4 }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '600',
+                      color: values[f.key] === null ? theme.accent : theme.textMuted,
+                    }}
+                  >
+                    {values[f.key] === null ? `\u2713 ${UNKNOWN_LABEL}` : UNKNOWN_LABEL}
+                  </Text>
+                </Pressable>
+              </Box>
+            ) : null}
+          </Box>
+        ))}
 
-        <Button
-          ui={ui}
-          theme={theme}
-          emphasis
-          label={submitLabel ?? 'Continue'}
-          testID="input-request-submit"
-          disabled={missingRequired.length > 0}
-          onPress={() => submit(values)}
-        />
+        <Box style={{ gap: 8 }}>
+          <Button
+            ui={ui}
+            theme={theme}
+            emphasis
+            label={submitLabel ?? 'Continue'}
+            testID="input-request-submit"
+            disabled={missingRequired.length > 0}
+            onPress={() => submit(values)}
+          />
+          {missingRequired.length > 0 ? (
+            // A disabled button that will not say why is the state the owner
+            // read as "unpolished". The sentence is the host's brand copy;
+            // the labels after it are the ENGINE's, so this line speaks the
+            // language of the ask rather than the language of the bundle.
+            <Box testID="input-request-required-note" style={{ gap: 2 }}>
+              {requiredNote ? (
+                <Text style={{ fontSize: 12, color: theme.textMuted, textAlign: 'center' }}>
+                  {requiredNote}
+                </Text>
+              ) : null}
+              <Text style={{ fontSize: 12, color: theme.textMuted, textAlign: 'center' }}>
+                {missingRequired.map((f) => f.label).join(' \u00b7 ')}
+              </Text>
+            </Box>
+          ) : null}
+        </Box>
       </Box>
     );
   }
@@ -668,7 +982,11 @@ export function InputRequestView({
   }
 
   const renderField = rendererFor(field.kind, warn);
-  const answered = field.key in values;
+  // `answeredKey`, not `key in values`. The page layout was fixed for this
+  // and the bubble was not: a place TYPED AND THEN CLEARED leaves `''` under
+  // its key, `'pob' in values` is true, and Next lit up and sent an empty
+  // place the engine refused by name. Same defect, same file, one layout.
+  const answered = answeredKey(field);
 
   return (
     <Box
@@ -718,15 +1036,7 @@ export function InputRequestView({
         {field.label}
       </Text>
 
-      {renderField({
-        ui,
-        theme,
-        width,
-        field,
-        value: values[field.key],
-        onChange: (value) => setValue(field.key, value),
-        hint: hintFor(field),
-      })}
+      {renderField(fieldContext(field))}
 
       <Box style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
         {step > 0 ? (
@@ -736,7 +1046,7 @@ export function InputRequestView({
           <Button
             ui={ui}
             theme={theme}
-            label="I don't know"
+            label={UNKNOWN_LABEL}
             testID="input-request-unknown"
             // An ANSWER, not a dismissal: it travels as an explicit null and
             // the engine records it as a fact (ASTRAL-87).
