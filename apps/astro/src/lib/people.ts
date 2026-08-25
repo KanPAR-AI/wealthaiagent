@@ -31,6 +31,7 @@ import type {
   MatchesResponse,
   PeopleResponse,
   PersonView,
+  PrioritiesResponse,
   SelfResponse,
 } from './people-shapes';
 import { getToken } from './auth';
@@ -67,6 +68,20 @@ export function fetchSelf(): Promise<SelfResponse> {
 
 export function fetchMatches(): Promise<MatchesResponse> {
   return call<MatchesResponse>('people/matches');
+}
+
+/**
+ * The priority set, the vocabulary it is drawn from, and the chart-derived
+ * proposals (docs/49 ASTRAL-152/154/158).
+ *
+ * A READ, and there is deliberately no `savePriorities()` beside it. The
+ * server has no such route and must not grow one: a priority is an engine
+ * input that reorders what the user reads, and engine inputs reach state
+ * through the `input_request` carrier into `reconcile` (F24, INV-1) — which
+ * is what `edit_turn` and `app/preferences.tsx` are for.
+ */
+export function fetchPriorities(): Promise<PrioritiesResponse> {
+  return call<PrioritiesResponse>('people/priorities');
 }
 
 export function fetchEditImpact(personId: string, field: string): Promise<EditImpact> {

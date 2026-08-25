@@ -43,10 +43,13 @@ import { ChevronLeft, ChevronRight, SymbolIcon } from '@/components/glyphs';
 import { track } from '@/lib/analytics';
 import {
   fetchEditImpact,
+  fetchPriorities,
   fetchSelf,
   type EditImpact,
   type PersonView,
+  type PrioritiesResponse,
 } from '@/lib/people';
+import { summary as prioritySummary } from '@/lib/priorities-view';
 import {
   TIME_UNKNOWN_OFFER,
   TIME_UNKNOWN_STATEMENT,
@@ -78,6 +81,10 @@ export default function Profile() {
   const [load, setLoad] = useState<Load>({ phase: 'loading' });
   const [askOffered, setAskOffered] = useState(true);
   const [pendingEdit, setPendingEdit] = useState<EditImpact | null>(null);
+  // Read alongside the profile so the row can say what is set BEFORE the
+  // user opens it. A failure here is not fatal: the row falls back to its
+  // own label rather than taking the screen down for a preference.
+  const [priorities, setPriorities] = useState<PrioritiesResponse | null>(null);
   const [editBusy, setEditBusy] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<string | null>(null);
 
@@ -100,6 +107,12 @@ export default function Profile() {
   }, []);
 
   useEffect(read, [read]);
+
+  useEffect(() => {
+    fetchPriorities()
+      .then(setPriorities)
+      .catch((e: any) => console.warn('[priorities]', String(e?.message ?? e)));
+  }, []);
 
   // ASTRAL-138: the disclosure is fetched BEFORE anything is offered, and it
   // is computed server-side from the derived contract's own dependency edges.
@@ -156,6 +169,7 @@ export default function Profile() {
           ) : (
             <Established
               person={load.person}
+              priorities={priorities}
               askOffered={askOffered}
               editBusy={editBusy}
               onEdit={(row) => openEdit(load.person, row)}
@@ -242,9 +256,10 @@ function NotEstablished({ reason }: { reason: string }) {
 }
 
 function Established({
-  person, askOffered, editBusy, onEdit, onOfferTime, onOffered,
+  person, priorities, askOffered, editBusy, onEdit, onOfferTime, onOffered,
 }: {
   person: PersonView;
+  priorities: PrioritiesResponse | null;
   askOffered: boolean;
   editBusy: string | null;
   onEdit: (row: FactRow) => void;
@@ -327,6 +342,35 @@ function Established({
           ))}
           <Text style={s.caption}>{state.sentence}</Text>
         </View>
+      </View>
+
+      {/* docs/49 PH-19 (ASTRAL-152/154) — the owner's question, answered in
+          the place they would look for it: what matters to YOU, beside the
+          chart it is read alongside. The row is a READ; the edit happens on
+          its own screen, through the chat carrier (F24). */}
+      <Text style={s.section}>What matters to you</Text>
+      <View style={s.card}>
+        <Pressable
+          style={s.row}
+          onPress={() => {
+            track('profile_preferences');
+            router.push('/preferences');
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="What matters to you in a partner"
+        >
+          <View style={s.rowText}>
+            <Text style={s.rowLabel}>Partner preferences</Text>
+            <Text style={s.rowValue}>{prioritySummary(priorities)}</Text>
+            {/* the sentence that teaches the invariant, on the row that
+                leads to the thing it is about (ASTRAL-154) */}
+            <Text style={s.caption}>
+              Changes what your reports lead with and how matches are ordered.
+              No score changes.
+            </Text>
+          </View>
+          <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
+        </Pressable>
       </View>
 
       {notes.length ? (

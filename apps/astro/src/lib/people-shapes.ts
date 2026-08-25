@@ -120,6 +120,70 @@ export function isFirmOnly(score: MatchScore | undefined): score is FirmOnlyScor
   return !!score && 'firm_points' in score;
 }
 
+/** docs/49 ASTRAL-147/160: what a stored priority carries. `provenance` is
+ *  what keeps "your chart suggested this" and "you chose this" from looking
+ *  alike on a screen, and `basis` is the chart feature behind the first. */
+export interface PriorityEntry {
+  key: string;
+  label: string;
+  provenance: 'user_set' | 'chart_derived' | 'accepted_proposal' | string;
+  basis?: string | null;
+  recorded_at?: string;
+}
+
+/** The second tier (ASTRAL-162, AMB-32(c)). `free_text` is the user's own
+ *  note: stored, shown back to them, and never rendered into composed prose. */
+export interface StatedInterest {
+  key: string | null;
+  text: string;
+  provenance: string;
+  free_text: boolean;
+  unscored_sentence?: string | null;
+}
+
+export interface PriorityProposal {
+  key: string;
+  basis: string;
+  why?: string;
+  feature_terms?: string[];
+  row?: string;
+}
+
+export interface PrioritiesResponse {
+  set: {
+    ranked: PriorityEntry[];
+    interests: StatedInterest[];
+    removed: { key: string; removed_at: string }[];
+    updated_at?: string | null;
+    mapping_version?: number;
+  };
+  proposed: {
+    entries: PriorityProposal[];
+    skipped: { row: string; key: string; reason: string }[];
+    reason?: string;
+    chart_status?: string;
+  };
+  vocabulary: {
+    max_ranked: number;
+    priorities: { key: string; label: string; kootas: string[] }[];
+    interests: { key: string; label: string; domains: string[] }[];
+  };
+  disclosure: string;
+  /** the SENTENCE that opens the ask. Never a value — no route param of this
+   *  app carries anything a fact could be reconstructed from (F24). */
+  edit_turn: string;
+}
+
+/** ASTRAL-157: the koota the ordering used, with the points the ENGINE
+ *  computed for it. `points` is null on a koota that was not scored — a
+ *  pending koota is not a zero. */
+export interface LeadingKoota {
+  name: string;
+  points: number | null;
+  max: number | null;
+  pending: boolean;
+}
+
 export interface MatchRow {
   pair_key: string;
   person_id: string | null;
@@ -139,6 +203,8 @@ export interface MatchRow {
   dosha_count: number;
   refusal?: Record<string, unknown>;
   score?: MatchScore;
+  /** the prioritised kootas, on the row, so the printed rule is checkable */
+  leading_kootas?: LeadingKoota[];
 }
 
 export type MatchGroupKey = 'complete' | 'firm_only' | 'refused';
@@ -147,11 +213,22 @@ export interface MatchGroup {
   key: MatchGroupKey | string;
   label: string;
   rows: MatchRow[];
+  /** ASTRAL-157: the rule the server sorted by, in the words of its own
+   *  mapping. Printed above the group, so the ordering is falsifiable. */
+  sort_rule?: string;
+  /** the firm-only group's honest note when it could not use a priority */
+  sort_note?: string;
 }
 
 export interface MatchesResponse {
   groups: MatchGroup[];
   total: number;
+  priorities?: {
+    ranked: PriorityEntry[];
+    koota_order: string[];
+    interests: { key: string; label: string; unscored_sentence: string }[];
+    notes: string[];
+  };
 }
 
 export interface PeopleResponse {

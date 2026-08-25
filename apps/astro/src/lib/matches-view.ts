@@ -42,6 +42,14 @@ export interface ScoreView {
   pending: string[];
 }
 
+/** ASTRAL-157: the kootas the ordering used, with the ENGINE's own points.
+ *  `text` is a concatenation ("8 / 8"), never a quotient, and a koota that
+ *  was not scored says so rather than showing a zero. */
+export interface LeadingKootaView {
+  name: string;
+  text: string;
+}
+
 export interface MatchRowView {
   pairKey: string;
   personId: string | null;
@@ -60,6 +68,8 @@ export interface MatchRowView {
   refusal: string | null;
   /** the birth-time ask, on the rows where it is what would change the answer */
   ask: string | null;
+  /** the prioritised kootas on this row, so the printed rule is checkable */
+  leading: LeadingKootaView[];
 }
 
 export interface MatchSectionView {
@@ -67,6 +77,17 @@ export interface MatchSectionView {
   /** the server's own label, verbatim */
   label: string;
   rows: MatchRowView[];
+  /**
+   * ASTRAL-157: the RULE the server sorted by, printed above the section.
+   *
+   * Verbatim, and never composed here. The rule is generated on the server
+   * from the same mapping that drove the sort, so a client that wrote its own
+   * sentence could describe an ordering that did not happen — which is worse
+   * than printing none, because it is checkable and wrong.
+   */
+  rule: string;
+  /** the honest note when a group could not use the user's priorities */
+  note: string;
 }
 
 /**
@@ -148,6 +169,18 @@ function refusalSentence(row: MatchRow): string | null {
   return 'No score could be computed for this match, so there is none to show.';
 }
 
+function leadingView(row: MatchRow): LeadingKootaView[] {
+  return (row.leading_kootas ?? []).map((koota) => ({
+    name: koota.name,
+    // A pending koota is NOT a zero (ASTRAL-12), and it is not hidden either:
+    // a row whose prioritised koota was never scored has to say so, or the
+    // printed rule describes an ordering the reader cannot check.
+    text: koota.pending
+      ? 'not scored'
+      : (formatFraction(koota.points, koota.max) ?? 'not scored'),
+  }));
+}
+
 function rowView(row: MatchRow, index: number, section: MatchGroup): MatchRowView {
   const scope = ORDINAL_SCOPE[String(section.key)];
   const score = scoreView(row);
@@ -173,6 +206,7 @@ function rowView(row: MatchRow, index: number, section: MatchGroup): MatchRowVie
     // refusal, and on a partly-scored row. Never on a complete one, which
     // has nothing left to unlock.
     ask: refusal ? ASK_REFUSED : isFirmOnly(row.score) ? ASK_FIRM_ONLY : null,
+    leading: leadingView(row),
   };
 }
 
@@ -190,6 +224,8 @@ export function sections(response: MatchesResponse | null): MatchSectionView[] {
     .map((group) => ({
       key: String(group.key),
       label: String(group.label ?? ''),
+      rule: String(group.sort_rule ?? ''),
+      note: String(group.sort_note ?? ''),
       rows: (group.rows ?? []).map((row, i) => rowView(row, i, group)),
     }));
 }

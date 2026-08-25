@@ -278,6 +278,108 @@ function ChoiceField({ ui, theme, width, field, value, onChange }: FieldRenderCo
 }
 
 /**
+ * The ordered pick (docs/49 ASTRAL-152, F42).
+ *
+ * ── why tapping, and not dragging ─────────────────────────────────────────
+ *
+ * The rank IS the order, so the control has to make order visible and
+ * editable. A drag handle is the desktop instinct and it is the wrong one on
+ * a phone inside a scrolling transcript: a long-press-drag inside a
+ * ScrollView fights the scroll, and RN's own gesture guidance is to avoid
+ * exactly that. So picking is TAPPING — the first tap makes it #1, the next
+ * #2 — and a picked row shows its number and can be tapped again to remove
+ * it, which re-numbers everything below. Every state is reachable with one
+ * finger and no gesture the user has to discover.
+ *
+ * At `max` the unpicked options go quiet rather than disappearing: a control
+ * that removes its own options when you reach the limit reads as a bug, and
+ * the engine's refusal is still the authority behind it.
+ */
+function MultiField({ ui, theme, field, value, onChange }: FieldRenderContext) {
+  const { Box, Pressable, Text } = ui;
+  const picked = Array.isArray(value) ? value : [];
+  const max = field.max ?? field.options.length;
+  const ordered = field.ordered !== false;
+
+  const toggle = (option: string) => {
+    if (picked.indexOf(option) !== -1) {
+      onChange(picked.filter((v) => v !== option));
+      return;
+    }
+    // At the limit, a tap is a no-op rather than a silent replacement: the
+    // engine refuses an over-long list by name (ASTRAL-152) and this control
+    // must not paper over that by quietly dropping somebody's first pick.
+    if (picked.length >= max) return;
+    onChange([...picked, option]);
+  };
+
+  return (
+    <Box style={{ gap: 8 }}>
+      {field.options.map((option) => {
+        const rank = picked.indexOf(option.value);
+        const selected = rank !== -1;
+        const atLimit = !selected && picked.length >= max;
+        return (
+          <Pressable
+            key={option.value}
+            onPress={() => toggle(option.value)}
+            accessibilityLabel={
+              selected
+                ? `${option.label}, picked${ordered ? `, number ${rank + 1}` : ''}`
+                : option.label
+            }
+            testID={`input-option-${field.key}-${option.value}`}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              borderWidth: 1,
+              borderColor: selected ? theme.accent : theme.border,
+              backgroundColor: selected ? theme.surfaceAlt : theme.surface,
+              borderRadius: 12,
+              paddingTop: 10,
+              paddingBottom: 10,
+              paddingLeft: 12,
+              paddingRight: 12,
+              opacity: atLimit ? 0.45 : 1,
+            }}
+          >
+            <Box
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: selected ? theme.accent : theme.border,
+                backgroundColor: selected ? theme.accent : 'transparent',
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: '700',
+                  color: selected ? theme.surface : theme.textMuted,
+                }}
+              >
+                {selected ? (ordered ? String(rank + 1) : '✓') : ''}
+              </Text>
+            </Box>
+            <Text style={{ fontSize: 15, color: theme.text, flex: 1 }}>{option.label}</Text>
+          </Pressable>
+        );
+      })}
+      <Text testID={`input-multi-count-${field.key}`} style={{ fontSize: 12, color: theme.textMuted }}>
+        {ordered
+          ? `${picked.length} of up to ${max} picked, in order. Tap again to remove.`
+          : `${picked.length} picked. Tap again to remove.`}
+      </Text>
+    </Box>
+  );
+}
+
+/**
  * The earliest year the date wheel offers. A person born before it can still
  * type their date in prose (ASTRAL-90) and the engine accepts any year from
  * 1900 — this is where the wheel STARTS, not what the product will believe.
@@ -297,6 +399,11 @@ const handlers: Record<string, FieldRenderer> = {
   choice: ChoiceField,
   text: TextField,
   image: ImageField,
+  // docs/49 PH-19 (ASTRAL-152): the ordered pick. Registered here rather
+  // than drawn by the screen that wanted it, for ASTRAL-91's reason — a
+  // screen with its own field renderer is the second implementation that
+  // drifts from the engine's payload the first time a kind changes.
+  multi: MultiField,
 };
 
 /**
@@ -425,9 +532,17 @@ export function InputRequestView({
   // Continue sent an empty place the engine then refused by name (Role-3).
   // `null` stays answered: it is the deliberate "I don't know" sentinel
   // (ASTRAL-87), not an empty string.
-  const answeredKey = (f: InputField) =>
-    f.key in values &&
-    (values[f.key] === null || String(values[f.key] ?? '').trim() !== '');
+  const answeredKey = (f: InputField) => {
+    if (!(f.key in values)) return false;
+    const v = values[f.key];
+    // An EMPTY LIST is an answer, not a blank: it is how a user clears their
+    // priorities through the same carrier that sets them (ASTRAL-154). A
+    // `multi` is never `required`, so this only decides what Continue reads
+    // as answered — but treating [] as unanswered would make "clear" the one
+    // edit the widget could not express.
+    if (Array.isArray(v)) return true;
+    return v === null || String(v ?? '').trim() !== '';
+  };
   const missingRequired = request.fields.filter((f) => f.required && !answeredKey(f));
 
   if (layout === 'page') {

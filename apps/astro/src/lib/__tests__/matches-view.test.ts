@@ -298,3 +298,119 @@ describe('the empty state is honest', () => {
     expect(isEmpty(null)).toBe(true);
   });
 });
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// docs/49 ASTRAL-157 — the sort rule, and the kootas it used
+// ══════════════════════════════════════════════════════════════════════════
+
+describe('ASTRAL-157 — the ordering is falsifiable by the reader', () => {
+  const withRule = {
+    total: 2,
+    groups: [
+      {
+        key: 'complete',
+        label: 'Scored out of 36',
+        sort_rule: 'Ordered by Nadi, then Gana, then the total out of 36, then fewer dosha flags.',
+        sort_note: '',
+        rows: [
+          {
+            pair_key: 'a__b',
+            person_id: 'p1',
+            display_name: 'Meera',
+            favourite: false,
+            relation: 'match',
+            tob_known: true,
+            freshness: 'fresh',
+            verdict: 'Very good',
+            doshas: [],
+            dosha_count: 0,
+            score: { points: 26, out_of: 36 },
+            leading_kootas: [
+              { name: 'Nadi', points: 8, max: 8, pending: false },
+              { name: 'Gana', points: 6, max: 6, pending: false },
+            ],
+          },
+        ],
+      },
+      {
+        key: 'firm_only',
+        label: 'Partly scored — 21 of the 36 gunas need a birth time',
+        sort_rule: 'Ordered by the firm points out of 15, then fewer dosha flags.',
+        sort_note: 'None of your priorities (Nadi) is scored without a birth time, so these are ordered by the firm points instead.',
+        rows: [
+          {
+            pair_key: 'a__c',
+            person_id: 'p2',
+            display_name: 'Radha',
+            favourite: false,
+            relation: 'match',
+            tob_known: false,
+            freshness: 'fresh',
+            verdict: 'incomplete',
+            doshas: [],
+            dosha_count: 0,
+            score: { firm_points: 12, out_of: 15, pending: 21, pending_reasons: [] },
+            leading_kootas: [{ name: 'Nadi', points: null, max: 8, pending: true }],
+          },
+        ],
+      },
+    ],
+  } as any;
+
+  it('carries the server\'s rule verbatim, per section', () => {
+    const [complete, firm] = sections(withRule);
+    expect(complete.rule).toContain('Ordered by Nadi, then Gana');
+    expect(firm.rule).toBe('Ordered by the firm points out of 15, then fewer dosha flags.');
+  });
+
+  it('carries the honest note when a group could not use the priority', () => {
+    const [, firm] = sections(withRule);
+    expect(firm.note).toContain('None of your priorities');
+  });
+
+  it('shows the kootas the ordering used, as fractions and never as a total', () => {
+    const [complete] = sections(withRule);
+    expect(complete.rows[0].leading).toEqual([
+      { name: 'Nadi', text: '8 / 8' },
+      { name: 'Gana', text: '6 / 6' },
+    ]);
+    // 8 + 6 = 14 must appear nowhere: a subset sum is an invented composite
+    expect(JSON.stringify(complete.rows[0].leading)).not.toContain('14');
+  });
+
+  it('says "not scored" for a pending koota rather than showing a zero', () => {
+    const [, firm] = sections(withRule);
+    expect(firm.rows[0].leading).toEqual([{ name: 'Nadi', text: 'not scored' }]);
+  });
+
+  it('prints no rule and no leading kootas when nothing is prioritised', () => {
+    const bare = {
+      total: 1,
+      groups: [
+        {
+          key: 'complete',
+          label: 'Scored out of 36',
+          rows: [
+            {
+              pair_key: 'a__b',
+              person_id: 'p1',
+              display_name: 'Meera',
+              favourite: false,
+              relation: 'match',
+              tob_known: true,
+              freshness: 'fresh',
+              verdict: 'Very good',
+              doshas: [],
+              dosha_count: 0,
+              score: { points: 26, out_of: 36 },
+            },
+          ],
+        },
+      ],
+    } as any;
+    const [complete] = sections(bare);
+    expect(complete.rule).toBe('');
+    expect(complete.rows[0].leading).toEqual([]);
+  });
+});

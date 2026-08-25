@@ -1348,3 +1348,260 @@ export const placeChoiceAskPayload = {
     }
   ]
 };
+
+/**
+ * docs/49 PH-19 (ASTRAL-152/162) — the partner-priorities ask, captured on
+ * 2026-08-25 from `_input_request_block("partner_priorities", Belief(),
+ * "en")`. Two `multi` fields (the ranked tier and the interest tier, with
+ * their cardinality) and the free-text note (AMB-32(c)).
+ */
+export const prioritiesAskPayload = {
+  "type": "input_request",
+  "ask": "partner_priorities",
+  "reason": "Pick up to three, in the order they matter. They change what your match reports lead with and how your matches list is ordered — and they never change a score, a band, a verdict or a dosha flag. Skip this and everything works exactly as it does now.",
+  "fields": [
+    {
+      "key": "priorities",
+      "kind": "multi",
+      "label": "What matters most to you in a partner?",
+      "required": false,
+      "allow_unknown": false,
+      "options": [
+        {
+          "value": "temperament",
+          "label": "Temperament and emotional fit"
+        },
+        {
+          "value": "chemistry",
+          "label": "Physical and instinctive harmony"
+        },
+        {
+          "value": "communication",
+          "label": "Mental connection and friendship"
+        },
+        {
+          "value": "health_progeny",
+          "label": "Health and children"
+        },
+        {
+          "value": "family_life",
+          "label": "Prosperity and family welfare"
+        },
+        {
+          "value": "influence",
+          "label": "Mutual influence and attraction"
+        },
+        {
+          "value": "fortune",
+          "label": "Destiny and shared fortune"
+        },
+        {
+          "value": "values",
+          "label": "Spiritual compatibility and ego balance"
+        }
+      ],
+      "min": 0,
+      "max": 3,
+      "ordered": true
+    },
+    {
+      "key": "priority_interests",
+      "kind": "multi",
+      "label": "Anything else that matters? (gun milan does not score these)",
+      "required": false,
+      "allow_unknown": false,
+      "options": [
+        {
+          "value": "career",
+          "label": "Career and work"
+        },
+        {
+          "value": "wealth",
+          "label": "Money and wealth"
+        },
+        {
+          "value": "education",
+          "label": "Education and learning"
+        },
+        {
+          "value": "travel",
+          "label": "Travel and living abroad"
+        },
+        {
+          "value": "litigation",
+          "label": "Disputes and legal matters"
+        },
+        {
+          "value": "longevity",
+          "label": "Longevity"
+        }
+      ],
+      "min": 0,
+      "max": 6,
+      "ordered": false
+    },
+    {
+      "key": "priority_note",
+      "kind": "text",
+      "label": "In your own words — kept as your note, not scored",
+      "required": false,
+      "allow_unknown": false
+    }
+  ]
+} as const;
+
+/**
+ * docs/49 PH-19 (ASTRAL-148/149/150) — a match report with its `emphasis`
+ * SIBLING, captured on 2026-08-25 from `compute_gun_milan` +
+ * `priorities.emphasis_for(card, ["health_progeny", "temperament"],
+ * ["career"])`.
+ *
+ * The point of keeping it whole: every number here is byte-identical to the
+ * same report computed with no priority set, and `emphasis` sits BESIDE the
+ * artifact rather than inside it. A client test that finds a different
+ * `total` in a prioritised payload has found the failure this phase exists
+ * to prevent.
+ */
+export const matchEmphasisPayload = {
+  "type": "match_report",
+  "groom": {
+    "moon_rashi": "Taurus",
+    "nakshatra": "Rohini",
+    "manglik": null,
+    "time_known": true,
+    "moon_rashi_alternatives": [],
+    "nakshatra_alternatives": []
+  },
+  "bride": {
+    "moon_rashi": "Scorpio",
+    "nakshatra": "Anuradha",
+    "manglik": null,
+    "time_known": true,
+    "moon_rashi_alternatives": [],
+    "nakshatra_alternatives": []
+  },
+  "kootas": [
+    {
+      "name": "Varna",
+      "points": 0.0,
+      "max": 1,
+      "note": "Vaishya + Brahmin",
+      "meaning": "spiritual compatibility & ego balance",
+      "time_dependent": false,
+      "pending": false,
+      "provisional": false
+    },
+    {
+      "name": "Vashya",
+      "points": 1.0,
+      "max": 2,
+      "note": "Chatushpada + Keeta",
+      "meaning": "mutual influence & attraction",
+      "time_dependent": false,
+      "pending": false,
+      "provisional": false
+    },
+    {
+      "name": "Tara",
+      "points": 1.5,
+      "max": 3,
+      "note": "birth-star counting both ways",
+      "meaning": "destiny & shared fortune",
+      "time_dependent": true,
+      "pending": false,
+      "provisional": false
+    },
+    {
+      "name": "Yoni",
+      "points": 2.0,
+      "max": 4,
+      "note": "Serpent + Deer",
+      "meaning": "physical & instinctive harmony",
+      "time_dependent": true,
+      "pending": false,
+      "provisional": false
+    },
+    {
+      "name": "Graha Maitri",
+      "points": 3.0,
+      "max": 5,
+      "note": "Venus (neutral of Mars) / Mars (neutral of Venus)",
+      "meaning": "mental connection & friendship",
+      "time_dependent": false,
+      "pending": false,
+      "provisional": false
+    },
+    {
+      "name": "Gana",
+      "points": 5.0,
+      "max": 6,
+      "note": "Manushya + Deva",
+      "meaning": "temperament match",
+      "time_dependent": true,
+      "pending": false,
+      "provisional": false
+    },
+    {
+      "name": "Bhakoot",
+      "points": 7.0,
+      "max": 7,
+      "note": "7/7 placement",
+      "meaning": "prosperity & family welfare",
+      "time_dependent": false,
+      "pending": false,
+      "provisional": false
+    },
+    {
+      "name": "Nadi",
+      "points": 8.0,
+      "max": 8,
+      "note": "Antya + Madhya",
+      "meaning": "health & progeny",
+      "time_dependent": true,
+      "pending": false,
+      "provisional": false
+    }
+  ],
+  "time_known": true,
+  "total": 27.5,
+  "max_total": 36,
+  "firm_total": 27.5,
+  "firm_max": 36,
+  "pending_max": 0,
+  "pending_reasons": [
+    "Mangal (Kuja) dosha needs Mars's house, which needs a birth time — it is not assessed here."
+  ],
+  "verdict": "very good",
+  "doshas": [],
+  "emphasis": {
+    "mapping_version": 1,
+    "ranked": [
+      "health_progeny",
+      "temperament"
+    ],
+    "koota_order": [
+      "Nadi",
+      "Gana",
+      "Varna",
+      "Vashya",
+      "Tara",
+      "Yoni",
+      "Graha Maitri",
+      "Bhakoot"
+    ],
+    "leading": [
+      "Nadi",
+      "Gana"
+    ],
+    "rule": "Ordered by Nadi, then Gana, then total.",
+    "lines": [
+      "You said **health and children** matters most, so this report leads with Nadi and Gana. The scores themselves are unchanged — a priority reorders what you read first, and nothing else."
+    ],
+    "unscored": [
+      {
+        "key": "career",
+        "sentence": "Gun milan does not score career and work — the eight kootas read temperament, chemistry, communication and family life, and nothing else. I keep it, and I use it in readings, where the chart does carry a verdict on it."
+      }
+    ]
+  }
+} as const;

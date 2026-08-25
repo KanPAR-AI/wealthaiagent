@@ -167,6 +167,15 @@ export default function Matches() {
                 {/* The section's own label, written by the engine, carrying
                     the scale its rows are on. Never rewritten here. */}
                 <Text style={s.section}>{section.label}</Text>
+                {/* docs/49 ASTRAL-157: THE RULE, printed above the rows it
+                    ordered, in the engine's own words. An ordering whose rule
+                    is not on screen is one the reader cannot falsify — and a
+                    rule composed here could describe a sort that did not
+                    happen, which is worse than printing none. */}
+                {section.rule ? (
+                  <Text style={s.rule} accessibilityRole="text">{section.rule}</Text>
+                ) : null}
+                {section.note ? <Text style={s.caption}>{section.note}</Text> : null}
                 {section.rows.map((row) => (
                   <Row
                     key={row.pairKey}
@@ -230,6 +239,21 @@ function Row({
 
         {row.score?.scale ? <Text style={s.caption}>{row.score.scale}</Text> : null}
 
+        {/* ASTRAL-157: the kootas the ordering used, with the points the
+            ENGINE computed — so the printed rule is checkable on the row it
+            moved. Nothing is summed across them. */}
+        {row.leading.length ? (
+          <View style={s.chips}>
+            {row.leading.map((koota) => (
+              <View key={koota.name} style={[s.chip, s.chipLead]}>
+                <Text style={s.chipText}>
+                  {koota.name} {koota.text}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         <View style={s.chips}>
           {/* ASTRAL-143: the engine's own verdict word, verbatim. */}
           {row.verdict ? (
@@ -280,6 +304,7 @@ const s = StyleSheet.create({
   gap: { gap: t.space(2.5) },
   title: { ...t.type.scale.hero, ...t.type.display, color: t.palette.ink.primary },
   sectionTitle: { ...t.type.scale.title, color: t.palette.ink.primary },
+  rule: { ...t.type.scale.caption, color: t.palette.ink.secondary },
   section: {
     ...t.type.scale.caption,
     color: t.palette.ink.muted,
@@ -326,6 +351,8 @@ const s = StyleSheet.create({
     paddingVertical: t.space(1),
   },
   chipText: { ...t.type.scale.caption, color: t.palette.ink.secondary },
+  /** the prioritised kootas read as the ordering's own evidence */
+  chipLead: { borderColor: t.palette.accent.interactive },
   chipWarn: { borderColor: t.palette.danger },
   chipWarnText: { ...t.type.scale.caption, color: t.palette.danger },
   sentence: { ...t.type.scale.sub, color: t.palette.ink.secondary },

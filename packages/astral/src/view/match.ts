@@ -28,8 +28,24 @@ export interface KootaRow {
   provisional: boolean;
 }
 
+/**
+ * The koota rows, IN DISPLAY ORDER (docs/49 ASTRAL-148/149/150).
+ *
+ * With no `emphasis` this is the engine's own order, unchanged. With one, the
+ * user's prioritised kootas lead — and that is the ONLY thing a priority may
+ * do here: no row is dropped, no fraction changes, and nothing is summed. The
+ * reordering is applied from the payload's own `koota_order`, computed by the
+ * engine, so the client is not deciding what matters either.
+ */
 export function kootaRows(report: MatchReportPayload): KootaRow[] {
-  return report.kootas.map((k: MatchKoota) => ({
+  const order = report.emphasis?.koota_order ?? [];
+  const rank = new Map(order.map((name, i) => [name, i]));
+  const ordered = order.length
+    ? [...report.kootas].sort(
+        (a, b) => (rank.get(a.name) ?? order.length) - (rank.get(b.name) ?? order.length),
+      )
+    : report.kootas;
+  return ordered.map((k: MatchKoota) => ({
     name: k.name,
     fraction: k.pending ? null : formatFraction(k.points, k.max),
     meaning: k.meaning,

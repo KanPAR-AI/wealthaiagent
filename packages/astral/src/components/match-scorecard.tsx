@@ -59,6 +59,29 @@ export function MatchScorecard(props: MatchScorecardProps): ReactNode {
         {props.title ?? 'Kundli Milan'}
       </Text>
 
+      {/* docs/49 ASTRAL-148/157: the emphasis, said on the card that it
+          reordered. The RULE is printed so the order is falsifiable, and the
+          stated absences say what gun milan does not score. All of it is the
+          engine's own text — this component writes none of it, and it draws
+          no number the engine did not compute. */}
+      {report.emphasis && report.emphasis.rule ? (
+        <Text
+          testID="astral-match-emphasis-rule"
+          style={{ fontSize: 11, color: theme.textMuted, lineHeight: 16 }}
+        >
+          {report.emphasis.rule}
+        </Text>
+      ) : null}
+      {(report.emphasis?.unscored ?? []).map((unscored) => (
+        <Text
+          key={unscored.key}
+          testID={`astral-match-unscored-${unscored.key}`}
+          style={{ fontSize: 11, color: theme.textPending, lineHeight: 16 }}
+        >
+          {unscored.sentence}
+        </Text>
+      ))}
+
       <Box
         style={{
           flexDirection: wide ? 'row' : 'column',

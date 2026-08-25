@@ -31,7 +31,21 @@
 
 import { formatClockTime, formatIsoDate } from './format';
 
-export type InputFieldKind = 'date' | 'time' | 'place' | 'choice' | 'text' | 'image';
+export type InputFieldKind =
+  | 'date'
+  | 'time'
+  | 'place'
+  | 'choice'
+  | 'text'
+  | 'image'
+  /**
+   * docs/49 ASTRAL-152 (F42): the first kind whose answer is a LIST, and the
+   * first with a cardinality contract. The client returns an ORDERED list of
+   * option `value`s — order IS the answer, because rank is position — and
+   * the engine refuses an off-menu value, a duplicate or a list over `max`
+   * by name rather than fixing it up.
+   */
+  | 'multi';
 
 /**
  * The bare file id out of an upload response URL (bug 8dc95a6a).
@@ -71,6 +85,13 @@ export interface InputField {
   allowUnknown: boolean;
   options: InputOption[];
   hint?: string;
+  /** `multi` only — the engine's cardinality, carried so the client can stop
+   *  a user at the maximum rather than letting them meet a refusal. The
+   *  refusal still exists and is still the authority; this is the courtesy. */
+  min?: number;
+  max?: number;
+  /** `multi` only — whether the ORDER of the picks is part of the answer */
+  ordered?: boolean;
 }
 
 export interface InputRequestPayload {
@@ -82,8 +103,9 @@ export interface InputRequestPayload {
   fields: InputField[];
 }
 
-/** A field's answer: a value, or `null` meaning an explicit "I don't know". */
-export type InputValue = string | null;
+/** A field's answer: a value, an ORDERED LIST of values (`multi`), or `null`
+ *  meaning an explicit "I don't know". */
+export type InputValue = string | string[] | null;
 
 function str(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -109,10 +131,12 @@ function parseField(raw: unknown): InputField | null {
   const options = Array.isArray(f.options)
     ? (f.options.map(parseOption).filter(Boolean) as InputOption[])
     : [];
-  // A `choice` with no options is not a question — it is a dead card, which
-  // is the one outcome ASTRAL-91 exists to prevent.
-  if (kind === 'choice' && options.length === 0) return null;
+  // A `choice` or a `multi` with no options is not a question — it is a dead
+  // card, which is the one outcome ASTRAL-91 exists to prevent.
+  if ((kind === 'choice' || kind === 'multi') && options.length === 0) return null;
   const hint = str(f.hint);
+  const num = (v: unknown, fallback: number) =>
+    typeof v === 'number' && Number.isFinite(v) ? v : fallback;
   return {
     key,
     kind,
@@ -121,6 +145,16 @@ function parseField(raw: unknown): InputField | null {
     allowUnknown: f.allow_unknown === true,
     options,
     ...(hint ? { hint } : {}),
+    ...(kind === 'multi'
+      ? {
+          min: num(f.min, 0),
+          // A `multi` whose max the engine did not state takes everything it
+          // offered — never 1, which would silently turn an ordered pick into
+          // a single choice and lose ranks 2 and 3 without saying so.
+          max: num(f.max, options.length),
+          ordered: f.ordered === true,
+        }
+      : {}),
   };
 }
 
@@ -145,6 +179,16 @@ export function parseInputRequest(value: unknown): InputRequestPayload | null {
 
 function displayValue(field: InputField, value: InputValue): string {
   if (value === null) return "I don't know";
+  if (Array.isArray(value)) {
+    // The echo is what the USER reads back in their own transcript, so it is
+    // the LABELS in the order they picked them — "Temperament, then health
+    // and children" — and never the keys. Nothing on the server reads it.
+    if (value.length === 0) return 'none';
+    const labels = value.map(
+      (v) => field.options.find((o) => o.value === v)?.label ?? v,
+    );
+    return field.ordered === false ? labels.join(', ') : labels.join(', then ');
+  }
   // A file id is machine plumbing. The echo is what the USER reads back in
   // their own transcript, and "dominant_palm_file_id: 8f2c-…" tells them
   // nothing they can dispute or correct.
