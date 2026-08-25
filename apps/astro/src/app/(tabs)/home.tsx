@@ -58,7 +58,7 @@ import {
   ruleLines,
   transitLines,
 } from '@/lib/daily-view';
-import { fetchDaily } from '@/lib/people';
+import { adoptAccountNameIfUnnamed, fetchDaily, fetchSelf } from '@/lib/people';
 import type { DailyResponse } from '@/lib/people-shapes';
 import { visibleTiles } from '@/lib/tabs';
 import { tokens } from '@/theme';
@@ -91,7 +91,11 @@ export default function Home() {
   // name — so ASTRAL-125's "Hi, {name}" would read "Hi there" for every real
   // user. `greetingName` decides which of the two names wins; nothing here
   // writes the account name into the People store.
-  useEffect(() => subscribeToAccount(setAccount), []);
+  const accountRef = useRef<Account | null>(null);
+  useEffect(() => subscribeToAccount((a) => {
+    accountRef.current = a;
+    setAccount(a);
+  }), []);
 
   const read = useCallback((manual = false) => {
     if (manual) setRefreshing(true);
@@ -99,6 +103,19 @@ export default function Home() {
       .then((res) => {
         setLoad({ phase: 'done', res });
         track('home_shown', { state: res.state });
+        // F59 (ruled): a nameless profile adopts the signed-in account's
+        // name as its LABEL — store name wins forever after, never an
+        // email, and only once self exists. Fire-and-forget: the greeting
+        // corrects itself on the next read; a failure costs nothing.
+        const _named = res.state === 'ready'
+          ? res.person?.display_name : null;
+        if (!_named) {
+          void fetchSelf()
+            .then((self) => adoptAccountNameIfUnnamed(
+              self, accountRef.current?.displayName))
+            .then((adopted) => { if (adopted) void read(); })
+            .catch(() => {});
+        }
       })
       // Named, never swallowed into an empty screen: "we could not reach the
       // server" and "you have no chart" are different sentences, and only one

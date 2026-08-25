@@ -467,3 +467,23 @@ export interface TimelineReady {
 }
 
 export type TimelineResponse = TimelineReady | ReadAbsent;
+
+/** F59 (Role-3 ruled: spec-clean) — adopt the signed-in account's name as
+ *  the profile LABEL when the store has none. A label is what a person is
+ *  CALLED, not what they ARE: `display_name` is absent from the chart's
+ *  inputs, `update_labels` invalidates nothing, and the labels route is the
+ *  sanctioned writer. Three conditions, and they are the whole ruling:
+ *  only when the stored name is empty; only the account's displayName —
+ *  never the email or a local-part split of one; only when `self` exists.
+ *  Returns the name it adopted, or null when any condition failed. */
+export function nameToAdopt(
+  storedName: string | null | undefined,
+  selfEstablished: boolean,
+  accountName: string | null | undefined,
+): string | null {
+  if (!selfEstablished) return null;
+  if (storedName && storedName.trim()) return null;
+  const name = (accountName || '').trim();
+  if (!name || name.includes('@')) return null;
+  return name;
+}

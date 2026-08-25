@@ -138,3 +138,25 @@ export function deletePerson(personId: string): Promise<{
 }> {
   return call(`people/${encodeURIComponent(personId)}`, { method: 'DELETE' });
 }
+
+
+import { nameToAdopt } from './people-shapes';
+export { nameToAdopt };
+
+export async function adoptAccountNameIfUnnamed(
+  self: SelfResponse,
+  accountName: string | null | undefined,
+): Promise<string | null> {
+  const adopt = nameToAdopt(
+    self.person?.display_name,
+    self.state === 'established',
+    accountName,
+  );
+  if (!adopt || !self.person) return null;
+  try {
+    await patchLabels(self.person.id, { display_name: adopt });
+    return adopt;
+  } catch {
+    return null; // a greeting is never worth a failed screen
+  }
+}
