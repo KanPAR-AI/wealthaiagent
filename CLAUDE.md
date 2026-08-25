@@ -16,7 +16,8 @@ the chat surface in `packages/chat-native`, the astrology renderers in
 
 **Before running or shipping either app**, read
 [`../docs/51-astral-operations.md`](../docs/51-astral-operations.md): the
-local backend is configured as a real production user, and a client shipped
+local backend writes the PRODUCTION Firestore (only a throwaway uid stands
+between a local test and real data — verify it per docs/51 §3), and a client shipped
 ahead of the backend gets 404s that render as an outage. Skills:
 `SKILLS/astral-ai.md` (engineering) and `SKILLS/mobile-release.md`
 (shipping).
