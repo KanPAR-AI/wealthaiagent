@@ -50,7 +50,25 @@ const PROVENANCE_PHRASE: Record<string, string> = {
 export function provenanceCaption(entry: PriorityEntry): string {
   const phrase = PROVENANCE_PHRASE[String(entry.provenance)] ?? 'recorded earlier';
   const basis = (entry.basis ?? '').trim();
-  return basis ? `${phrase} · ${basis}` : phrase;
+  if (!basis) return phrase;
+  // docs/49 F55: a basis computed under an older mapping is SAID to be one.
+  // The alternative is the field carrying two generations of "your chart
+  // says" that look identical, which is the half of ASTRAL-158 that was
+  // stamped and not built.
+  const stale = entry.basis_stale ? ' · suggested under an earlier mapping' : '';
+  return `${phrase} · ${basis}${stale}`;
+}
+
+/**
+ * The migration, named — ASTRAL-158 / F55.
+ *
+ * Returns the server's own sentence, or null when the stored set is current.
+ * Not composed here: the note is generated beside the comparison that
+ * produced it, so a screen cannot describe a migration that did not happen.
+ */
+export function migrationNotice(data: PrioritiesResponse | null): string | null {
+  const note = (data?.mapping?.migration?.note ?? '').trim();
+  return note || null;
 }
 
 export interface RankedRow {

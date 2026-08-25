@@ -128,6 +128,12 @@ export interface PriorityEntry {
   label: string;
   provenance: 'user_set' | 'chart_derived' | 'accepted_proposal' | string;
   basis?: string | null;
+  /** docs/49 F55: the mapping version this basis was computed under, and
+   *  whether the table has moved since. A frozen "your chart says" that a
+   *  screen cannot tell from a current one is the two-generations failure
+   *  ASTRAL-158 names, with a UI in front of it. */
+  basis_mapping_version?: number;
+  basis_stale?: boolean;
   recorded_at?: string;
 }
 
@@ -167,6 +173,19 @@ export interface PrioritiesResponse {
     max_ranked: number;
     priorities: { key: string; label: string; kootas: string[] }[];
     interests: { key: string; label: string; domains: string[] }[];
+  };
+  /** ASTRAL-158 / F55: the comparison, not just the stamp. `migration` is
+   *  null when the stored set is current — there is nothing to name. */
+  mapping?: {
+    stored_version: number;
+    current_version: number;
+    stale: boolean;
+    migration: {
+      stored_version: number;
+      current_version: number;
+      stale_keys: string[];
+      note: string;
+    } | null;
   };
   disclosure: string;
   /** the SENTENCE that opens the ask. Never a value — no route param of this

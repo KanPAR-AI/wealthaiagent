@@ -61,6 +61,7 @@ import {
   interestRows,
   isEmpty,
   plainText,
+  migrationNotice,
   proposalAbsence,
   proposalRows,
   rankedRows,
@@ -169,6 +170,7 @@ export default function Preferences() {
   const interests = interestRows(data);
   const proposals = proposalRows(data);
   const absence = proposalAbsence(data);
+  const migration = migrationNotice(data);
 
   return (
     <View style={s.fill}>
@@ -215,6 +217,16 @@ export default function Preferences() {
             <View style={s.gap}>
               <Text style={s.sectionTitle}>{EMPTY_TITLE}</Text>
               <Text style={s.sentence}>{EMPTY_BODY}</Text>
+            </View>
+          ) : null}
+
+          {/* docs/49 F55: when the mapping table has moved under an
+              accepted "your chart says", the migration is named here in the
+              server's own words — the entries below carry the older
+              reasoning until the user accepts the current one. */}
+          {migration ? (
+            <View style={s.gap}>
+              <Text style={s.sentence}>{migration}</Text>
             </View>
           ) : null}
 

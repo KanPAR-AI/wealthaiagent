@@ -23,6 +23,7 @@ import {
   plainText,
   interestRows,
   isEmpty,
+  migrationNotice,
   proposalAbsence,
   proposalRows,
   provenanceCaption,
@@ -239,5 +240,61 @@ describe('the engine\'s prose, rendered by a screen that has no markdown', () =>
 
   it('handles the empty case without inventing one', () => {
     expect(plainText('')).toBe('');
+  });
+});
+
+describe('ASTRAL-158 / F55 — a basis from an older mapping says so', () => {
+  const MIGRATION = {
+    stored_version: 1,
+    current_version: 2,
+    stale_keys: ['health_progeny'],
+    note:
+      'The mapping between what matters to you and the kootas that score it ' +
+      'has changed (version 1 → 2). This entry was suggested by your chart ' +
+      'under the old table, so it is offered again below with the reason the ' +
+      'current table gives. Nothing you set yourself changes, nothing you ' +
+      'removed comes back, and no score moves either way.',
+  };
+
+  it('names the migration in the server\'s own words', () => {
+    expect(
+      migrationNotice(
+        payload({
+          mapping: {
+            stored_version: 1,
+            current_version: 2,
+            stale: true,
+            migration: MIGRATION,
+          },
+        }),
+      ),
+    ).toBe(MIGRATION.note);
+  });
+
+  it('says nothing when the stored set is current', () => {
+    expect(migrationNotice(payload())).toBeNull();
+    expect(
+      migrationNotice(
+        payload({
+          mapping: {
+            stored_version: 1,
+            current_version: 1,
+            stale: false,
+            migration: null,
+          },
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it('marks a stale basis on the row that carries it, and only there', () => {
+    const data = payload();
+    data.set.ranked[1].basis_stale = true;
+    const rows = rankedRows(data);
+    expect(rows[1].caption).toBe(
+      'from your chart — you accepted it · Jupiter is exalted in Cancer · ' +
+        'suggested under an earlier mapping',
+    );
+    expect(rows[0].caption).toBe('set by you');
   });
 });
