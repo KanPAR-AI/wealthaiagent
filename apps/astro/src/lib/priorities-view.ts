@@ -167,6 +167,27 @@ export function summary(data: PrioritiesResponse | null): string {
   return ranked.map((r) => r.label.toLowerCase()).join(', then ');
 }
 
+/**
+ * The engine's prose, as PLAIN TEXT.
+ *
+ * Seen on the simulator (2026-08-25): the ask's deterministic lines carry
+ * markdown emphasis — "- **Prosperity and family welfare** — 7th lord
+ * Mercury sits in house 3" — and this screen renders `Text`, not markdown,
+ * so the asterisks arrived on screen. The chat surface renders the same
+ * prose correctly; this is the ONE place that does not.
+ *
+ * Emphasis markers and list bullets only. It does not rewrite a word, drop a
+ * sentence or reorder anything: the engine's text is the authority and this
+ * is a formatting adapter, not an editor.
+ */
+export function plainText(prose: string): string {
+  return (prose ?? '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/(^|\s)\*(\S[^*]*?)\*(?=\s|$)/g, '$1$2')
+    .replace(/^[ \t]*[-•]\s+/gm, '')
+    .trim();
+}
+
 /** When the set was last changed, said plainly or not at all. */
 export function updatedLine(data: PrioritiesResponse | null): string | null {
   const when = splitIsoInstant(data?.set.updated_at ?? null);

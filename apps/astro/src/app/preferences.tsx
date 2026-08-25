@@ -60,6 +60,7 @@ import {
   disclosure,
   interestRows,
   isEmpty,
+  plainText,
   proposalAbsence,
   proposalRows,
   rankedRows,
@@ -260,7 +261,11 @@ export default function Preferences() {
             </>
           ) : null}
 
-          {proposals.length ? (
+          {/* Once the ENGINE's ask is on screen it restates the same
+              suggestions, with the same basis, as part of the question. Two
+              copies of one sentence read as two findings, so the card stands
+              down and the ask speaks. */}
+          {proposals.length && !request ? (
             <>
               <Text style={s.section}>Your chart suggests</Text>
               <View style={[s.card, s.cardProposed]}>
@@ -278,7 +283,7 @@ export default function Preferences() {
                 </View>
               </View>
             </>
-          ) : absence ? (
+          ) : absence && !request ? (
             <>
               <Text style={s.section}>Your chart suggests</Text>
               <View style={[s.card, s.cardProposed]}>
@@ -294,7 +299,7 @@ export default function Preferences() {
           {request ? (
             <View style={s.gap}>
               <Text style={s.section}>Change them</Text>
-              {prose ? <Text style={s.sentence}>{prose}</Text> : null}
+              {prose ? <Text style={s.sentence}>{plainText(prose)}</Text> : null}
               <InputRequestView
                 ui={rnPrimitives}
                 theme={LIGHT_THEME}
@@ -309,7 +314,7 @@ export default function Preferences() {
             <View style={s.gap}>
               {prose ? (
                 <>
-                  <Text style={s.sentence}>{prose}</Text>
+                  <Text style={s.sentence}>{plainText(prose)}</Text>
                   <Pressable
                     style={s.ghost}
                     onPress={() =>

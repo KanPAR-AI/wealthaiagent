@@ -20,6 +20,7 @@ import type { PrioritiesResponse } from '../people-shapes';
 import {
   EMPTY_BODY,
   disclosure,
+  plainText,
   interestRows,
   isEmpty,
   proposalAbsence,
@@ -215,5 +216,28 @@ describe('ASTRAL-154 — the disclosure, and the summary before you open it', ()
 
   it('dates the last change when it has one', () => {
     expect(updatedLine(payload())).toMatch(/^Last changed /);
+  });
+});
+
+describe('the engine\'s prose, rendered by a screen that has no markdown', () => {
+  it('strips emphasis markers the simulator showed raw', () => {
+    expect(
+      plainText('- **Prosperity and family welfare** — 7th lord Mercury sits in house 3'),
+    ).toBe('Prosperity and family welfare — 7th lord Mercury sits in house 3');
+  });
+
+  it('changes no word, drops no sentence and reorders nothing', () => {
+    const prose =
+      'What matters most to you in a partner? Name up to three, in order.\n\n' +
+      'From your own chart, and only if you pick them:';
+    expect(plainText(prose)).toBe(prose);
+  });
+
+  it('leaves a lone asterisk inside a word alone', () => {
+    expect(plainText('a*b')).toBe('a*b');
+  });
+
+  it('handles the empty case without inventing one', () => {
+    expect(plainText('')).toBe('');
   });
 });
