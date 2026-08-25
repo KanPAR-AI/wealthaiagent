@@ -317,10 +317,19 @@ export default function BirthDetails() {
               />
             </>
           ) : error ? (
-            // ASTRAL-69's designed failure, one level up: the reading did not
-            // come through at all. Named, never a spinner that never ends.
+            // ASTRAL-69's DESIGNED failure, one level up: the reading did not
+            // come through at all. It used to be the engine's sentence set in
+            // the same grey as the subtitle, three lines from the top of the
+            // screen — indistinguishable from the copy that is meant to be
+            // there, which is the "bare prose blob" the owner objected to. A
+            // refusal is a state; it gets a surface, a rule down its edge and
+            // a way forward.
             <View style={s.gap}>
-              <Text style={s.subtitle}>{error}</Text>
+              <View style={s.notice}>
+                <SymbolIcon name="exclamationmark.triangle" size={tokens.size.icon}
+                  color={tokens.palette.danger} />
+                <Text style={s.noticeText}>{error}</Text>
+              </View>
               <Pressable style={s.cta} onPress={toChat} accessibilityRole="button"
                 accessibilityLabel="Continue in chat">
                 <Text style={s.ctaText}>Continue in chat</Text>
@@ -371,6 +380,18 @@ const s = StyleSheet.create({
   title: { ...t.type.scale.hero, ...t.type.display, color: t.palette.ink.primary },
   subtitle: { ...t.type.scale.sub, color: t.palette.ink.secondary },
   gap: { gap: t.space(4) },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: t.space(3),
+    backgroundColor: t.palette.paper.card,
+    borderRadius: t.radius.card,
+    borderLeftWidth: 3,
+    borderLeftColor: t.palette.danger,
+    paddingVertical: t.space(4),
+    paddingHorizontal: t.space(4),
+  },
+  noticeText: { ...t.type.scale.body, color: t.palette.ink.primary, flex: 1 },
   cta: {
     backgroundColor: t.palette.accent.interactive,
     borderRadius: t.radius.button,
