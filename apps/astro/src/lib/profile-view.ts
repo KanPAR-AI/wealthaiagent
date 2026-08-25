@@ -431,15 +431,12 @@ function joinParts(parts: string[]): string {
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
-/**
- * The turn that opens the correction.
- *
- * A SENTENCE OF INTENT and nothing else — no value, no slot key, no field
- * name in the engine's vocabulary. The engine decides what it needs and asks
- * for it with an `input_request`; the answer returns on the `input_response`
- * carrier into `reconcile`, which is the only fact-writer (INV-1). There is
- * no profile-write endpoint and this app has no way to reach one.
- */
-export function correctionTurn(label: string): string {
-  return `I need to correct my ${label}.`;
-}
+// The turn that opens a correction MOVED to `lib/edit-fact.ts` when the
+// 2026-08-26 ruling made the edit in-place (docs/49 ASTRAL-138).
+//
+// It is not a formatting helper any more, which is why it did not stay here:
+// it composed a sentence from the server's label, and a composed sentence
+// can drift out of the shape the engine's deterministic cue requires with
+// nothing going red anywhere. What replaced it is one DECLARED CONSTANT per
+// field, pinned on both sides — `chatservice/tests/
+// test_astrology_field_correction.py` asserts each constant fires the cue.

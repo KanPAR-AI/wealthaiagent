@@ -27,6 +27,12 @@ const astro: BrandTokens = {
     privacyFooter: 'Your data is private & secure',
     stillNeeded: 'Still needed',
     casting: 'Casting your chart…',
+    applyingEdit: 'Saving your correction…',
+    changeItHere: 'Change it',
+    changeItHereNote:
+      'I will ask you for the new value here, with what I have now already '
+      + 'filled in, so the correction goes through the same check every other '
+      + 'detail does.',
     fieldHints: {
       placeBirthHint: 'City or town — add the state or country if the name is common',
       dateBirthHint: '',

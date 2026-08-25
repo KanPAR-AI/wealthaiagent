@@ -92,6 +92,17 @@ export interface InputField {
   max?: number;
   /** `multi` only — whether the ORDER of the picks is part of the answer */
   ordered?: boolean;
+  /**
+   * The value the engine ALREADY HOLDS for this field (docs/49 ASTRAL-138).
+   *
+   * Sent only by the correction ask, and it is a starting point rather than
+   * an answer: the picker opens AT it instead of at a default, because a
+   * user correcting a birth time by two minutes should not have to re-find
+   * the hour. It still travels back on the carrier like anything else the
+   * user leaves in place, and the engine validates it exactly the same way
+   * (it validated it on the way out for the same reason).
+   */
+  value?: InputValue;
 }
 
 export interface InputRequestPayload {
@@ -137,6 +148,12 @@ function parseField(raw: unknown): InputField | null {
   const hint = str(f.hint);
   const num = (v: unknown, fallback: number) =>
     typeof v === 'number' && Number.isFinite(v) ? v : fallback;
+  // PARSE, DON'T TRUST, on the pre-fill too: a value of a shape this build
+  // does not understand is DROPPED, never handed to a picker that would
+  // then render something it cannot represent. An absent pre-fill is a
+  // picker at its default, which is the behaviour every other ask has.
+  const hasValue = 'value' in f
+    && (typeof f.value === 'string' || f.value === null || Array.isArray(f.value));
   return {
     key,
     kind,
@@ -144,6 +161,7 @@ function parseField(raw: unknown): InputField | null {
     required: f.required !== false,
     allowUnknown: f.allow_unknown === true,
     options,
+    ...(hasValue ? { value: f.value as InputValue } : {}),
     ...(hint ? { hint } : {}),
     ...(kind === 'multi'
       ? {

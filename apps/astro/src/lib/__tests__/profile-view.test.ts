@@ -17,7 +17,6 @@ import {
   chartIsReadable,
   chartLines,
   chartState,
-  correctionTurn,
   editDisclosure,
   factRows,
   frameLine,
@@ -314,9 +313,9 @@ describe('ASTRAL-138 — the cascade is disclosed from the edges, not from a sen
       .toContain('coordinates');
   });
 
-  it('the correction turn carries intent and NO value', () => {
-    const turn = correctionTurn('birth time');
-    expect(turn).toBe('I need to correct my birth time.');
-    expect(turn).not.toMatch(/\d/);
-  });
+  // The correction TURN's assertions live in `edit-fact.test.ts` now: the
+  // sentence stopped being composed from this label when the edit became
+  // in-place (docs/49 ASTRAL-138), and the property it was pinning — intent,
+  // never a value — is pinned there over the declared constants, together
+  // with the engine-side match this file could never see.
 });

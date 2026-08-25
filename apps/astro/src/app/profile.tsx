@@ -22,10 +22,24 @@
 //     and then hands over to the CHAT carrier — `input_request` in, typed
 //     `input_response` out, `reconcile` the only writer (INV-1).
 //
+// ── what the 2026-08-26 ruling changed here, and what it did not ───────────
+//
+// Owner bug 10761055: "why do I need to go to chat to change dob — why can't
+// it happen here, it's introducing too much friction." So tapping a fact now
+// stays on this screen's flow: the disclosure sheet's button says "Change
+// it", the field-scoped picker opens full-screen over screen 2's own
+// mechanism, and the user lands back HERE with the engine's outcome line and
+// a re-read profile. Chat is never shown.
+//
+// Rule 3 above is untouched, and that is the point of the ruling: the value
+// still travels on the typed carrier into `reconcile`, the chat that carries
+// it is real and recorded, and this screen still writes nothing. What moved
+// is chrome.
+//
 // Everything the screen decides lives in `lib/profile-view.ts`, which is pure
 // and unit-tested at the workspace root. What is left here is layout.
 
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -41,6 +55,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChevronLeft, ChevronRight, SymbolIcon } from '@/components/glyphs';
 import { track } from '@/lib/analytics';
+import { editRoute } from '@/lib/edit-fact';
+import { useEditOutcome } from '@/lib/edit-outcome';
 import {
   fetchEditImpact,
   fetchPriorities,
@@ -56,7 +72,6 @@ import {
   chartIsReadable,
   chartLines,
   chartState,
-  correctionTurn,
   editDisclosure,
   factRows,
   frameLine,
@@ -108,6 +123,27 @@ export default function Profile() {
 
   useEffect(read, [read]);
 
+  // docs/49 ASTRAL-138: coming back from an in-place edit.
+  //
+  // The profile is RE-READ from the server rather than patched locally, and
+  // the outcome banner is the engine's own sentence. A screen that patched
+  // its own copy of a fact would be showing the value it sent rather than
+  // the value that landed — which is the same class of lie as a client-side
+  // write, one layer up. `useFocusEffect` and not `useEffect`: this screen
+  // was never unmounted, the edit was pushed on top of it.
+  const outcome = useEditOutcome((s) => s.outcome);
+  const outcomeFailed = useEditOutcome((s) => s.failed);
+  const clearOutcome = useEditOutcome((s) => s.clear);
+  useFocusEffect(
+    useCallback(() => {
+      if (useEditOutcome.getState().outcome) read();
+    }, [read]),
+  );
+  // The receipt is for the return trip only — leaving the screen retires it,
+  // so re-opening Profile tomorrow does not greet the user with last week's
+  // correction.
+  useEffect(() => () => clearOutcome(), [clearOutcome]);
+
   useEffect(() => {
     fetchPriorities()
       .then(setPriorities)
@@ -128,13 +164,27 @@ export default function Profile() {
       .finally(() => setEditBusy(null));
   }, []);
 
-  // …and the edit itself leaves through the CHAT. Screen 2 renders the
-  // engine's `input_request` full-screen and hands the typed answer to the
-  // chat screen, which owns the one send path. Nothing is written here.
+  // …and the edit happens HERE (the 2026-08-26 ruling). It still leaves
+  // through the carrier: screen 2's mechanism renders the engine's
+  // field-scoped `input_request` full-screen, the typed answer goes back on
+  // the `input_response` fence, and `reconcile` is the only writer. What
+  // changed is that the user returns to this screen instead of landing in a
+  // transcript. Nothing is written here.
+  //
+  // The opening sentence is a DECLARED CONSTANT per field (`lib/edit-fact`),
+  // not a sentence composed from the server's label: the engine's cue needs
+  // a request shape, and a composed sentence can drift out of it with
+  // nothing going red. A field this build has no constant for gets the
+  // honest refusal rather than a guess.
   const continueEdit = useCallback((impact: EditImpact) => {
-    track('profile_edit_handoff', { field: impact.field });
+    const route = editRoute(impact.field);
+    if (!route) {
+      setBlocked(`I don't know how to change your ${impact.label} from this screen yet.`);
+      return;
+    }
+    track('profile_edit_inline', { field: impact.field });
     setPendingEdit(null);
-    router.push({ pathname: '/birth-details', params: { opening: correctionTurn(impact.label) } });
+    router.push(route);
   }, []);
 
   return (
@@ -154,6 +204,20 @@ export default function Profile() {
         </View>
 
         <ScrollView contentContainerStyle={s.body}>
+          {/* docs/49 ASTRAL-138: what the correction just invalidated, in the
+              ENGINE's words. Not composed here — the sentence is computed
+              server-side from the same `edit_impact` the sheet promised
+              from, so the promise and the receipt cannot disagree. */}
+          {outcome ? (
+            <View style={outcomeFailed ? s.noticeBad : s.notice}>
+              <SymbolIcon
+                name={outcomeFailed ? 'exclamationmark.triangle' : 'checkmark.circle'}
+                size={tokens.size.icon}
+                color={outcomeFailed ? tokens.palette.danger : tokens.palette.accent.interactive}
+              />
+              <Text style={s.noticeText}>{outcome}</Text>
+            </View>
+          ) : null}
           {load.phase === 'loading' ? (
             <ActivityIndicator color={tokens.palette.accent.interactive} />
           ) : load.phase === 'error' ? (
@@ -196,17 +260,14 @@ export default function Profile() {
           <View style={s.sheet}>
             <Text style={s.sheetTitle}>Change your {pendingEdit?.label}</Text>
             <Text style={s.sentence}>{pendingEdit ? editDisclosure(pendingEdit) : ''}</Text>
-            <Text style={s.caption}>
-              I will ask you for the new value in chat, so the correction goes through the
-              same check every other detail does.
-            </Text>
+            <Text style={s.caption}>{tokens.copy.changeItHereNote}</Text>
             <Pressable
               style={s.cta}
               onPress={() => pendingEdit && continueEdit(pendingEdit)}
               accessibilityRole="button"
-              accessibilityLabel="Continue in chat"
+              accessibilityLabel={tokens.copy.changeItHere}
             >
-              <Text style={s.ctaText}>Continue in chat</Text>
+              <Text style={s.ctaText}>{tokens.copy.changeItHere}</Text>
             </Pressable>
             <Pressable style={s.ghost} onPress={() => setPendingEdit(null)} accessibilityRole="button" accessibilityLabel="Cancel">
               <Text style={s.ghostText}>Not now</Text>
@@ -478,4 +539,27 @@ const s = StyleSheet.create({
     gap: t.space(3),
   },
   sheetTitle: { ...t.type.scale.title, ...t.type.display, color: t.palette.ink.primary },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: t.space(3),
+    backgroundColor: t.palette.paper.card,
+    borderRadius: t.radius.card,
+    borderLeftWidth: 3,
+    borderLeftColor: t.palette.accent.interactive,
+    padding: t.space(4),
+    marginBottom: t.space(4),
+  },
+  noticeBad: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: t.space(3),
+    backgroundColor: t.palette.paper.card,
+    borderRadius: t.radius.card,
+    borderLeftWidth: 3,
+    borderLeftColor: t.palette.danger,
+    padding: t.space(4),
+    marginBottom: t.space(4),
+  },
+  noticeText: { ...t.type.scale.sub, color: t.palette.ink.primary, flex: 1 },
 });

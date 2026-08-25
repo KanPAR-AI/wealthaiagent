@@ -34,6 +34,15 @@
  *                   `_input_request_block("place_zone_unresolved", …)` with
  *                   the real gazetteer's two Springfields. The options are
  *                   PLACES; there is no IANA identifier anywhere in it
+ *   correctionAsk   the in-place edit (docs/49 ASTRAL-138 as amended
+ *                   2026-08-26), captured on 2026-08-26 from
+ *                   `_input_request_block("field_correction", belief, "en",
+ *                   "Please correct my birth time.")` over a belief holding
+ *                   00:20. ONE field, and the first payload in this file to
+ *                   carry `value` — the value the engine already holds, so
+ *                   the picker opens AT it
+ *   correctionPlaceAsk  the same ask for `pob`, which is the one whose
+ *                   correction also kills the coordinates
  */
 
 export const natalTimedPayload = {
@@ -1326,6 +1335,38 @@ export const birthDetailsAskPayload = {
       "label": "Birth place",
       "required": true,
       "allow_unknown": false
+    }
+  ]
+};
+
+export const correctionAskPayload = {
+  "type": "input_request",
+  "ask": "field_correction",
+  "reason": "Pick the corrected value. Anything read from it \u2014 your chart, and any match it is part of \u2014 is recomputed the next time you ask for it, never quietly left as it was.",
+  "fields": [
+    {
+      "key": "tob",
+      "kind": "time",
+      "label": "Birth time",
+      "required": true,
+      "allow_unknown": true,
+      "value": "00:20"
+    }
+  ]
+};
+
+export const correctionPlaceAskPayload = {
+  "type": "input_request",
+  "ask": "field_correction",
+  "reason": "Pick the corrected value. Anything read from it \u2014 your chart, and any match it is part of \u2014 is recomputed the next time you ask for it, never quietly left as it was.",
+  "fields": [
+    {
+      "key": "pob",
+      "kind": "place",
+      "label": "Birth place",
+      "required": true,
+      "allow_unknown": false,
+      "value": "Padrauna"
     }
   ]
 };

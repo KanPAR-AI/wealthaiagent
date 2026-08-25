@@ -776,7 +776,25 @@ export function InputRequestView({
 }: InputRequestViewProps) {
   const { Box, Pressable, Text } = ui;
   const [step, setStep] = useState(0);
-  const [values, setValues] = useState<Record<string, InputValue>>({});
+  /**
+   * Seeded from the engine's own pre-fill (docs/49 ASTRAL-138's correction
+   * ask), which is why this is a lazy initialiser rather than an effect: a
+   * `useEffect` that wrote the seed after mount would race the user's first
+   * tap and could overwrite an answer they had already given.
+   *
+   * A field with no `value` is absent from this map, exactly as before — so
+   * "answered" still means "the user touched it OR the engine handed us one
+   * to start from", and a correction the user leaves alone submits the value
+   * they were shown. That is the correct default for an EDIT: the picker
+   * opened at 00:20 and Continue means 00:20, not "nothing".
+   */
+  const [values, setValues] = useState<Record<string, InputValue>>(() => {
+    const seeded: Record<string, InputValue> = {};
+    for (const f of request.fields) {
+      if (f.value !== undefined) seeded[f.key] = f.value;
+    }
+    return seeded;
+  });
   const [outcome, setOutcome] = useState<'open' | 'submitted' | 'dismissed'>('open');
   /**
    * Which disclosure picker is open — at most one, by construction rather

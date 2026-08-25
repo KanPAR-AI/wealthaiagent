@@ -28,6 +28,21 @@
 //     streaming chart all happen in the place that can show them, and there
 //     is no second chat client (ASTRAL-105's standing rule).
 //
+// ── the one exception, and why it is not a second chat client ─────────────
+//
+// `returnTo=profile` (docs/49 ASTRAL-138, owner bug 10761055) is the in-place
+// edit: Profile sends the user here to change ONE fact and expects them back.
+// There, Continue SENDS from this screen and the user returns to Profile with
+// the engine's outcome line — because the thing the chat screen exists to
+// show, a streaming reading, is not what a correction produces. A correction
+// turn is one deterministic sentence, and routing a user into a transcript to
+// read it is the friction the owner's bug report is about.
+//
+// It is still not a second chat client: the send is the SAME shared
+// `useSendMessage` lifecycle this screen already uses for its opening turn,
+// the transcript still records the exchange (it happened), and nothing here
+// parses, writes or invents a fact.
+//
 // The opening turn goes out through the SHARED lifecycle (ASTRAL-105), not
 // through a helper of its own: `lib/reading.ts` is gone. This screen sends
 // one message and then READS the reply out of the shared chat store — which
@@ -65,6 +80,8 @@ import { ChevronLeft, SymbolIcon } from '@/components/glyphs';
 import { CornerWash } from '@/components/sky';
 import { track } from '@/lib/analytics';
 import { fetchBalance } from '@/lib/credits';
+import { editFailure, isReturningEdit, outcomeLine } from '@/lib/edit-fact';
+import { useEditOutcome } from '@/lib/edit-outcome';
 import { tokens } from '@/theme';
 
 /**
@@ -97,7 +114,15 @@ const WASH_WIDTH = 0.62;
 
 export default function BirthDetails() {
   const { width } = useWindowDimensions();
-  const { opening } = useLocalSearchParams<{ opening?: string }>();
+  const { opening, returnTo, field } = useLocalSearchParams<{
+    opening?: string;
+    /** docs/49 ASTRAL-138: `profile` means send here and go back there */
+    returnTo?: string;
+    /** which fact is being corrected — carried for ANALYTICS only. A route
+     *  param of this app never carries a VALUE (INV-1). */
+    field?: string;
+  }>();
+  const editing = isReturningEdit(returnTo);
   const [request, setRequest] = useState<InputRequestPayload | null>(null);
   const [prose, setProse] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -204,7 +229,54 @@ export default function BirthDetails() {
   // waited on, the chat screen owns the send, and this label is replaced by
   // the real streaming reply the moment it arrives.
   const [casting, setCasting] = useState(false);
+  const report = useEditOutcome((s) => s.report);
+
+  /**
+   * The in-place edit's Continue (docs/49 ASTRAL-138).
+   *
+   * Sends the SAME typed carrier the handoff would have handed to chat, on
+   * the SAME shared lifecycle, and then goes back to Profile with whatever
+   * the engine said. Nothing is parsed out of the reply and nothing is
+   * written here: the outcome sentence is the ENGINE's, computed server-side
+   * from the same `edit_impact` the sheet promised from, so the promise the
+   * user read before the edit and the receipt they read after it cannot
+   * disagree.
+   *
+   * `await send(...)` resolves when the stream completes, which is what makes
+   * "go back when it has landed" honest rather than optimistic — a correction
+   * that failed must not leave Profile showing a success line.
+   */
+  const submitEdit = useCallback(
+    async (message: string) => {
+      track('profile_edit_submitted', { field: String(field ?? '') });
+      setCasting(true);
+      try {
+        await send(message, []);
+      } catch (e: any) {
+        report(editFailure('transport', String(e?.message ?? e)), true);
+        router.back();
+        return;
+      }
+      const id = chatIdRef.current;
+      const msgs = id ? useChatStore.getState().chats[id]?.messages ?? [] : [];
+      const last = [...msgs].reverse().find((m) => m.sender === 'bot');
+      if (!last || last.error) {
+        report(editFailure('transport', last?.error), true);
+      } else {
+        // A refusal (INV-4) arrives as words in the same reply, so the line
+        // is shown either way and the user reads what actually happened.
+        report(outcomeLine(last.message), false);
+      }
+      router.back();
+    },
+    [send, report, field],
+  );
+
   const handOff = useCallback((message: string) => {
+    if (editing) {
+      void submitEdit(message);
+      return;
+    }
     track('birth_details_submitted');
     setCasting(true);
     const to = setTimeout(() => {
@@ -214,7 +286,7 @@ export default function BirthDetails() {
       });
     }, HANDOFF_MS);
     handoffTimer.current = to;
-  }, []);
+  }, [editing, submitEdit]);
 
   // Cleared on unmount: a `router.replace` fired out of a screen that is
   // already gone is a warning in dev and a wasted navigation in production.
@@ -292,7 +364,9 @@ export default function BirthDetails() {
             // is doing and then goes.
             <View style={s.gap}>
               <ActivityIndicator color={tokens.palette.accent.interactive} />
-              <Text style={s.subtitle}>{tokens.copy.casting}</Text>
+              <Text style={s.subtitle}>
+                {editing ? tokens.copy.applyingEdit : tokens.copy.casting}
+              </Text>
             </View>
           ) : request ? (
             <>

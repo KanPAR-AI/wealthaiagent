@@ -51,6 +51,19 @@ export interface BrandTokens {
      *  cast. Short and TRUE: the handoff used to be a jump cut, and the
      *  alternative to a word here is a screen that simply vanishes. */
     casting: string;
+    /** …and the same beat for an in-place CORRECTION (docs/49 ASTRAL-138),
+     *  which is not casting anything: it is applying one changed fact and
+     *  taking the user back where they came from. `casting` here would
+     *  promise a chart the correction turn deliberately does not compute. */
+    applyingEdit: string;
+    /** what Profile's edit sheet's primary button says. "Continue in chat"
+     *  was true when the edit LEFT for a chat; after the 2026-08-26 ruling
+     *  it does not, and a button that names the wrong destination is the
+     *  friction the owner reported wearing a label. */
+    changeItHere: string;
+    /** the caption under the edit disclosure — what happens next, in one
+     *  line, now that it happens here. */
+    changeItHereNote: string;
     fieldHints: { placeBirthHint: string; dateBirthHint: string; timeBirthHint: string };
   };
 
