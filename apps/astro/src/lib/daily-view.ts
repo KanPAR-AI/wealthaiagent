@@ -295,7 +295,12 @@ export function absentView(res: Exclude<DailyResponse, DailyReady>): AbsentView 
         body: 'We have your details but no chart to read today against. It takes one message.',
         action: 'Cast my chart',
         turn: ESTABLISH_TURN,
-        destination: 'details',
+        // `chart_absent` means the PERSON exists and only the chart does
+        // not — the store cannot hold a person without birth facts. So the
+        // details are on file and the form has nothing to ask for; asking
+        // for a reading casts the chart (and re-derives coordinates) on its
+        // own. Only `not_established` — no person at all — needs the form.
+        destination: 'reading',
       };
     case 'chart_stale':
       return {

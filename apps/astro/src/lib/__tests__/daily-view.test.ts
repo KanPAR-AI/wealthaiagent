@@ -336,11 +336,14 @@ describe('the honest states (ASTRAL-125, AMB-31(a))', () => {
       expect(view.turn).toContain('already have on file');
       expect(view.turn).not.toMatch(/correct/i);
     }
-    // …and the two states where details genuinely ARE missing still go to
-    // the form, because something has to ask for them.
-    for (const missing of ['not_established', 'chart_absent']) {
-      expect(absentView(state(missing)).destination).toBe('details');
-    }
+    // `chart_absent` joins them: the store cannot hold a person without
+    // birth facts, so a person with no chart still HAS their details and the
+    // form would ask for what it already has. Found on the owner's live
+    // record after the repair left exactly that state.
+    expect(absentView(state('chart_absent')).destination).toBe('reading');
+    // Only "no person at all" needs the form, because only then is there
+    // genuinely nothing on file.
+    expect(absentView(state('not_established')).destination).toBe('details');
   });
 
   it('one condition offers ONE ask, worded the same on every surface', () => {

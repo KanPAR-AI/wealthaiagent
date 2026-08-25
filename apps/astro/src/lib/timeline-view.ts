@@ -241,7 +241,8 @@ export function absentView(res: Exclude<TimelineResponse, TimelineReady>): Absen
         body: 'The periods below come from your chart, and there is not one on file yet.',
         action: 'Cast my chart',
         turn: establish,
-        destination: 'details',
+        // See daily-view: a person with no chart still has birth facts.
+        destination: 'reading',
       };
     case 'chart_stale':
       return {
