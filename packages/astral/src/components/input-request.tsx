@@ -57,7 +57,11 @@ import {
   type InputRequestPayload,
   type InputValue,
 } from '../input-request';
-import { isWide, type AstralRenderProps } from '../primitives';
+import {
+  isWide,
+  type AstralRenderProps,
+  type AstralTextInputProps,
+} from '../primitives';
 
 export interface InputRequestViewProps extends AstralRenderProps {
   request: InputRequestPayload;
@@ -320,7 +324,11 @@ function pickerField(
   );
 }
 
-function TextField({ ui, theme, field, value, onChange, hint, icon }: FieldRenderContext) {
+function TextField(
+  { ui, theme, field, value, onChange, hint, icon }: FieldRenderContext,
+  /** per-kind keyboard behaviour; see `PlaceField` for the one that matters */
+  input?: Pick<AstralTextInputProps, 'autoCapitalize' | 'autoCorrect' | 'returnKey'>,
+) {
   const { TextInput } = ui;
   return (
     <FieldBox ui={ui} theme={theme} icon={icon}>
@@ -328,6 +336,9 @@ function TextField({ ui, theme, field, value, onChange, hint, icon }: FieldRende
         value={typeof value === 'string' ? value : ''}
         onChangeText={onChange}
         placeholder={hint ?? ''}
+        autoCapitalize={input?.autoCapitalize}
+        autoCorrect={input?.autoCorrect}
+        returnKey={input?.returnKey}
         accessibilityLabel={field.label}
         testID={`input-field-${field.key}`}
         style={{
@@ -436,7 +447,20 @@ function PlaceField(ctx: FieldRenderContext) {
   // sentence twice, three lines apart. The board carries two different
   // strings there (an example and a helper); one brand token is one string,
   // and saying it twice is not two strings.
-  return TextField(ctx);
+  //
+  // The three keyboard settings are not polish. A place name is a PROPER
+  // NOUN: autocorrect will replace "Padrauna" with a word it prefers, and the
+  // replacement is either refused by the geocoder (a user blamed for the
+  // keyboard's edit) or resolved somewhere else entirely (a chart on the
+  // wrong coordinates, with nothing on its face to say so). `words` because
+  // "new delhi" is the same place and should not look like a mistake, and
+  // `done` because this is the last field and the keyboard has to get out of
+  // the way of Continue.
+  return TextField(ctx, {
+    autoCapitalize: 'words',
+    autoCorrect: false,
+    returnKey: 'done',
+  });
 }
 
 /**

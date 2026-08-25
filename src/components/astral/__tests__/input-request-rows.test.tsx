@@ -238,6 +238,46 @@ describe('a disabled Continue says what it is waiting for', () => {
   });
 });
 
+describe('the place field asks the OS for the right keyboard', () => {
+  it('turns autocorrect OFF — a birthplace is a proper noun', () => {
+    // The failure is not cosmetic: autocorrect replaces "Padrauna" with a
+    // word it prefers, and the replacement is either refused by the geocoder
+    // (a user blamed for the keyboard's edit) or resolved somewhere else
+    // entirely, which is a chart on the wrong coordinates.
+    const { getByTestId } = renderRows();
+    const place = getByTestId('input-field-pob');
+    expect(place).toHaveAttribute('autocorrect', 'off');
+    expect(place).toHaveAttribute('autocomplete', 'off');
+    expect(place).toHaveAttribute('spellcheck', 'false');
+  });
+
+  it('capitalises words and labels the return key `done`', () => {
+    const { getByTestId } = renderRows();
+    const place = getByTestId('input-field-pob');
+    expect(place).toHaveAttribute('autocapitalize', 'words');
+    expect(place).toHaveAttribute('enterkeyhint', 'done');
+  });
+
+  it('leaves a FREE-TEXT field alone — the settings are per kind', () => {
+    // `priority_note` is somebody's own sentence. Turning off autocorrect and
+    // capitalising every word there would be the place field's settings
+    // applied where they are wrong.
+    const note = {
+      type: 'input_request',
+      ask: 'partner_priorities',
+      reason: '',
+      fields: [
+        { key: 'priority_note', kind: 'text', label: 'In your own words',
+          required: false, allow_unknown: false },
+      ],
+    };
+    const { getByTestId } = renderRows(note);
+    const field = getByTestId('input-field-priority_note');
+    expect(field).not.toHaveAttribute('autocorrect');
+    expect(field).not.toHaveAttribute('autocapitalize');
+  });
+});
+
 describe('the host\'s glyph rides INSIDE the row, where the board draws it', () => {
   it('puts the icon in the row rather than beside the label', () => {
     const { getByTestId } = renderRows(birthDetailsAskPayload, {

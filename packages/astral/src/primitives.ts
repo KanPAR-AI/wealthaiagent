@@ -172,6 +172,28 @@ export interface AstralTextInputProps {
   placeholder?: string;
   /** `number` asks for a numeric keypad where one exists */
   keyboard?: 'default' | 'number';
+  /**
+   * How the OS capitalises what is typed.
+   *
+   * On the contract because the platform DEFAULT is wrong for the field this
+   * widget asks most often: React Native capitalises sentences, so a place
+   * typed mid-form arrives as "Ranchi" only by luck of it being first, and
+   * "new delhi" stays lower-case.
+   */
+  autoCapitalize?: 'none' | 'words' | 'sentences';
+  /**
+   * OS autocorrect and spell-check. Turn it OFF for a proper noun.
+   *
+   * "Padrauna" is not a typo, and a keyboard that helpfully replaces it sends
+   * a different place to the geocoder — which either refuses it (a user
+   * blamed for the keyboard's edit) or resolves somewhere else entirely (a
+   * chart cast on the wrong coordinates, with nothing on its face to say so).
+   */
+  autoCorrect?: boolean;
+  /** `done` labels the return key and dismisses the keyboard on it, which is
+   *  what a single-field form wants. It does NOT submit: submitting a form
+   *  the user has not finished is worse than one more tap. */
+  returnKey?: 'done' | 'default';
   style?: AstralBoxStyle & AstralTextStyle;
   accessibilityLabel?: string;
   testID?: string;

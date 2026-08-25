@@ -173,6 +173,9 @@ function TextInput({
   onChangeText,
   placeholder,
   keyboard,
+  autoCapitalize,
+  autoCorrect,
+  returnKey,
   style,
   accessibilityLabel,
   testID,
@@ -183,6 +186,14 @@ function TextInput({
       inputMode={keyboard === 'number' ? 'numeric' : undefined}
       value={value}
       placeholder={placeholder}
+      // Mobile Safari and Chrome honour these on a text input; a desktop
+      // browser ignores them, which is the correct behaviour there.
+      autoCapitalize={autoCapitalize}
+      autoCorrect={autoCorrect === false ? 'off' : undefined}
+      spellCheck={autoCorrect === false ? false : undefined}
+      autoComplete={autoCorrect === false ? 'off' : undefined}
+      // `go`/`done` is `enterkeyhint`'s vocabulary, not `returnKeyType`'s.
+      enterKeyHint={returnKey === 'done' ? 'done' : undefined}
       aria-label={accessibilityLabel}
       data-testid={testID}
       onChange={(e) => onChangeText(e.target.value)}

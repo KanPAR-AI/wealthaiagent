@@ -45,7 +45,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWi
 // briefly behind the keyboard on every focus, and on a short form (which is
 // what the collapsed rows now make this) there was nothing to scroll, so the
 // correction never arrived at all.
-import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import { KeyboardAvoidingView, KeyboardEvents } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg from 'react-native-svg';
 
@@ -223,6 +223,29 @@ export default function BirthDetails() {
     if (handoffTimer.current) clearTimeout(handoffTimer.current);
   }, []);
 
+  /**
+   * Bring CONTINUE up with the keyboard, not just the field.
+   *
+   * Measured on the simulator, keyboard up: `KeyboardAvoidingView` did its
+   * job — the place field sat clear above the keyboard with the caret in it —
+   * and Continue was still off the bottom of the screen, because the scroll
+   * view reveals the FOCUSED INPUT and stops there. So the user typed their
+   * city and had nothing to press.
+   *
+   * The form is short enough (the collapsed rows made it so) that the field
+   * and the button both fit above the keyboard, so the honest fix is to scroll
+   * to the end rather than to pin a duplicate button: a second Continue in a
+   * sticky footer would be a second implementation of the widget's own submit
+   * (ASTRAL-91) with its own idea of when it is enabled.
+   */
+  const scroller = useRef<ScrollView | null>(null);
+  useEffect(() => {
+    const sub = KeyboardEvents.addListener('keyboardDidShow', () => {
+      scroller.current?.scrollToEnd({ animated: true });
+    });
+    return () => sub.remove();
+  }, []);
+
   const toChat = () =>
     router.replace({
       pathname: '/chat',
@@ -251,6 +274,7 @@ export default function BirthDetails() {
 
         <KeyboardAvoidingView behavior="padding" style={s.fill}>
         <ScrollView
+          ref={scroller}
           contentContainerStyle={s.body}
           keyboardDismissMode="interactive"
           // A tap on Continue while the keyboard is up must SUBMIT, not just

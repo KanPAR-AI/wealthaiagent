@@ -168,6 +168,9 @@ function TextInput({
   onChangeText,
   placeholder,
   keyboard,
+  autoCapitalize,
+  autoCorrect,
+  returnKey,
   style,
   accessibilityLabel,
   testID,
@@ -178,6 +181,14 @@ function TextInput({
       onChangeText={onChangeText}
       placeholder={placeholder}
       keyboardType={keyboard === 'number' ? 'number-pad' : 'default'}
+      autoCapitalize={autoCapitalize ?? 'sentences'}
+      autoCorrect={autoCorrect ?? true}
+      // Spell-check follows autocorrect: leaving the red underline on a
+      // place name the keyboard has been told not to touch just tells the
+      // user their own birthplace is misspelled.
+      spellCheck={autoCorrect ?? true}
+      autoComplete={autoCorrect === false ? 'off' : undefined}
+      returnKeyType={returnKey === 'done' ? 'done' : undefined}
       accessibilityLabel={accessibilityLabel}
       testID={testID}
       style={style as any}
