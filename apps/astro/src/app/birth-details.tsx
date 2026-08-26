@@ -79,6 +79,7 @@ import { FIELD_ICONS } from '@/components/field-icons';
 import { ChevronLeft, SymbolIcon } from '@/components/glyphs';
 import { CornerWash } from '@/components/sky';
 import { track } from '@/lib/analytics';
+import { lastChatId, rememberChat } from '@/lib/chat-session';
 import { fetchBalance } from '@/lib/credits';
 import { editFailure, isReturningEdit, outcomeLine } from '@/lib/edit-fact';
 import { useEditOutcome } from '@/lib/edit-outcome';
@@ -109,6 +110,16 @@ const OPENING_TURN = "I'd like my birth chart.";
  */
 const HANDOFF_MS = 450;
 
+/** The id of the last bot message in a chat the store already knows about. */
+function lastBotId(chatId: string | null): string | null {
+  if (!chatId) return null;
+  const msgs = useChatStore.getState().chats[chatId]?.messages ?? [];
+  for (let i = msgs.length - 1; i >= 0; i -= 1) {
+    if (msgs[i].sender === 'bot') return msgs[i].id;
+  }
+  return null;
+}
+
 const WASH_HEIGHT = 190;
 const WASH_WIDTH = 0.62;
 
@@ -128,9 +139,17 @@ export default function BirthDetails() {
   const [error, setError] = useState<string | null>(null);
   const [chatId, setChatId] = useState<string | null>(null);
   const chatIdRef = useRef<string | null>(null);
+  /** the last bot message the adopted chat already had, if any */
+  const priorBotId = useRef<string | null>(null);
   const { send } = useSendMessage(chatId, (id) => {
     chatIdRef.current = id;
     setChatId(id);
+    // An edit that had no chat to adopt just created one, and it goes back
+    // to Profile rather than into the chat screen — so nothing else would
+    // ever remember it, and the NEXT reading would open a third chat with a
+    // third envelope. The establish flow hands its id to `/chat`, which
+    // remembers it there.
+    if (editing) rememberChat(id);
   });
 
   // One turn, through the one lifecycle. `started` guards the SEND rather
@@ -149,11 +168,42 @@ export default function BirthDetails() {
   // Awaited, and a failure is not fatal: if the balance call fails the ask
   // still goes out, and the engine's own out-of-credits reply is the honest
   // thing to show.
+  //
+  // ── an EDIT joins the conversation the user is already in ────────────────
+  //
+  // Measured on the simulator, 2026-08-26, and it is the difference between
+  // "the correction was saved" and "the correction is USED": this screen
+  // creates a new chat when it has no id, which is right for the first run
+  // and wrong for a correction. The corrected time reached the People store
+  // (Profile showed it, and the stored chart went stale) while the chat the
+  // user had open kept its own envelope — so the next reading in THAT chat
+  // was still cast on the old time and still said "Taurus Lagna".
+  //
+  // So an edit ADOPTS the remembered chat (`lib/chat-session`, the same key
+  // the chat screen resumes from) and only creates one if there is none.
+  // Nothing else about the turn changes.
+  const [adopted, setAdopted] = useState(!editing);
+  useEffect(() => {
+    if (adopted) return;
+    void (async () => {
+      const id = await lastChatId();
+      if (id) {
+        chatIdRef.current = id;
+        setChatId(id);
+      }
+      setAdopted(true);
+    })();
+  }, [adopted]);
+
   const started = useRef(false);
   useEffect(() => {
-    if (started.current) return;
+    if (started.current || !adopted) return;
     started.current = true;
-    track('birth_details_shown');
+    // The bot message the adopted chat ALREADY ends with. Without this the
+    // parser below would consume the previous reading as if it were the
+    // answer to an ask that has not been sent yet.
+    priorBotId.current = lastBotId(chatIdRef.current);
+    track(editing ? 'profile_edit_ask_shown' : 'birth_details_shown');
     void (async () => {
       try {
         await fetchBalance();
@@ -162,7 +212,7 @@ export default function BirthDetails() {
       }
       await send(opening?.trim() || OPENING_TURN, []);
     })();
-  }, [send, opening]);
+  }, [adopted, editing, send, opening]);
 
   // The reply, read out of the SHARED store rather than out of a promise
   // this screen owns — same message, same place the chat screen will read it
@@ -172,7 +222,10 @@ export default function BirthDetails() {
     if (!id) return null;
     const msgs = s.chats[id]?.messages ?? [];
     for (let i = msgs.length - 1; i >= 0; i -= 1) {
-      if (msgs[i].sender === 'bot') return msgs[i] as Message;
+      if (msgs[i].sender !== 'bot') continue;
+      // …and never the reply that was already there when we adopted the
+      // chat (see the send effect).
+      return msgs[i].id === priorBotId.current ? null : (msgs[i] as Message);
     }
     return null;
   });
@@ -355,7 +408,11 @@ export default function BirthDetails() {
           // note on its import for what it replaced and why.)
           keyboardShouldPersistTaps="handled">
           <Text style={s.title}>
-            {opening ? tokens.copy.correctionTitle : tokens.copy.birthDetailsTitle}
+            {/* the title follows the EDIT, not the presence of an opening
+                turn: Home and the time-ask both send one and neither is a
+                correction — the establish flow was reading "Correct Your
+                Details" on the simulator before this. */}
+            {editing ? tokens.copy.correctionTitle : tokens.copy.birthDetailsTitle}
           </Text>
 
           {request && casting ? (
