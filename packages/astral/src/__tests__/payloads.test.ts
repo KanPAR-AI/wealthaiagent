@@ -185,3 +185,52 @@ describe('both client shapes reach the same parser', () => {
     expect(parseNatalChart({ data: natalTimedPayload })).toBeNull();
   });
 });
+
+/**
+ * docs/49 PH-20 · ASTRAL-183 — a payload with CORRECTED houses renders
+ * corrected placements with no code change.
+ *
+ * The engine's house field moved from equal-house to whole-sign, and the
+ * claim this phase makes is that fixing the engine fixes every surface at
+ * once with zero client releases. The client is what makes that claim true
+ * or false: it must carry the number through, never derive it. Two payloads
+ * that differ ONLY in `house` must parse to placements that differ only in
+ * `house`.
+ */
+describe('ASTRAL-183 — the client carries the house it is given', () => {
+  const beforeFix: any = JSON.parse(JSON.stringify(natalTimedPayload));
+  const afterFix: any = JSON.parse(JSON.stringify(natalTimedPayload));
+  // The defect's own shape: a graha earlier in the rising sign than the
+  // lagna degree landed in house 12 of its own sign instead of house 1.
+  beforeFix.planets[0].house = 12;
+  afterFix.planets[0].house = 1;
+
+  it('renders whatever house the engine sends, unmodified', () => {
+    expect(parseNatalChart(beforeFix)!.planets[0].house).toBe(12);
+    expect(parseNatalChart(afterFix)!.planets[0].house).toBe(1);
+  });
+
+  it('changes nothing else about the placement', () => {
+    const b = parseNatalChart(beforeFix)!.planets[0];
+    const a = parseNatalChart(afterFix)!.planets[0];
+    expect({ ...b, house: null }).toEqual({ ...a, house: null });
+  });
+
+  it('an unknown key on the payload is ignored rather than fatal', () => {
+    // The engine now also ships `divisional_charts` (ASTRAL-173). A shipped
+    // client build that predates it must keep parsing — that is what "no
+    // client release required" means in practice.
+    const withCharts: any = JSON.parse(JSON.stringify(natalTimedPayload));
+    withCharts.divisional_charts = [
+      {
+        key: 'D9',
+        title: 'Navamsa Chart (D9)',
+        ascendant_sign_index: 4,
+        placements: [{ body: 'Moon', sign_index: 4, house: 1 }],
+      },
+    ];
+    const parsed = parseNatalChart(withCharts);
+    expect(parsed).not.toBeNull();
+    expect(parsed!.planets).toHaveLength(9);
+  });
+});

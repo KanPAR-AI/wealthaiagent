@@ -440,6 +440,11 @@ describeWithApps('F18 — the answer is never flattened into a sentence to be re
 });
 
 describeWithApps('ASTRAL-19 — renderers derive nothing', () => {
+  /** every astral package source file — wider than RENDERER_FILES, because
+   *  ASTRAL-183 is about the whole client surface, not only the views. */
+  const ASTRAL_SOURCES = ALL_FILES.filter(
+    (f) => rel(f).startsWith('packages/astral/src/') && !isTest(f),
+  );
   const RENDERER_FILES = ALL_FILES.filter((f) => {
     const r = rel(f);
     return (
@@ -470,6 +475,39 @@ describeWithApps('ASTRAL-19 — renderers derive nothing', () => {
     // `field <op> …` and `… <op> field`
     expect(code).not.toMatch(new RegExp(`\\.${PAYLOAD_FIELDS}\\s*[+\\-*/]`));
     expect(code).not.toMatch(new RegExp(`[+\\-*/]\\s*\\w*\\.${PAYLOAD_FIELDS}\\b`));
+  });
+
+  /**
+   * docs/49 PH-20 · ASTRAL-183 — the client needs NO change for the
+   * kundali-correctness fix, and that is verified rather than assumed.
+   *
+   * The engine's `house` field moved (whole-sign, not equal-house) and three
+   * calculated charts joined the payload (D1 / MOON / D9). Fixing the engine
+   * fixes web, iOS and the PDF at once — with zero client releases — only for
+   * as long as the client derives NO astrology. These greps name the four
+   * derivations that would break that: a house count, a sign index, a navamsa
+   * and a dasha length.
+   */
+  it.each(ASTRAL_SOURCES.map(rel))('%s derives no house, sign, navamsa or dasha', (r) => {
+    const code = codeOf(join(WORKSPACE, r));
+    // whole-sign house arithmetic: `(… % 12) + 1`
+    expect(code).not.toMatch(/%\s*12\s*\)?\s*\+\s*1/);
+    // sign-index arithmetic: dividing a longitude into 30-degree signs
+    expect(code).not.toMatch(/\/\s*30\b/);
+    expect(code).not.toMatch(/%\s*30\b/);
+    // navamsa arithmetic: ninths of a sign
+    expect(code).not.toMatch(/30\s*\/\s*9/);
+    expect(code).not.toMatch(/navamsa\w*\s*[=(]/i);
+    // dasha arithmetic: Vimshottari years and the sidereal-year constant
+    expect(code).not.toContain('365.25');
+    expect(code).not.toMatch(/\/\s*120\b/);
+  });
+
+  it('the ASTRAL-183 grep would actually catch a client-side derivation', () => {
+    // A structural test that matches nothing proves nothing.
+    const sample = 'const house = ((planetSign - ascSign) % 12) + 1;';
+    expect(sample).toMatch(/%\s*12\s*\)?\s*\+\s*1/);
+    expect('const signIndex = Math.floor(deg / 30);').toMatch(/\/\s*30\b/);
   });
 
   it('keeps every arithmetic helper in the two DECLARED modules', () => {
