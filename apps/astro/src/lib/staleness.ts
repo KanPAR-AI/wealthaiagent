@@ -29,9 +29,16 @@ export const UNATTRIBUTED_CLAUSE = 'something this chart was computed from chang
 
 /** The reason clause, with every proven cause named rather than one picked. */
 export function causeClause(stale: StaleBlock | undefined | null): string {
-  const causes = (stale?.causes ?? []).filter((c) => c in CAUSE_CLAUSES);
-  if (causes.length === 0) return UNATTRIBUTED_CLAUSE;
-  const named = causes.map((c) => CAUSE_CLAUSES[c]);
+  // Own-property check, not `in` (Role-3: `causes: ["toString"]` walked the
+  // prototype chain and threw). And a cause this table does not know is
+  // SURFACED generically rather than silently dropped — a fourth server
+  // cause must degrade the sentence, never the honesty.
+  const all = stale?.causes ?? [];
+  const known = all.filter((c) =>
+    Object.prototype.hasOwnProperty.call(CAUSE_CLAUSES, c));
+  if (known.length === 0) return UNATTRIBUTED_CLAUSE;
+  const named = known.map((c) => CAUSE_CLAUSES[c]);
+  if (known.length < all.length) named.push(UNATTRIBUTED_CLAUSE);
   if (named.length === 1) return named[0];
   return `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}`;
 }

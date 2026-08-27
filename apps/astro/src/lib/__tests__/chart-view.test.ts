@@ -29,7 +29,7 @@ import {
   timelessNote,
   yogaCards,
 } from '../chart-view';
-import { causeClause, staleSentence } from '../staleness';
+import { causeClause, staleSentence, UNATTRIBUTED_CLAUSE } from '../staleness';
 import type { ChartResponse, FullChart } from '../people-shapes';
 
 /** A module's CODE, with comments removed — see `timeline-view.test.ts` for
@@ -126,7 +126,12 @@ describe('the calculation stamp', () => {
     for (const value of [TIMED.chart.zodiac_mode, TIMED.chart.ayanamsa,
                          TIMED.chart.house_system, TIMED.chart.node_model,
                          TIMED.chart.engine_version]) {
-      expect(stamp!.line).toContain(String(value));
+      // enums render as labels (W → Whole Sign); every value is still
+      // REPRESENTED — case-insensitive containment or its declared label
+      const labels: Record<string, string> = {
+        sidereal: 'Sidereal', LAHIRI: 'Lahiri', W: 'Whole Sign' };
+      const shown = labels[String(value)] ?? String(value);
+      expect(stamp!.line).toContain(shown);
     }
   });
 
@@ -146,7 +151,34 @@ describe('the calculation stamp', () => {
       expect(stampIsComplete(chart)).toBe(false);
       expect(stampLine(chart)).toBeNull();
       expect(missingStampFields(chart)).toContain(field);
+      // …AND NO CHART — the half this test's title always claimed
+      // (Role-3 blocker: pre-v6 artifacts are readable-but-unstampable,
+      // and drew nine grahas with no frame). The surface refuses.
+      const state = surfaceState({ ...TIMED, chart } as ChartResponse);
+      expect(state.drawable).toBe(false);
+      expect(state.state).toBe('unstamped');
+      expect(state.sentence).toContain(field);
+      expect(state.sentence).toContain('recast');
     }
+  });
+
+  it('the pre-v6 artifact — real stamp, no node_model/engine_version — '
+     + 'refuses to draw and names both fields', () => {
+    const chart: FullChart = { ...TIMED.chart };
+    delete chart.node_model;
+    delete chart.engine_version;
+    const state = surfaceState({ ...TIMED, chart } as ChartResponse);
+    expect(state.drawable).toBe(false);
+    expect(state.sentence).toContain('node_model');
+    expect(state.sentence).toContain('engine_version');
+  });
+
+  it('the stamp line speaks labels, not enums', () => {
+    const line = stampLine(TIMED.chart)!.line;
+    expect(line).toContain('Whole Sign');
+    expect(line).not.toMatch(/ · W · /);
+    expect(line).toContain('Lahiri');
+    expect(line).toContain('Sidereal');
   });
 
   it('an unstamped response renders the error state, not a chart', () => {
@@ -511,5 +543,19 @@ describe('the view module derives nothing', () => {
     const sample = 'const rashi = p.sign_index + 1;';
     expect(sample).toMatch(/sign_index\s*[+\-*/]/);
     expect("const SIGNS = ['Aries', 'Taurus'];").toMatch(/'Aries'\s*,\s*'Taurus'/);
+  });
+});
+
+
+describe('unknown causes degrade the sentence, never the honesty (Role-3)', () => {
+  it('an unrecognised cause is surfaced generically, not dropped', () => {
+    const clause = causeClause({ causes: ['inputs_changed', 'ayanamsa_changed'], reason: '' });
+    expect(clause).toContain('your birth details changed');
+    expect(clause).toContain(UNATTRIBUTED_CLAUSE);
+  });
+
+  it('a prototype-chain key neither matches nor throws', () => {
+    expect(() => causeClause({ causes: ['toString'], reason: '' })).not.toThrow();
+    expect(causeClause({ causes: ['toString'], reason: '' })).toBe(UNATTRIBUTED_CLAUSE);
   });
 });

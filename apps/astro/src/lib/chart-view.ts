@@ -102,6 +102,22 @@ export function surfaceState(res: ChartResponse | null): SurfaceState {
   if (!READABLE.has(status)) {
     return { state: 'absent', sentence: chart?.reason || '', drawable: false };
   }
+  // ASTRAL-237's second half, enforced HERE and not only by the server's
+  // three-field test: node_model and engine_version first exist at
+  // natal_chart v6 (PH-20), so every chart cast before that reaches this
+  // surface readable-but-unstampable — the entire pre-PH-20 user base on
+  // the day this screen ships (Role-3 blocker). A chart that cannot name
+  // its frame is not drawn with a shorter footer; it is not drawn.
+  if (!stampIsComplete(chart)) {
+    return {
+      state: 'unstamped',
+      sentence: 'This chart does not record the frame it was cast in, so '
+        + 'its values cannot be shown. Missing from its record: '
+        + missingStampFields(chart).join(', ')
+        + '. Ask for any reading and it will be recast in full.',
+      drawable: false,
+    };
+  }
   if (status === 'fresh') {
     return { state: 'ready', sentence: '', drawable: true };
   }
@@ -143,8 +159,16 @@ export interface Stamp {
 
 export function stampLine(chart: FullChart | undefined): Stamp | null {
   if (!chart || !stampIsComplete(chart)) return null;
+  const ZODIAC: Record<string, string> = { sidereal: 'Sidereal',
+    tropical: 'Tropical' };
+  const AYANAMSA: Record<string, string> = { LAHIRI: 'Lahiri' };
+  const HOUSES: Record<string, string> = { W: 'Whole Sign' };
+  const label = (m: Record<string, string>, v: string | undefined) =>
+    (v && Object.prototype.hasOwnProperty.call(m, v) ? m[v] : (v ?? ''));
   return {
-    line: [chart.zodiac_mode, chart.ayanamsa, chart.house_system,
+    line: [label(ZODIAC, chart.zodiac_mode),
+           label(AYANAMSA, chart.ayanamsa),
+           label(HOUSES, chart.house_system),
            `${chart.node_model} node`, chart.engine_version].join(' · '),
     computed: chart.computed_at
       ? formatIsoDate(chart.computed_at.slice(0, 10))

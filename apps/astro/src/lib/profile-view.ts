@@ -444,7 +444,7 @@ export function editDisclosure(impact: EditImpact): string {
  * without them, so "I don't know" there is a different request entirely.
  */
 export const WITHDRAWAL_NOTE =
-  'If you no longer know it, the picker has "I don’t know" — your chart is '
+  'If you no longer know it, the picker has “I don’t know” — your chart is '
   + 'then recast without a birth time, and everything that needs one is '
   + 'named as undetermined rather than guessed.';
 

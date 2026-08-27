@@ -36,6 +36,13 @@ import type {
   TimelineWindow,
 } from './people-shapes';
 
+/** Engine basis keys are snake_case ("occupied_house"); a consumer screen
+ * prints words. A label map at the view boundary, not a derivation. */
+function prettyBasis(basis: string | null | undefined): string {
+  if (!basis) return '';
+  return basis.replace(/_/g, ' ');
+}
+
 export function isReady(res: TimelineResponse | null): res is TimelineReady {
   return !!res && res.state === 'ready';
 }
@@ -417,7 +424,7 @@ export function dashaAxis(artifact: TimelineArtifact): DashaAxis | null {
       planet: p.planet,
       range: range(p.start_date, p.end_date),
       categories: p.categories ?? [],
-      basis: p.category_basis ?? '',
+      basis: prettyBasis(p.category_basis),
       current: cursor === i,
     });
   });
@@ -454,7 +461,7 @@ export function antardashaBands(
       planet: p.planet,
       range: range(p.start_date, p.end_date),
       categories: p.categories ?? [],
-      basis: p.category_basis ?? '',
+      basis: prettyBasis(p.category_basis),
       current: cursor === i,
     });
   });

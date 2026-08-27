@@ -220,8 +220,10 @@ describe('the dasha axis', () => {
     for (const band of AXIS.bands) {
       const period = ARTIFACT.dasha!.periods[band.index];
       expect(band.categories).toEqual(period.categories ?? []);
-      expect(band.basis).toBe(period.category_basis);
-      expect(['lordship', 'occupied_house']).toContain(band.basis);
+      // the view prettifies the engine's snake_case key for the screen —
+      // words for humans, same words (a label map, not a derivation)
+      expect(band.basis).toBe((period.category_basis ?? '').replace(/_/g, ' '));
+      expect(['lordship', 'occupied house']).toContain(band.basis);
     }
   });
 
