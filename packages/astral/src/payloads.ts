@@ -64,6 +64,56 @@ export interface NatalBirthData {
   timezone?: string | null;
 }
 
+/**
+ * One graha in one CALCULATED chart (docs/49 ASTRAL-173/230).
+ *
+ * `sign` and `rashi_number` are the ENGINE's labels, on the wire since
+ * natal_chart v7. They exist so that no renderer ever indexes a SIGNS table
+ * or writes `sign_index + 1` — the one derivation a chart surface reaches
+ * for, and the one the ASTRAL-19/183 greps did not catch (F83).
+ */
+export interface ChartPlacement {
+  body: string;
+  /** Aries = 0. Carried for identity; the LABELS above are what is drawn. */
+  sign_index: number;
+  /** whole-sign house counted from THIS chart's own ascendant */
+  house: number;
+  sign: string;
+  /** Aries = 1 … Pisces = 12 — the convention the PDF prints (AMB-36(a)) */
+  rashi_number: number;
+}
+
+/** One cell of a drawn diamond — the twelve the engine hands over, in house
+ *  order. Built by `natal.divisional_chart_cells`, the same function the
+ *  Kundli PDF prints from, so the two surfaces cannot disagree. */
+export interface ChartCell {
+  house: number;
+  rashi_number: number;
+  rashi: string;
+  /** graha abbreviations, plus `As` in the first house */
+  tokens: string[];
+}
+
+/**
+ * A calculated chart: D1 (Lagna/Rashi), MOON (Chandra Lagna) or D9 (Navamsa).
+ *
+ * Three keys and no more — no fourth varga is computed on any path, and the
+ * engine's grounding check (p) treats a claim about one as a violation. A
+ * model whose key is not one of the three is DROPPED at the parser rather
+ * than drawn under a heading nobody computed.
+ */
+export interface DivisionalChart {
+  key: 'D1' | 'MOON' | 'D9';
+  /** the engine's own title, rendered verbatim (ASTRAL-187) */
+  title: string;
+  ascendant_sign_index: number;
+  ascendant_sign: string;
+  ascendant_rashi_number: number;
+  placements: ChartPlacement[];
+  /** present on the chart READ; absent on the chat block */
+  cells: ChartCell[] | null;
+}
+
 export interface NatalChartPayload {
   type: 'natal_chart';
   /** null when `time_known` is false (ASTRAL-9). */
@@ -78,9 +128,24 @@ export interface NatalChartPayload {
   houses: NatalHouse[];
   dasha_periods: NatalDashaPeriod[];
   yogas: string[];
+  /**
+   * D1 · MOON · D9, as CALCULATED models (docs/49 ASTRAL-173).
+   *
+   * EMPTY when `time_known` is false, dropped at the parser: a divisional
+   * chart is a rotation of the lagna, so a backend regression that started
+   * shipping one on a time-less chart still could not be drawn (INV-6 at
+   * the edge, the same rule `houses` already follows).
+   */
+  divisional_charts: DivisionalChart[];
   zodiac_mode: string | null;
   ayanamsa: string | null;
   house_system: string | null;
+  /** "mean" | "true", as actually resolved. Rahu moves ~1 degree between
+   *  the two, which at a boundary moves a rashi — so a chart that cannot
+   *  say which it used cannot be reproduced (ASTRAL-167/237). */
+  node_model: string | null;
+  /** e.g. "kerykeion/5.12.9" (ASTRAL-168/237) */
+  engine_version: string | null;
   time_known: boolean;
   moon_sign_alternatives: string[];
   moon_nakshatra_alternatives: string[];
@@ -247,6 +312,64 @@ function parseDasha(v: unknown): NatalDashaPeriod | null {
   return { planet, start_date: start, end_date: end, is_current: bool(v.is_current) };
 }
 
+function parsePlacement(v: unknown): ChartPlacement | null {
+  if (!isObj(v)) return null;
+  const body = str(v.body);
+  const signIndex = num(v.sign_index);
+  const house = num(v.house);
+  const sign = str(v.sign);
+  const rashi = num(v.rashi_number);
+  // Every field or nothing. A placement missing its label cannot be drawn
+  // and must not be completed here: `sign_index + 1` in this file would be
+  // the exact derivation ASTRAL-230 moved into the engine.
+  if (!body || signIndex === null || !Number.isInteger(signIndex)
+      || house === null || !sign || rashi === null) {
+    return null;
+  }
+  return { body, sign_index: signIndex, house, sign, rashi_number: rashi };
+}
+
+function parseCell(v: unknown): ChartCell | null {
+  if (!isObj(v)) return null;
+  const house = num(v.house);
+  const rashiNumber = num(v.rashi_number);
+  const rashi = str(v.rashi);
+  if (house === null || rashiNumber === null || !rashi) return null;
+  return { house, rashi_number: rashiNumber, rashi, tokens: strList(v.tokens) };
+}
+
+const DIVISIONAL_KEYS = ['D1', 'MOON', 'D9'] as const;
+
+function parseDivisional(v: unknown): DivisionalChart | null {
+  if (!isObj(v)) return null;
+  const key = str(v.key);
+  const title = str(v.title);
+  const ascIndex = num(v.ascendant_sign_index);
+  const ascSign = str(v.ascendant_sign);
+  const ascRashi = num(v.ascendant_rashi_number);
+  if (!key || !(DIVISIONAL_KEYS as readonly string[]).includes(key)) return null;
+  if (!title || ascIndex === null || !ascSign || ascRashi === null) return null;
+  if (!Array.isArray(v.placements)) return null;
+  const placements = v.placements.map(parsePlacement);
+  // A model is whole or it is nothing: one unparseable placement drops the
+  // MODEL, never that one graha, because a diamond quietly missing Saturn
+  // is a wrong chart that looks like a chart.
+  if (placements.some((p) => p === null) || placements.length === 0) return null;
+  const rawCells = Array.isArray(v.cells) ? v.cells.map(parseCell) : null;
+  const cells = rawCells && !rawCells.some((c) => c === null)
+    ? (rawCells as ChartCell[])
+    : null;
+  return {
+    key: key as DivisionalChart['key'],
+    title,
+    ascendant_sign_index: ascIndex,
+    ascendant_sign: ascSign,
+    ascendant_rashi_number: ascRashi,
+    placements: placements as ChartPlacement[],
+    cells: cells && cells.length === 12 ? cells : null,
+  };
+}
+
 export function parseNatalChart(value: unknown): NatalChartPayload | null {
   if (!isObj(value) || value.type !== 'natal_chart') return null;
   const planets = (Array.isArray(value.planets) ? value.planets : [])
@@ -279,9 +402,19 @@ export function parseNatalChart(value: unknown): NatalChartPayload | null {
       .map(parseDasha)
       .filter((d): d is NatalDashaPeriod => d !== null),
     yogas: strList(value.yogas),
+    // INV-6 at the edge, exactly as `ascendant` and `houses` above: a varga
+    // is a rotation of the lagna, so a time-less chart carries none whatever
+    // the wire said (the ASTRAL-183 regression shape).
+    divisional_charts: timeKnown
+      ? (Array.isArray(value.divisional_charts) ? value.divisional_charts : [])
+        .map(parseDivisional)
+        .filter((d): d is DivisionalChart => d !== null)
+      : [],
     zodiac_mode: str(value.zodiac_mode),
     ayanamsa: str(value.ayanamsa),
     house_system: str(value.house_system),
+    node_model: str(value.node_model),
+    engine_version: str(value.engine_version),
     time_known: timeKnown,
     moon_sign_alternatives: strList(value.moon_sign_alternatives),
     moon_nakshatra_alternatives: strList(value.moon_nakshatra_alternatives),

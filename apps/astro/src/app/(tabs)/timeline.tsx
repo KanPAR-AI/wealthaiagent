@@ -42,7 +42,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { track } from '@/lib/analytics';
 import { fetchTimeline } from '@/lib/people';
 import type { TimelineResponse } from '@/lib/people-shapes';
-import { absentView, isReady, rows, yearPills, type TimelineRow } from '@/lib/timeline-view';
+import {
+  SADE_SATI_NOT_FOUND,
+  absentView,
+  antardashaBands,
+  dashaAxis,
+  isReady,
+  rows,
+  sadeSatiBar,
+  yearPills,
+  type DashaBand,
+  type SadeSatiBar,
+  type TimelineRow,
+} from '@/lib/timeline-view';
 import { tokens } from '@/theme';
 
 type Load =
@@ -86,6 +98,17 @@ export default function Timeline() {
 
   const res = load.phase === 'done' ? load.res : null;
   const artifact = res && isReady(res) ? res.timeline : null;
+  // The drawn spans (ASTRAL-239/240). Memoised on the artifact alone —
+  // nothing here depends on the year pill, and nothing here depends on a
+  // clock: which leg and which period are CURRENT arrive computed.
+  const sade = useMemo(() => (artifact ? sadeSatiBar(artifact) : null), [artifact]);
+  const axis = useMemo(() => (artifact ? dashaAxis(artifact) : null), [artifact]);
+  const [openBand, setOpenBand] = useState<number | null>(null);
+  const nested = useMemo(() => {
+    if (!artifact) return [];
+    const index = openBand ?? axis?.currentIndex ?? null;
+    return index === null ? [] : antardashaBands(artifact, index);
+  }, [artifact, axis, openBand]);
   const pills = artifact ? yearPills(artifact) : [];
   // Memoised on (artifact, year) so a pill tap re-filters rather than
   // re-deriving on every render — and so nothing on this screen can be
@@ -168,6 +191,23 @@ export default function Timeline() {
             </View>
           ) : null}
 
+          {/* ── the drawn spans, above the list ──────────────────────────
+              docs/49 ASTRAL-239/240. This screen is also where Home's "This
+              Month" tile lands, so the bar is drawn ONCE and reached by both
+              names rather than implemented twice. */}
+          {artifact ? <SadeSatiSection bar={sade} /> : null}
+          {axis ? (
+            <DashaAxisSection
+              axis={axis}
+              nested={nested}
+              open={openBand ?? axis.currentIndex}
+              onOpen={(i) => {
+                setOpenBand(i);
+                track('timeline_mahadasha', { index: i });
+              }}
+            />
+          ) : null}
+
           {visible.map((row) => (
             <Row key={row.id} row={row} />
           ))}
@@ -182,6 +222,171 @@ export default function Timeline() {
           ) : null}
         </ScrollView>
       </SafeAreaView>
+    </View>
+  );
+}
+
+/**
+ * Sade Sati, DRAWN (docs/49 ASTRAL-239).
+ *
+ * One bar for the whole ~7.5-year passage, three segments inside it, the
+ * current one marked, each labelled with the sign Saturn occupies and its
+ * dates. Every width comes from the payload's dates; every boundary and the
+ * "current" mark arrive computed, because a retrograde puts the real boundary
+ * months away from where the sign Saturn is in today would put it.
+ *
+ * When the engine states no passage, the ABSENCE is drawn — never a shorter
+ * bar. The two-and-a-half-year `window` that shipped as a Sade Sati is the
+ * reason this refusal is a component and not a comment.
+ */
+function SadeSatiSection({ bar }: { bar: SadeSatiBar | null }) {
+  if (!bar) {
+    return (
+      <View style={s.card}>
+        <Text style={s.cardTitle}>Sade Sati</Text>
+        <Text style={s.cardBody}>{SADE_SATI_NOT_FOUND}</Text>
+      </View>
+    );
+  }
+  return (
+    <View style={s.card}>
+      <View style={s.barHead}>
+        <Text style={s.cardTitle}>Sade Sati</Text>
+        <Text style={s.rowRange}>{bar.range}</Text>
+      </View>
+      {bar.description ? <Text style={s.cardBody}>{bar.description}</Text> : null}
+
+      <View style={s.bar}>
+        {bar.legs.map((leg) => (
+          <View
+            key={leg.id}
+            style={[
+              s.barSeg,
+              // The WIDTH is the payload's dates and nothing else.
+              { left: `${leg.offset * 100}%`, width: `${leg.fraction * 100}%` },
+              leg.current && s.barSegNow,
+            ]}
+          />
+        ))}
+      </View>
+
+      {bar.legs.map((leg) => (
+        <View key={`legend-${leg.id}`} style={s.legRow}>
+          <View style={[s.legDot, leg.current && s.legDotNow]} />
+          <View style={s.legText}>
+            <Text style={[s.legTitle, leg.current && s.legTitleNow]}>
+              {leg.phase} · Saturn in {leg.sign}
+            </Text>
+            <Text style={s.rowRange}>{leg.range}</Text>
+            {leg.reEntries > 0 ? (
+              <Text style={s.rowKind}>
+                Saturn re-enters {leg.sign} {leg.reEntries === 1 ? 'once' : `${leg.reEntries} times`} in this leg
+              </Text>
+            ) : null}
+          </View>
+          {leg.current ? <Text style={s.now}>Now</Text> : null}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * The dashas, drawn (docs/49 ASTRAL-240).
+ *
+ * Mahadashas as the outer band with the current one marked; the antardashas
+ * of the SELECTED mahadasha nested inside it, each with the categories the
+ * engine derived AND the basis it derived them from — an unexplained category
+ * is an interpretation wearing a computation's clothes.
+ */
+function DashaAxisSection({
+  axis, nested, open, onOpen,
+}: {
+  axis: NonNullable<ReturnType<typeof dashaAxis>>;
+  nested: DashaBand[];
+  open: number | null;
+  onOpen: (index: number) => void;
+}) {
+  const selected = axis.bands.find((b) => b.index === open) ?? null;
+  return (
+    <View style={s.card}>
+      <Text style={s.cardTitle}>Vimshottari Dasha</Text>
+      <View style={s.bar}>
+        {axis.bands.map((band) => (
+          <Pressable
+            key={band.id}
+            onPress={() => onOpen(band.index)}
+            accessibilityRole="button"
+            accessibilityLabel={`${band.planet} mahadasha, ${band.range}`}
+            style={[
+              s.barSeg,
+              { left: `${band.offset * 100}%`, width: `${band.fraction * 100}%` },
+              // OPEN first, CURRENT last: the two are usually the same band,
+              // and with the order reversed the selection colour painted over
+              // the "now" colour and the current period read as any other
+              // (measured on the simulator).
+              band.index === open && s.barSegOpen,
+              band.current && s.barSegNow,
+            ]}
+          />
+        ))}
+      </View>
+
+      {selected ? (
+        <>
+          <View style={s.barHead}>
+            <Text style={s.legTitle}>{selected.planet} mahadasha</Text>
+            {selected.current ? <Text style={s.now}>Now</Text> : null}
+          </View>
+          <Text style={s.rowRange}>{selected.range}</Text>
+          {selected.categories.length ? (
+            <Text style={s.rowSub}>
+              {selected.categories.join(' · ')}
+              {selected.basis ? (
+                <Text style={s.rowKind}>{`  (by ${selected.basis})`}</Text>
+              ) : null}
+            </Text>
+          ) : null}
+
+          {/* The antardashas INSIDE it — a second bar whose 0..1 is the
+              parent's own span, so a nested period is drawn where it
+              actually falls rather than at a share of the century. */}
+          {nested.length ? (
+            <>
+              <View style={s.barNested}>
+                {nested.map((band) => (
+                  <View
+                    key={band.id}
+                    style={[
+                      s.barSegNested,
+                      { left: `${band.offset * 100}%`, width: `${band.fraction * 100}%` },
+                      band.current && s.barSegNow,
+                    ]}
+                  />
+                ))}
+              </View>
+              {nested.map((band) => (
+                <View key={`ad-${band.id}`} style={s.legRow}>
+                  <View style={[s.legDot, band.current && s.legDotNow]} />
+                  <View style={s.legText}>
+                    <Text style={[s.legTitle, band.current && s.legTitleNow]}>
+                      {band.planet} antardasha
+                    </Text>
+                    <Text style={s.rowRange}>{band.range}</Text>
+                    {band.categories.length ? (
+                      <Text style={s.rowKind}>
+                        {band.categories.join(' · ')}
+                        {band.basis ? ` (by ${band.basis})` : ''}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {band.current ? <Text style={s.now}>Now</Text> : null}
+                </View>
+              ))}
+            </>
+          ) : null}
+        </>
+      ) : null}
     </View>
   );
 }
@@ -284,6 +489,55 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: t.palette.paper.line,
   },
+
+  barHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space(2) },
+  bar: {
+    height: t.space(4),
+    borderRadius: t.radius.pill,
+    backgroundColor: t.palette.paper.base,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.palette.paper.line,
+    overflow: 'hidden',
+  },
+  barNested: {
+    height: t.space(2.5),
+    marginTop: t.space(1),
+    borderRadius: t.radius.pill,
+    backgroundColor: t.palette.paper.base,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.palette.paper.line,
+    overflow: 'hidden',
+  },
+  barSeg: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    backgroundColor: t.palette.cosmic.glow,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: t.palette.paper.card,
+  },
+  barSegNested: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    backgroundColor: t.palette.cosmic.glow,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: t.palette.paper.card,
+  },
+  barSegNow: { backgroundColor: t.palette.accent.interactive },
+  barSegOpen: { backgroundColor: t.palette.cosmic.deep },
+  legRow: { flexDirection: 'row', alignItems: 'flex-start', gap: t.space(2.5), paddingTop: t.space(1) },
+  legDot: {
+    width: t.space(2),
+    height: t.space(2),
+    borderRadius: t.radius.pill,
+    marginTop: t.space(1),
+    backgroundColor: t.palette.cosmic.glow,
+  },
+  legDotNow: { backgroundColor: t.palette.accent.interactive },
+  legText: { flex: 1, gap: 1 },
+  legTitle: { ...t.type.scale.sub, color: t.palette.ink.primary, fontWeight: '600' },
+  legTitleNow: { color: t.palette.accent.interactive },
   cardTitle: { ...t.type.scale.lead, color: t.palette.ink.primary, fontWeight: '700' },
   cardBody: { ...t.type.scale.sub, color: t.palette.ink.secondary },
   cta: {

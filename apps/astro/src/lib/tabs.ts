@@ -123,12 +123,14 @@ export function tabIsLive(id: TabId, capabilities: Capabilities = CAPABILITIES):
  * than by a second convention. A tile whose capability is absent does not
  * render dimmed; it is not in the list.
  *
- * Where each one goes, and why it is not where the board's label suggests:
- *   Birth Chart      → `/profile`. Screen 5 (Chart · Grahas · Dasha,
- *                      ASTRAL-120) is not built in this slice, and Profile
- *                      is where the stamped chart summary already renders.
- *                      Pointing at an unbuilt screen is the dead affordance
- *                      ASTRAL-119's negative space forbids.
+ * Where each one goes:
+ *   Birth Chart      → `/chart`, screen 5 (docs/49 ASTRAL-233, closing F93).
+ *                      It pointed at `/profile` until PH-27, because screen 5
+ *                      was not built and Profile is where the stamped chart
+ *                      SUMMARY renders — an honest stand-in, and still a tile
+ *                      that did not go where its label said. The read behind
+ *                      the real screen now exists (ASTRAL-229), so the tile
+ *                      goes there and its capability is `chart`.
  *   Compatibility    → `/matches`, the saved-matches list (ASTRAL-140..146).
  *   AI Reading       → `/chat`.
  *   This Month       → `/timeline`.
@@ -147,9 +149,9 @@ const TILES: HomeTile[] = [
     id: 'chart',
     title: 'Birth Chart',
     subtitle: 'Your grahas, bhavas and dashas',
-    route: '/profile',
+    route: '/chart',
     icon: 'circle.hexagongrid',
-    needs: 'profile',
+    needs: 'chart',
   },
   {
     id: 'compatibility',
@@ -181,4 +183,53 @@ export const DECLARED_TILES: readonly HomeTile[] = TILES;
 
 export function visibleTiles(capabilities: Capabilities = CAPABILITIES): HomeTile[] {
   return TILES.filter((tile) => capabilities[tile.needs]);
+}
+
+
+// ── the pushed screens, and their capabilities (docs/49 ASTRAL-233) ────────
+//
+// The tab bar and the settings rows have always derived from the capability
+// map. The screens that PUSH OVER the bar did not: expo-router builds its
+// route table from the file system, so a screen this build cannot serve was
+// still reachable by deep link and by any stale `router.push` — and "the
+// route entry is removed" could not be stated as a property of anything.
+//
+// This is that table. A pushed screen asks `routeIsLive` on mount and leaves
+// if its capability is false; a tile or row that points at one is filtered by
+// the same map. One declaration, so a tile cannot point at a screen this
+// build does not have — which is the failure F93 recorded in the other
+// direction (a tile pointing somewhere else entirely).
+
+export interface PushedRoute {
+  path: string;
+  needs: keyof Capabilities;
+}
+
+const PUSHED: PushedRoute[] = [
+  { path: '/chart', needs: 'chart' },
+  { path: '/matches', needs: 'matches' },
+  { path: '/profile', needs: 'profile' },
+  { path: '/privacy', needs: 'privacyAndData' },
+  { path: '/help', needs: 'helpAndSupport' },
+  { path: '/about', needs: 'about' },
+];
+
+export const DECLARED_PUSHED_ROUTES: readonly PushedRoute[] = PUSHED;
+
+export function visiblePushedRoutes(
+  capabilities: Capabilities = CAPABILITIES,
+): PushedRoute[] {
+  return PUSHED.filter((r) => capabilities[r.needs]);
+}
+
+/** True when this build may open `path`. An undeclared path is LIVE: this
+ *  table gates the screens a capability governs, and a screen with no
+ *  capability behind it (screen 2's collection flow, the chat) is not
+ *  something a capability can remove. */
+export function routeIsLive(
+  path: string,
+  capabilities: Capabilities = CAPABILITIES,
+): boolean {
+  const declared = PUSHED.find((r) => r.path === path);
+  return declared ? capabilities[declared.needs] : true;
 }

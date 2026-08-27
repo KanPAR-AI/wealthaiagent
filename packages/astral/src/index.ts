@@ -17,8 +17,11 @@ export * from './view/natal';
 export * from './view/match';
 export * from './view/muhurta';
 
-export { NatalChartView } from './components/natal-chart';
-export type { NatalChartViewProps } from './components/natal-chart';
+export { ChartDiamond, NatalChartView } from './components/natal-chart';
+export type {
+  ChartDiamondProps,
+  NatalChartViewProps,
+} from './components/natal-chart';
 export { MatchScorecard } from './components/match-scorecard';
 export type { MatchScorecardProps } from './components/match-scorecard';
 export { MuhurtaWindowsView } from './components/muhurta-windows';

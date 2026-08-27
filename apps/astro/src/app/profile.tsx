@@ -78,9 +78,11 @@ import {
   shouldRecordOffer,
   timeAskState,
   undeterminedNotes,
+  withdrawalNote,
   type FactRow,
 } from '@/lib/profile-view';
 import { rememberTimeAskOffered, timeAskAlreadyOffered } from '@/lib/profile-prefs';
+import { routeIsLive } from '@/lib/tabs';
 import { tokens } from '@/theme';
 
 type Load =
@@ -260,6 +262,15 @@ export default function Profile() {
           <View style={s.sheet}>
             <Text style={s.sheetTitle}>Change your {pendingEdit?.label}</Text>
             <Text style={s.sentence}>{pendingEdit ? editDisclosure(pendingEdit) : ''}</Text>
+            {/* docs/49 ASTRAL-243: a birth time can be WITHDRAWN, and this is
+                where that is said. The mechanism is the shipped one — the
+                engine's `field_correction` ask carries `allow_unknown`, the
+                widget renders "I don't know", and a decline on THAT ask is
+                what `_withdrawn_fact_keys` turns into a withdrawal. What was
+                missing was any way to reach it. */}
+            {pendingEdit && withdrawalNote(pendingEdit.field) ? (
+              <Text style={s.sentence}>{withdrawalNote(pendingEdit.field)}</Text>
+            ) : null}
             <Text style={s.caption}>{tokens.copy.changeItHereNote}</Text>
             <Pressable
               style={s.cta}
@@ -334,6 +345,7 @@ function Established({
   const frame = readable ? frameLine(person.chart) : null;
   const notes = undeterminedNotes(person.chart);
   const ask = timeAskState(person, askOffered);
+  const chartIsLive = routeIsLive('/chart');
 
   // Spent on SHOWING, not on tapping (ASTRAL-137). `onOffered` records it;
   // the effect is here rather than in the parent so the rule sits next to
@@ -387,6 +399,36 @@ function Established({
       ) : null}
 
       <Text style={s.section}>Your chart</Text>
+      {/* docs/49 ASTRAL-233 — the SECOND way into screen 5 (the first is
+          Home's tile). Where the chart surface finally lives is AMB-50; until
+          that is answered it is a pushed screen reached from here and from
+          Home, which changes no tab and pre-empts no answer.
+
+          The row is capability-gated like every other affordance in this app:
+          `false` removes it rather than greying it (ASTRAL-102/119). */}
+      {chartIsLive ? (
+        <View style={s.card}>
+          <Pressable
+            style={s.row}
+            onPress={() => {
+              track('profile_open_chart');
+              router.push('/chart');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Open your full chart"
+          >
+            <View style={s.rowText}>
+              <Text style={s.rowLabel}>Full chart</Text>
+              <Text style={s.rowValue}>Chart · Grahas · Dasha</Text>
+              <Text style={s.caption}>
+                The three calculated charts, the graha table and your dasha
+                periods — read from the chart already on file.
+              </Text>
+            </View>
+            <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
+          </Pressable>
+        </View>
+      ) : null}
       <View style={s.card}>
         <View style={s.cardBody}>
           {frame ? (

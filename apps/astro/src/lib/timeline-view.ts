@@ -26,6 +26,7 @@
 import { formatIsoDate } from '@wealthai/astral';
 
 import { titleFromKey } from './daily-view';
+import { staleSentence } from './staleness';
 
 import type {
   TimelineArtifact,
@@ -247,7 +248,14 @@ export function absentView(res: Exclude<TimelineResponse, TimelineReady>): Absen
     case 'chart_stale':
       return {
         title: 'Your chart needs recasting',
-        body: 'Your birth details changed after this chart was cast, and every date on a timeline moves with them. Your details are already on file — one tap updates the chart.',
+        // docs/49 ASTRAL-238: the CAUSE, from the one declared table — the
+        // clause is shared with Home and the chart surface, and only the
+        // consequence ("every date on a timeline moves") is local.
+        body: staleSentence(
+          res.chart?.stale,
+          'every date on a timeline moves with it. Your details are already '
+            + 'on file — one tap updates the chart.',
+          res.chart?.computed_at),
         action: 'Update my chart',
         turn: recast,
         destination: 'reading',
@@ -271,4 +279,184 @@ export function absentView(res: Exclude<TimelineResponse, TimelineReady>): Absen
         destination: 'reading',
       };
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// The DRAWN spans (docs/49 ASTRAL-239 / ASTRAL-240)
+//
+// Everything below turns payload dates into bar geometry through `spans.ts`,
+// and decides nothing else. In particular:
+//
+//   · which Sade-Sati leg is CURRENT arrives on the leg (`current`);
+//   · which mahadasha and antardasha contain today arrive on the artifact's
+//     `cursor`, computed server-side from the dates;
+//   · a leg boundary is never computed here — retrogrades put the real
+//     boundary months away from "the sign Saturn is in now", which is why
+//     `sade_sati_span` searches for it and this file only draws it.
+// ══════════════════════════════════════════════════════════════════════════
+
+import { segmentOf, type Segment } from './spans';
+
+export interface SadeSatiLeg extends Segment {
+  id: string;
+  /** the engine's own phase label: "pre / Aroha" … */
+  phase: string;
+  /** the sign Saturn occupies during this leg */
+  sign: string;
+  range: string;
+  current: boolean;
+  /** how many times Saturn retrogrades back into this sign — a real fact
+   *  about the passage, and the reason the legs are not just three equal
+   *  thirds */
+  reEntries: number;
+}
+
+export interface SadeSatiBar {
+  start: string;
+  end: string;
+  /** "30 Mar 2025 – 30 May 2032", formatted like every other range */
+  range: string;
+  legs: SadeSatiLeg[];
+  /** the engine's own sentence about where the passage stands today */
+  description: string;
+}
+
+/**
+ * The Sade Sati bar — the true ~7.5-year passage and its three legs.
+ *
+ * REFUSES anything that is not that (F71/F85). Until 3c4610f the wire carried
+ * `sade_sati.window`: the occupancy of the sign Saturn is in NOW, about two
+ * and a half years, which every consumer read as the start and end of the
+ * whole passage — so the product answered the market's most-asked question
+ * off by up to five years. A window with no legs is therefore not drawn
+ * SHORTER; it is not drawn at all, and the surface says the passage could not
+ * be stated. Drawing a plausible bar is the failure this refusal exists for.
+ */
+export function sadeSatiBar(artifact: TimelineArtifact): SadeSatiBar | null {
+  const window = (artifact.transit?.windows ?? [])
+    .find((w) => w.rule === 'sade_sati');
+  if (!window?.start_date || !window.end_date) return null;
+  const legs = (window as { sub_phases?: unknown[] }).sub_phases;
+  if (!Array.isArray(legs) || legs.length === 0) return null;
+
+  const drawn: SadeSatiLeg[] = [];
+  for (const raw of legs) {
+    const leg = raw as {
+      phase?: string; saturn_sign?: string; start?: string; end?: string;
+      current?: boolean; retrograde_re_entries?: number;
+    };
+    const seg = segmentOf(window.start_date, window.end_date,
+                          leg.start, leg.end);
+    // A leg whose geometry cannot be computed drops the WHOLE bar: two legs
+    // drawn out of three read as a shorter passage, which is the same lie
+    // the old window told.
+    if (!seg || !leg.phase || !leg.saturn_sign) return null;
+    drawn.push({
+      ...seg,
+      id: `${leg.phase}-${leg.start}`,
+      phase: leg.phase,
+      sign: leg.saturn_sign,
+      range: range(leg.start, leg.end),
+      current: !!leg.current,
+      reEntries: Number(leg.retrograde_re_entries ?? 0),
+    });
+  }
+  return {
+    start: window.start_date,
+    end: window.end_date,
+    range: range(window.start_date, window.end_date),
+    legs: drawn,
+    description: window.description ?? '',
+  };
+}
+
+/** Said where the bar would have been, when the search found no passage or
+ *  the wire carried the old shape. Never a bar. */
+export const SADE_SATI_NOT_FOUND =
+  'No Sade Sati passage is stated for this chart right now. When one is '
+  + 'running, its full seven-and-a-half years and its three legs are drawn '
+  + 'here — nothing shorter stands in for it.';
+
+export interface DashaBand extends Segment {
+  id: string;
+  index: number;
+  planet: string;
+  range: string;
+  /** the ENGINE's categories, and the basis it derived them from — an
+   *  unexplained category is an interpretation wearing a computation's
+   *  clothes (ASTRAL-240) */
+  categories: string[];
+  basis: string;
+  current: boolean;
+}
+
+export interface DashaAxis {
+  start: string;
+  end: string;
+  bands: DashaBand[];
+  /** index into `bands` of the period containing the artifact's `as_of`, as
+   *  the ENGINE's cursor decided it — never a device clock */
+  currentIndex: number | null;
+}
+
+/** The mahadasha band: every period on one axis, the current one marked. */
+export function dashaAxis(artifact: TimelineArtifact): DashaAxis | null {
+  const periods = artifact.dasha?.periods ?? [];
+  if (periods.length === 0) return null;
+  const start = periods[0].start_date;
+  const end = periods[periods.length - 1].end_date;
+  const cursor = artifact.cursor?.mahadasha_index ?? null;
+  const bands: DashaBand[] = [];
+  periods.forEach((p, i) => {
+    const seg = segmentOf(start, end, p.start_date, p.end_date);
+    if (!seg) return;
+    bands.push({
+      ...seg,
+      id: `md-${i}-${p.planet}`,
+      index: i,
+      planet: p.planet,
+      range: range(p.start_date, p.end_date),
+      categories: p.categories ?? [],
+      basis: p.category_basis ?? '',
+      current: cursor === i,
+    });
+  });
+  if (bands.length !== periods.length) return null;   // whole axis or none
+  return { start, end, bands, currentIndex: cursor };
+}
+
+/**
+ * The antardashas NESTED inside one mahadasha.
+ *
+ * `parent_index` and not the lord's name: the Vimshottari cycle is nine lords
+ * long and the table is twelve periods, so "the Venus mahadasha" names two
+ * different centuries (`timeline.py` says the same thing where it builds
+ * them).
+ */
+export function antardashaBands(
+  artifact: TimelineArtifact,
+  mahadashaIndex: number,
+): DashaBand[] {
+  const parent = (artifact.dasha?.periods ?? [])[mahadashaIndex];
+  if (!parent) return [];
+  const cursor = artifact.cursor?.antardasha_index ?? null;
+  const subs = artifact.dasha?.sub_periods ?? [];
+  const out: DashaBand[] = [];
+  subs.forEach((p, i) => {
+    if (p.parent_index !== mahadashaIndex) return;
+    const seg = segmentOf(parent.start_date, parent.end_date,
+                          p.start_date, p.end_date);
+    if (!seg) return;
+    out.push({
+      ...seg,
+      id: `ad-${i}-${p.planet}`,
+      index: i,
+      planet: p.planet,
+      range: range(p.start_date, p.end_date),
+      categories: p.categories ?? [],
+      basis: p.category_basis ?? '',
+      current: cursor === i,
+    });
+  });
+  return out;
 }

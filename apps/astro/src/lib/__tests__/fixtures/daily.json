@@ -1,114 +1,70 @@
 {
- "state": "ready",
- "date": "2026-08-24",
+ "_capture": {
+  "as_of": "2026-08-24",
+  "captured_at": "2026-08-24",
+  "captured_by": "chatservice/scripts/capture_astral_fixtures.py",
+  "engine_version": "kerykeion/5.12.9",
+  "fn": "daily_card",
+  "fn_identity": "daily_card/2+d0a6e637fb302caa",
+  "fn_version": 2
+ },
  "card": {
-  "type": "daily_card",
+  "absent_layers": [],
+  "calculation": {
+   "ayanamsa": "LAHIRI",
+   "fn_version": "daily_card/2+d0a6e637fb302caa",
+   "house_system": "W",
+   "settings_digest": "d0a6e637fb302caa",
+   "zodiac_mode": "sidereal"
+  },
+  "dasha": {
+   "antardasha": {
+    "end_date": "2028-03-06",
+    "planet": "Jupiter",
+    "start_date": "2025-10-11"
+   },
+   "mahadasha": {
+    "end_date": "2041-01-29",
+    "planet": "Rahu",
+    "start_date": "2023-01-29"
+   },
+   "selected_by": "date_containment"
+  },
   "date": "2026-08-24",
-  "market": "india",
-  "shape": "full",
-  "key": "5c00090e7831c749:2026-08-24",
-  "inputs_hash": "5c00090e7831c749b99e5ca34b60922c5d86b984e2b496dee592c4cdf3ffaa83",
+  "inputs_hash": "e780df576dc1ee6576ec5d894d1c439248bafee04eb5d2933bab7f55d1c768cf",
+  "key": "e780df576dc1ee65:2026-08-24",
   "layers": [
    "transit",
    "dasha",
    "panchang"
   ],
-  "absent_layers": [],
+  "market": "india",
   "omitted_by_shape": [],
-  "undetermined": [],
-  "time_known": true,
-  "calculation": {
-   "zodiac_mode": "sidereal",
-   "ayanamsa": "LAHIRI",
-   "house_system": "W",
-   "settings_digest": "5a8b1903a708454f",
-   "fn_version": "daily_card/1+5a8b1903a708454f"
-  },
-  "transit": {
+  "panchang": {
    "as_of": "2026-08-24",
-   "window": {
-    "start": "2026-08-24",
-    "end": "2026-08-24"
-   },
-   "transit_place": {
-    "name": "Jamshedpur, India",
+   "is_bhadra": false,
+   "karana": "Bava",
+   "nakshatra": "Purva Ashadha",
+   "nakshatra_pada": 3,
+   "notes": [],
+   "overall_quality": "highly auspicious",
+   "overall_score": 0.8,
+   "panchang_place": {
     "basis": "birth_place",
     "latitude": 22.8046,
     "longitude": 86.2029,
+    "name": "Jamshedpur, India",
+    "pending_decision": "AMB-25",
     "timezone": "Asia/Kolkata"
    },
-   "natal_anchors": {
-    "lagna_sign": "Capricorn",
-    "moon_sign": "Aries",
-    "saturn_sign": "Sagittarius",
-    "jupiter_sign": "Gemini",
-    "age": 36
-   },
-   "planets": {
-    "Sun": {
-     "sign": "Leo",
-     "degree": 126.9,
-     "retrograde": false,
-     "house_from_lagna": 8,
-     "house_from_moon": 5
-    },
-    "Moon": {
-     "sign": "Sagittarius",
-     "degree": 262.42,
-     "retrograde": false,
-     "house_from_lagna": 12,
-     "house_from_moon": 9
-    },
-    "Mars": {
-     "sign": "Gemini",
-     "degree": 74.22,
-     "retrograde": false,
-     "house_from_lagna": 6,
-     "house_from_moon": 3
-    },
-    "Mercury": {
-     "sign": "Leo",
-     "degree": 123.39,
-     "retrograde": false,
-     "house_from_lagna": 8,
-     "house_from_moon": 5
-    },
-    "Jupiter": {
-     "sign": "Cancer",
-     "degree": 107.83,
-     "retrograde": false,
-     "house_from_lagna": 7,
-     "house_from_moon": 4
-    },
-    "Venus": {
-     "sign": "Virgo",
-     "degree": 172.42,
-     "retrograde": false,
-     "house_from_lagna": 9,
-     "house_from_moon": 6
-    },
-    "Saturn": {
-     "sign": "Pisces",
-     "degree": 349.84,
-     "retrograde": true,
-     "house_from_lagna": 3,
-     "house_from_moon": 12
-    },
-    "Rahu": {
-     "sign": "Aquarius",
-     "degree": 305.6,
-     "retrograde": true,
-     "house_from_lagna": 2,
-     "house_from_moon": 11
-    },
-    "Ketu": {
-     "sign": "Leo",
-     "degree": 125.6,
-     "retrograde": true,
-     "house_from_lagna": 8,
-     "house_from_moon": 5
-    }
-   },
+   "tithi": "Dwadashi",
+   "vara": "Somavar",
+   "yoga": "Ayushman"
+  },
+  "shape": "full",
+  "time_known": true,
+  "transit": {
+   "as_of": "2026-08-24",
    "bodies_expected": [
     "Sun",
     "Moon",
@@ -120,410 +76,491 @@
     "Rahu",
     "Ketu"
    ],
+   "natal_anchors": {
+    "age": 36,
+    "jupiter_sign": "Gemini",
+    "lagna_sign": "Capricorn",
+    "moon_sign": "Aries",
+    "saturn_sign": "Sagittarius"
+   },
+   "planets": {
+    "Jupiter": {
+     "degree": 107.83,
+     "house_from_lagna": 7,
+     "house_from_moon": 4,
+     "retrograde": false,
+     "sign": "Cancer"
+    },
+    "Ketu": {
+     "degree": 125.48,
+     "house_from_lagna": 8,
+     "house_from_moon": 5,
+     "retrograde": true,
+     "sign": "Leo"
+    },
+    "Mars": {
+     "degree": 74.22,
+     "house_from_lagna": 6,
+     "house_from_moon": 3,
+     "retrograde": false,
+     "sign": "Gemini"
+    },
+    "Mercury": {
+     "degree": 123.39,
+     "house_from_lagna": 8,
+     "house_from_moon": 5,
+     "retrograde": false,
+     "sign": "Leo"
+    },
+    "Moon": {
+     "degree": 262.42,
+     "house_from_lagna": 12,
+     "house_from_moon": 9,
+     "retrograde": false,
+     "sign": "Sagittarius"
+    },
+    "Rahu": {
+     "degree": 305.48,
+     "house_from_lagna": 2,
+     "house_from_moon": 11,
+     "retrograde": true,
+     "sign": "Aquarius"
+    },
+    "Saturn": {
+     "degree": 349.84,
+     "house_from_lagna": 3,
+     "house_from_moon": 12,
+     "retrograde": true,
+     "sign": "Pisces"
+    },
+    "Sun": {
+     "degree": 126.9,
+     "house_from_lagna": 8,
+     "house_from_moon": 5,
+     "retrograde": false,
+     "sign": "Leo"
+    },
+    "Venus": {
+     "degree": 172.42,
+     "house_from_lagna": 9,
+     "house_from_moon": 6,
+     "retrograde": false,
+     "sign": "Virgo"
+    }
+   },
    "rules": {
-    "saturn_return": {
-     "active": false,
-     "cycle_n": null,
-     "description": ""
+    "ashtama_shani": {
+     "active": false
+    },
+    "jupiter_aspect_to_lagna": {
+     "description": "Transit Jupiter in house 7 from Lagna \u2014 favourable (kendra/trikona).",
+     "favourable": true,
+     "jupiter_house_from_lagna": 7
     },
     "jupiter_return": {
      "active": false,
      "cycle_n": 3,
      "description": ""
     },
-    "rahu_ketu_axis": {
-     "rahu_sign": "Aquarius",
-     "ketu_sign": "Leo",
-     "rahu_house_from_lagna": 2,
-     "ketu_house_from_lagna": 8,
-     "rahu_house_from_moon": 11,
-     "ketu_house_from_moon": 5,
-     "description": "Rahu/Ketu axis: Rahu in Aquarius, Ketu in Leo. From Lagna: H2/H8. From Moon: H11/H5."
-    },
-    "jupiter_aspect_to_lagna": {
-     "favourable": true,
-     "jupiter_house_from_lagna": 7,
-     "description": "Transit Jupiter in house 7 from Lagna \u2014 favourable (kendra/trikona)."
-    },
-    "sade_sati": {
-     "active": true,
-     "phase": "pre / Aroha",
-     "saturn_sign": "Pisces",
-     "natal_moon_sign": "Aries",
-     "saturn_house_from_moon": 12,
-     "description": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries).",
-     "window": {
-      "start": "2025-03-30",
-      "end": "2027-06-02"
-     }
-    },
     "kantaka_shani": {
      "active": false,
      "saturn_house_from_moon": 12
     },
-    "ashtama_shani": {
-     "active": false
+    "rahu_ketu_axis": {
+     "description": "Rahu/Ketu axis: Rahu in Aquarius, Ketu in Leo. From Lagna: H2/H8. From Moon: H11/H5.",
+     "ketu_house_from_lagna": 8,
+     "ketu_house_from_moon": 5,
+     "ketu_sign": "Leo",
+     "rahu_house_from_lagna": 2,
+     "rahu_house_from_moon": 11,
+     "rahu_sign": "Aquarius"
+    },
+    "sade_sati": {
+     "active": true,
+     "description": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries).",
+     "natal_moon_sign": "Aries",
+     "phase": "pre / Aroha",
+     "saturn_house_from_moon": 12,
+     "saturn_sign": "Pisces",
+     "span": {
+      "end": "2032-05-30",
+      "start": "2025-03-30"
+     },
+     "sub_phases": [
+      {
+       "current": true,
+       "end": "2027-06-02",
+       "phase": "pre / Aroha",
+       "retrograde_re_entries": 1,
+       "saturn_sign": "Pisces",
+       "start": "2025-03-30"
+      },
+      {
+       "current": false,
+       "end": "2029-08-08",
+       "phase": "peak / Madhya",
+       "retrograde_re_entries": 2,
+       "saturn_sign": "Aries",
+       "start": "2027-06-03"
+      },
+      {
+       "current": false,
+       "end": "2032-05-30",
+       "phase": "post / Avaroha",
+       "retrograde_re_entries": 1,
+       "saturn_sign": "Taurus",
+       "start": "2029-08-09"
+      }
+     ]
+    },
+    "saturn_return": {
+     "active": false,
+     "cycle_n": null,
+     "description": ""
     }
-   }
-  },
-  "dasha": {
-   "mahadasha": {
-    "planet": "Rahu",
-    "start_date": "2023-01-26",
-    "end_date": "2041-01-25"
    },
-   "antardasha": {
-    "planet": "Jupiter",
-    "start_date": "2025-10-08",
-    "end_date": "2028-03-03"
-   },
-   "selected_by": "date_containment"
-  },
-  "panchang": {
-   "as_of": "2026-08-24",
-   "tithi": "Dwadashi",
-   "vara": "Somavar",
-   "nakshatra": "Purva Ashadha",
-   "nakshatra_pada": 3,
-   "yoga": "Ayushman",
-   "karana": "Bava",
-   "is_bhadra": false,
-   "overall_quality": "highly auspicious",
-   "overall_score": 0.8,
-   "notes": [],
-   "panchang_place": {
-    "name": "Jamshedpur, India",
+   "transit_place": {
     "basis": "birth_place",
     "latitude": 22.8046,
     "longitude": 86.2029,
-    "timezone": "Asia/Kolkata",
-    "pending_decision": "AMB-25"
+    "name": "Jamshedpur, India",
+    "timezone": "Asia/Kolkata"
+   },
+   "window": {
+    "end": "2026-08-24",
+    "start": "2026-08-24"
    }
-  }
+  },
+  "type": "daily_card",
+  "undetermined": []
  },
+ "chart": {
+  "computed_at": "2026-08-27T17:15:20.841906+00:00",
+  "status": "fresh"
+ },
+ "date": "2026-08-24",
  "facets": {
-  "version": 1,
+  "artifact_key": "e780df576dc1ee65:2026-08-24",
+  "date": "2026-08-24",
+  "item_count": 14,
   "tabs": [
    {
-    "id": "guidance",
-    "label": "Guidance",
     "domains": [],
+    "empty_reason": null,
+    "id": "guidance",
     "items": [
      {
+      "basis": "Rahu occupies house 1",
+      "detail": "",
+      "domains": [
+       "health",
+       "longevity"
+      ],
+      "end_date": "2041-01-29",
       "id": "dasha:mahadasha",
       "kind": "dasha_period",
-      "title": "Mahadasha: Rahu",
+      "start_date": "2023-01-29",
+      "title": "Mahadasha: Rahu"
+     },
+     {
+      "basis": "Jupiter rules houses 3, 12",
       "detail": "",
-      "start_date": "2023-01-26",
-      "end_date": "2041-01-25",
       "domains": [
        "travel"
       ],
-      "basis": "Rahu occupies house 12"
-     },
-     {
+      "end_date": "2028-03-06",
       "id": "dasha:antardasha",
       "kind": "dasha_period",
-      "title": "Antardasha: Jupiter",
-      "detail": "",
-      "start_date": "2025-10-08",
-      "end_date": "2028-03-03",
-      "domains": [
-       "travel"
-      ],
-      "basis": "Jupiter rules houses 3, 12"
+      "start_date": "2025-10-11",
+      "title": "Antardasha: Jupiter"
      },
      {
-      "id": "rule:jupiter_aspect_to_lagna",
-      "kind": "transit_rule",
-      "title": "Jupiter Aspect To Lagna",
+      "basis": "classical transit rule",
       "detail": "Transit Jupiter in house 7 from Lagna \u2014 favourable (kendra/trikona).",
       "domains": [],
-      "basis": "classical transit rule"
+      "id": "rule:jupiter_aspect_to_lagna",
+      "kind": "transit_rule",
+      "title": "Jupiter Aspect To Lagna"
      },
      {
-      "id": "rule:sade_sati",
-      "kind": "transit_rule",
-      "title": "Sade Sati",
+      "basis": "classical transit rule",
       "detail": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries).",
       "domains": [],
-      "basis": "classical transit rule"
+      "id": "rule:sade_sati",
+      "kind": "transit_rule",
+      "title": "Sade Sati"
      },
      {
-      "id": "transit:Sun",
-      "kind": "transit_position",
-      "title": "Sun in Leo",
+      "basis": "read for longevity",
       "detail": "house 8 from your Lagna",
       "domains": [
        "longevity"
       ],
-      "basis": "read for longevity"
+      "id": "transit:Sun",
+      "kind": "transit_position",
+      "title": "Sun in Leo"
      },
      {
-      "id": "transit:Moon",
-      "kind": "transit_position",
-      "title": "Moon in Sagittarius",
+      "basis": "read for travel",
       "detail": "house 12 from your Lagna",
       "domains": [
        "travel"
       ],
-      "basis": "read for travel"
+      "id": "transit:Moon",
+      "kind": "transit_position",
+      "title": "Moon in Sagittarius"
      },
      {
-      "id": "transit:Mars",
-      "kind": "transit_position",
-      "title": "Mars in Gemini",
+      "basis": "read for health, litigation",
       "detail": "house 6 from your Lagna",
       "domains": [
        "health",
        "litigation"
       ],
-      "basis": "read for health, litigation"
+      "id": "transit:Mars",
+      "kind": "transit_position",
+      "title": "Mars in Gemini"
      },
      {
-      "id": "transit:Mercury",
-      "kind": "transit_position",
-      "title": "Mercury in Leo",
+      "basis": "read for longevity",
       "detail": "house 8 from your Lagna",
       "domains": [
        "longevity"
       ],
-      "basis": "read for longevity"
+      "id": "transit:Mercury",
+      "kind": "transit_position",
+      "title": "Mercury in Leo"
      },
      {
-      "id": "transit:Jupiter",
-      "kind": "transit_position",
-      "title": "Jupiter in Cancer",
+      "basis": "read for marriage",
       "detail": "house 7 from your Lagna",
       "domains": [
        "marriage"
       ],
-      "basis": "read for marriage"
+      "id": "transit:Jupiter",
+      "kind": "transit_position",
+      "title": "Jupiter in Cancer"
      },
      {
-      "id": "transit:Venus",
-      "kind": "transit_position",
-      "title": "Venus in Virgo",
+      "basis": "read for education, travel",
       "detail": "house 9 from your Lagna",
       "domains": [
        "education",
        "travel"
       ],
-      "basis": "read for education, travel"
+      "id": "transit:Venus",
+      "kind": "transit_position",
+      "title": "Venus in Virgo"
      },
      {
-      "id": "transit:Saturn",
-      "kind": "transit_position",
-      "title": "Saturn in Pisces",
+      "basis": "",
       "detail": "house 3 from your Lagna, retrograde",
       "domains": [],
-      "basis": ""
+      "id": "transit:Saturn",
+      "kind": "transit_position",
+      "title": "Saturn in Pisces"
      },
      {
-      "id": "transit:Rahu",
-      "kind": "transit_position",
-      "title": "Rahu in Aquarius",
+      "basis": "read for wealth",
       "detail": "house 2 from your Lagna, retrograde",
       "domains": [
        "wealth"
       ],
-      "basis": "read for wealth"
+      "id": "transit:Rahu",
+      "kind": "transit_position",
+      "title": "Rahu in Aquarius"
      },
      {
-      "id": "transit:Ketu",
-      "kind": "transit_position",
-      "title": "Ketu in Leo",
+      "basis": "read for longevity",
       "detail": "house 8 from your Lagna, retrograde",
       "domains": [
        "longevity"
       ],
-      "basis": "read for longevity"
+      "id": "transit:Ketu",
+      "kind": "transit_position",
+      "title": "Ketu in Leo"
      },
      {
-      "id": "panchang",
-      "kind": "panchang",
-      "title": "Dwadashi \u00b7 Somavar \u00b7 Purva Ashadha",
+      "basis": "panchang for Jamshedpur, India",
       "detail": "Yoga Ayushman \u00b7 Karana Bava",
       "domains": [],
-      "basis": "panchang for Jamshedpur, India",
+      "id": "panchang",
+      "kind": "panchang",
       "place": {
-       "name": "Jamshedpur, India",
-       "basis": "birth_place"
-      }
+       "basis": "birth_place",
+       "name": "Jamshedpur, India"
+      },
+      "title": "Dwadashi \u00b7 Somavar \u00b7 Purva Ashadha"
      }
     ],
-    "empty_reason": null
+    "label": "Guidance"
    },
    {
-    "id": "love",
-    "label": "Love",
     "domains": [
      "marriage",
      "progeny"
     ],
+    "empty_reason": null,
+    "id": "love",
     "items": [
      {
-      "id": "transit:Jupiter",
-      "kind": "transit_position",
-      "title": "Jupiter in Cancer",
+      "basis": "read for marriage",
       "detail": "house 7 from your Lagna",
       "domains": [
        "marriage"
       ],
-      "basis": "read for marriage"
+      "id": "transit:Jupiter",
+      "kind": "transit_position",
+      "title": "Jupiter in Cancer"
      }
     ],
-    "empty_reason": null
+    "label": "Love"
    },
    {
-    "id": "career",
-    "label": "Career",
     "domains": [
      "career",
      "wealth",
      "litigation"
     ],
+    "empty_reason": null,
+    "id": "career",
     "items": [
      {
-      "id": "transit:Mars",
-      "kind": "transit_position",
-      "title": "Mars in Gemini",
+      "basis": "read for health, litigation",
       "detail": "house 6 from your Lagna",
       "domains": [
        "health",
        "litigation"
       ],
-      "basis": "read for health, litigation"
+      "id": "transit:Mars",
+      "kind": "transit_position",
+      "title": "Mars in Gemini"
      },
      {
-      "id": "transit:Rahu",
-      "kind": "transit_position",
-      "title": "Rahu in Aquarius",
+      "basis": "read for wealth",
       "detail": "house 2 from your Lagna, retrograde",
       "domains": [
        "wealth"
       ],
-      "basis": "read for wealth"
+      "id": "transit:Rahu",
+      "kind": "transit_position",
+      "title": "Rahu in Aquarius"
      }
     ],
-    "empty_reason": null
+    "label": "Career"
    },
    {
-    "id": "self",
-    "label": "Self",
     "domains": [
      "health",
      "longevity",
      "education",
      "travel"
     ],
+    "empty_reason": null,
+    "id": "self",
     "items": [
      {
+      "basis": "Rahu occupies house 1",
+      "detail": "",
+      "domains": [
+       "health",
+       "longevity"
+      ],
+      "end_date": "2041-01-29",
       "id": "dasha:mahadasha",
       "kind": "dasha_period",
-      "title": "Mahadasha: Rahu",
+      "start_date": "2023-01-29",
+      "title": "Mahadasha: Rahu"
+     },
+     {
+      "basis": "Jupiter rules houses 3, 12",
       "detail": "",
-      "start_date": "2023-01-26",
-      "end_date": "2041-01-25",
       "domains": [
        "travel"
       ],
-      "basis": "Rahu occupies house 12"
-     },
-     {
+      "end_date": "2028-03-06",
       "id": "dasha:antardasha",
       "kind": "dasha_period",
-      "title": "Antardasha: Jupiter",
-      "detail": "",
-      "start_date": "2025-10-08",
-      "end_date": "2028-03-03",
-      "domains": [
-       "travel"
-      ],
-      "basis": "Jupiter rules houses 3, 12"
+      "start_date": "2025-10-11",
+      "title": "Antardasha: Jupiter"
      },
      {
-      "id": "transit:Sun",
-      "kind": "transit_position",
-      "title": "Sun in Leo",
+      "basis": "read for longevity",
       "detail": "house 8 from your Lagna",
       "domains": [
        "longevity"
       ],
-      "basis": "read for longevity"
+      "id": "transit:Sun",
+      "kind": "transit_position",
+      "title": "Sun in Leo"
      },
      {
-      "id": "transit:Moon",
-      "kind": "transit_position",
-      "title": "Moon in Sagittarius",
+      "basis": "read for travel",
       "detail": "house 12 from your Lagna",
       "domains": [
        "travel"
       ],
-      "basis": "read for travel"
+      "id": "transit:Moon",
+      "kind": "transit_position",
+      "title": "Moon in Sagittarius"
      },
      {
-      "id": "transit:Mars",
-      "kind": "transit_position",
-      "title": "Mars in Gemini",
+      "basis": "read for health, litigation",
       "detail": "house 6 from your Lagna",
       "domains": [
        "health",
        "litigation"
       ],
-      "basis": "read for health, litigation"
+      "id": "transit:Mars",
+      "kind": "transit_position",
+      "title": "Mars in Gemini"
      },
      {
-      "id": "transit:Mercury",
-      "kind": "transit_position",
-      "title": "Mercury in Leo",
+      "basis": "read for longevity",
       "detail": "house 8 from your Lagna",
       "domains": [
        "longevity"
       ],
-      "basis": "read for longevity"
+      "id": "transit:Mercury",
+      "kind": "transit_position",
+      "title": "Mercury in Leo"
      },
      {
-      "id": "transit:Venus",
-      "kind": "transit_position",
-      "title": "Venus in Virgo",
+      "basis": "read for education, travel",
       "detail": "house 9 from your Lagna",
       "domains": [
        "education",
        "travel"
       ],
-      "basis": "read for education, travel"
+      "id": "transit:Venus",
+      "kind": "transit_position",
+      "title": "Venus in Virgo"
      },
      {
-      "id": "transit:Ketu",
-      "kind": "transit_position",
-      "title": "Ketu in Leo",
+      "basis": "read for longevity",
       "detail": "house 8 from your Lagna, retrograde",
       "domains": [
        "longevity"
       ],
-      "basis": "read for longevity"
+      "id": "transit:Ketu",
+      "kind": "transit_position",
+      "title": "Ketu in Leo"
      }
     ],
-    "empty_reason": null
+    "label": "Self"
    }
   ],
-  "item_count": 14,
-  "artifact_key": "5c00090e7831c749:2026-08-24",
-  "date": "2026-08-24"
+  "version": 1
  },
  "narration": {
-  "text": "",
+  "available": false,
   "generated_this_request": false,
-  "available": false
- },
- "chart": {
-  "status": "fresh",
-  "computed_at": "2026-08-25T13:29:37.970930+00:00"
+  "text": ""
  },
  "person": {
-  "id": "self",
-  "display_name": "Ravi"
+  "display_name": "Ravi",
+  "id": "self"
  },
- "served_from_store": false
+ "served_from_store": false,
+ "state": "ready"
 }

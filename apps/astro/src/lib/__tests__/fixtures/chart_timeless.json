@@ -1,0 +1,184 @@
+{
+ "_capture": {
+  "as_of": "2026-08-24",
+  "captured_at": "2026-08-24",
+  "captured_by": "chatservice/scripts/capture_astral_fixtures.py",
+  "engine_version": "kerykeion/5.12.9",
+  "fn": "natal_chart",
+  "fn_identity": "natal_chart/7+d0a6e637fb302caa",
+  "fn_version": 7
+ },
+ "chart": {
+  "ayanamsa": "LAHIRI",
+  "birth_data": {
+   "date_of_birth": "1989-12-10",
+   "dst_in_effect": false,
+   "latitude": 22.8046,
+   "longitude": 86.2029,
+   "place_of_birth": "Jamshedpur, India",
+   "time_known": false,
+   "time_of_birth": null,
+   "timezone": "Asia/Kolkata",
+   "utc_offset_minutes": 330,
+   "zone_resolution": "iana"
+  },
+  "computed_at": "2026-08-27T17:15:21.078002+00:00",
+  "engine_version": "kerykeion/5.12.9",
+  "house_system": "W",
+  "moon_nakshatra_alternatives": [
+   "Krittika"
+  ],
+  "moon_sign": "Aries",
+  "moon_sign_alternatives": [],
+  "node_model": "mean",
+  "planets": [
+   {
+    "degree": 234.46,
+    "dignity": "friend's sign",
+    "house": null,
+    "nakshatra": "Jyeshtha",
+    "nakshatra_pada": null,
+    "planet": "Sun",
+    "retrograde": false,
+    "sign": "Scorpio",
+    "sign_degree": 24.46
+   },
+   {
+    "degree": 20.84,
+    "dignity": "neutral",
+    "house": null,
+    "nakshatra": "Bharani",
+    "nakshatra_pada": null,
+    "planet": "Moon",
+    "retrograde": false,
+    "sign": "Aries",
+    "sign_degree": 20.84
+   },
+   {
+    "degree": 250.28,
+    "dignity": "neutral",
+    "house": null,
+    "nakshatra": "Mula",
+    "nakshatra_pada": null,
+    "planet": "Mercury",
+    "retrograde": false,
+    "sign": "Sagittarius",
+    "sign_degree": 10.28
+   },
+   {
+    "degree": 276.32,
+    "dignity": "friend's sign",
+    "house": null,
+    "nakshatra": "Uttara Ashadha",
+    "nakshatra_pada": null,
+    "planet": "Venus",
+    "retrograde": false,
+    "sign": "Capricorn",
+    "sign_degree": 6.32
+   },
+   {
+    "degree": 210.78,
+    "dignity": "own sign",
+    "house": null,
+    "nakshatra": "Vishakha",
+    "nakshatra_pada": null,
+    "planet": "Mars",
+    "retrograde": false,
+    "sign": "Scorpio",
+    "sign_degree": 0.78
+   },
+   {
+    "degree": 74.36,
+    "dignity": "enemy's sign",
+    "house": null,
+    "nakshatra": "Ardra",
+    "nakshatra_pada": null,
+    "planet": "Jupiter",
+    "retrograde": true,
+    "sign": "Gemini",
+    "sign_degree": 14.36
+   },
+   {
+    "degree": 259.37,
+    "dignity": "neutral",
+    "house": null,
+    "nakshatra": "Purva Ashadha",
+    "nakshatra_pada": null,
+    "planet": "Saturn",
+    "retrograde": false,
+    "sign": "Sagittarius",
+    "sign_degree": 19.37
+   },
+   {
+    "degree": 295.89,
+    "dignity": "neutral",
+    "house": null,
+    "nakshatra": "Dhanishtha",
+    "nakshatra_pada": null,
+    "planet": "Rahu",
+    "retrograde": true,
+    "sign": "Capricorn",
+    "sign_degree": 25.89
+   },
+   {
+    "degree": 115.89,
+    "dignity": "neutral",
+    "house": null,
+    "nakshatra": "Ashlesha",
+    "nakshatra_pada": null,
+    "planet": "Ketu",
+    "retrograde": true,
+    "sign": "Cancer",
+    "sign_degree": 25.89
+   }
+  ],
+  "status": "fresh",
+  "sun_sign": "Scorpio",
+  "time_known": false,
+  "undetermined": [
+   {
+    "alternatives": [],
+    "field": "lagna",
+    "reason": "the Lagna moves a full rashi roughly every two hours, so without a birth time any value would be a guess dressed up as a calculation",
+    "unlocked_by": "time_of_birth"
+   },
+   {
+    "alternatives": [],
+    "field": "houses",
+    "reason": "the bhavas are counted from the Lagna, which is not determined without a birth time",
+    "unlocked_by": "time_of_birth"
+   },
+   {
+    "alternatives": [],
+    "field": "nakshatra_pada",
+    "reason": "a pada is a quarter of a nakshatra and the Moon crosses one roughly every six hours",
+    "unlocked_by": "time_of_birth"
+   },
+   {
+    "alternatives": [],
+    "field": "dasha",
+    "reason": "the Vimshottari sequence and every date in it are read from the Moon's nakshatra and from how far through it the Moon had travelled \u2014 both need a birth time",
+    "unlocked_by": "time_of_birth"
+   },
+   {
+    "alternatives": [],
+    "field": "divisional_charts",
+    "reason": "the Lagna (D1) and Navamsa (D9) charts are rotations of the Lagna, which is not determined without a birth time",
+    "unlocked_by": "time_of_birth"
+   },
+   {
+    "alternatives": [
+     "Krittika"
+    ],
+    "field": "moon_nakshatra",
+    "reason": "the Moon crosses into the next nakshatra during that day, and without a birth time it could be either",
+    "unlocked_by": "time_of_birth"
+   }
+  ],
+  "yogas": [],
+  "zodiac_mode": "sidereal"
+ },
+ "display_name": "Ravi",
+ "person_id": "self",
+ "tob_known": false
+}

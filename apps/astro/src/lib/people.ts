@@ -27,8 +27,10 @@
 export * from './people-shapes';
 
 import type {
+  ChartResponse,
   DailyResponse,
   EditImpact,
+  MatchDetail,
   MatchesResponse,
   PeopleResponse,
   PersonView,
@@ -111,6 +113,35 @@ export function fetchTimeline(): Promise<TimelineResponse> {
  */
 export function fetchPriorities(): Promise<PrioritiesResponse> {
   return call<PrioritiesResponse>('people/priorities');
+}
+
+/**
+ * THE CHART (docs/49 PH-27 · ASTRAL-229).
+ *
+ * The read that made screen 5 possible. Before it, the only place a full
+ * chart existed outside the engine was inside a chat turn — so "show me my
+ * chart" was a conversation, which is the whole of the owner's complaint.
+ *
+ * It computes nothing: no ephemeris second, no model call, no credit, and a
+ * stale chart comes back STALE with the date it was cast and which cause
+ * made it stale (ASTRAL-135/238). There is deliberately no `recomputeChart()`
+ * beside it — no such endpoint exists, and a control that cannot do anything
+ * is the dead affordance ASTRAL-102 forbids.
+ */
+export function fetchChart(personId: string): Promise<ChartResponse> {
+  return call<ChartResponse>(`people/${encodeURIComponent(personId)}/chart`);
+}
+
+/**
+ * ONE saved match, whole (docs/49 PH-27 · ASTRAL-232).
+ *
+ * Every koota with its points, the pending ones with their reasons, the
+ * doshas and the firm/pending split — the stored artifact, served as the
+ * `match_report` payload the shipped scorecard already renders. "Why is Nadi
+ * zero" stops being a question that costs a model call.
+ */
+export function fetchMatch(pairKey: string): Promise<MatchDetail> {
+  return call<MatchDetail>(`people/matches/${encodeURIComponent(pairKey)}`);
 }
 
 export function fetchEditImpact(personId: string, field: string): Promise<EditImpact> {

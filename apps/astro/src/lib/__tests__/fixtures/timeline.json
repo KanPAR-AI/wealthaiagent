@@ -1,2243 +1,2287 @@
 {
- "state": "ready",
- "as_of": "2026-08-24",
- "timeline": {
-  "type": "life_timeline",
+ "_capture": {
   "as_of": "2026-08-24",
-  "key": "49a66629999de64d:2026-08-24",
-  "inputs_hash": "49a66629999de64dcf783ec02b5daf115fc14f020a7685539bf4034e78bc7efd",
-  "layers": [
-   "dasha",
-   "transit"
-  ],
+  "captured_at": "2026-08-24",
+  "captured_by": "chatservice/scripts/capture_astral_fixtures.py",
+  "engine_version": "kerykeion/5.12.9",
+  "fn": "timeline",
+  "fn_identity": "timeline/3+d0a6e637fb302caa",
+  "fn_version": 3
+ },
+ "as_of": "2026-08-24",
+ "chart": {
+  "computed_at": "2026-08-27T17:15:20.841906+00:00",
+  "status": "fresh"
+ },
+ "person": {
+  "display_name": "Ravi",
+  "id": "self"
+ },
+ "served_from_store": false,
+ "state": "ready",
+ "timeline": {
   "absent_layers": [],
-  "undetermined": [],
-  "time_known": true,
+  "as_of": "2026-08-24",
   "calculation": {
-   "zodiac_mode": "sidereal",
    "ayanamsa": "LAHIRI",
+   "fn_version": "timeline/3+d0a6e637fb302caa",
    "house_system": "W",
-   "settings_digest": "5a8b1903a708454f",
-   "fn_version": "timeline/1+5a8b1903a708454f"
+   "settings_digest": "d0a6e637fb302caa",
+   "zodiac_mode": "sidereal"
+  },
+  "cursor": {
+   "antardasha_index": 37,
+   "as_of": "2026-08-24",
+   "mahadasha_index": 4
   },
   "dasha": {
    "periods": [
     {
-     "level": "mahadasha",
-     "index": 0,
-     "planet": "Venus",
-     "start_date": "1989-12-10",
-     "end_date": "2000-01-28",
-     "houses_ruled": [
-      5,
-      10
-     ],
      "categories": [
       "children",
       "learning",
       "career",
       "status"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2000-01-28",
+     "houses_ruled": [
+      5,
+      10
+     ],
+     "index": 0,
+     "level": "mahadasha",
+     "planet": "Venus",
+     "start_date": "1989-12-10"
     },
     {
-     "level": "mahadasha",
-     "index": 1,
-     "planet": "Sun",
-     "start_date": "2000-01-28",
-     "end_date": "2006-01-27",
-     "houses_ruled": [
-      8
-     ],
      "categories": [
       "transformation"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2006-01-28",
+     "houses_ruled": [
+      8
+     ],
+     "index": 1,
+     "level": "mahadasha",
+     "planet": "Sun",
+     "start_date": "2000-01-28"
     },
     {
-     "level": "mahadasha",
-     "index": 2,
-     "planet": "Moon",
-     "start_date": "2006-01-27",
-     "end_date": "2016-01-27",
-     "houses_ruled": [
-      7
-     ],
      "categories": [
       "relationship",
       "partnership"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2016-01-29",
+     "houses_ruled": [
+      7
+     ],
+     "index": 2,
+     "level": "mahadasha",
+     "planet": "Moon",
+     "start_date": "2006-01-28"
     },
     {
-     "level": "mahadasha",
-     "index": 3,
-     "planet": "Mars",
-     "start_date": "2016-01-27",
-     "end_date": "2023-01-26",
-     "houses_ruled": [
-      4,
-      11
-     ],
      "categories": [
       "home",
       "mother",
       "gains",
       "networks"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2023-01-29",
+     "houses_ruled": [
+      4,
+      11
+     ],
+     "index": 3,
+     "level": "mahadasha",
+     "planet": "Mars",
+     "start_date": "2016-01-29"
     },
     {
-     "level": "mahadasha",
-     "index": 4,
-     "planet": "Rahu",
-     "start_date": "2023-01-26",
-     "end_date": "2041-01-25",
-     "houses_ruled": [
-      12
-     ],
      "categories": [
-      "expenses",
-      "retreat"
+      "self",
+      "vitality"
      ],
-     "category_basis": "occupied_house"
+     "category_basis": "occupied_house",
+     "end_date": "2041-01-29",
+     "houses_ruled": [
+      1
+     ],
+     "index": 4,
+     "level": "mahadasha",
+     "planet": "Rahu",
+     "start_date": "2023-01-29"
     },
     {
-     "level": "mahadasha",
-     "index": 5,
-     "planet": "Jupiter",
-     "start_date": "2041-01-25",
-     "end_date": "2057-01-25",
-     "houses_ruled": [
-      3,
-      12
-     ],
      "categories": [
       "courage",
       "siblings",
       "expenses",
       "retreat"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2057-01-29",
+     "houses_ruled": [
+      3,
+      12
+     ],
+     "index": 5,
+     "level": "mahadasha",
+     "planet": "Jupiter",
+     "start_date": "2041-01-29"
     },
     {
-     "level": "mahadasha",
-     "index": 6,
-     "planet": "Saturn",
-     "start_date": "2057-01-25",
-     "end_date": "2076-01-25",
-     "houses_ruled": [
-      1,
-      2
-     ],
      "categories": [
       "self",
       "vitality",
       "wealth",
       "family"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2076-01-30",
+     "houses_ruled": [
+      1,
+      2
+     ],
+     "index": 6,
+     "level": "mahadasha",
+     "planet": "Saturn",
+     "start_date": "2057-01-29"
     },
     {
-     "level": "mahadasha",
-     "index": 7,
-     "planet": "Mercury",
-     "start_date": "2076-01-25",
-     "end_date": "2093-01-24",
-     "houses_ruled": [
-      6,
-      9
-     ],
      "categories": [
       "work",
       "health",
       "fortune",
       "dharma"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2093-01-29",
+     "houses_ruled": [
+      6,
+      9
+     ],
+     "index": 7,
+     "level": "mahadasha",
+     "planet": "Mercury",
+     "start_date": "2076-01-30"
     },
     {
-     "level": "mahadasha",
-     "index": 8,
-     "planet": "Ketu",
-     "start_date": "2093-01-24",
-     "end_date": "2100-01-24",
-     "houses_ruled": [
-      6
-     ],
      "categories": [
-      "work",
-      "health"
+      "relationship",
+      "partnership"
      ],
-     "category_basis": "occupied_house"
+     "category_basis": "occupied_house",
+     "end_date": "2100-01-30",
+     "houses_ruled": [
+      7
+     ],
+     "index": 8,
+     "level": "mahadasha",
+     "planet": "Ketu",
+     "start_date": "2093-01-29"
     },
     {
-     "level": "mahadasha",
-     "index": 9,
-     "planet": "Venus",
-     "start_date": "2100-01-24",
-     "end_date": "2120-01-25",
-     "houses_ruled": [
-      5,
-      10
-     ],
      "categories": [
       "children",
       "learning",
       "career",
       "status"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2120-01-31",
+     "houses_ruled": [
+      5,
+      10
+     ],
+     "index": 9,
+     "level": "mahadasha",
+     "planet": "Venus",
+     "start_date": "2100-01-30"
     },
     {
-     "level": "mahadasha",
-     "index": 10,
-     "planet": "Sun",
-     "start_date": "2120-01-25",
-     "end_date": "2126-01-24",
-     "houses_ruled": [
-      8
-     ],
      "categories": [
       "transformation"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2126-01-31",
+     "houses_ruled": [
+      8
+     ],
+     "index": 10,
+     "level": "mahadasha",
+     "planet": "Sun",
+     "start_date": "2120-01-31"
     },
     {
-     "level": "mahadasha",
-     "index": 11,
-     "planet": "Moon",
-     "start_date": "2126-01-24",
-     "end_date": "2136-01-24",
-     "houses_ruled": [
-      7
-     ],
      "categories": [
       "relationship",
       "partnership"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2136-02-01",
+     "houses_ruled": [
+      7
+     ],
+     "index": 11,
+     "level": "mahadasha",
+     "planet": "Moon",
+     "start_date": "2126-01-31"
     }
    ],
    "sub_periods": [
     {
-     "level": "antardasha",
-     "parent_index": 0,
-     "parent": "Venus",
-     "planet": "Venus",
-     "start_date": "1989-12-10",
+     "categories": [
+      "children",
+      "learning",
+      "career",
+      "status"
+     ],
+     "category_basis": "lordship",
      "end_date": "1991-08-19",
      "houses_ruled": [
       5,
       10
      ],
-     "categories": [
-      "children",
-      "learning",
-      "career",
-      "status"
-     ],
-     "category_basis": "lordship"
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 0,
+     "planet": "Venus",
+     "start_date": "1989-12-10"
     },
     {
-     "level": "antardasha",
-     "parent_index": 0,
-     "parent": "Venus",
-     "planet": "Sun",
-     "start_date": "1991-08-19",
+     "categories": [
+      "transformation"
+     ],
+     "category_basis": "lordship",
      "end_date": "1992-02-20",
      "houses_ruled": [
       8
      ],
-     "categories": [
-      "transformation"
-     ],
-     "category_basis": "lordship"
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 0,
+     "planet": "Sun",
+     "start_date": "1991-08-19"
     },
     {
-     "level": "antardasha",
-     "parent_index": 0,
-     "parent": "Venus",
-     "planet": "Moon",
-     "start_date": "1992-02-20",
-     "end_date": "1992-12-24",
-     "houses_ruled": [
-      7
-     ],
      "categories": [
       "relationship",
       "partnership"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "1992-12-24",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 0,
+     "planet": "Moon",
+     "start_date": "1992-02-20"
     },
     {
-     "level": "antardasha",
-     "parent_index": 0,
-     "parent": "Venus",
-     "planet": "Mars",
-     "start_date": "1992-12-24",
+     "categories": [
+      "home",
+      "mother",
+      "gains",
+      "networks"
+     ],
+     "category_basis": "lordship",
      "end_date": "1993-07-28",
      "houses_ruled": [
       4,
       11
      ],
-     "categories": [
-      "home",
-      "mother",
-      "gains",
-      "networks"
-     ],
-     "category_basis": "lordship"
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 0,
+     "planet": "Mars",
+     "start_date": "1992-12-24"
     },
     {
-     "level": "antardasha",
-     "parent_index": 0,
-     "parent": "Venus",
-     "planet": "Rahu",
-     "start_date": "1993-07-28",
+     "categories": [
+      "self",
+      "vitality"
+     ],
+     "category_basis": "occupied_house",
      "end_date": "1995-02-03",
      "houses_ruled": [
-      12
+      1
      ],
-     "categories": [
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "occupied_house"
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 0,
+     "planet": "Rahu",
+     "start_date": "1993-07-28"
     },
     {
-     "level": "antardasha",
-     "parent_index": 0,
-     "parent": "Venus",
-     "planet": "Jupiter",
-     "start_date": "1995-02-03",
-     "end_date": "1996-06-10",
-     "houses_ruled": [
-      3,
-      12
-     ],
      "categories": [
       "courage",
       "siblings",
       "expenses",
       "retreat"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "1996-06-11",
+     "houses_ruled": [
+      3,
+      12
+     ],
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 0,
+     "planet": "Jupiter",
+     "start_date": "1995-02-03"
     },
     {
-     "level": "antardasha",
-     "parent_index": 0,
-     "parent": "Venus",
-     "planet": "Saturn",
-     "start_date": "1996-06-10",
-     "end_date": "1998-01-17",
-     "houses_ruled": [
-      1,
-      2
-     ],
      "categories": [
       "self",
       "vitality",
       "wealth",
       "family"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "1998-01-18",
+     "houses_ruled": [
+      1,
+      2
+     ],
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 0,
+     "planet": "Saturn",
+     "start_date": "1996-06-11"
     },
     {
-     "level": "antardasha",
-     "parent_index": 0,
-     "parent": "Venus",
-     "planet": "Mercury",
-     "start_date": "1998-01-17",
-     "end_date": "1999-06-25",
-     "houses_ruled": [
-      6,
-      9
-     ],
      "categories": [
       "work",
       "health",
       "fortune",
       "dharma"
      ],
-     "category_basis": "lordship"
-    },
-    {
+     "category_basis": "lordship",
+     "end_date": "1999-06-26",
+     "houses_ruled": [
+      6,
+      9
+     ],
      "level": "antardasha",
-     "parent_index": 0,
      "parent": "Venus",
-     "planet": "Ketu",
-     "start_date": "1999-06-25",
-     "end_date": "2000-01-28",
-     "houses_ruled": [
-      6
-     ],
-     "categories": [
-      "work",
-      "health"
-     ],
-     "category_basis": "occupied_house"
+     "parent_index": 0,
+     "planet": "Mercury",
+     "start_date": "1998-01-18"
     },
     {
-     "level": "antardasha",
-     "parent_index": 1,
-     "parent": "Sun",
-     "planet": "Sun",
-     "start_date": "2000-01-28",
-     "end_date": "2000-05-17",
-     "houses_ruled": [
-      8
-     ],
-     "categories": [
-      "transformation"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 1,
-     "parent": "Sun",
-     "planet": "Moon",
-     "start_date": "2000-05-17",
-     "end_date": "2000-11-16",
-     "houses_ruled": [
-      7
-     ],
      "categories": [
       "relationship",
       "partnership"
      ],
-     "category_basis": "lordship"
+     "category_basis": "occupied_house",
+     "end_date": "2000-01-28",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 0,
+     "planet": "Ketu",
+     "start_date": "1999-06-26"
     },
     {
-     "level": "antardasha",
-     "parent_index": 1,
-     "parent": "Sun",
-     "planet": "Mars",
-     "start_date": "2000-11-16",
-     "end_date": "2001-03-24",
-     "houses_ruled": [
-      4,
-      11
+     "categories": [
+      "transformation"
      ],
+     "category_basis": "lordship",
+     "end_date": "2000-05-17",
+     "houses_ruled": [
+      8
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 1,
+     "planet": "Sun",
+     "start_date": "2000-01-28"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2000-11-15",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 1,
+     "planet": "Moon",
+     "start_date": "2000-05-17"
+    },
+    {
      "categories": [
       "home",
       "mother",
       "gains",
       "networks"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2001-03-23",
+     "houses_ruled": [
+      4,
+      11
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 1,
+     "planet": "Mars",
+     "start_date": "2000-11-15"
     },
     {
-     "level": "antardasha",
-     "parent_index": 1,
-     "parent": "Sun",
-     "planet": "Rahu",
-     "start_date": "2001-03-24",
-     "end_date": "2002-02-16",
-     "houses_ruled": [
-      12
-     ],
      "categories": [
-      "expenses",
-      "retreat"
+      "self",
+      "vitality"
      ],
-     "category_basis": "occupied_house"
+     "category_basis": "occupied_house",
+     "end_date": "2002-02-15",
+     "houses_ruled": [
+      1
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 1,
+     "planet": "Rahu",
+     "start_date": "2001-03-23"
     },
     {
-     "level": "antardasha",
-     "parent_index": 1,
-     "parent": "Sun",
-     "planet": "Jupiter",
-     "start_date": "2002-02-16",
-     "end_date": "2002-12-05",
-     "houses_ruled": [
-      3,
-      12
-     ],
      "categories": [
       "courage",
       "siblings",
       "expenses",
       "retreat"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2002-12-04",
+     "houses_ruled": [
+      3,
+      12
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 1,
+     "planet": "Jupiter",
+     "start_date": "2002-02-15"
     },
     {
-     "level": "antardasha",
-     "parent_index": 1,
-     "parent": "Sun",
-     "planet": "Saturn",
-     "start_date": "2002-12-05",
-     "end_date": "2003-11-17",
-     "houses_ruled": [
-      1,
-      2
-     ],
      "categories": [
       "self",
       "vitality",
       "wealth",
       "family"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2003-11-16",
+     "houses_ruled": [
+      1,
+      2
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 1,
+     "planet": "Saturn",
+     "start_date": "2002-12-04"
     },
     {
-     "level": "antardasha",
-     "parent_index": 1,
-     "parent": "Sun",
-     "planet": "Mercury",
-     "start_date": "2003-11-17",
+     "categories": [
+      "work",
+      "health",
+      "fortune",
+      "dharma"
+     ],
+     "category_basis": "lordship",
      "end_date": "2004-09-22",
      "houses_ruled": [
       6,
       9
      ],
-     "categories": [
-      "work",
-      "health",
-      "fortune",
-      "dharma"
-     ],
-     "category_basis": "lordship"
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 1,
+     "planet": "Mercury",
+     "start_date": "2003-11-16"
     },
     {
-     "level": "antardasha",
-     "parent_index": 1,
-     "parent": "Sun",
-     "planet": "Ketu",
-     "start_date": "2004-09-22",
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "occupied_house",
      "end_date": "2005-01-28",
      "houses_ruled": [
-      6
+      7
      ],
-     "categories": [
-      "work",
-      "health"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
      "level": "antardasha",
+     "parent": "Sun",
      "parent_index": 1,
-     "parent": "Sun",
-     "planet": "Venus",
-     "start_date": "2005-01-28",
-     "end_date": "2006-01-27",
-     "houses_ruled": [
-      5,
-      10
-     ],
+     "planet": "Ketu",
+     "start_date": "2004-09-22"
+    },
+    {
      "categories": [
       "children",
       "learning",
       "career",
       "status"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2006-01-28",
+     "houses_ruled": [
+      5,
+      10
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 1,
+     "planet": "Venus",
+     "start_date": "2005-01-28"
     },
     {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2006-11-28",
+     "houses_ruled": [
+      7
+     ],
      "level": "antardasha",
+     "parent": "Moon",
      "parent_index": 2,
-     "parent": "Moon",
      "planet": "Moon",
-     "start_date": "2006-01-27",
-     "end_date": "2006-11-27",
-     "houses_ruled": [
-      7
-     ],
-     "categories": [
-      "relationship",
-      "partnership"
-     ],
-     "category_basis": "lordship"
+     "start_date": "2006-01-28"
     },
     {
+     "categories": [
+      "home",
+      "mother",
+      "gains",
+      "networks"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2007-06-30",
+     "houses_ruled": [
+      4,
+      11
+     ],
      "level": "antardasha",
+     "parent": "Moon",
      "parent_index": 2,
-     "parent": "Moon",
      "planet": "Mars",
-     "start_date": "2006-11-27",
-     "end_date": "2007-06-28",
-     "houses_ruled": [
-      4,
-      11
-     ],
-     "categories": [
-      "home",
-      "mother",
-      "gains",
-      "networks"
-     ],
-     "category_basis": "lordship"
+     "start_date": "2006-11-28"
     },
     {
+     "categories": [
+      "self",
+      "vitality"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2008-12-28",
+     "houses_ruled": [
+      1
+     ],
      "level": "antardasha",
+     "parent": "Moon",
      "parent_index": 2,
-     "parent": "Moon",
      "planet": "Rahu",
-     "start_date": "2007-06-28",
-     "end_date": "2008-12-27",
-     "houses_ruled": [
-      12
-     ],
+     "start_date": "2007-06-30"
+    },
+    {
      "categories": [
+      "courage",
+      "siblings",
       "expenses",
       "retreat"
      ],
-     "category_basis": "occupied_house"
-    },
-    {
+     "category_basis": "lordship",
+     "end_date": "2010-04-30",
+     "houses_ruled": [
+      3,
+      12
+     ],
      "level": "antardasha",
+     "parent": "Moon",
      "parent_index": 2,
-     "parent": "Moon",
      "planet": "Jupiter",
-     "start_date": "2008-12-27",
-     "end_date": "2010-04-28",
-     "houses_ruled": [
-      3,
-      12
-     ],
-     "categories": [
-      "courage",
-      "siblings",
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "lordship"
+     "start_date": "2008-12-28"
     },
     {
+     "categories": [
+      "self",
+      "vitality",
+      "wealth",
+      "family"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2011-11-29",
+     "houses_ruled": [
+      1,
+      2
+     ],
      "level": "antardasha",
+     "parent": "Moon",
      "parent_index": 2,
-     "parent": "Moon",
      "planet": "Saturn",
-     "start_date": "2010-04-28",
-     "end_date": "2011-11-27",
-     "houses_ruled": [
-      1,
-      2
-     ],
-     "categories": [
-      "self",
-      "vitality",
-      "wealth",
-      "family"
-     ],
-     "category_basis": "lordship"
+     "start_date": "2010-04-30"
     },
     {
+     "categories": [
+      "work",
+      "health",
+      "fortune",
+      "dharma"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2013-04-29",
+     "houses_ruled": [
+      6,
+      9
+     ],
      "level": "antardasha",
+     "parent": "Moon",
      "parent_index": 2,
-     "parent": "Moon",
      "planet": "Mercury",
-     "start_date": "2011-11-27",
-     "end_date": "2013-04-27",
-     "houses_ruled": [
-      6,
-      9
-     ],
-     "categories": [
-      "work",
-      "health",
-      "fortune",
-      "dharma"
-     ],
-     "category_basis": "lordship"
+     "start_date": "2011-11-29"
     },
     {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2013-11-29",
+     "houses_ruled": [
+      7
+     ],
      "level": "antardasha",
+     "parent": "Moon",
      "parent_index": 2,
-     "parent": "Moon",
      "planet": "Ketu",
-     "start_date": "2013-04-27",
-     "end_date": "2013-11-26",
-     "houses_ruled": [
-      6
-     ],
-     "categories": [
-      "work",
-      "health"
-     ],
-     "category_basis": "occupied_house"
+     "start_date": "2013-04-29"
     },
     {
+     "categories": [
+      "children",
+      "learning",
+      "career",
+      "status"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2015-07-30",
+     "houses_ruled": [
+      5,
+      10
+     ],
      "level": "antardasha",
+     "parent": "Moon",
      "parent_index": 2,
-     "parent": "Moon",
      "planet": "Venus",
-     "start_date": "2013-11-26",
-     "end_date": "2015-07-28",
-     "houses_ruled": [
-      5,
-      10
-     ],
-     "categories": [
-      "children",
-      "learning",
-      "career",
-      "status"
-     ],
-     "category_basis": "lordship"
+     "start_date": "2013-11-29"
     },
     {
+     "categories": [
+      "transformation"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2016-01-29",
+     "houses_ruled": [
+      8
+     ],
      "level": "antardasha",
+     "parent": "Moon",
      "parent_index": 2,
-     "parent": "Moon",
      "planet": "Sun",
-     "start_date": "2015-07-28",
-     "end_date": "2016-01-27",
-     "houses_ruled": [
-      8
-     ],
-     "categories": [
-      "transformation"
-     ],
-     "category_basis": "lordship"
+     "start_date": "2015-07-30"
     },
     {
-     "level": "antardasha",
-     "parent_index": 3,
-     "parent": "Mars",
-     "planet": "Mars",
-     "start_date": "2016-01-27",
-     "end_date": "2016-06-24",
-     "houses_ruled": [
-      4,
-      11
-     ],
      "categories": [
       "home",
       "mother",
       "gains",
       "networks"
      ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 3,
-     "parent": "Mars",
-     "planet": "Rahu",
-     "start_date": "2016-06-24",
-     "end_date": "2017-07-12",
-     "houses_ruled": [
-      12
-     ],
-     "categories": [
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 3,
-     "parent": "Mars",
-     "planet": "Jupiter",
-     "start_date": "2017-07-12",
-     "end_date": "2018-06-18",
-     "houses_ruled": [
-      3,
-      12
-     ],
-     "categories": [
-      "courage",
-      "siblings",
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 3,
-     "parent": "Mars",
-     "planet": "Saturn",
-     "start_date": "2018-06-18",
-     "end_date": "2019-07-28",
-     "houses_ruled": [
-      1,
-      2
-     ],
-     "categories": [
-      "self",
-      "vitality",
-      "wealth",
-      "family"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 3,
-     "parent": "Mars",
-     "planet": "Mercury",
-     "start_date": "2019-07-28",
-     "end_date": "2020-07-24",
-     "houses_ruled": [
-      6,
-      9
-     ],
-     "categories": [
-      "work",
-      "health",
-      "fortune",
-      "dharma"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 3,
-     "parent": "Mars",
-     "planet": "Ketu",
-     "start_date": "2020-07-24",
-     "end_date": "2020-12-20",
-     "houses_ruled": [
-      6
-     ],
-     "categories": [
-      "work",
-      "health"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 3,
-     "parent": "Mars",
-     "planet": "Venus",
-     "start_date": "2020-12-20",
-     "end_date": "2022-02-19",
-     "houses_ruled": [
-      5,
-      10
-     ],
-     "categories": [
-      "children",
-      "learning",
-      "career",
-      "status"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 3,
-     "parent": "Mars",
-     "planet": "Sun",
-     "start_date": "2022-02-19",
-     "end_date": "2022-06-27",
-     "houses_ruled": [
-      8
-     ],
-     "categories": [
-      "transformation"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 3,
-     "parent": "Mars",
-     "planet": "Moon",
-     "start_date": "2022-06-27",
-     "end_date": "2023-01-26",
-     "houses_ruled": [
-      7
-     ],
-     "categories": [
-      "relationship",
-      "partnership"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 4,
-     "parent": "Rahu",
-     "planet": "Rahu",
-     "start_date": "2023-01-26",
-     "end_date": "2025-10-08",
-     "houses_ruled": [
-      12
-     ],
-     "categories": [
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 4,
-     "parent": "Rahu",
-     "planet": "Jupiter",
-     "start_date": "2025-10-08",
-     "end_date": "2028-03-03",
-     "houses_ruled": [
-      3,
-      12
-     ],
-     "categories": [
-      "courage",
-      "siblings",
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 4,
-     "parent": "Rahu",
-     "planet": "Saturn",
-     "start_date": "2028-03-03",
-     "end_date": "2031-01-08",
-     "houses_ruled": [
-      1,
-      2
-     ],
-     "categories": [
-      "self",
-      "vitality",
-      "wealth",
-      "family"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 4,
-     "parent": "Rahu",
-     "planet": "Mercury",
-     "start_date": "2031-01-08",
-     "end_date": "2033-07-27",
-     "houses_ruled": [
-      6,
-      9
-     ],
-     "categories": [
-      "work",
-      "health",
-      "fortune",
-      "dharma"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 4,
-     "parent": "Rahu",
-     "planet": "Ketu",
-     "start_date": "2033-07-27",
-     "end_date": "2034-08-14",
-     "houses_ruled": [
-      6
-     ],
-     "categories": [
-      "work",
-      "health"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 4,
-     "parent": "Rahu",
-     "planet": "Venus",
-     "start_date": "2034-08-14",
-     "end_date": "2037-08-14",
-     "houses_ruled": [
-      5,
-      10
-     ],
-     "categories": [
-      "children",
-      "learning",
-      "career",
-      "status"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 4,
-     "parent": "Rahu",
-     "planet": "Sun",
-     "start_date": "2037-08-14",
-     "end_date": "2038-07-09",
-     "houses_ruled": [
-      8
-     ],
-     "categories": [
-      "transformation"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 4,
-     "parent": "Rahu",
-     "planet": "Moon",
-     "start_date": "2038-07-09",
-     "end_date": "2040-01-08",
-     "houses_ruled": [
-      7
-     ],
-     "categories": [
-      "relationship",
-      "partnership"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 4,
-     "parent": "Rahu",
-     "planet": "Mars",
-     "start_date": "2040-01-08",
-     "end_date": "2041-01-25",
+     "category_basis": "lordship",
+     "end_date": "2016-06-26",
      "houses_ruled": [
       4,
       11
      ],
+     "level": "antardasha",
+     "parent": "Mars",
+     "parent_index": 3,
+     "planet": "Mars",
+     "start_date": "2016-01-29"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2017-07-15",
+     "houses_ruled": [
+      1
+     ],
+     "level": "antardasha",
+     "parent": "Mars",
+     "parent_index": 3,
+     "planet": "Rahu",
+     "start_date": "2016-06-26"
+    },
+    {
+     "categories": [
+      "courage",
+      "siblings",
+      "expenses",
+      "retreat"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2018-06-21",
+     "houses_ruled": [
+      3,
+      12
+     ],
+     "level": "antardasha",
+     "parent": "Mars",
+     "parent_index": 3,
+     "planet": "Jupiter",
+     "start_date": "2017-07-15"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality",
+      "wealth",
+      "family"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2019-07-31",
+     "houses_ruled": [
+      1,
+      2
+     ],
+     "level": "antardasha",
+     "parent": "Mars",
+     "parent_index": 3,
+     "planet": "Saturn",
+     "start_date": "2018-06-21"
+    },
+    {
+     "categories": [
+      "work",
+      "health",
+      "fortune",
+      "dharma"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2020-07-27",
+     "houses_ruled": [
+      6,
+      9
+     ],
+     "level": "antardasha",
+     "parent": "Mars",
+     "parent_index": 3,
+     "planet": "Mercury",
+     "start_date": "2019-07-31"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2020-12-23",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Mars",
+     "parent_index": 3,
+     "planet": "Ketu",
+     "start_date": "2020-07-27"
+    },
+    {
+     "categories": [
+      "children",
+      "learning",
+      "career",
+      "status"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2022-02-22",
+     "houses_ruled": [
+      5,
+      10
+     ],
+     "level": "antardasha",
+     "parent": "Mars",
+     "parent_index": 3,
+     "planet": "Venus",
+     "start_date": "2020-12-23"
+    },
+    {
+     "categories": [
+      "transformation"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2022-06-30",
+     "houses_ruled": [
+      8
+     ],
+     "level": "antardasha",
+     "parent": "Mars",
+     "parent_index": 3,
+     "planet": "Sun",
+     "start_date": "2022-02-22"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2023-01-29",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Mars",
+     "parent_index": 3,
+     "planet": "Moon",
+     "start_date": "2022-06-30"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2025-10-11",
+     "houses_ruled": [
+      1
+     ],
+     "level": "antardasha",
+     "parent": "Rahu",
+     "parent_index": 4,
+     "planet": "Rahu",
+     "start_date": "2023-01-29"
+    },
+    {
+     "categories": [
+      "courage",
+      "siblings",
+      "expenses",
+      "retreat"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2028-03-06",
+     "houses_ruled": [
+      3,
+      12
+     ],
+     "level": "antardasha",
+     "parent": "Rahu",
+     "parent_index": 4,
+     "planet": "Jupiter",
+     "start_date": "2025-10-11"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality",
+      "wealth",
+      "family"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2031-01-11",
+     "houses_ruled": [
+      1,
+      2
+     ],
+     "level": "antardasha",
+     "parent": "Rahu",
+     "parent_index": 4,
+     "planet": "Saturn",
+     "start_date": "2028-03-06"
+    },
+    {
+     "categories": [
+      "work",
+      "health",
+      "fortune",
+      "dharma"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2033-07-30",
+     "houses_ruled": [
+      6,
+      9
+     ],
+     "level": "antardasha",
+     "parent": "Rahu",
+     "parent_index": 4,
+     "planet": "Mercury",
+     "start_date": "2031-01-11"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2034-08-18",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Rahu",
+     "parent_index": 4,
+     "planet": "Ketu",
+     "start_date": "2033-07-30"
+    },
+    {
+     "categories": [
+      "children",
+      "learning",
+      "career",
+      "status"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2037-08-18",
+     "houses_ruled": [
+      5,
+      10
+     ],
+     "level": "antardasha",
+     "parent": "Rahu",
+     "parent_index": 4,
+     "planet": "Venus",
+     "start_date": "2034-08-18"
+    },
+    {
+     "categories": [
+      "transformation"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2038-07-13",
+     "houses_ruled": [
+      8
+     ],
+     "level": "antardasha",
+     "parent": "Rahu",
+     "parent_index": 4,
+     "planet": "Sun",
+     "start_date": "2037-08-18"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2040-01-11",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Rahu",
+     "parent_index": 4,
+     "planet": "Moon",
+     "start_date": "2038-07-13"
+    },
+    {
      "categories": [
       "home",
       "mother",
       "gains",
       "networks"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2041-01-29",
+     "houses_ruled": [
+      4,
+      11
+     ],
+     "level": "antardasha",
+     "parent": "Rahu",
+     "parent_index": 4,
+     "planet": "Mars",
+     "start_date": "2040-01-11"
     },
     {
-     "level": "antardasha",
-     "parent_index": 5,
-     "parent": "Jupiter",
-     "planet": "Jupiter",
-     "start_date": "2041-01-25",
-     "end_date": "2043-03-15",
-     "houses_ruled": [
-      3,
-      12
-     ],
      "categories": [
       "courage",
       "siblings",
       "expenses",
       "retreat"
      ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 5,
-     "parent": "Jupiter",
-     "planet": "Saturn",
-     "start_date": "2043-03-15",
-     "end_date": "2045-09-25",
-     "houses_ruled": [
-      1,
-      2
-     ],
-     "categories": [
-      "self",
-      "vitality",
-      "wealth",
-      "family"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 5,
-     "parent": "Jupiter",
-     "planet": "Mercury",
-     "start_date": "2045-09-25",
-     "end_date": "2048-01-01",
-     "houses_ruled": [
-      6,
-      9
-     ],
-     "categories": [
-      "work",
-      "health",
-      "fortune",
-      "dharma"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 5,
-     "parent": "Jupiter",
-     "planet": "Ketu",
-     "start_date": "2048-01-01",
-     "end_date": "2048-12-07",
-     "houses_ruled": [
-      6
-     ],
-     "categories": [
-      "work",
-      "health"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 5,
-     "parent": "Jupiter",
-     "planet": "Venus",
-     "start_date": "2048-12-07",
-     "end_date": "2051-08-08",
-     "houses_ruled": [
-      5,
-      10
-     ],
-     "categories": [
-      "children",
-      "learning",
-      "career",
-      "status"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 5,
-     "parent": "Jupiter",
-     "planet": "Sun",
-     "start_date": "2051-08-08",
-     "end_date": "2052-05-26",
-     "houses_ruled": [
-      8
-     ],
-     "categories": [
-      "transformation"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 5,
-     "parent": "Jupiter",
-     "planet": "Moon",
-     "start_date": "2052-05-26",
-     "end_date": "2053-09-25",
-     "houses_ruled": [
-      7
-     ],
-     "categories": [
-      "relationship",
-      "partnership"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 5,
-     "parent": "Jupiter",
-     "planet": "Mars",
-     "start_date": "2053-09-25",
-     "end_date": "2054-09-01",
-     "houses_ruled": [
-      4,
-      11
-     ],
-     "categories": [
-      "home",
-      "mother",
-      "gains",
-      "networks"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 5,
-     "parent": "Jupiter",
-     "planet": "Rahu",
-     "start_date": "2054-09-01",
-     "end_date": "2057-01-25",
-     "houses_ruled": [
-      12
-     ],
-     "categories": [
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 6,
-     "parent": "Saturn",
-     "planet": "Saturn",
-     "start_date": "2057-01-25",
-     "end_date": "2060-01-29",
-     "houses_ruled": [
-      1,
-      2
-     ],
-     "categories": [
-      "self",
-      "vitality",
-      "wealth",
-      "family"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 6,
-     "parent": "Saturn",
-     "planet": "Mercury",
-     "start_date": "2060-01-29",
-     "end_date": "2062-10-08",
-     "houses_ruled": [
-      6,
-      9
-     ],
-     "categories": [
-      "work",
-      "health",
-      "fortune",
-      "dharma"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 6,
-     "parent": "Saturn",
-     "planet": "Ketu",
-     "start_date": "2062-10-08",
-     "end_date": "2063-11-17",
-     "houses_ruled": [
-      6
-     ],
-     "categories": [
-      "work",
-      "health"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 6,
-     "parent": "Saturn",
-     "planet": "Venus",
-     "start_date": "2063-11-17",
-     "end_date": "2067-01-16",
-     "houses_ruled": [
-      5,
-      10
-     ],
-     "categories": [
-      "children",
-      "learning",
-      "career",
-      "status"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 6,
-     "parent": "Saturn",
-     "planet": "Sun",
-     "start_date": "2067-01-16",
-     "end_date": "2067-12-29",
-     "houses_ruled": [
-      8
-     ],
-     "categories": [
-      "transformation"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 6,
-     "parent": "Saturn",
-     "planet": "Moon",
-     "start_date": "2067-12-29",
-     "end_date": "2069-07-29",
-     "houses_ruled": [
-      7
-     ],
-     "categories": [
-      "relationship",
-      "partnership"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 6,
-     "parent": "Saturn",
-     "planet": "Mars",
-     "start_date": "2069-07-29",
-     "end_date": "2070-09-07",
-     "houses_ruled": [
-      4,
-      11
-     ],
-     "categories": [
-      "home",
-      "mother",
-      "gains",
-      "networks"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 6,
-     "parent": "Saturn",
-     "planet": "Rahu",
-     "start_date": "2070-09-07",
-     "end_date": "2073-07-14",
-     "houses_ruled": [
-      12
-     ],
-     "categories": [
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 6,
-     "parent": "Saturn",
-     "planet": "Jupiter",
-     "start_date": "2073-07-14",
-     "end_date": "2076-01-25",
+     "category_basis": "lordship",
+     "end_date": "2043-03-19",
      "houses_ruled": [
       3,
       12
      ],
+     "level": "antardasha",
+     "parent": "Jupiter",
+     "parent_index": 5,
+     "planet": "Jupiter",
+     "start_date": "2041-01-29"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality",
+      "wealth",
+      "family"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2045-09-30",
+     "houses_ruled": [
+      1,
+      2
+     ],
+     "level": "antardasha",
+     "parent": "Jupiter",
+     "parent_index": 5,
+     "planet": "Saturn",
+     "start_date": "2043-03-19"
+    },
+    {
+     "categories": [
+      "work",
+      "health",
+      "fortune",
+      "dharma"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2048-01-05",
+     "houses_ruled": [
+      6,
+      9
+     ],
+     "level": "antardasha",
+     "parent": "Jupiter",
+     "parent_index": 5,
+     "planet": "Mercury",
+     "start_date": "2045-09-30"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2048-12-11",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Jupiter",
+     "parent_index": 5,
+     "planet": "Ketu",
+     "start_date": "2048-01-05"
+    },
+    {
+     "categories": [
+      "children",
+      "learning",
+      "career",
+      "status"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2051-08-12",
+     "houses_ruled": [
+      5,
+      10
+     ],
+     "level": "antardasha",
+     "parent": "Jupiter",
+     "parent_index": 5,
+     "planet": "Venus",
+     "start_date": "2048-12-11"
+    },
+    {
+     "categories": [
+      "transformation"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2052-05-31",
+     "houses_ruled": [
+      8
+     ],
+     "level": "antardasha",
+     "parent": "Jupiter",
+     "parent_index": 5,
+     "planet": "Sun",
+     "start_date": "2051-08-12"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2053-09-30",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Jupiter",
+     "parent_index": 5,
+     "planet": "Moon",
+     "start_date": "2052-05-31"
+    },
+    {
+     "categories": [
+      "home",
+      "mother",
+      "gains",
+      "networks"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2054-09-05",
+     "houses_ruled": [
+      4,
+      11
+     ],
+     "level": "antardasha",
+     "parent": "Jupiter",
+     "parent_index": 5,
+     "planet": "Mars",
+     "start_date": "2053-09-30"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2057-01-29",
+     "houses_ruled": [
+      1
+     ],
+     "level": "antardasha",
+     "parent": "Jupiter",
+     "parent_index": 5,
+     "planet": "Rahu",
+     "start_date": "2054-09-05"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality",
+      "wealth",
+      "family"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2060-02-02",
+     "houses_ruled": [
+      1,
+      2
+     ],
+     "level": "antardasha",
+     "parent": "Saturn",
+     "parent_index": 6,
+     "planet": "Saturn",
+     "start_date": "2057-01-29"
+    },
+    {
+     "categories": [
+      "work",
+      "health",
+      "fortune",
+      "dharma"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2062-10-12",
+     "houses_ruled": [
+      6,
+      9
+     ],
+     "level": "antardasha",
+     "parent": "Saturn",
+     "parent_index": 6,
+     "planet": "Mercury",
+     "start_date": "2060-02-02"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2063-11-21",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Saturn",
+     "parent_index": 6,
+     "planet": "Ketu",
+     "start_date": "2062-10-12"
+    },
+    {
+     "categories": [
+      "children",
+      "learning",
+      "career",
+      "status"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2067-01-21",
+     "houses_ruled": [
+      5,
+      10
+     ],
+     "level": "antardasha",
+     "parent": "Saturn",
+     "parent_index": 6,
+     "planet": "Venus",
+     "start_date": "2063-11-21"
+    },
+    {
+     "categories": [
+      "transformation"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2068-01-03",
+     "houses_ruled": [
+      8
+     ],
+     "level": "antardasha",
+     "parent": "Saturn",
+     "parent_index": 6,
+     "planet": "Sun",
+     "start_date": "2067-01-21"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2069-08-03",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Saturn",
+     "parent_index": 6,
+     "planet": "Moon",
+     "start_date": "2068-01-03"
+    },
+    {
+     "categories": [
+      "home",
+      "mother",
+      "gains",
+      "networks"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2070-09-12",
+     "houses_ruled": [
+      4,
+      11
+     ],
+     "level": "antardasha",
+     "parent": "Saturn",
+     "parent_index": 6,
+     "planet": "Mars",
+     "start_date": "2069-08-03"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2073-07-19",
+     "houses_ruled": [
+      1
+     ],
+     "level": "antardasha",
+     "parent": "Saturn",
+     "parent_index": 6,
+     "planet": "Rahu",
+     "start_date": "2070-09-12"
+    },
+    {
      "categories": [
       "courage",
       "siblings",
       "expenses",
       "retreat"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2076-01-30",
+     "houses_ruled": [
+      3,
+      12
+     ],
+     "level": "antardasha",
+     "parent": "Saturn",
+     "parent_index": 6,
+     "planet": "Jupiter",
+     "start_date": "2073-07-19"
     },
     {
-     "level": "antardasha",
-     "parent_index": 7,
-     "parent": "Mercury",
-     "planet": "Mercury",
-     "start_date": "2076-01-25",
-     "end_date": "2078-06-23",
-     "houses_ruled": [
-      6,
-      9
-     ],
      "categories": [
       "work",
       "health",
       "fortune",
       "dharma"
      ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 7,
-     "parent": "Mercury",
-     "planet": "Ketu",
-     "start_date": "2078-06-23",
-     "end_date": "2079-06-20",
-     "houses_ruled": [
-      6
-     ],
-     "categories": [
-      "work",
-      "health"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 7,
-     "parent": "Mercury",
-     "planet": "Venus",
-     "start_date": "2079-06-20",
-     "end_date": "2082-04-20",
-     "houses_ruled": [
-      5,
-      10
-     ],
-     "categories": [
-      "children",
-      "learning",
-      "career",
-      "status"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 7,
-     "parent": "Mercury",
-     "planet": "Sun",
-     "start_date": "2082-04-20",
-     "end_date": "2083-02-24",
-     "houses_ruled": [
-      8
-     ],
-     "categories": [
-      "transformation"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 7,
-     "parent": "Mercury",
-     "planet": "Moon",
-     "start_date": "2083-02-24",
-     "end_date": "2084-07-25",
-     "houses_ruled": [
-      7
-     ],
-     "categories": [
-      "relationship",
-      "partnership"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 7,
-     "parent": "Mercury",
-     "planet": "Mars",
-     "start_date": "2084-07-25",
-     "end_date": "2085-07-22",
-     "houses_ruled": [
-      4,
-      11
-     ],
-     "categories": [
-      "home",
-      "mother",
-      "gains",
-      "networks"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 7,
-     "parent": "Mercury",
-     "planet": "Rahu",
-     "start_date": "2085-07-22",
-     "end_date": "2088-02-08",
-     "houses_ruled": [
-      12
-     ],
-     "categories": [
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 7,
-     "parent": "Mercury",
-     "planet": "Jupiter",
-     "start_date": "2088-02-08",
-     "end_date": "2090-05-16",
-     "houses_ruled": [
-      3,
-      12
-     ],
-     "categories": [
-      "courage",
-      "siblings",
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 7,
-     "parent": "Mercury",
-     "planet": "Saturn",
-     "start_date": "2090-05-16",
-     "end_date": "2093-01-24",
-     "houses_ruled": [
-      1,
-      2
-     ],
-     "categories": [
-      "self",
-      "vitality",
-      "wealth",
-      "family"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 8,
-     "parent": "Ketu",
-     "planet": "Ketu",
-     "start_date": "2093-01-24",
-     "end_date": "2093-06-22",
-     "houses_ruled": [
-      6
-     ],
-     "categories": [
-      "work",
-      "health"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 8,
-     "parent": "Ketu",
-     "planet": "Venus",
-     "start_date": "2093-06-22",
-     "end_date": "2094-08-22",
-     "houses_ruled": [
-      5,
-      10
-     ],
-     "categories": [
-      "children",
-      "learning",
-      "career",
-      "status"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 8,
-     "parent": "Ketu",
-     "planet": "Sun",
-     "start_date": "2094-08-22",
-     "end_date": "2094-12-28",
-     "houses_ruled": [
-      8
-     ],
-     "categories": [
-      "transformation"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 8,
-     "parent": "Ketu",
-     "planet": "Moon",
-     "start_date": "2094-12-28",
-     "end_date": "2095-07-29",
-     "houses_ruled": [
-      7
-     ],
-     "categories": [
-      "relationship",
-      "partnership"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 8,
-     "parent": "Ketu",
-     "planet": "Mars",
-     "start_date": "2095-07-29",
-     "end_date": "2095-12-25",
-     "houses_ruled": [
-      4,
-      11
-     ],
-     "categories": [
-      "home",
-      "mother",
-      "gains",
-      "networks"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 8,
-     "parent": "Ketu",
-     "planet": "Rahu",
-     "start_date": "2095-12-25",
-     "end_date": "2097-01-11",
-     "houses_ruled": [
-      12
-     ],
-     "categories": [
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 8,
-     "parent": "Ketu",
-     "planet": "Jupiter",
-     "start_date": "2097-01-11",
-     "end_date": "2097-12-18",
-     "houses_ruled": [
-      3,
-      12
-     ],
-     "categories": [
-      "courage",
-      "siblings",
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 8,
-     "parent": "Ketu",
-     "planet": "Saturn",
-     "start_date": "2097-12-18",
-     "end_date": "2099-01-27",
-     "houses_ruled": [
-      1,
-      2
-     ],
-     "categories": [
-      "self",
-      "vitality",
-      "wealth",
-      "family"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 8,
-     "parent": "Ketu",
-     "planet": "Mercury",
-     "start_date": "2099-01-27",
-     "end_date": "2100-01-24",
+     "category_basis": "lordship",
+     "end_date": "2078-06-28",
      "houses_ruled": [
       6,
       9
      ],
+     "level": "antardasha",
+     "parent": "Mercury",
+     "parent_index": 7,
+     "planet": "Mercury",
+     "start_date": "2076-01-30"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2079-06-25",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Mercury",
+     "parent_index": 7,
+     "planet": "Ketu",
+     "start_date": "2078-06-28"
+    },
+    {
+     "categories": [
+      "children",
+      "learning",
+      "career",
+      "status"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2082-04-25",
+     "houses_ruled": [
+      5,
+      10
+     ],
+     "level": "antardasha",
+     "parent": "Mercury",
+     "parent_index": 7,
+     "planet": "Venus",
+     "start_date": "2079-06-25"
+    },
+    {
+     "categories": [
+      "transformation"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2083-03-01",
+     "houses_ruled": [
+      8
+     ],
+     "level": "antardasha",
+     "parent": "Mercury",
+     "parent_index": 7,
+     "planet": "Sun",
+     "start_date": "2082-04-25"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2084-07-31",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Mercury",
+     "parent_index": 7,
+     "planet": "Moon",
+     "start_date": "2083-03-01"
+    },
+    {
+     "categories": [
+      "home",
+      "mother",
+      "gains",
+      "networks"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2085-07-28",
+     "houses_ruled": [
+      4,
+      11
+     ],
+     "level": "antardasha",
+     "parent": "Mercury",
+     "parent_index": 7,
+     "planet": "Mars",
+     "start_date": "2084-07-31"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2088-02-14",
+     "houses_ruled": [
+      1
+     ],
+     "level": "antardasha",
+     "parent": "Mercury",
+     "parent_index": 7,
+     "planet": "Rahu",
+     "start_date": "2085-07-28"
+    },
+    {
+     "categories": [
+      "courage",
+      "siblings",
+      "expenses",
+      "retreat"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2090-05-22",
+     "houses_ruled": [
+      3,
+      12
+     ],
+     "level": "antardasha",
+     "parent": "Mercury",
+     "parent_index": 7,
+     "planet": "Jupiter",
+     "start_date": "2088-02-14"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality",
+      "wealth",
+      "family"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2093-01-29",
+     "houses_ruled": [
+      1,
+      2
+     ],
+     "level": "antardasha",
+     "parent": "Mercury",
+     "parent_index": 7,
+     "planet": "Saturn",
+     "start_date": "2090-05-22"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2093-06-27",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Ketu",
+     "parent_index": 8,
+     "planet": "Ketu",
+     "start_date": "2093-01-29"
+    },
+    {
+     "categories": [
+      "children",
+      "learning",
+      "career",
+      "status"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2094-08-27",
+     "houses_ruled": [
+      5,
+      10
+     ],
+     "level": "antardasha",
+     "parent": "Ketu",
+     "parent_index": 8,
+     "planet": "Venus",
+     "start_date": "2093-06-27"
+    },
+    {
+     "categories": [
+      "transformation"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2095-01-02",
+     "houses_ruled": [
+      8
+     ],
+     "level": "antardasha",
+     "parent": "Ketu",
+     "parent_index": 8,
+     "planet": "Sun",
+     "start_date": "2094-08-27"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2095-08-03",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Ketu",
+     "parent_index": 8,
+     "planet": "Moon",
+     "start_date": "2095-01-02"
+    },
+    {
+     "categories": [
+      "home",
+      "mother",
+      "gains",
+      "networks"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2095-12-30",
+     "houses_ruled": [
+      4,
+      11
+     ],
+     "level": "antardasha",
+     "parent": "Ketu",
+     "parent_index": 8,
+     "planet": "Mars",
+     "start_date": "2095-08-03"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2097-01-17",
+     "houses_ruled": [
+      1
+     ],
+     "level": "antardasha",
+     "parent": "Ketu",
+     "parent_index": 8,
+     "planet": "Rahu",
+     "start_date": "2095-12-30"
+    },
+    {
+     "categories": [
+      "courage",
+      "siblings",
+      "expenses",
+      "retreat"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2097-12-24",
+     "houses_ruled": [
+      3,
+      12
+     ],
+     "level": "antardasha",
+     "parent": "Ketu",
+     "parent_index": 8,
+     "planet": "Jupiter",
+     "start_date": "2097-01-17"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality",
+      "wealth",
+      "family"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2099-02-02",
+     "houses_ruled": [
+      1,
+      2
+     ],
+     "level": "antardasha",
+     "parent": "Ketu",
+     "parent_index": 8,
+     "planet": "Saturn",
+     "start_date": "2097-12-24"
+    },
+    {
      "categories": [
       "work",
       "health",
       "fortune",
       "dharma"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2100-01-30",
+     "houses_ruled": [
+      6,
+      9
+     ],
+     "level": "antardasha",
+     "parent": "Ketu",
+     "parent_index": 8,
+     "planet": "Mercury",
+     "start_date": "2099-02-02"
     },
     {
-     "level": "antardasha",
-     "parent_index": 9,
-     "parent": "Venus",
-     "planet": "Venus",
-     "start_date": "2100-01-24",
-     "end_date": "2103-05-27",
-     "houses_ruled": [
-      5,
-      10
-     ],
      "categories": [
       "children",
       "learning",
       "career",
       "status"
      ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 9,
-     "parent": "Venus",
-     "planet": "Sun",
-     "start_date": "2103-05-27",
-     "end_date": "2104-05-26",
-     "houses_ruled": [
-      8
-     ],
-     "categories": [
-      "transformation"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 9,
-     "parent": "Venus",
-     "planet": "Moon",
-     "start_date": "2104-05-26",
-     "end_date": "2106-01-25",
-     "houses_ruled": [
-      7
-     ],
-     "categories": [
-      "relationship",
-      "partnership"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 9,
-     "parent": "Venus",
-     "planet": "Mars",
-     "start_date": "2106-01-25",
-     "end_date": "2107-03-27",
-     "houses_ruled": [
-      4,
-      11
-     ],
-     "categories": [
-      "home",
-      "mother",
-      "gains",
-      "networks"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 9,
-     "parent": "Venus",
-     "planet": "Rahu",
-     "start_date": "2107-03-27",
-     "end_date": "2110-03-27",
-     "houses_ruled": [
-      12
-     ],
-     "categories": [
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 9,
-     "parent": "Venus",
-     "planet": "Jupiter",
-     "start_date": "2110-03-27",
-     "end_date": "2112-11-25",
-     "houses_ruled": [
-      3,
-      12
-     ],
-     "categories": [
-      "courage",
-      "siblings",
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 9,
-     "parent": "Venus",
-     "planet": "Saturn",
-     "start_date": "2112-11-25",
-     "end_date": "2116-01-26",
-     "houses_ruled": [
-      1,
-      2
-     ],
-     "categories": [
-      "self",
-      "vitality",
-      "wealth",
-      "family"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 9,
-     "parent": "Venus",
-     "planet": "Mercury",
-     "start_date": "2116-01-26",
-     "end_date": "2118-11-26",
-     "houses_ruled": [
-      6,
-      9
-     ],
-     "categories": [
-      "work",
-      "health",
-      "fortune",
-      "dharma"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 9,
-     "parent": "Venus",
-     "planet": "Ketu",
-     "start_date": "2118-11-26",
-     "end_date": "2120-01-25",
-     "houses_ruled": [
-      6
-     ],
-     "categories": [
-      "work",
-      "health"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 10,
-     "parent": "Sun",
-     "planet": "Sun",
-     "start_date": "2120-01-25",
-     "end_date": "2120-05-14",
-     "houses_ruled": [
-      8
-     ],
-     "categories": [
-      "transformation"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 10,
-     "parent": "Sun",
-     "planet": "Moon",
-     "start_date": "2120-05-14",
-     "end_date": "2120-11-13",
-     "houses_ruled": [
-      7
-     ],
-     "categories": [
-      "relationship",
-      "partnership"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 10,
-     "parent": "Sun",
-     "planet": "Mars",
-     "start_date": "2120-11-13",
-     "end_date": "2121-03-21",
-     "houses_ruled": [
-      4,
-      11
-     ],
-     "categories": [
-      "home",
-      "mother",
-      "gains",
-      "networks"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 10,
-     "parent": "Sun",
-     "planet": "Rahu",
-     "start_date": "2121-03-21",
-     "end_date": "2122-02-13",
-     "houses_ruled": [
-      12
-     ],
-     "categories": [
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 10,
-     "parent": "Sun",
-     "planet": "Jupiter",
-     "start_date": "2122-02-13",
-     "end_date": "2122-12-02",
-     "houses_ruled": [
-      3,
-      12
-     ],
-     "categories": [
-      "courage",
-      "siblings",
-      "expenses",
-      "retreat"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 10,
-     "parent": "Sun",
-     "planet": "Saturn",
-     "start_date": "2122-12-02",
-     "end_date": "2123-11-14",
-     "houses_ruled": [
-      1,
-      2
-     ],
-     "categories": [
-      "self",
-      "vitality",
-      "wealth",
-      "family"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 10,
-     "parent": "Sun",
-     "planet": "Mercury",
-     "start_date": "2123-11-14",
-     "end_date": "2124-09-19",
-     "houses_ruled": [
-      6,
-      9
-     ],
-     "categories": [
-      "work",
-      "health",
-      "fortune",
-      "dharma"
-     ],
-     "category_basis": "lordship"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 10,
-     "parent": "Sun",
-     "planet": "Ketu",
-     "start_date": "2124-09-19",
-     "end_date": "2125-01-25",
-     "houses_ruled": [
-      6
-     ],
-     "categories": [
-      "work",
-      "health"
-     ],
-     "category_basis": "occupied_house"
-    },
-    {
-     "level": "antardasha",
-     "parent_index": 10,
-     "parent": "Sun",
-     "planet": "Venus",
-     "start_date": "2125-01-25",
-     "end_date": "2126-01-24",
+     "category_basis": "lordship",
+     "end_date": "2103-06-02",
      "houses_ruled": [
       5,
       10
      ],
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 9,
+     "planet": "Venus",
+     "start_date": "2100-01-30"
+    },
+    {
+     "categories": [
+      "transformation"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2104-06-01",
+     "houses_ruled": [
+      8
+     ],
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 9,
+     "planet": "Sun",
+     "start_date": "2103-06-02"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2106-01-31",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 9,
+     "planet": "Moon",
+     "start_date": "2104-06-01"
+    },
+    {
+     "categories": [
+      "home",
+      "mother",
+      "gains",
+      "networks"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2107-04-02",
+     "houses_ruled": [
+      4,
+      11
+     ],
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 9,
+     "planet": "Mars",
+     "start_date": "2106-01-31"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2110-04-01",
+     "houses_ruled": [
+      1
+     ],
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 9,
+     "planet": "Rahu",
+     "start_date": "2107-04-02"
+    },
+    {
+     "categories": [
+      "courage",
+      "siblings",
+      "expenses",
+      "retreat"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2112-11-30",
+     "houses_ruled": [
+      3,
+      12
+     ],
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 9,
+     "planet": "Jupiter",
+     "start_date": "2110-04-01"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality",
+      "wealth",
+      "family"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2116-01-31",
+     "houses_ruled": [
+      1,
+      2
+     ],
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 9,
+     "planet": "Saturn",
+     "start_date": "2112-11-30"
+    },
+    {
+     "categories": [
+      "work",
+      "health",
+      "fortune",
+      "dharma"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2118-12-01",
+     "houses_ruled": [
+      6,
+      9
+     ],
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 9,
+     "planet": "Mercury",
+     "start_date": "2116-01-31"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2120-01-31",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Venus",
+     "parent_index": 9,
+     "planet": "Ketu",
+     "start_date": "2118-12-01"
+    },
+    {
+     "categories": [
+      "transformation"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2120-05-20",
+     "houses_ruled": [
+      8
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 10,
+     "planet": "Sun",
+     "start_date": "2120-01-31"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2120-11-18",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 10,
+     "planet": "Moon",
+     "start_date": "2120-05-20"
+    },
+    {
+     "categories": [
+      "home",
+      "mother",
+      "gains",
+      "networks"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2121-03-26",
+     "houses_ruled": [
+      4,
+      11
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 10,
+     "planet": "Mars",
+     "start_date": "2120-11-18"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2122-02-18",
+     "houses_ruled": [
+      1
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 10,
+     "planet": "Rahu",
+     "start_date": "2121-03-26"
+    },
+    {
+     "categories": [
+      "courage",
+      "siblings",
+      "expenses",
+      "retreat"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2122-12-07",
+     "houses_ruled": [
+      3,
+      12
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 10,
+     "planet": "Jupiter",
+     "start_date": "2122-02-18"
+    },
+    {
+     "categories": [
+      "self",
+      "vitality",
+      "wealth",
+      "family"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2123-11-19",
+     "houses_ruled": [
+      1,
+      2
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 10,
+     "planet": "Saturn",
+     "start_date": "2122-12-07"
+    },
+    {
+     "categories": [
+      "work",
+      "health",
+      "fortune",
+      "dharma"
+     ],
+     "category_basis": "lordship",
+     "end_date": "2124-09-25",
+     "houses_ruled": [
+      6,
+      9
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 10,
+     "planet": "Mercury",
+     "start_date": "2123-11-19"
+    },
+    {
+     "categories": [
+      "relationship",
+      "partnership"
+     ],
+     "category_basis": "occupied_house",
+     "end_date": "2125-01-31",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 10,
+     "planet": "Ketu",
+     "start_date": "2124-09-25"
+    },
+    {
      "categories": [
       "children",
       "learning",
       "career",
       "status"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2126-01-31",
+     "houses_ruled": [
+      5,
+      10
+     ],
+     "level": "antardasha",
+     "parent": "Sun",
+     "parent_index": 10,
+     "planet": "Venus",
+     "start_date": "2125-01-31"
     },
     {
-     "level": "antardasha",
-     "parent_index": 11,
-     "parent": "Moon",
-     "planet": "Moon",
-     "start_date": "2126-01-24",
-     "end_date": "2126-11-24",
-     "houses_ruled": [
-      7
-     ],
      "categories": [
       "relationship",
       "partnership"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2126-12-01",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Moon",
+     "parent_index": 11,
+     "planet": "Moon",
+     "start_date": "2126-01-31"
     },
     {
-     "level": "antardasha",
-     "parent_index": 11,
-     "parent": "Moon",
-     "planet": "Mars",
-     "start_date": "2126-11-24",
-     "end_date": "2127-06-25",
-     "houses_ruled": [
-      4,
-      11
-     ],
      "categories": [
       "home",
       "mother",
       "gains",
       "networks"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2127-07-03",
+     "houses_ruled": [
+      4,
+      11
+     ],
+     "level": "antardasha",
+     "parent": "Moon",
+     "parent_index": 11,
+     "planet": "Mars",
+     "start_date": "2126-12-01"
     },
     {
-     "level": "antardasha",
-     "parent_index": 11,
-     "parent": "Moon",
-     "planet": "Rahu",
-     "start_date": "2127-06-25",
-     "end_date": "2128-12-24",
-     "houses_ruled": [
-      12
-     ],
      "categories": [
-      "expenses",
-      "retreat"
+      "self",
+      "vitality"
      ],
-     "category_basis": "occupied_house"
+     "category_basis": "occupied_house",
+     "end_date": "2128-12-31",
+     "houses_ruled": [
+      1
+     ],
+     "level": "antardasha",
+     "parent": "Moon",
+     "parent_index": 11,
+     "planet": "Rahu",
+     "start_date": "2127-07-03"
     },
     {
-     "level": "antardasha",
-     "parent_index": 11,
-     "parent": "Moon",
-     "planet": "Jupiter",
-     "start_date": "2128-12-24",
-     "end_date": "2130-04-25",
-     "houses_ruled": [
-      3,
-      12
-     ],
      "categories": [
       "courage",
       "siblings",
       "expenses",
       "retreat"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2130-05-03",
+     "houses_ruled": [
+      3,
+      12
+     ],
+     "level": "antardasha",
+     "parent": "Moon",
+     "parent_index": 11,
+     "planet": "Jupiter",
+     "start_date": "2128-12-31"
     },
     {
-     "level": "antardasha",
-     "parent_index": 11,
-     "parent": "Moon",
-     "planet": "Saturn",
-     "start_date": "2130-04-25",
-     "end_date": "2131-11-24",
-     "houses_ruled": [
-      1,
-      2
-     ],
      "categories": [
       "self",
       "vitality",
       "wealth",
       "family"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2131-12-02",
+     "houses_ruled": [
+      1,
+      2
+     ],
+     "level": "antardasha",
+     "parent": "Moon",
+     "parent_index": 11,
+     "planet": "Saturn",
+     "start_date": "2130-05-03"
     },
     {
-     "level": "antardasha",
-     "parent_index": 11,
-     "parent": "Moon",
-     "planet": "Mercury",
-     "start_date": "2131-11-24",
-     "end_date": "2133-04-24",
-     "houses_ruled": [
-      6,
-      9
-     ],
      "categories": [
       "work",
       "health",
       "fortune",
       "dharma"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2133-05-02",
+     "houses_ruled": [
+      6,
+      9
+     ],
+     "level": "antardasha",
+     "parent": "Moon",
+     "parent_index": 11,
+     "planet": "Mercury",
+     "start_date": "2131-12-02"
     },
     {
-     "level": "antardasha",
-     "parent_index": 11,
-     "parent": "Moon",
-     "planet": "Ketu",
-     "start_date": "2133-04-24",
-     "end_date": "2133-11-23",
-     "houses_ruled": [
-      6
-     ],
      "categories": [
-      "work",
-      "health"
+      "relationship",
+      "partnership"
      ],
-     "category_basis": "occupied_house"
+     "category_basis": "occupied_house",
+     "end_date": "2133-12-02",
+     "houses_ruled": [
+      7
+     ],
+     "level": "antardasha",
+     "parent": "Moon",
+     "parent_index": 11,
+     "planet": "Ketu",
+     "start_date": "2133-05-02"
     },
     {
-     "level": "antardasha",
-     "parent_index": 11,
-     "parent": "Moon",
-     "planet": "Venus",
-     "start_date": "2133-11-23",
-     "end_date": "2135-07-25",
-     "houses_ruled": [
-      5,
-      10
-     ],
      "categories": [
       "children",
       "learning",
       "career",
       "status"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2135-08-02",
+     "houses_ruled": [
+      5,
+      10
+     ],
+     "level": "antardasha",
+     "parent": "Moon",
+     "parent_index": 11,
+     "planet": "Venus",
+     "start_date": "2133-12-02"
     },
     {
-     "level": "antardasha",
-     "parent_index": 11,
-     "parent": "Moon",
-     "planet": "Sun",
-     "start_date": "2135-07-25",
-     "end_date": "2136-01-24",
-     "houses_ruled": [
-      8
-     ],
      "categories": [
       "transformation"
      ],
-     "category_basis": "lordship"
+     "category_basis": "lordship",
+     "end_date": "2136-02-01",
+     "houses_ruled": [
+      8
+     ],
+     "level": "antardasha",
+     "parent": "Moon",
+     "parent_index": 11,
+     "planet": "Sun",
+     "start_date": "2135-08-02"
     }
    ]
-  },
-  "transit": {
-   "as_of": "2026-08-24",
-   "transit_place": {
-    "name": "Jamshedpur, India",
-    "basis": "birth_place",
-    "latitude": 22.8046,
-    "longitude": 86.2029,
-    "timezone": "Asia/Kolkata"
-   },
-   "windows": [
-    {
-     "kind": "sign_transit",
-     "planet": "Saturn",
-     "sign": "Pisces",
-     "start_date": "2025-03-30",
-     "end_date": "2027-06-02",
-     "description": "Saturn transits Pisces",
-     "house_from_lagna": 3,
-     "house_from_moon": 12
-    },
-    {
-     "kind": "classical_rule",
-     "rule": "sade_sati",
-     "planet": "Saturn",
-     "start_date": "2025-03-30",
-     "end_date": "2027-06-02",
-     "description": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries)."
-    },
-    {
-     "kind": "sign_transit",
-     "planet": "Ketu",
-     "sign": "Leo",
-     "start_date": "2025-05-30",
-     "end_date": "2026-11-25",
-     "description": "Ketu transits Leo",
-     "house_from_lagna": 8,
-     "house_from_moon": 5
-    },
-    {
-     "kind": "sign_transit",
-     "planet": "Rahu",
-     "sign": "Aquarius",
-     "start_date": "2025-05-30",
-     "end_date": "2026-11-25",
-     "description": "Rahu transits Aquarius",
-     "house_from_lagna": 2,
-     "house_from_moon": 11
-    },
-    {
-     "kind": "sign_transit",
-     "planet": "Jupiter",
-     "sign": "Cancer",
-     "start_date": "2026-06-02",
-     "end_date": "2026-10-31",
-     "description": "Jupiter transits Cancer",
-     "house_from_lagna": 7,
-     "house_from_moon": 4
-    }
-   ],
-   "bodies_expected": [
-    "Saturn",
-    "Jupiter",
-    "Rahu",
-    "Ketu"
-   ],
-   "windows_dropped": [],
-   "active_without_dates": [
-    {
-     "rule": "jupiter_aspect_to_lagna",
-     "description": "Transit Jupiter in house 7 from Lagna \u2014 favourable (kendra/trikona).",
-     "reason": "active, but its start and end could not be computed \u2014 so it is named without dates rather than given plausible ones"
-    }
-   ]
-  },
-  "cursor": {
-   "as_of": "2026-08-24",
-   "mahadasha_index": 4,
-   "antardasha_index": 37
   },
   "headline": {
-   "kind": "dasha_period",
-   "mahadasha": {
-    "level": "mahadasha",
-    "index": 4,
-    "planet": "Rahu",
-    "start_date": "2023-01-26",
-    "end_date": "2041-01-25",
-    "houses_ruled": [
-     12
-    ],
-    "categories": [
-     "expenses",
-     "retreat"
-    ],
-    "category_basis": "occupied_house"
-   },
    "antardasha": {
-    "level": "antardasha",
-    "parent_index": 4,
-    "parent": "Rahu",
-    "planet": "Jupiter",
-    "start_date": "2025-10-08",
-    "end_date": "2028-03-03",
-    "houses_ruled": [
-     3,
-     12
-    ],
     "categories": [
      "courage",
      "siblings",
      "expenses",
      "retreat"
     ],
-    "category_basis": "lordship"
+    "category_basis": "lordship",
+    "end_date": "2028-03-06",
+    "houses_ruled": [
+     3,
+     12
+    ],
+    "level": "antardasha",
+    "parent": "Rahu",
+    "parent_index": 4,
+    "planet": "Jupiter",
+    "start_date": "2025-10-11"
+   },
+   "kind": "dasha_period",
+   "mahadasha": {
+    "categories": [
+     "self",
+     "vitality"
+    ],
+    "category_basis": "occupied_house",
+    "end_date": "2041-01-29",
+    "houses_ruled": [
+     1
+    ],
+    "index": 4,
+    "level": "mahadasha",
+    "planet": "Rahu",
+    "start_date": "2023-01-29"
    }
   },
+  "inputs_hash": "bc7cb3ee29f7c6b37bdf895b512bce5f31722c85da2aa515915eeb47e1756461",
+  "key": "bc7cb3ee29f7c6b3:2026-08-24",
+  "layers": [
+   "dasha",
+   "transit"
+  ],
   "span": {
-   "start": "1989-12-10",
-   "end": "2136-01-24"
+   "end": "2136-02-01",
+   "start": "1989-12-10"
   },
+  "time_known": true,
+  "transit": {
+   "active_without_dates": [
+    {
+     "description": "Transit Jupiter in house 7 from Lagna \u2014 favourable (kendra/trikona).",
+     "reason": "active, but its start and end could not be computed \u2014 so it is named without dates rather than given plausible ones",
+     "rule": "jupiter_aspect_to_lagna"
+    }
+   ],
+   "as_of": "2026-08-24",
+   "bodies_expected": [
+    "Saturn",
+    "Jupiter",
+    "Rahu",
+    "Ketu"
+   ],
+   "transit_place": {
+    "basis": "birth_place",
+    "latitude": 22.8046,
+    "longitude": 86.2029,
+    "name": "Jamshedpur, India",
+    "timezone": "Asia/Kolkata"
+   },
+   "windows": [
+    {
+     "description": "Saturn transits Pisces",
+     "end_date": "2028-02-23",
+     "house_from_lagna": 3,
+     "house_from_moon": 12,
+     "kind": "sign_transit",
+     "planet": "Saturn",
+     "sign": "Pisces",
+     "start_date": "2025-03-30"
+    },
+    {
+     "description": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries).",
+     "end_date": "2032-05-30",
+     "kind": "classical_rule",
+     "planet": "Saturn",
+     "rule": "sade_sati",
+     "start_date": "2025-03-30",
+     "sub_phases": [
+      {
+       "current": true,
+       "end": "2027-06-02",
+       "phase": "pre / Aroha",
+       "retrograde_re_entries": 1,
+       "saturn_sign": "Pisces",
+       "start": "2025-03-30"
+      },
+      {
+       "current": false,
+       "end": "2029-08-08",
+       "phase": "peak / Madhya",
+       "retrograde_re_entries": 2,
+       "saturn_sign": "Aries",
+       "start": "2027-06-03"
+      },
+      {
+       "current": false,
+       "end": "2032-05-30",
+       "phase": "post / Avaroha",
+       "retrograde_re_entries": 1,
+       "saturn_sign": "Taurus",
+       "start": "2029-08-09"
+      }
+     ]
+    },
+    {
+     "description": "Ketu transits Leo",
+     "end_date": "2026-12-05",
+     "house_from_lagna": 8,
+     "house_from_moon": 5,
+     "kind": "sign_transit",
+     "planet": "Ketu",
+     "sign": "Leo",
+     "start_date": "2025-05-19"
+    },
+    {
+     "description": "Rahu transits Aquarius",
+     "end_date": "2026-12-05",
+     "house_from_lagna": 2,
+     "house_from_moon": 11,
+     "kind": "sign_transit",
+     "planet": "Rahu",
+     "sign": "Aquarius",
+     "start_date": "2025-05-19"
+    },
+    {
+     "description": "Jupiter transits Cancer",
+     "end_date": "2027-06-25",
+     "house_from_lagna": 7,
+     "house_from_moon": 4,
+     "kind": "sign_transit",
+     "planet": "Jupiter",
+     "sign": "Cancer",
+     "start_date": "2025-10-19"
+    }
+   ],
+   "windows_dropped": []
+  },
+  "type": "life_timeline",
+  "undetermined": [],
   "years": [
    1989,
    1990,
@@ -2538,14 +2582,5 @@
   2134,
   2135,
   2136
- ],
- "chart": {
-  "status": "fresh",
-  "computed_at": "2026-08-25T13:29:37.970930+00:00"
- },
- "person": {
-  "id": "self",
-  "display_name": "Ravi"
- },
- "served_from_store": false
+ ]
 }

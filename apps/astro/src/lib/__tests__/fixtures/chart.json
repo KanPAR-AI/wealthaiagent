@@ -1,0 +1,804 @@
+{
+ "_capture": {
+  "as_of": "2026-08-24",
+  "captured_at": "2026-08-24",
+  "captured_by": "chatservice/scripts/capture_astral_fixtures.py",
+  "engine_version": "kerykeion/5.12.9",
+  "fn": "natal_chart",
+  "fn_identity": "natal_chart/7+d0a6e637fb302caa",
+  "fn_version": 7
+ },
+ "chart": {
+  "antardasha": {
+   "end_date": "2028-03-06",
+   "planet": "Jupiter",
+   "start_date": "2025-10-11"
+  },
+  "ascendant": "Capricorn",
+  "ascendant_degree": 297.85,
+  "ascendant_sign_degree": 27.85,
+  "ayanamsa": "LAHIRI",
+  "birth_data": {
+   "date_of_birth": "1989-12-10",
+   "dst_in_effect": false,
+   "latitude": 22.8046,
+   "longitude": 86.2029,
+   "place_of_birth": "Jamshedpur, India",
+   "time_known": true,
+   "time_of_birth": "10:30",
+   "timezone": "Asia/Kolkata",
+   "utc_offset_minutes": 330,
+   "zone_resolution": "iana"
+  },
+  "computed_at": "2026-08-27T17:15:20.841906+00:00",
+  "dasha_periods": [
+   {
+    "end_date": "2000-01-28",
+    "is_current": false,
+    "planet": "Venus",
+    "start_date": "1989-12-10"
+   },
+   {
+    "end_date": "2006-01-28",
+    "is_current": false,
+    "planet": "Sun",
+    "start_date": "2000-01-28"
+   },
+   {
+    "end_date": "2016-01-29",
+    "is_current": false,
+    "planet": "Moon",
+    "start_date": "2006-01-28"
+   },
+   {
+    "end_date": "2023-01-29",
+    "is_current": false,
+    "planet": "Mars",
+    "start_date": "2016-01-29"
+   },
+   {
+    "end_date": "2041-01-29",
+    "is_current": true,
+    "planet": "Rahu",
+    "start_date": "2023-01-29"
+   },
+   {
+    "end_date": "2057-01-29",
+    "is_current": false,
+    "planet": "Jupiter",
+    "start_date": "2041-01-29"
+   },
+   {
+    "end_date": "2076-01-30",
+    "is_current": false,
+    "planet": "Saturn",
+    "start_date": "2057-01-29"
+   },
+   {
+    "end_date": "2093-01-29",
+    "is_current": false,
+    "planet": "Mercury",
+    "start_date": "2076-01-30"
+   },
+   {
+    "end_date": "2100-01-30",
+    "is_current": false,
+    "planet": "Ketu",
+    "start_date": "2093-01-29"
+   },
+   {
+    "end_date": "2120-01-31",
+    "is_current": false,
+    "planet": "Venus",
+    "start_date": "2100-01-30"
+   },
+   {
+    "end_date": "2126-01-31",
+    "is_current": false,
+    "planet": "Sun",
+    "start_date": "2120-01-31"
+   },
+   {
+    "end_date": "2136-02-01",
+    "is_current": false,
+    "planet": "Moon",
+    "start_date": "2126-01-31"
+   }
+  ],
+  "divisional_charts": [
+   {
+    "ascendant_rashi_number": 10,
+    "ascendant_sign": "Capricorn",
+    "ascendant_sign_index": 9,
+    "cells": [
+     {
+      "house": 1,
+      "rashi": "Capricorn",
+      "rashi_number": 10,
+      "tokens": [
+       "As",
+       "Ve",
+       "Ra"
+      ]
+     },
+     {
+      "house": 2,
+      "rashi": "Aquarius",
+      "rashi_number": 11,
+      "tokens": []
+     },
+     {
+      "house": 3,
+      "rashi": "Pisces",
+      "rashi_number": 12,
+      "tokens": []
+     },
+     {
+      "house": 4,
+      "rashi": "Aries",
+      "rashi_number": 1,
+      "tokens": [
+       "Mo"
+      ]
+     },
+     {
+      "house": 5,
+      "rashi": "Taurus",
+      "rashi_number": 2,
+      "tokens": []
+     },
+     {
+      "house": 6,
+      "rashi": "Gemini",
+      "rashi_number": 3,
+      "tokens": [
+       "Ju"
+      ]
+     },
+     {
+      "house": 7,
+      "rashi": "Cancer",
+      "rashi_number": 4,
+      "tokens": [
+       "Ke"
+      ]
+     },
+     {
+      "house": 8,
+      "rashi": "Leo",
+      "rashi_number": 5,
+      "tokens": []
+     },
+     {
+      "house": 9,
+      "rashi": "Virgo",
+      "rashi_number": 6,
+      "tokens": []
+     },
+     {
+      "house": 10,
+      "rashi": "Libra",
+      "rashi_number": 7,
+      "tokens": []
+     },
+     {
+      "house": 11,
+      "rashi": "Scorpio",
+      "rashi_number": 8,
+      "tokens": [
+       "Su",
+       "Ma"
+      ]
+     },
+     {
+      "house": 12,
+      "rashi": "Sagittarius",
+      "rashi_number": 9,
+      "tokens": [
+       "Me",
+       "Sa"
+      ]
+     }
+    ],
+    "key": "D1",
+    "placements": [
+     {
+      "body": "Sun",
+      "house": 11,
+      "rashi_number": 8,
+      "sign": "Scorpio",
+      "sign_index": 7
+     },
+     {
+      "body": "Moon",
+      "house": 4,
+      "rashi_number": 1,
+      "sign": "Aries",
+      "sign_index": 0
+     },
+     {
+      "body": "Mercury",
+      "house": 12,
+      "rashi_number": 9,
+      "sign": "Sagittarius",
+      "sign_index": 8
+     },
+     {
+      "body": "Venus",
+      "house": 1,
+      "rashi_number": 10,
+      "sign": "Capricorn",
+      "sign_index": 9
+     },
+     {
+      "body": "Mars",
+      "house": 11,
+      "rashi_number": 8,
+      "sign": "Scorpio",
+      "sign_index": 7
+     },
+     {
+      "body": "Jupiter",
+      "house": 6,
+      "rashi_number": 3,
+      "sign": "Gemini",
+      "sign_index": 2
+     },
+     {
+      "body": "Saturn",
+      "house": 12,
+      "rashi_number": 9,
+      "sign": "Sagittarius",
+      "sign_index": 8
+     },
+     {
+      "body": "Rahu",
+      "house": 1,
+      "rashi_number": 10,
+      "sign": "Capricorn",
+      "sign_index": 9
+     },
+     {
+      "body": "Ketu",
+      "house": 7,
+      "rashi_number": 4,
+      "sign": "Cancer",
+      "sign_index": 3
+     }
+    ],
+    "title": "Lagna Chart (D1)"
+   },
+   {
+    "ascendant_rashi_number": 1,
+    "ascendant_sign": "Aries",
+    "ascendant_sign_index": 0,
+    "cells": [
+     {
+      "house": 1,
+      "rashi": "Aries",
+      "rashi_number": 1,
+      "tokens": [
+       "As",
+       "Mo"
+      ]
+     },
+     {
+      "house": 2,
+      "rashi": "Taurus",
+      "rashi_number": 2,
+      "tokens": []
+     },
+     {
+      "house": 3,
+      "rashi": "Gemini",
+      "rashi_number": 3,
+      "tokens": [
+       "Ju"
+      ]
+     },
+     {
+      "house": 4,
+      "rashi": "Cancer",
+      "rashi_number": 4,
+      "tokens": [
+       "Ke"
+      ]
+     },
+     {
+      "house": 5,
+      "rashi": "Leo",
+      "rashi_number": 5,
+      "tokens": []
+     },
+     {
+      "house": 6,
+      "rashi": "Virgo",
+      "rashi_number": 6,
+      "tokens": []
+     },
+     {
+      "house": 7,
+      "rashi": "Libra",
+      "rashi_number": 7,
+      "tokens": []
+     },
+     {
+      "house": 8,
+      "rashi": "Scorpio",
+      "rashi_number": 8,
+      "tokens": [
+       "Su",
+       "Ma"
+      ]
+     },
+     {
+      "house": 9,
+      "rashi": "Sagittarius",
+      "rashi_number": 9,
+      "tokens": [
+       "Me",
+       "Sa"
+      ]
+     },
+     {
+      "house": 10,
+      "rashi": "Capricorn",
+      "rashi_number": 10,
+      "tokens": [
+       "Ve",
+       "Ra"
+      ]
+     },
+     {
+      "house": 11,
+      "rashi": "Aquarius",
+      "rashi_number": 11,
+      "tokens": []
+     },
+     {
+      "house": 12,
+      "rashi": "Pisces",
+      "rashi_number": 12,
+      "tokens": []
+     }
+    ],
+    "key": "MOON",
+    "placements": [
+     {
+      "body": "Sun",
+      "house": 8,
+      "rashi_number": 8,
+      "sign": "Scorpio",
+      "sign_index": 7
+     },
+     {
+      "body": "Moon",
+      "house": 1,
+      "rashi_number": 1,
+      "sign": "Aries",
+      "sign_index": 0
+     },
+     {
+      "body": "Mercury",
+      "house": 9,
+      "rashi_number": 9,
+      "sign": "Sagittarius",
+      "sign_index": 8
+     },
+     {
+      "body": "Venus",
+      "house": 10,
+      "rashi_number": 10,
+      "sign": "Capricorn",
+      "sign_index": 9
+     },
+     {
+      "body": "Mars",
+      "house": 8,
+      "rashi_number": 8,
+      "sign": "Scorpio",
+      "sign_index": 7
+     },
+     {
+      "body": "Jupiter",
+      "house": 3,
+      "rashi_number": 3,
+      "sign": "Gemini",
+      "sign_index": 2
+     },
+     {
+      "body": "Saturn",
+      "house": 9,
+      "rashi_number": 9,
+      "sign": "Sagittarius",
+      "sign_index": 8
+     },
+     {
+      "body": "Rahu",
+      "house": 10,
+      "rashi_number": 10,
+      "sign": "Capricorn",
+      "sign_index": 9
+     },
+     {
+      "body": "Ketu",
+      "house": 4,
+      "rashi_number": 4,
+      "sign": "Cancer",
+      "sign_index": 3
+     }
+    ],
+    "title": "Moon Chart (Chandra Lagna)"
+   },
+   {
+    "ascendant_rashi_number": 6,
+    "ascendant_sign": "Virgo",
+    "ascendant_sign_index": 5,
+    "cells": [
+     {
+      "house": 1,
+      "rashi": "Virgo",
+      "rashi_number": 6,
+      "tokens": [
+       "As",
+       "Mo",
+       "Sa"
+      ]
+     },
+     {
+      "house": 2,
+      "rashi": "Libra",
+      "rashi_number": 7,
+      "tokens": []
+     },
+     {
+      "house": 3,
+      "rashi": "Scorpio",
+      "rashi_number": 8,
+      "tokens": []
+     },
+     {
+      "house": 4,
+      "rashi": "Sagittarius",
+      "rashi_number": 9,
+      "tokens": []
+     },
+     {
+      "house": 5,
+      "rashi": "Capricorn",
+      "rashi_number": 10,
+      "tokens": []
+     },
+     {
+      "house": 6,
+      "rashi": "Aquarius",
+      "rashi_number": 11,
+      "tokens": [
+       "Su",
+       "Ve",
+       "Ju",
+       "Ke"
+      ]
+     },
+     {
+      "house": 7,
+      "rashi": "Pisces",
+      "rashi_number": 12,
+      "tokens": []
+     },
+     {
+      "house": 8,
+      "rashi": "Aries",
+      "rashi_number": 1,
+      "tokens": []
+     },
+     {
+      "house": 9,
+      "rashi": "Taurus",
+      "rashi_number": 2,
+      "tokens": []
+     },
+     {
+      "house": 10,
+      "rashi": "Gemini",
+      "rashi_number": 3,
+      "tokens": []
+     },
+     {
+      "house": 11,
+      "rashi": "Cancer",
+      "rashi_number": 4,
+      "tokens": [
+       "Me",
+       "Ma"
+      ]
+     },
+     {
+      "house": 12,
+      "rashi": "Leo",
+      "rashi_number": 5,
+      "tokens": [
+       "Ra"
+      ]
+     }
+    ],
+    "key": "D9",
+    "placements": [
+     {
+      "body": "Sun",
+      "house": 6,
+      "rashi_number": 11,
+      "sign": "Aquarius",
+      "sign_index": 10
+     },
+     {
+      "body": "Moon",
+      "house": 1,
+      "rashi_number": 6,
+      "sign": "Virgo",
+      "sign_index": 5
+     },
+     {
+      "body": "Mercury",
+      "house": 11,
+      "rashi_number": 4,
+      "sign": "Cancer",
+      "sign_index": 3
+     },
+     {
+      "body": "Venus",
+      "house": 6,
+      "rashi_number": 11,
+      "sign": "Aquarius",
+      "sign_index": 10
+     },
+     {
+      "body": "Mars",
+      "house": 11,
+      "rashi_number": 4,
+      "sign": "Cancer",
+      "sign_index": 3
+     },
+     {
+      "body": "Jupiter",
+      "house": 6,
+      "rashi_number": 11,
+      "sign": "Aquarius",
+      "sign_index": 10
+     },
+     {
+      "body": "Saturn",
+      "house": 1,
+      "rashi_number": 6,
+      "sign": "Virgo",
+      "sign_index": 5
+     },
+     {
+      "body": "Rahu",
+      "house": 12,
+      "rashi_number": 5,
+      "sign": "Leo",
+      "sign_index": 4
+     },
+     {
+      "body": "Ketu",
+      "house": 6,
+      "rashi_number": 11,
+      "sign": "Aquarius",
+      "sign_index": 10
+     }
+    ],
+    "title": "Navamsa Chart (D9)"
+   }
+  ],
+  "engine_version": "kerykeion/5.12.9",
+  "house_system": "W",
+  "houses": [
+   {
+    "degree": 270.0,
+    "house": 1,
+    "lord": "Saturn",
+    "sign": "Capricorn",
+    "sign_degree": 0.0
+   },
+   {
+    "degree": 300.0,
+    "house": 2,
+    "lord": "Saturn",
+    "sign": "Aquarius",
+    "sign_degree": 0.0
+   },
+   {
+    "degree": 330.0,
+    "house": 3,
+    "lord": "Jupiter",
+    "sign": "Pisces",
+    "sign_degree": 0.0
+   },
+   {
+    "degree": 0.0,
+    "house": 4,
+    "lord": "Mars",
+    "sign": "Aries",
+    "sign_degree": 0.0
+   },
+   {
+    "degree": 30.0,
+    "house": 5,
+    "lord": "Venus",
+    "sign": "Taurus",
+    "sign_degree": 0.0
+   },
+   {
+    "degree": 60.0,
+    "house": 6,
+    "lord": "Mercury",
+    "sign": "Gemini",
+    "sign_degree": 0.0
+   },
+   {
+    "degree": 90.0,
+    "house": 7,
+    "lord": "Moon",
+    "sign": "Cancer",
+    "sign_degree": 0.0
+   },
+   {
+    "degree": 120.0,
+    "house": 8,
+    "lord": "Sun",
+    "sign": "Leo",
+    "sign_degree": 0.0
+   },
+   {
+    "degree": 150.0,
+    "house": 9,
+    "lord": "Mercury",
+    "sign": "Virgo",
+    "sign_degree": 0.0
+   },
+   {
+    "degree": 180.0,
+    "house": 10,
+    "lord": "Venus",
+    "sign": "Libra",
+    "sign_degree": 0.0
+   },
+   {
+    "degree": 210.0,
+    "house": 11,
+    "lord": "Mars",
+    "sign": "Scorpio",
+    "sign_degree": 0.0
+   },
+   {
+    "degree": 240.0,
+    "house": 12,
+    "lord": "Jupiter",
+    "sign": "Sagittarius",
+    "sign_degree": 0.0
+   }
+  ],
+  "mahadasha": {
+   "end_date": "2041-01-29",
+   "planet": "Rahu",
+   "start_date": "2023-01-29"
+  },
+  "moon_nakshatra_alternatives": [],
+  "moon_sign": "Aries",
+  "moon_sign_alternatives": [],
+  "node_model": "mean",
+  "planets": [
+   {
+    "degree": 234.4,
+    "dignity": "friend's sign",
+    "house": 11,
+    "nakshatra": "Jyeshtha",
+    "nakshatra_pada": 3,
+    "planet": "Sun",
+    "retrograde": false,
+    "sign": "Scorpio",
+    "sign_degree": 24.4
+   },
+   {
+    "degree": 19.91,
+    "dignity": "neutral",
+    "house": 4,
+    "nakshatra": "Bharani",
+    "nakshatra_pada": 2,
+    "planet": "Moon",
+    "retrograde": false,
+    "sign": "Aries",
+    "sign_degree": 19.91
+   },
+   {
+    "degree": 250.19,
+    "dignity": "neutral",
+    "house": 12,
+    "nakshatra": "Mula",
+    "nakshatra_pada": 4,
+    "planet": "Mercury",
+    "retrograde": false,
+    "sign": "Sagittarius",
+    "sign_degree": 10.19
+   },
+   {
+    "degree": 276.28,
+    "dignity": "friend's sign",
+    "house": 1,
+    "nakshatra": "Uttara Ashadha",
+    "nakshatra_pada": 3,
+    "planet": "Venus",
+    "retrograde": false,
+    "sign": "Capricorn",
+    "sign_degree": 6.28
+   },
+   {
+    "degree": 210.74,
+    "dignity": "own sign",
+    "house": 11,
+    "nakshatra": "Vishakha",
+    "nakshatra_pada": 4,
+    "planet": "Mars",
+    "retrograde": false,
+    "sign": "Scorpio",
+    "sign_degree": 0.74
+   },
+   {
+    "degree": 74.37,
+    "dignity": "enemy's sign",
+    "house": 6,
+    "nakshatra": "Ardra",
+    "nakshatra_pada": 3,
+    "planet": "Jupiter",
+    "retrograde": true,
+    "sign": "Gemini",
+    "sign_degree": 14.37
+   },
+   {
+    "degree": 259.36,
+    "dignity": "neutral",
+    "house": 12,
+    "nakshatra": "Purva Ashadha",
+    "nakshatra_pada": 2,
+    "planet": "Saturn",
+    "retrograde": false,
+    "sign": "Sagittarius",
+    "sign_degree": 19.36
+   },
+   {
+    "degree": 295.9,
+    "dignity": "neutral",
+    "house": 1,
+    "nakshatra": "Dhanishtha",
+    "nakshatra_pada": 1,
+    "planet": "Rahu",
+    "retrograde": true,
+    "sign": "Capricorn",
+    "sign_degree": 25.9
+   },
+   {
+    "degree": 115.9,
+    "dignity": "neutral",
+    "house": 7,
+    "nakshatra": "Ashlesha",
+    "nakshatra_pada": 3,
+    "planet": "Ketu",
+    "retrograde": true,
+    "sign": "Cancer",
+    "sign_degree": 25.9
+   }
+  ],
+  "status": "fresh",
+  "sun_sign": "Scorpio",
+  "time_known": true,
+  "undetermined": [],
+  "yogas": [
+   "Venus is Yogakaraka for Capricorn Lagna, as lord of the 5th and 10th houses"
+  ],
+  "zodiac_mode": "sidereal"
+ },
+ "display_name": "Ravi",
+ "person_id": "self",
+ "tob_known": true
+}

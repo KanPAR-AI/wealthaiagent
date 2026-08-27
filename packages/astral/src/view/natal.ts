@@ -4,7 +4,7 @@
  */
 
 import { formatDegrees, formatIsoDate } from '../format';
-import type { NatalChartPayload, NatalPlanet } from '../payloads';
+import type { DivisionalChart, NatalChartPayload, NatalPlanet } from '../payloads';
 
 /** Same abbreviations as the Kundli PDF (`export_pdf.py:_PLANET_ABBR`). */
 const PLANET_ABBR: Record<string, string> = {
@@ -49,6 +49,72 @@ export function placementRows(chart: NatalChartPayload): PlacementRow[] {
   }));
 }
 
+// ── one diamond, three ways to fill it (docs/49 ASTRAL-234) ───────────────
+//
+// The chart surface draws D1, the Moon chart and D9 from their own models;
+// the chat block draws the rashi chart from the planet list. Both go through
+// ONE component (`ChartDiamond`) and therefore need one cell shape. This is
+// that shape, and the two builders below are the only places it is made.
+
+export interface DiamondCell {
+  house: number;
+  /** what sits in the cell's corner: a rashi NUMBER when the engine sent
+   *  cells (the convention the Kundli PDF prints, AMB-36(a)), a house number
+   *  when it did not */
+  label: string;
+  /** graha abbreviations, in the model's own order */
+  tokens: string[];
+}
+
+/**
+ * The twelve cells of one calculated chart.
+ *
+ * When the engine sent `cells` — the chart READ does, `divisional_chart_cells`
+ * built them, and the PDF prints the same ones — they are used verbatim,
+ * rashi numbers and all. When it did not (the chat block carries the raw
+ * artifact), the diamond falls back to HOUSE numbers built from the model's
+ * own placements.
+ *
+ * What this function must never do is compute the missing rashi numbers.
+ * `((ascendant + house - 1) % 12) + 1` is a rashi number derived by a
+ * renderer, which is the whole of ASTRAL-230, and the fallback exists so it
+ * never has to be written.
+ */
+export function modelCells(model: DivisionalChart): DiamondCell[] {
+  if (model.cells && model.cells.length === 12) {
+    return model.cells.map((c) => ({
+      house: c.house,
+      label: String(c.rashi_number),
+      tokens: [...c.tokens],
+    }));
+  }
+  const byHouse = new Map<number, string[]>();
+  for (const p of model.placements) {
+    const bucket = byHouse.get(p.house);
+    if (bucket) bucket.push(planetAbbr(p.body));
+    else byHouse.set(p.house, [planetAbbr(p.body)]);
+  }
+  return HOUSE_NUMBERS.map((house) => ({
+    house,
+    label: String(house),
+    tokens: byHouse.get(house) ?? [],
+  }));
+}
+
+const HOUSE_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+/** …and the rashi chart from a `natal_chart` payload's planet list, which is
+ *  what the chat block has. House numbers, because the payload's planets
+ *  carry no rashi number for an EMPTY house. */
+export function payloadCells(chart: NatalChartPayload): DiamondCell[] {
+  const occupants = houseOccupants(chart);
+  return HOUSE_NUMBERS.map((house) => ({
+    house,
+    label: String(house),
+    tokens: occupants.get(house) ?? [],
+  }));
+}
+
 /** house number -> the graha abbreviations that sit in it, for the diamond. */
 export function houseOccupants(chart: NatalChartPayload): Map<number, string[]> {
   const byHouse = new Map<number, string[]>();
@@ -75,7 +141,30 @@ export function calculationStamp(chart: NatalChartPayload): string | null {
   const parts = [chart.zodiac_mode];
   if (chart.ayanamsa) parts.push(chart.ayanamsa);
   if (chart.house_system) parts.push(chart.house_system);
+  // docs/49 ASTRAL-237 (F83). The node model and the engine version have
+  // been on the wire since PH-20 and no client read either. They belong
+  // here and not in a footnote: mean and true Rahu differ by about a
+  // degree, which at a boundary moves a rashi, a nakshatra, a dasha
+  // sequence and a koota — and "why does your Rahu differ from my family
+  // astrologer's" is a question this line answers.
+  if (chart.node_model) parts.push(`${chart.node_model} node`);
+  if (chart.engine_version) parts.push(chart.engine_version);
   return parts.join(' · ');
+}
+
+/**
+ * The five stamp fields a POST-PH-20 chart must carry, named.
+ *
+ * `calculationStamp` degrades for a legacy artifact — it prints what is
+ * there — because the chat block has always drawn v3 charts and removing
+ * them from a transcript retroactively would be its own dishonesty. The
+ * chart SURFACE is stricter: `summarise`'s UNSTAMPED contract says a chart
+ * that cannot name its frame is not rendered as a chart at all, and this is
+ * the predicate that surface asks (ASTRAL-118/237).
+ */
+export function stampIsComplete(chart: NatalChartPayload): boolean {
+  return Boolean(chart.zodiac_mode && chart.ayanamsa && chart.house_system
+                 && chart.node_model && chart.engine_version);
 }
 
 export interface BirthLine {

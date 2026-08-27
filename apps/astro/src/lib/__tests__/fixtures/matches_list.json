@@ -1,0 +1,71 @@
+{
+ "_capture": {
+  "as_of": "2026-08-24",
+  "captured_at": "2026-08-24",
+  "captured_by": "chatservice/scripts/capture_astral_fixtures.py",
+  "engine_version": "kerykeion/5.12.9",
+  "fn": "gun_milan",
+  "fn_identity": "gun_milan/4+d0a6e637fb302caa",
+  "fn_version": 4
+ },
+ "groups": [
+  {
+   "key": "complete",
+   "label": "Scored out of 36",
+   "rows": [
+    {
+     "computed_at": "2026-08-27T17:15:21.075164+00:00",
+     "display_name": "Meera",
+     "dosha_count": 2,
+     "doshas": [
+      {
+       "detail": "Both share the same Nadi \u2014 traditionally linked to health and progeny concerns. Classical texts list cancellations (e.g. same rashi but different nakshatras) worth a detailed review with your family astrologer.",
+       "name": "Nadi dosha",
+       "provisional": false
+      },
+      {
+       "detail": "Moon signs sit in a 6/8, 5/9 or 2/12 relationship \u2014 traditionally read as friction in prosperity and family life; mitigated when the sign lords are friends.",
+       "name": "Bhakoot dosha",
+       "provisional": false
+      }
+     ],
+     "favourite": false,
+     "freshness": "fresh",
+     "leading_kootas": [],
+     "pair_key": "p_2a422f6df6e0__self",
+     "person_id": "p_2a422f6df6e0",
+     "relation": "match",
+     "score": {
+      "out_of": 36,
+      "points": 15.5
+     },
+     "tob_known": true,
+     "verdict": "below the traditional threshold"
+    }
+   ],
+   "sort_note": "",
+   "sort_rule": "Ordered by the total out of 36, then fewer dosha flags."
+  },
+  {
+   "key": "firm_only",
+   "label": "Partly scored \u2014 21 of the 36 gunas need a birth time",
+   "rows": [],
+   "sort_note": "",
+   "sort_rule": "Ordered by the firm points out of 15, then fewer dosha flags."
+  },
+  {
+   "key": "refused",
+   "label": "Not scored \u2014 a birth time is missing on one side",
+   "rows": [],
+   "sort_note": "",
+   "sort_rule": "Not scored, so not ranked \u2014 listed by name."
+  }
+ ],
+ "priorities": {
+  "interests": [],
+  "koota_order": [],
+  "notes": [],
+  "ranked": []
+ },
+ "total": 1
+}

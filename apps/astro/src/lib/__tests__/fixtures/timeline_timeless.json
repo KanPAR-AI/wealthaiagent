@@ -1,14 +1,25 @@
 {
- "state": "ready",
- "as_of": "2026-08-24",
- "timeline": {
-  "type": "life_timeline",
+ "_capture": {
   "as_of": "2026-08-24",
-  "key": "e9a051a5c052f409:2026-08-24",
-  "inputs_hash": "e9a051a5c052f40975a383bca957ac9a2435a5a220beb29133a3a218859a73e7",
-  "layers": [
-   "transit"
-  ],
+  "captured_at": "2026-08-24",
+  "captured_by": "chatservice/scripts/capture_astral_fixtures.py",
+  "engine_version": "kerykeion/5.12.9",
+  "fn": "timeline",
+  "fn_identity": "timeline/3+d0a6e637fb302caa",
+  "fn_version": 3
+ },
+ "as_of": "2026-08-24",
+ "chart": {
+  "computed_at": "2026-08-27T17:15:21.078002+00:00",
+  "status": "fresh"
+ },
+ "person": {
+  "display_name": "Ravi",
+  "id": "self"
+ },
+ "served_from_store": false,
+ "state": "ready",
+ "timeline": {
   "absent_layers": [
    {
     "layer": "dasha",
@@ -16,111 +27,145 @@
     "unlocked_by": "time_of_birth"
    }
   ],
-  "undetermined": [],
-  "time_known": false,
+  "as_of": "2026-08-24",
   "calculation": {
-   "zodiac_mode": "sidereal",
    "ayanamsa": "LAHIRI",
+   "fn_version": "timeline/3+d0a6e637fb302caa",
    "house_system": "W",
-   "settings_digest": "5a8b1903a708454f",
-   "fn_version": "timeline/1+5a8b1903a708454f"
-  },
-  "transit": {
-   "as_of": "2026-08-24",
-   "transit_place": {
-    "name": "Jamshedpur, India",
-    "basis": "birth_place",
-    "latitude": 22.8046,
-    "longitude": 86.2029,
-    "timezone": "Asia/Kolkata"
-   },
-   "windows": [
-    {
-     "kind": "sign_transit",
-     "planet": "Saturn",
-     "sign": "Pisces",
-     "start_date": "2025-03-30",
-     "end_date": "2027-06-02",
-     "description": "Saturn transits Pisces",
-     "house_from_moon": 12
-    },
-    {
-     "kind": "classical_rule",
-     "rule": "sade_sati",
-     "planet": "Saturn",
-     "start_date": "2025-03-30",
-     "end_date": "2027-06-02",
-     "description": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries)."
-    },
-    {
-     "kind": "sign_transit",
-     "planet": "Ketu",
-     "sign": "Leo",
-     "start_date": "2025-05-30",
-     "end_date": "2026-11-25",
-     "description": "Ketu transits Leo",
-     "house_from_moon": 5
-    },
-    {
-     "kind": "sign_transit",
-     "planet": "Rahu",
-     "sign": "Aquarius",
-     "start_date": "2025-05-30",
-     "end_date": "2026-11-25",
-     "description": "Rahu transits Aquarius",
-     "house_from_moon": 11
-    },
-    {
-     "kind": "sign_transit",
-     "planet": "Jupiter",
-     "sign": "Cancer",
-     "start_date": "2026-06-02",
-     "end_date": "2026-10-31",
-     "description": "Jupiter transits Cancer",
-     "house_from_moon": 4
-    }
-   ],
-   "bodies_expected": [
-    "Saturn",
-    "Jupiter",
-    "Rahu",
-    "Ketu"
-   ],
-   "windows_dropped": [],
-   "active_without_dates": []
+   "settings_digest": "d0a6e637fb302caa",
+   "zodiac_mode": "sidereal"
   },
   "cursor": {
+   "antardasha_index": null,
    "as_of": "2026-08-24",
-   "mahadasha_index": null,
-   "antardasha_index": null
+   "mahadasha_index": null
   },
   "headline": {
    "kind": "absent_layer",
    "layer": "dasha",
    "reason": "a Vimshottari dasha is measured from the Moon's exact position at birth, which needs the birth time"
   },
+  "inputs_hash": "92078c47ae671553b32c59dc4cd74f07d7d906a9563651b011c43f4ec7993553",
+  "key": "92078c47ae671553:2026-08-24",
+  "layers": [
+   "transit"
+  ],
   "span": {
-   "start": "2025-03-30",
-   "end": "2027-06-02"
+   "end": "2032-05-30",
+   "start": "2025-03-30"
   },
+  "time_known": false,
+  "transit": {
+   "active_without_dates": [],
+   "as_of": "2026-08-24",
+   "bodies_expected": [
+    "Saturn",
+    "Jupiter",
+    "Rahu",
+    "Ketu"
+   ],
+   "transit_place": {
+    "basis": "birth_place",
+    "latitude": 22.8046,
+    "longitude": 86.2029,
+    "name": "Jamshedpur, India",
+    "timezone": "Asia/Kolkata"
+   },
+   "windows": [
+    {
+     "description": "Saturn transits Pisces",
+     "end_date": "2028-02-23",
+     "house_from_moon": 12,
+     "kind": "sign_transit",
+     "planet": "Saturn",
+     "sign": "Pisces",
+     "start_date": "2025-03-30"
+    },
+    {
+     "description": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries).",
+     "end_date": "2032-05-30",
+     "kind": "classical_rule",
+     "planet": "Saturn",
+     "rule": "sade_sati",
+     "start_date": "2025-03-30",
+     "sub_phases": [
+      {
+       "current": true,
+       "end": "2027-06-02",
+       "phase": "pre / Aroha",
+       "retrograde_re_entries": 1,
+       "saturn_sign": "Pisces",
+       "start": "2025-03-30"
+      },
+      {
+       "current": false,
+       "end": "2029-08-08",
+       "phase": "peak / Madhya",
+       "retrograde_re_entries": 2,
+       "saturn_sign": "Aries",
+       "start": "2027-06-03"
+      },
+      {
+       "current": false,
+       "end": "2032-05-30",
+       "phase": "post / Avaroha",
+       "retrograde_re_entries": 1,
+       "saturn_sign": "Taurus",
+       "start": "2029-08-09"
+      }
+     ]
+    },
+    {
+     "description": "Ketu transits Leo",
+     "end_date": "2026-12-05",
+     "house_from_moon": 5,
+     "kind": "sign_transit",
+     "planet": "Ketu",
+     "sign": "Leo",
+     "start_date": "2025-05-19"
+    },
+    {
+     "description": "Rahu transits Aquarius",
+     "end_date": "2026-12-05",
+     "house_from_moon": 11,
+     "kind": "sign_transit",
+     "planet": "Rahu",
+     "sign": "Aquarius",
+     "start_date": "2025-05-19"
+    },
+    {
+     "description": "Jupiter transits Cancer",
+     "end_date": "2027-06-25",
+     "house_from_moon": 4,
+     "kind": "sign_transit",
+     "planet": "Jupiter",
+     "sign": "Cancer",
+     "start_date": "2025-10-19"
+    }
+   ],
+   "windows_dropped": []
+  },
+  "type": "life_timeline",
+  "undetermined": [],
   "years": [
    2025,
    2026,
-   2027
+   2027,
+   2028,
+   2029,
+   2030,
+   2031,
+   2032
   ]
  },
  "years": [
   2025,
   2026,
-  2027
- ],
- "chart": {
-  "status": "fresh",
-  "computed_at": "2026-08-25T13:29:38.171382+00:00"
- },
- "person": {
-  "id": "self",
-  "display_name": "Asha"
- },
- "served_from_store": false
+  2027,
+  2028,
+  2029,
+  2030,
+  2031,
+  2032
+ ]
 }

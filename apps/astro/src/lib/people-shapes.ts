@@ -10,7 +10,11 @@
 // Mirrors of `chatservice/services/people/views.py` and `matches.py`,
 // verified against the live API.
 
-import type { MatchDosha } from '@wealthai/astral';
+import type {
+  DivisionalChart,
+  MatchDosha,
+  MatchReportPayload,
+} from '@wealthai/astral';
 
 // ── the shapes the server actually sends ──────────────────────────────────
 //
@@ -298,7 +302,9 @@ export type ReadState =
 export interface ReadAbsent {
   state: Exclude<ReadState, 'ready'>;
   reason: string;
-  chart?: { status: string; computed_at?: string | null };
+  /** docs/49 ASTRAL-238: `stale` names WHICH cause, so a surface never says
+   *  "your birth details changed" on an engine version bump. */
+  chart?: { status: string; computed_at?: string | null; stale?: StaleBlock };
 }
 
 /** A layer the engine could NOT compute, with its reason — never an empty
@@ -467,6 +473,129 @@ export interface TimelineReady {
 }
 
 export type TimelineResponse = TimelineReady | ReadAbsent;
+
+// ══════════════════════════════════════════════════════════════════════════
+// The chart READ (docs/49 PH-27 · ASTRAL-229, from F82)
+//
+// Mirror of `chatservice/services/people/chart.py:full_view`. Until PH-27 no
+// `GET` in this product returned a chart's CONTENTS — only the summary above
+// — so screen 5 could not exist without asking a model for its own artifact.
+//
+// The same discriminated-union discipline as the derived reads: `absent` and
+// `unstamped` carry NO chart fields, and the compiler is what stops a screen
+// from drawing a diamond for a chart that was never stamped (ASTRAL-118).
+// ══════════════════════════════════════════════════════════════════════════
+
+/** docs/49 ASTRAL-238: WHICH cause, because "your birth details changed" on
+ *  an engine bump is a false sentence and it shipped once. */
+export type StaleCause = 'inputs_changed' | 'settings_changed' | 'engine_updated';
+
+export interface StaleBlock {
+  causes: StaleCause[] | string[];
+  /** the engine's own sentence; the app has its own table (`staleness.ts`) */
+  reason: string;
+}
+
+/** One graha row of the planet table. Every cell is a payload field, and a
+ *  field the artifact does not carry is ABSENT rather than dashed. */
+export interface ChartPlanet {
+  planet: string;
+  sign: string;
+  /** null on a time-less chart: a house number IS an ascendant claim */
+  house?: number | null;
+  /** ABSOLUTE longitude — never shown beside a sign name (A6#13) */
+  degree?: number | null;
+  /** the degree WITHIN the sign; absent on a chart cast before v4 */
+  sign_degree?: number | null;
+  nakshatra?: string | null;
+  nakshatra_pada?: number | null;
+  retrograde?: boolean;
+  /** the ENGINE's own word, including PH-20's "enemy's sign" (ASTRAL-172) */
+  dignity?: string | null;
+}
+
+export interface ChartHouse {
+  house: number;
+  sign: string;
+  degree?: number | null;
+  sign_degree?: number | null;
+  lord?: string | null;
+}
+
+/** A calculated chart, with the twelve cells the engine drew for it.
+ *
+ *  THE SHARED TYPE, not a copy of it: the chart READ and the chat block carry
+ *  the same model, and a second interface here would be a second vocabulary
+ *  for one artifact — which is how one of them ends up missing a field
+ *  nobody noticed the engine had added. */
+export type ChartModel = DivisionalChart;
+
+export interface FullChart {
+  status: ChartStatus | string;
+  computed_at?: string | null;
+  reason?: string;
+  missing_stamp?: string[];
+  undetermined?: Undetermined[];
+  stale?: StaleBlock;
+  time_known?: boolean;
+  ascendant?: string;
+  ascendant_degree?: number;
+  ascendant_sign_degree?: number;
+  moon_sign?: string;
+  sun_sign?: string;
+  planets?: ChartPlanet[];
+  houses?: ChartHouse[];
+  dasha_periods?: { planet: string; start_date: string; end_date: string; is_current?: boolean }[];
+  yogas?: string[];
+  divisional_charts?: ChartModel[];
+  zodiac_mode?: string;
+  ayanamsa?: string;
+  house_system?: string;
+  node_model?: string;
+  engine_version?: string;
+  moon_sign_alternatives?: string[];
+  moon_nakshatra_alternatives?: string[];
+  birth_data?: {
+    date_of_birth?: string | null;
+    time_of_birth?: string | null;
+    time_known?: boolean;
+    place_of_birth?: string | null;
+    timezone?: string | null;
+    utc_offset_minutes?: number | null;
+    dst_in_effect?: boolean | null;
+    zone_resolution?: string | null;
+  };
+  mahadasha?: DashaPeriod;
+  antardasha?: DashaPeriod;
+}
+
+export interface ChartResponse {
+  person_id: string;
+  display_name: string;
+  tob_known: boolean;
+  chart: FullChart;
+}
+
+// ── the match READ (docs/49 ASTRAL-232, from F86) ─────────────────────────
+//
+// `report` is the SAME `match_report` payload the shipped scorecard already
+// parses — the compatibility is the point, and the shared type is imported
+// so a drift in one is a type error in the other.
+
+export interface MatchDetail {
+  pair_key: string;
+  people: { person_id: string; display_name: string; tob_known: boolean | null }[];
+  person_id: string | null;
+  display_name: string;
+  favourite: boolean;
+  relation: string | null;
+  freshness: 'fresh' | 'stale' | 'unprovable' | string;
+  computed_at?: string | null;
+  group: MatchGroupKey | string;
+  refusal?: Record<string, unknown>;
+  /** absent on a refusal — there is no scorecard, and no /36 to invent */
+  report?: MatchReportPayload;
+}
 
 /** F59 (Role-3 ruled: spec-clean) — adopt the signed-in account's name as
  *  the profile LABEL when the store has none. A label is what a person is

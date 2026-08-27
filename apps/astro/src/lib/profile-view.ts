@@ -426,6 +426,32 @@ export function editDisclosure(impact: EditImpact): string {
   return `Changing your ${impact.label} recomputes ${joinParts(parts)}.`;
 }
 
+/**
+ * The second sentence on the birth-time sheet: a time can be WITHDRAWN
+ * (docs/49 ASTRAL-243).
+ *
+ * "I don't know my birth time" is a real state in this product, not a way of
+ * declining a question — the store can un-know a time through the same
+ * carrier that sets one, and the chart then recomputes time-less with the
+ * lagna, the houses, the pada, the dasha and the divisional charts named as
+ * undetermined (ASTRAL-9/71/185).
+ *
+ * The PH-20 gate found the surface for that missing: the applier existed
+ * (`_withdrawn_fact_keys`) and nothing could reach it, so a user who no
+ * longer trusted their birth time had no way to say so. This sentence, on
+ * the sheet, is where it is reachable — and it is only shown for the birth
+ * time, because a date or a place cannot be withdrawn: nothing is computable
+ * without them, so "I don't know" there is a different request entirely.
+ */
+export const WITHDRAWAL_NOTE =
+  'If you no longer know it, the picker has "I don’t know" — your chart is '
+  + 'then recast without a birth time, and everything that needs one is '
+  + 'named as undetermined rather than guessed.';
+
+export function withdrawalNote(field: string): string | null {
+  return field === 'time_of_birth' ? WITHDRAWAL_NOTE : null;
+}
+
 function joinParts(parts: string[]): string {
   if (parts.length === 1) return parts[0];
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;

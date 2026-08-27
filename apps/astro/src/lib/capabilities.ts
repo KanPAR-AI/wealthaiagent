@@ -54,6 +54,25 @@ export interface Capabilities {
   profile: boolean;
 
   /**
+   * Screen 5 — the chart itself: Chart · Grahas · Dasha (docs/49 ASTRAL-120,
+   * ASTRAL-233).
+   *
+   * TRUE since `GET /people/{id}/chart` (ASTRAL-229). Before that read
+   * existed this could not have been turned on honestly, and the map said so
+   * by NOT declaring it: `person_view` attaches a chart SUMMARY, and no
+   * `GET` anywhere returned a chart's contents (F82), so a chart screen would
+   * have had to ask a model for the artifact the engine had already computed.
+   * The capability IS the read.
+   *
+   * It is also what redeems the Home tile. "Birth Chart" pointed at
+   * `/profile` — a summary of the thing it named — because pointing at an
+   * unbuilt screen is the dead affordance ASTRAL-119 forbids (F93). Flipping
+   * this to false puts the tile back in that position by REMOVING it, not by
+   * greying it.
+   */
+  chart: boolean;
+
+  /**
    * Screen 3, Home — the day's card (docs/49 ASTRAL-125).
    *
    * TRUE since `GET /people/self/daily`. Before that read existed a Home
@@ -136,6 +155,7 @@ export interface Capabilities {
 
 export const CAPABILITIES: Capabilities = {
   accountSettings: true,
+  chart: true,
   credits: true,
   privacyAndData: true,
   birthDetails: false,

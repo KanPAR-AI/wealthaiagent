@@ -183,6 +183,17 @@ export default function Matches() {
                     starBusy={starBusy === row.pairKey}
                     onStar={() => toggleStar(row)}
                     onAsk={() => void askAbout(row)}
+                    onOpen={() => {
+                      // docs/49 ASTRAL-241: the scorecard is a SCREEN now,
+                      // not a question. Every koota, its points and its
+                      // pending reason — read from the stored artifact, with
+                      // no turn in between (ASTRAL-232).
+                      track('match_open');
+                      router.push({
+                        pathname: '/match',
+                        params: { pairKey: row.pairKey },
+                      });
+                    }}
                   />
                 ))}
               </View>
@@ -195,12 +206,13 @@ export default function Matches() {
 }
 
 function Row({
-  row, starBusy, onStar, onAsk,
+  row, starBusy, onStar, onAsk, onOpen,
 }: {
   row: MatchRowView;
   starBusy: boolean;
   onStar: () => void;
   onAsk: () => void;
+  onOpen: () => void;
 }) {
   return (
     <View style={[s.card, row.favourite ? s.cardStarred : null]}>
@@ -279,6 +291,18 @@ function Row({
         ))}
         {row.freshness ? <Text style={s.caption}>{row.freshness}</Text> : null}
         {row.ask ? <Text style={s.caption}>{row.ask} — ask in chat.</Text> : null}
+
+        {/* The scorecard first, the conversation second: every koota with
+            its points and its pending reason is a READ (ASTRAL-232), and a
+            question that a screen can answer should not cost a turn. */}
+        <Pressable
+          style={s.cta}
+          onPress={onOpen}
+          accessibilityRole="button"
+          accessibilityLabel={`See the full scorecard for ${row.name}`}
+        >
+          <Text style={s.ctaText}>See the full scorecard</Text>
+        </Pressable>
 
         <Pressable
           style={s.ghost}

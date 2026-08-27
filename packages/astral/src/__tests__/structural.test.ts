@@ -445,6 +445,10 @@ describeWithApps('ASTRAL-19 — renderers derive nothing', () => {
   const ASTRAL_SOURCES = ALL_FILES.filter(
     (f) => rel(f).startsWith('packages/astral/src/') && !isTest(f),
   );
+  /** …and every source file in the workspace, for the ASTRAL-230 greps: the
+   *  app draws chart cells now, so a derivation there is the same defect one
+   *  directory away from the package. */
+  const WORKSPACE_SOURCES = ALL_FILES.filter((f) => !isTest(f));
   const RENDERER_FILES = ALL_FILES.filter((f) => {
     const r = rel(f);
     return (
@@ -501,6 +505,42 @@ describeWithApps('ASTRAL-19 — renderers derive nothing', () => {
     // dasha arithmetic: Vimshottari years and the sidereal-year constant
     expect(code).not.toContain('365.25');
     expect(code).not.toMatch(/\/\s*120\b/);
+  });
+
+  /**
+   * docs/49 PH-27 · ASTRAL-230 — the derivation the set above does NOT catch.
+   *
+   * F83, measured: the greps look for `/30`, `%30`, `(…%12)+1`, `30/9` and
+   * `365.25`. A chart tab's most likely derivation is `sign_index + 1` — the
+   * rashi number the Indian convention prints — and it matches none of them.
+   * The fix was that the engine carries the label (natal_chart v7), and this
+   * is the grep that keeps a client from computing one anyway.
+   *
+   * It runs over the WHOLE workspace, not only the package: the app draws the
+   * diamonds now, and a second SIGNS table in a screen is the same defect one
+   * directory away.
+   */
+  it.each(WORKSPACE_SOURCES.map(rel))('%s derives no rashi number', (r) => {
+    const code = codeOf(join(WORKSPACE, r));
+    expect(code).not.toMatch(/sign_index\s*[+\-]/);
+    expect(code).not.toMatch(/[+\-]\s*\w*\.?sign_index\b/);
+    expect(code).not.toMatch(/rashi_number\s*[+\-]/);
+  });
+
+  it.each(WORKSPACE_SOURCES.map(rel))('%s keeps no SIGNS table of its own', (r) => {
+    const code = codeOf(join(WORKSPACE, r));
+    // The rashi vocabulary belongs to the ENGINE. A client list is a second
+    // vocabulary that agrees until an ayanamsa argument moves one of them.
+    expect(code).not.toMatch(/'Aries'\s*,\s*'Taurus'/);
+    expect(code).not.toMatch(/"Aries"\s*,\s*"Taurus"/);
+    expect(code).not.toMatch(/\bSIGNS\s*=\s*\[/);
+  });
+
+  it('the ASTRAL-230 greps would actually catch one', () => {
+    // The row's own anti-vacuity sample, verbatim.
+    expect('const rashi = p.sign_index + 1;').toMatch(/sign_index\s*[+\-]/);
+    expect("const SIGNS = ['Aries', 'Taurus'];").toMatch(/'Aries'\s*,\s*'Taurus'/);
+    expect("const S = ['Aries', 'Taurus'];").toMatch(/'Aries'\s*,\s*'Taurus'/);
   });
 
   it('the ASTRAL-183 grep would actually catch a client-side derivation', () => {

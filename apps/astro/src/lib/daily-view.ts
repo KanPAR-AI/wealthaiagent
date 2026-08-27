@@ -28,7 +28,10 @@
 
 import { formatIsoDate } from '@wealthai/astral';
 
+import { staleSentence } from './staleness';
+
 import type {
+  StaleBlock,
   AbsentLayer,
   DailyCard,
   DailyReady,
@@ -305,7 +308,7 @@ export function absentView(res: Exclude<DailyResponse, DailyReady>): AbsentView 
     case 'chart_stale':
       return {
         title: 'Your chart needs recasting',
-        body: recastBody(res.chart?.computed_at),
+        body: recastBody(res.chart?.computed_at, res.chart?.stale),
         action: 'Update my chart',
         turn: RECAST_TURN,
         // The facts are on file. Nothing needs to be asked for.
@@ -332,19 +335,27 @@ export function absentView(res: Exclude<DailyResponse, DailyReady>): AbsentView 
   }
 }
 
-/** AMB-31 interim (a): the staleness is stated WITH the date the chart was
- *  cast. "Stale" alone is not actionable; "cast on 3 March, before you
- *  corrected your birth time" is. */
-function recastBody(computedAt?: string | null): string {
-  const when = formatIsoDate((computedAt ?? '').slice(0, 10));
+/**
+ * AMB-31 interim (a): the staleness is stated WITH the date the chart was
+ * cast. "Stale" alone is not actionable; "cast on 3 March, before you
+ * corrected your birth time" is.
+ *
+ * docs/49 ASTRAL-238: …and WITH ITS CAUSE, from the one declared table. This
+ * sentence used to say "your birth details changed" whatever had moved,
+ * which on the day an engine version bumps is false for every user at once —
+ * measured on this very screen the day natal_chart went to v7.
+ */
+function recastBody(computedAt?: string | null,
+                    stale?: StaleBlock | null): string {
   // One tap, and it says so. The old sentence explained the problem and left
   // the reader to guess whether they were about to be asked for their
   // details all over again — which, before this, they were.
-  const tail =
-    ' Your details are already on file — one tap updates the chart, and Home, Insights and Timeline all follow.';
-  return (when
-    ? `Your birth details changed after this chart was cast on ${when}, so every reading here would still be built on the old one.`
-    : 'Your birth details changed after this chart was cast, so every reading here would still be built on the old one.') + tail;
+  return staleSentence(
+    stale,
+    'every reading here would still be built on the old one. Your details '
+      + 'are already on file — one tap updates the chart, and Home, Insights '
+      + 'and Timeline all follow.',
+    computedAt);
 }
 
 // ── small helpers ─────────────────────────────────────────────────────────

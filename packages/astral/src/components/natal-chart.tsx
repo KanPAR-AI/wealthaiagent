@@ -20,22 +20,34 @@ import type { ReactNode } from 'react';
 
 import { formatDegrees } from '../format';
 import { WHEEL_HOUSE_ANCHORS, WHEEL_LINES, WHEEL_VIEWBOX } from '../geometry';
-import type { NatalChartPayload } from '../payloads';
+import type { DivisionalChart, NatalChartPayload } from '../payloads';
 import type { AstralRenderProps } from '../primitives';
 import { isWide } from '../primitives';
 import {
   birthLines,
   calculationStamp,
   dashaRows,
-  houseOccupants,
+  modelCells,
   moonAmbiguityNote,
   NO_BIRTH_TIME_REASON,
+  payloadCells,
   placementRows,
+  type DiamondCell,
 } from '../view/natal';
 
 export interface NatalChartViewProps extends AstralRenderProps {
   chart: NatalChartPayload;
   title?: string;
+  /**
+   * Draw ONE calculated chart — D1, the Moon chart or D9 — instead of the
+   * rashi chart built from the planet list (docs/49 ASTRAL-234).
+   *
+   * A prop rather than a second component, and that is the row rather than a
+   * preference: one diamond geometry, one anchor table, one crowding rule.
+   * The model supplies its own ascendant, its own placements and its own
+   * title, so the three charts differ in their CONTENTS and in nothing else.
+   */
+  model?: DivisionalChart;
 }
 
 const MAX_WHEEL = 340;
@@ -69,7 +81,7 @@ export function NatalChartView(props: NatalChartViewProps): ReactNode {
     >
       <Box style={{ gap: 2 }}>
         <Text style={{ fontSize: 16, fontWeight: '700', color: theme.text }}>
-          {props.title ?? 'Janam Kundli'}
+          {props.title ?? props.model?.title ?? 'Janam Kundli'}
         </Text>
         {stamp ? (
           <Text testID="astral-natal-stamp" style={{ fontSize: 11, color: theme.textMuted }}>
@@ -239,15 +251,51 @@ export function NatalChartView(props: NatalChartViewProps): ReactNode {
  * finding out from a screenshot.
  */
 function Wheel(props: NatalChartViewProps): ReactNode {
-  const { ui, theme, width, chart } = props;
-  const { Box, Svg, Group, SvgRect, SvgLine, SvgText } = ui;
+  const { chart, model } = props;
   if (!chart.time_known) return null;
+  return (
+    <ChartDiamond
+      ui={props.ui}
+      theme={props.theme}
+      width={props.width}
+      cells={model ? modelCells(model) : payloadCells(chart)}
+    />
+  );
+}
+
+export interface ChartDiamondProps extends AstralRenderProps {
+  /** the twelve cells, in house order — built by `view/natal`, never here */
+  cells: DiamondCell[];
+  testID?: string;
+}
+
+/**
+ * THE North-Indian diamond (docs/49 ASTRAL-15/18/234).
+ *
+ * One geometry, one anchor table, one crowding rule, for every surface in the
+ * workspace: the chat block's rashi chart and the chart surface's D1 · Moon ·
+ * D9 all render THIS. A second diamond anywhere is a spec deviation and the
+ * ASTRAL-18 grep fails on it.
+ *
+ * It draws what it is given and computes nothing — the corner label is a
+ * string the caller already had (a rashi number from the engine, or a house
+ * number), never a number worked out here.
+ */
+export function ChartDiamond(props: ChartDiamondProps): ReactNode {
+  const { ui, theme, width, cells } = props;
+  const { Box, Svg, Group, SvgRect, SvgLine, SvgText } = ui;
 
   const size = Math.max(200, Math.min(MAX_WHEEL, width - WHEEL_PADDING));
-  const occupants = houseOccupants(chart);
+  const occupants = new Map<number, string[]>(
+    cells.map((c) => [c.house, c.tokens]));
+  const labels = new Map<number, string>(
+    cells.map((c) => [c.house, c.label]));
 
   return (
-    <Box testID="astral-natal-wheel" style={{ alignSelf: 'center' }}>
+    <Box
+      testID={props.testID ?? 'astral-natal-wheel'}
+      style={{ alignSelf: 'center' }}
+    >
       <Svg width={size} height={size} viewBox={`0 0 ${WHEEL_VIEWBOX} ${WHEEL_VIEWBOX}`}>
         <SvgRect
           x={0}
@@ -295,7 +343,7 @@ function Wheel(props: NatalChartViewProps): ReactNode {
           return (
             <Group key={`h${a.house}`}>
               <SvgText x={x} y={top} fontSize={3.6} fill={theme.textMuted} textAnchor="middle">
-                {String(a.house)}
+                {labels.get(a.house) ?? String(a.house)}
               </SvgText>
               {grahas.map((g, gi) => (
                 <SvgText

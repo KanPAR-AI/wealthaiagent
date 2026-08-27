@@ -234,3 +234,130 @@ describe('ASTRAL-183 — the client carries the house it is given', () => {
     expect(parsed!.planets).toHaveLength(9);
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════════
+// docs/49 PH-27 · ASTRAL-231 — the three fields the contract stopped short of
+//
+// `parseNatalChart` parsed planets, houses, dashas, yogas, three stamp fields
+// and the birth block. It did NOT parse `divisional_charts`, `node_model` or
+// `engine_version`, all three on the wire since PH-20 — Role-4 measured
+// exactly that at the gate, and the grep confirmed the only workspace mention
+// of `divisional_charts` was one line of a payload test (F83).
+//
+// The fixture is a REAL capture of `graph.py`'s `chart_data` block, taken by
+// `chatservice/scripts/capture_astral_fixtures.py` against the running
+// engine — never hand-written (ASTRAL-248).
+// ══════════════════════════════════════════════════════════════════════════
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const capturedBlock = require('./fixtures/natal_chart_block.json');
+
+describe('ASTRAL-231 — divisional charts, the node model and the engine', () => {
+  const chart = parseNatalChart(capturedBlock)!;
+
+  it('parses the captured block at all', () => {
+    expect(chart).not.toBeNull();
+    expect(capturedBlock._capture.fn_version).toBe(7);
+  });
+
+  it('carries the node model and the engine version', () => {
+    // ~1 degree of Rahu between mean and true, which at a boundary moves a
+    // rashi, a nakshatra, a dasha sequence and a koota. A chart that cannot
+    // say which it used cannot be reproduced (ASTRAL-167/168).
+    expect(chart.node_model).toBe(capturedBlock.node_model);
+    expect(chart.node_model).toMatch(/^(mean|true)$/);
+    expect(chart.engine_version).toBe(capturedBlock.engine_version);
+  });
+
+  it('carries D1, MOON and D9, each with its own ascendant', () => {
+    expect(chart.divisional_charts.map((d) => d.key)).toEqual(['D1', 'MOON', 'D9']);
+    chart.divisional_charts.forEach((model, i) => {
+      const raw = capturedBlock.divisional_charts[i];
+      expect(model.title).toBe(raw.title);
+      expect(model.ascendant_sign).toBe(raw.ascendant_sign);
+      expect(model.ascendant_rashi_number).toBe(raw.ascendant_rashi_number);
+      expect(model.placements).toHaveLength(raw.placements.length);
+    });
+  });
+
+  it('every placement carries the ENGINE’s label, never a derived one', () => {
+    for (const model of chart.divisional_charts) {
+      for (const p of model.placements) {
+        expect(p.sign).toBeTruthy();
+        expect(p.rashi_number).toBe(p.sign_index + 1);   // ASSERTED, not computed
+      }
+    }
+  });
+
+  it('drops a model with an unknown key, and does not poison the chart', () => {
+    const payload = JSON.parse(JSON.stringify(capturedBlock));
+    payload.divisional_charts.push({
+      ...payload.divisional_charts[0], key: 'D10',
+    });
+    const parsed = parseNatalChart(payload)!;
+    expect(parsed.divisional_charts.map((d) => d.key)).toEqual(['D1', 'MOON', 'D9']);
+    expect(parsed.planets).toHaveLength(capturedBlock.planets.length);
+  });
+
+  it('drops a model with a missing placements array', () => {
+    const payload = JSON.parse(JSON.stringify(capturedBlock));
+    delete payload.divisional_charts[1].placements;
+    const parsed = parseNatalChart(payload)!;
+    expect(parsed.divisional_charts.map((d) => d.key)).toEqual(['D1', 'D9']);
+  });
+
+  it('drops the WHOLE model when one placement is malformed', () => {
+    // A diamond quietly missing Saturn is a wrong chart that looks like a
+    // chart — so the model goes, not the graha.
+    const payload = JSON.parse(JSON.stringify(capturedBlock));
+    payload.divisional_charts[0].placements[3].sign_index = 'Cancer';
+    const parsed = parseNatalChart(payload)!;
+    expect(parsed.divisional_charts.map((d) => d.key)).toEqual(['MOON', 'D9']);
+  });
+
+  it('drops a model whose placement lost its label', () => {
+    const payload = JSON.parse(JSON.stringify(capturedBlock));
+    delete payload.divisional_charts[2].placements[0].sign;
+    const parsed = parseNatalChart(payload)!;
+    expect(parsed.divisional_charts.map((d) => d.key)).toEqual(['D1', 'MOON']);
+  });
+
+  it('substitutes NO default for a missing field', () => {
+    const payload = JSON.parse(JSON.stringify(capturedBlock));
+    delete payload.node_model;
+    delete payload.engine_version;
+    const parsed = parseNatalChart(payload)!;
+    expect(parsed.node_model).toBeNull();
+    expect(parsed.engine_version).toBeNull();
+  });
+
+  it('time_known=false drops the divisional charts AT THE PARSER', () => {
+    // INV-6 at the edge, exactly as `ascendant` and `houses` already are: a
+    // future backend regression that starts shipping a varga on a time-less
+    // chart still cannot be drawn (the ASTRAL-183 regression shape).
+    const payload = JSON.parse(JSON.stringify(capturedBlock));
+    payload.time_known = false;
+    const parsed = parseNatalChart(payload)!;
+    expect(parsed.divisional_charts).toEqual([]);
+    expect(parsed.ascendant).toBeNull();
+    expect(parsed.houses).toEqual([]);
+  });
+
+  it('the cells ride along when the read sent them, and are null when not', () => {
+    // The chat block carries no cells; the chart READ does. Both parse.
+    expect(chart.divisional_charts[0].cells).toBeNull();
+    const payload = JSON.parse(JSON.stringify(capturedBlock));
+    payload.divisional_charts[0].cells = Array.from({ length: 12 }, (_, i) => ({
+      house: i + 1, rashi_number: ((i + 3) % 12) + 1, rashi: 'Cancer', tokens: [],
+    }));
+    expect(parseNatalChart(payload)!.divisional_charts[0].cells).toHaveLength(12);
+  });
+
+  it('a partial cell set is dropped rather than half-drawn', () => {
+    const payload = JSON.parse(JSON.stringify(capturedBlock));
+    payload.divisional_charts[0].cells = [
+      { house: 1, rashi_number: 4, rashi: 'Cancer', tokens: [] },
+    ];
+    expect(parseNatalChart(payload)!.divisional_charts[0].cells).toBeNull();
+  });
+});
