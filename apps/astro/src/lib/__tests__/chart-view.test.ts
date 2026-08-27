@@ -19,6 +19,7 @@ import {
   dashaRows,
   drawnCharts,
   formatOffset,
+  headerPeriod,
   missingStampFields,
   planetRows,
   registerNotes,
@@ -429,6 +430,85 @@ describe('staleness', () => {
   it('a stale chart is still DRAWN — under its cause', () => {
     expect(surfaceState(stale(['inputs_changed'])).drawable).toBe(true);
   });
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// PH-27 Role-4 BLOCKER 3 — a WITHDRAWN birth time is not a banner
+// ══════════════════════════════════════════════════════════════════════════
+
+describe('a chart cast on a birth time the user has withdrawn', () => {
+  /** The measured shape: the store says the time is not known (Profile
+   *  shows so), the stored artifact was cast WITH one. Before this, the
+   *  screen printed "Time 10:30" and drew the lagna, the houses and D9
+   *  behind a staleness banner. */
+  const withdrawn = (chart: Partial<FullChart> = {}): ChartResponse => ({
+    ...TIMED,
+    tob_known: false,
+    chart: { ...TIMED.chart, status: 'stale',
+             stale: { causes: ['inputs_changed'], reason: 'engine sentence' },
+             ...chart },
+  });
+
+  it('refuses to draw at all', () => {
+    const state = surfaceState(withdrawn());
+    expect(state.state).toBe('withdrawn');
+    expect(state.drawable).toBe(false);
+  });
+
+  it('names the cause — the removed time — and what to do', () => {
+    const sentence = surfaceState(withdrawn()).sentence;
+    expect(sentence).toContain('Your birth time was removed');
+    expect(sentence).toContain('recasting');
+    expect(sentence).toMatch(/ask for any reading/i);
+    // and it names what stood on the time, rather than saying "some values"
+    for (const named of ['lagna', 'houses', 'divisional', 'dasha']) {
+      expect(sentence.toLowerCase()).toContain(named);
+    }
+  });
+
+  it('refuses a FRESH artifact just the same — freshness is not the question',
+     () => {
+       const state = surfaceState(withdrawn({ status: 'fresh', stale: undefined }));
+       expect(state.drawable).toBe(false);
+       expect(state.state).toBe('withdrawn');
+     });
+
+  it('leaves the ordinary time-less chart alone', () => {
+    // `tob_known` false AND `time_known` false is not a withdrawal — it is a
+    // chart honestly cast without a time, and PH-27 draws it (ASTRAL-185).
+    expect(surfaceState(TIMELESS).drawable).toBe(true);
+    expect(TIMELESS.tob_known).toBe(false);
+    expect(TIMELESS.chart.time_known).toBe(false);
+  });
+
+  it('leaves a timed chart with a known time alone', () => {
+    expect(surfaceState(TIMED).drawable).toBe(true);
+  });
+
+  it('the header dasha chip goes silent with the chart', () => {
+    // A dasha pair is a chart-derived claim; it was rendered ABOVE the
+    // drawable branch and survived every refusal.
+    expect(headerPeriod(TIMED)).not.toBeNull();
+    expect(headerPeriod(withdrawn())).toBeNull();
+    const unstamped = { ...TIMED,
+                        chart: { ...TIMED.chart, node_model: undefined } } as ChartResponse;
+    expect(headerPeriod(unstamped)).toBeNull();
+    expect(headerPeriod({ ...TIMED,
+                          chart: { status: 'absent' } } as ChartResponse)).toBeNull();
+    expect(headerPeriod(null)).toBeNull();
+  });
+
+  it('the screen reads the chip through headerPeriod, not currentPeriod',
+     () => {
+       // The rule has to live where it can be tested. If the screen goes
+       // back to calling `currentPeriod` directly, the pill returns.
+       const screen = fs
+         .readFileSync(path.join(__dirname, '..', '..', 'app', 'chart.tsx'), 'utf8')
+         .replace(/\/\*[\s\S]*?\*\//g, '')
+         .replace(/^\s*\/\/.*$/gm, '');
+       expect(screen).toContain('headerPeriod(res)');
+       expect(screen).not.toContain('currentPeriod(');
+     });
 });
 
 // ══════════════════════════════════════════════════════════════════════════

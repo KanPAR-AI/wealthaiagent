@@ -50,7 +50,8 @@ export type ChartSurfaceState =
   | 'stale'
   | 'absent'
   | 'unstamped'
-  | 'unprovable';
+  | 'unprovable'
+  | 'withdrawn';
 
 export interface SurfaceState {
   state: ChartSurfaceState;
@@ -70,6 +71,16 @@ const READABLE = new Set(['fresh', 'stale', 'corrected_stale']);
  * details changed — but it is drawn UNDER its cause (ASTRAL-238). An
  * UNSTAMPED one is not drawn at all: a sidereal reading of a chart that
  * cannot say it was cast sidereally is three signs of wrong (ASTRAL-118).
+ *
+ * …and a WITHDRAWN-time chart is not drawn either. PH-27 Role-4 BLOCKER 3,
+ * measured on the device: after withdrawing the birth time from Profile,
+ * this screen still printed "Time 10:30" and drew the lagna, the houses and
+ * D9 behind a staleness banner, while Profile said the time was not known.
+ * ASTRAL-243's gate is that the lagna disappears from EVERY surface, and a
+ * banner over a full chart is not a disappearance: every value on it stands
+ * on the very time the user just told us they do not have. The read carries
+ * both facts — `tob_known` from the store, `time_known` from the artifact —
+ * so the disagreement is visible here and needs no new endpoint.
  */
 export function surfaceState(res: ChartResponse | null): SurfaceState {
   const chart = res?.chart;
@@ -115,6 +126,22 @@ export function surfaceState(res: ChartResponse | null): SurfaceState {
         + 'its values cannot be shown. Missing from its record: '
         + missingStampFields(chart).join(', ')
         + '. Ask for any reading and it will be recast in full.',
+      drawable: false,
+    };
+  }
+  // BLOCKER 3. Placed AFTER the stamp test on purpose: ASTRAL-118 is an
+  // invariant about what may be drawn at all, and this is a cause. Both
+  // refuse; when both apply the invariant names itself first.
+  if (res?.tob_known === false && chart?.time_known === true) {
+    const cast = formatIsoDate(String(chart?.computed_at ?? '').slice(0, 10));
+    return {
+      state: 'withdrawn',
+      sentence: 'Your birth time was removed after this chart was cast'
+        + (cast ? ` on ${cast}` : '')
+        + ', and every value on it — the lagna, the houses, the divisional '
+        + 'charts and the dasha periods — was read from that time. The chart '
+        + 'needs recasting: ask for any reading and it will be cast again '
+        + 'without a birth time.',
       drawable: false,
     };
   }
@@ -505,4 +532,21 @@ export function tabs(chart: FullChart | undefined): ChartTab[] {
   if (planetRows(chart).length) out.push({ id: 'grahas', label: 'Grahas' });
   if (dashaRows(chart).length) out.push({ id: 'dasha', label: 'Dasha' });
   return out;
+}
+
+/**
+ * The header's mahadasha / antardasha chip, for a WHOLE response.
+ *
+ * PH-27 Role-4 (non-blocking finding, fixed with BLOCKER 3): the screen read
+ * `currentPeriod(chart)` and drew the pill in the header, above and outside
+ * the `state.drawable` branch — so a chart that had just refused to draw
+ * still announced "Rahu / Jupiter" at the top. A dasha pair is a chart-
+ * derived claim like any other: it stands on the same artifact, the same
+ * time and the same stamp, and it goes silent when they do.
+ */
+export function headerPeriod(res: ChartResponse | null): {
+  mahadasha: string; antardasha: string | null;
+} | null {
+  if (!surfaceState(res).drawable) return null;
+  return currentPeriod(res?.chart);
 }

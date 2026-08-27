@@ -51,7 +51,7 @@ import { astroChartTheme } from '@/lib/chart-theme';
 import {
   absentModels,
   birthLines,
-  currentPeriod,
+  headerPeriod,
   columns,
   dashaRows,
   drawnCharts,
@@ -129,7 +129,10 @@ export default function Chart() {
   const state = useMemo(() => surfaceState(res), [res]);
   const available = useMemo(() => tabs(chart), [chart]);
   const stamp = stampLine(chart);
-  const period = currentPeriod(chart);
+  // The chip is a chart-derived claim: it goes silent whenever the chart
+  // itself refuses to draw (PH-27 Role-4). `headerPeriod` owns that rule so
+  // it is tested rather than remembered.
+  const period = headerPeriod(res);
 
   // A tab the chart does not have is not offered, so the selection follows
   // the SET rather than a default that might not be in it.
@@ -234,14 +237,19 @@ export default function Chart() {
           </View>
         ) : null}
 
-        {/* Not drawable: absent, unstamped or unprovable. The honest state
+        {/* Not drawable: absent, unstamped, unprovable — or cast on a birth
+            time the user has since withdrawn (PH-27 Role-4). The honest state
             and NO chart — an unstamped chart is not rendered as a chart at
             all (ASTRAL-118), because a tropical value under a sidereal
             heading is three signs and a whole reading wrong. */}
         {res && !state.drawable ? (
           <View style={s.card}>
             <Text style={s.cardTitle}>
-              {state.state === 'absent' ? 'No chart yet' : 'This chart can’t be shown'}
+              {state.state === 'absent'
+                ? 'No chart yet'
+                : state.state === 'withdrawn'
+                  ? 'This chart needs recasting'
+                  : 'This chart can’t be shown'}
             </Text>
             <Text style={s.cardBody}>{state.sentence}</Text>
             {chart?.missing_stamp?.length ? (
