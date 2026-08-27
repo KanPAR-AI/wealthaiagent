@@ -371,6 +371,25 @@ describe('the honest states (ASTRAL-125, AMB-31(a))', () => {
     expect(src).not.toMatch(/recompute|POST|PATCH/);
   });
 
+  it('the recast sentence is the one the ENGINE recognises', () => {
+    // THE PIN, and the reason it is written out here in full. The engine
+    // routes this sentence deterministically (`graph._RECAST_CUE`, PH-27
+    // Role-4 blocker 2) straight to the chart node when the store holds the
+    // facts. Before that cue existed, this exact tap got "I do not have your
+    // birth details saved" and a re-ask, 3/3 live — a failure no client test
+    // could see, because nothing on this side was wrong.
+    //
+    // `chatservice/tests/test_astrology_ph27_fixround.py` asserts the SAME
+    // string fires the cue. If one side is edited alone, that file goes red.
+    const RECAST_TURN =
+      'Please update my chart using the birth details you already have on file.';
+    for (const s of ['chart_stale', 'chart_unstamped', 'chart_unprovable']) {
+      expect(absentView(state(s)).turn).toBe(RECAST_TURN);
+    }
+    expect(timelineAbsentView({ state: 'chart_stale', reason: 'x' } as never).turn)
+      .toBe(RECAST_TURN);
+  });
+
   it('a refusal offers no control, because there is nothing honest to offer', () => {
     const view = absentView(state('refused'));
     expect(view.action).toBeNull();
