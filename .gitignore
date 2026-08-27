@@ -40,3 +40,5 @@ ios/App/public/
 # astro app native output (prebuild-generated, like apps/mobile)
 apps/astro/ios/
 apps/astro/android/
+
+.env

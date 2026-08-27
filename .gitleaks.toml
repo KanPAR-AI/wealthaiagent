@@ -8,8 +8,8 @@ useDefault = true
 [allowlist]
 description = "Reviewed non-secrets (docs/52)"
 paths = [
-  '''/\.env$''',
-  '''/\.env\.local$''',
+  '''(^|/)\.env$''',
+  '''(^|/)\.env\.local$''',
   # Firebase CLIENT config — public by design; shipped in every app
   # bundle. Access control is Firebase security rules, not key secrecy.
   '''google-services\.json$''',
