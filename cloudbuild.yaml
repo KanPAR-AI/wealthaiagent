@@ -5,6 +5,13 @@
 # are relative to this file's location (the 'frontend/' directory).
 
 steps:
+  # 0. Secret scan — HARD GATE (docs/52-leak-register.md in the parent
+  # repo). Policy + reasoned allowlist: .gitleaks.toml.
+  - name: 'zricethezav/gitleaks:latest'
+    args: ['detect', '--source', '.', '--no-git', '--redact',
+           '--config', '.gitleaks.toml']
+    id: 'Secret Scan'
+
   # 0. Run tests before building Docker image (optional but recommended)
   - name: 'node:20-alpine'
     id: 'Run Tests'

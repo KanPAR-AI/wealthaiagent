@@ -1,0 +1,32 @@
+# Secret-scan policy (docs/52-leak-register.md in the parent repo). CI
+# gate: a NEW finding fails the build. Allowlist entries carry reasons.
+title = "wealthaiagent gitleaks policy"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Reviewed non-secrets (docs/52)"
+paths = [
+  '''/\.env$''',
+  '''/\.env\.local$''',
+  # Firebase CLIENT config — public by design; shipped in every app
+  # bundle. Access control is Firebase security rules, not key secrecy.
+  '''google-services\.json$''',
+  '''apps/astro/src/lib/env\.ts$''',
+  # Dependency lockfile integrity checksums, not credentials.
+  '''Podfile\.lock$''',
+  '''Manifest\.lock$''',
+  # Build outputs — gitignored; quiet the filesystem scan.
+  '''apps/[^/]+/(ios|android)/(build|build_out|Pods)/''',
+  '''apps/[^/]+/dist/''',
+  '''node_modules/''',
+  # More gitignored build output: android incremental caches, the web
+  # app's dist bundle, and the Capacitor iOS public copy of it.
+  '''android/app/build/''',
+  '''/dist/assets/''',
+  '''ios/App/App/public/''',
+]
+regexes = [
+  '''AIzaSyBaV0-3rpmqPwwmF-DxrzOxo7RMeZGPxc0''',
+]
