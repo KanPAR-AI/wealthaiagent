@@ -27,7 +27,11 @@
       "channel": "production",
       "ios": {
         "resourceClass": "large"
-      }
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "node": "24.10.0"
     }
   },
   "submit": {
