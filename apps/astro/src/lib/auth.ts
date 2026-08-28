@@ -15,7 +15,7 @@
 // back to a plain sign-in — reported honestly rather than swallowed.
 
 import {
-  createUserWithEmailAndPassword,
+  EmailAuthProvider,
   GoogleAuthProvider,
   OAuthProvider,
   linkWithCredential,
@@ -181,24 +181,82 @@ export async function signInWithApple(): Promise<Account> {
   return attach(provider.credential({ idToken: credential.identityToken }), 'apple');
 }
 
+/** Firebase's auth codes are developer-speak; the settings screen shows
+ *  `e.message` verbatim, so the translation to something a person can act
+ *  on happens HERE — including the one collision this project makes easy:
+ *  Arthur and Astral share a Firebase project, so an email first used with
+ *  Google in either app already exists when it arrives at this form
+ *  (measured on the first Android sideload, 2026-08-28:
+ *  "auth/email-already-in-use", raw, at the user). */
+function emailAuthError(e: any): Error {
+  const code = String(e?.code ?? '');
+  if (code === 'auth/email-already-in-use') {
+    return new Error(
+      'This email already has an account \u2014 tap "Sign in" instead. If you ' +
+      'originally continued with Google (in this app or in YourFinAdvisor), ' +
+      'use the Google button above.',
+    );
+  }
+  if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
+    return new Error(
+      'That password doesn\u2019t match this email. If you originally continued ' +
+      'with Google, use the Google button above instead.',
+    );
+  }
+  if (code === 'auth/user-not-found') {
+    return new Error('No account exists for this email yet \u2014 tap "Create account".');
+  }
+  if (code === 'auth/invalid-email') {
+    return new Error('That doesn\u2019t look like a valid email address.');
+  }
+  if (code === 'auth/weak-password') {
+    return new Error('Password needs at least 6 characters.');
+  }
+  if (code === 'auth/too-many-requests') {
+    return new Error('Too many attempts \u2014 wait a minute and try again.');
+  }
+  return e;
+}
+
 export async function signInWithEmail(email: string, password: string): Promise<Account> {
-  const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+  let cred;
+  try {
+    cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+  } catch (e: any) {
+    throw emailAuthError(e);
+  }
   track('sign_in', { how: 'email', upgraded: 0 });
   identify(cred.user.uid);
   return describe(cred.user)!;
 }
 
 export async function signUpWithEmail(email: string, password: string): Promise<Account> {
-  const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
-  // Best-effort: a verification email must not block account creation.
+  // Through `attach`, same as Google and Apple: creating an email account on
+  // an anonymous session LINKS it, so the guest readings survive the upgrade
+  // instead of stranding \u2014 the exact promise the Google path already keeps.
   try {
-    await sendEmailVerification(cred.user);
-  } catch (e) {
-    console.warn('[auth] could not send verification email', e);
+    const account = await attach(
+      EmailAuthProvider.credential(email.trim(), password), 'email');
+    // Best-effort: a verification email must not block account creation.
+    try {
+      if (auth.currentUser) await sendEmailVerification(auth.currentUser);
+    } catch (e) {
+      console.warn('[auth] could not send verification email', e);
+    }
+    track('sign_up', { how: 'email' });
+    return account;
+  } catch (e: any) {
+    if (String(e?.code ?? '') === 'auth/email-already-in-use') {
+      // The account exists. If the password they typed matches it, they
+      // meant "sign in" \u2014 do that instead of lecturing them about buttons.
+      try {
+        return await signInWithEmail(email, password);
+      } catch {
+        throw emailAuthError(e);
+      }
+    }
+    throw emailAuthError(e);
   }
-  track('sign_up', { how: 'email' });
-  identify(cred.user.uid);
-  return describe(cred.user)!;
 }
 
 /** Sign out, then straight back in anonymously — this app always has an

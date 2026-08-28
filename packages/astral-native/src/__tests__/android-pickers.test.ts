@@ -87,3 +87,39 @@ describe('the Google sign-in availability gate (both apps)', () => {
     },
   );
 });
+
+describe('the email path survives the shared-project collision (both apps)', () => {
+  const AUTH_ASTRO = readFileSync(
+    join(__dirname, '..', '..', '..', '..', 'apps', 'astro', 'src', 'lib', 'auth.ts'), 'utf8');
+  const AUTH_MOBILE = readFileSync(
+    join(__dirname, '..', '..', '..', '..', 'apps', 'mobile', 'src', 'lib', 'auth.ts'), 'utf8');
+
+  it.each([['astro', AUTH_ASTRO], ['mobile', AUTH_MOBILE]])(
+    '%s: auth/email-already-in-use maps to a sentence that names the Google path',
+    (_app, src) => {
+      const fn = src.match(/function emailAuthError[\s\S]*?\n\}/)?.[0] ?? '';
+      expect(fn).toContain("'auth/email-already-in-use'");
+      expect(fn).toMatch(/Google button/);
+      // and no raw code can reach the screen for the common failures
+      for (const code of ['auth/invalid-credential', 'auth/user-not-found',
+                          'auth/weak-password', 'auth/invalid-email']) {
+        expect(fn).toContain(`'${code}'`);
+      }
+    },
+  );
+
+  it.each([['astro', AUTH_ASTRO], ['mobile', AUTH_MOBILE]])(
+    '%s: "Create account" on an existing email tries the password as a SIGN-IN first',
+    (_app, src) => {
+      const fn = src.match(/export async function signUpWithEmail[\s\S]*?\n\}/)?.[0] ?? '';
+      expect(fn).toContain("'auth/email-already-in-use'");
+      expect(fn).toMatch(/signInWithEmail(AndPassword)?\(/);
+    },
+  );
+
+  it('astro: email signup rides attach, so guest readings survive the upgrade', () => {
+    const fn = AUTH_ASTRO.match(/export async function signUpWithEmail[\s\S]*?\n\}/)?.[0] ?? '';
+    expect(fn).toContain('attach(');
+    expect(fn).toContain('EmailAuthProvider.credential');
+  });
+});

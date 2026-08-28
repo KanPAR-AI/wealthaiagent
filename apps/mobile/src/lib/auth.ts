@@ -43,12 +43,63 @@ export async function signInAnonymously(): Promise<void> {
   await fbSignInAnonymously(auth);
 }
 
+/** Same translation as astro's auth (2026-08-28): the apps share one
+ *  Firebase project, so an email first used with Google already exists when
+ *  it reaches this form, and the raw code is not an answer. */
+function emailAuthError(e: any): Error {
+  const code = String(e?.code ?? '');
+  if (code === 'auth/email-already-in-use') {
+    return new Error(
+      'This email already has an account \u2014 use "Sign in" instead. If you ' +
+      'originally continued with Google, use the Google button.',
+    );
+  }
+  if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
+    return new Error(
+      'That password doesn\u2019t match this email. If you originally continued ' +
+      'with Google, use the Google button instead.',
+    );
+  }
+  if (code === 'auth/user-not-found') {
+    return new Error('No account exists for this email yet \u2014 create one.');
+  }
+  if (code === 'auth/invalid-email') {
+    return new Error('That doesn\u2019t look like a valid email address.');
+  }
+  if (code === 'auth/weak-password') {
+    return new Error('Password needs at least 6 characters.');
+  }
+  if (code === 'auth/too-many-requests') {
+    return new Error('Too many attempts \u2014 wait a minute and try again.');
+  }
+  return e;
+}
+
 export async function signInWithEmail(email: string, password: string): Promise<void> {
-  await signInWithEmailAndPassword(auth, email, password);
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (e: any) {
+    throw emailAuthError(e);
+  }
 }
 
 export async function signUpWithEmail(email: string, password: string): Promise<void> {
-  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  let cred;
+  try {
+    cred = await createUserWithEmailAndPassword(auth, email, password);
+  } catch (e: any) {
+    if (String(e?.code ?? '') === 'auth/email-already-in-use') {
+      // The account exists \u2014 if this password matches it, they meant
+      // "sign in": do that instead of erroring.
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        return;
+      } catch {
+        throw emailAuthError(e);
+      }
+    }
+    throw emailAuthError(e);
+  }
   // Fire a verification email — best-effort, don't block account creation on it.
   try {
     await sendEmailVerification(cred.user);
