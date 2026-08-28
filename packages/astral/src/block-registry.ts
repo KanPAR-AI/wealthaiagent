@@ -183,3 +183,43 @@ export function splitDataBlocks(
   }
   return out;
 }
+
+/**
+ * Partition a stream into what came BEFORE the first data block and what came
+ * AFTER the last one (docs/49 ASTRAL-17 / ASTRAL-48).
+ *
+ * A native result surface needs this and a chat transcript does not, which is
+ * why it is a function rather than a rule inside `splitDataBlocks`. In a
+ * transcript every run of text is read in order and the progress line is part
+ * of the story. On a screen whose whole subject IS the computed artifact,
+ * the two runs mean different things:
+ *
+ *   `before`  progress — "Casting your chart… 🪐", "Calculating auspicious
+ *             windows… 🔮". Written to be read WHILE waiting, and stale the
+ *             moment the result lands. Measured on the simulator on
+ *             2026-08-28: shown after the fact it reads as though the screen
+ *             is still working, above a result that has already arrived.
+ *   `after`   the reading — the sentences the engine wrote ABOUT the artifact.
+ *
+ * A stream with no data block has no result to be before or after, so all of
+ * its text is returned as `after`: on those turns the engine is asking or
+ * refusing, and that is the thing to read.
+ */
+export function partitionAroundBlocks(segments: StreamSegment[]): {
+  before: string;
+  after: string;
+} {
+  const firstBlock = segments.findIndex((s) => s.kind === 'block');
+  const lastBlock = segments.map((s) => s.kind).lastIndexOf('block');
+  const text = (from: number, to: number) =>
+    segments
+      .slice(from, to)
+      .map((s) => (s.kind === 'text' ? s.text : ''))
+      .join('')
+      .trim();
+  if (firstBlock === -1) return { before: '', after: text(0, segments.length) };
+  return {
+    before: text(0, firstBlock),
+    after: text(lastBlock + 1, segments.length),
+  };
+}

@@ -88,21 +88,34 @@ export function PalmReadingView(props: PalmReadingProps): ReactNode {
   const featureRow = (row: PalmLineRow | PalmMountRow, key: string) => {
     const detail =
       'description' in row ? row.description : row.prominence;
+    // Name over description, never beside it. Measured on the simulator:
+    // "Heart Line" and "deep, long, curves upward toward the index finger"
+    // in one row wrapped the NAME onto two lines and right-ragged the
+    // description into it. A feature name is a heading; a heading that wraps
+    // around its own value is the unpolished look the owner has rejected.
+    // `wide` keeps the side-by-side form for the 380px panel and up.
     return (
       <Box key={key} testID="astral-palm-feature" style={{ gap: 2 }}>
         <Box
           style={{
-            flexDirection: 'row',
+            flexDirection: wide ? 'row' : 'column',
             alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: 8,
+            justifyContent: wide ? 'space-between' : 'flex-start',
+            gap: wide ? 8 : 1,
           }}
         >
           <Text style={{ fontSize: 14, fontWeight: '600', color: theme.text, flexShrink: 1 }}>
             {row.name}
           </Text>
           {detail ? (
-            <Text style={{ fontSize: 12, color: theme.textMuted, flexShrink: 1, textAlign: 'right' }}>
+            <Text
+              style={{
+                fontSize: 12,
+                color: theme.textMuted,
+                flexShrink: 1,
+                textAlign: wide ? 'right' : 'left',
+              }}
+            >
               {detail}
             </Text>
           ) : null}
@@ -136,10 +149,8 @@ export function PalmReadingView(props: PalmReadingProps): ReactNode {
         <Text testID="astral-palm-label" style={{ fontSize: 17, fontWeight: '700', color: theme.text }}>
           {header.label}
         </Text>
-        {header.shape ? (
-          <Text style={{ fontSize: 12, color: theme.textMuted }}>
-            {header.element ? `${header.shape} · ${header.element}` : `${header.shape} hand`}
-          </Text>
+        {header.subtitle ? (
+          <Text style={{ fontSize: 12, color: theme.textMuted }}>{header.subtitle}</Text>
         ) : null}
       </Box>
 

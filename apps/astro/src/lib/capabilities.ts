@@ -76,31 +76,49 @@ export interface Capabilities {
    * The palm reading — capture, analysis and the result, natively
    * (docs/49 ASTRAL-44..49; F36; AMB-26 recommended (a)).
    *
-   * TRUE, and unlike every capability above it this one is not a READ: there
-   * is no stored palm artifact to fetch, because nothing exists until a
-   * photograph has been analysed. What makes it honest is that all three
-   * halves it needs are shipped and were verified before this flipped:
+   * FALSE, and the reason is a LIVE ENGINE DEFECT rather than unbuilt client
+   * work. The screen exists at `app/palm.tsx`, the renderer ships, the
+   * upload path ships. What does not work is the engine's own capture ask,
+   * and without it this surface cannot do what its tile would promise.
    *
-   *   the ASK      `_input_request_block("palm_intent_needs_upload", …)` —
-   *                two `image` fields, each labelled with its ROLE, neither
-   *                required (one hand is a real reading);
-   *   the ANALYSIS the two-pass vision node plus `combine_hand_analyses` and
-   *                the Dale (1895) classical-rule layer, which the engine
-   *                has run in production for months;
-   *   the RENDER   `palm_analysis` in the shared block registry — which it
-   *                was NOT until this phase, so the engine computed a full
-   *                reading and this app drew nothing.
+   * ── the catch-22, measured 2026-08-28, both arms, 2/2 each ──────────────
    *
-   * It is a capability rather than a constant for the ordinary reason: the
-   * Home tile and the pushed route both derive from it, so removing the
-   * surface is one edit and it removes BOTH — never a tile that leads
-   * somewhere this build cannot serve.
+   * `merge_belief` gates an intent switch on `_new_intent_has_required_slot_
+   * in_delta` (belief.py:429). `PalmSlots.required_for_compute()` is
+   * `{has_image}`, which is non-empty, so the "no required slots" arm does
+   * not apply; the personal-facts arm covers dob/tob/pob only. So:
    *
-   * What this capability does NOT license, and the map is where that is
-   * recorded: no delete affordance over an uploaded palm image (F7 — there
-   * is no DELETE route and `expiresAt` is unconditionally None, so the
-   * button would report success and remove nothing), and no "analyse without
-   * storing" option (ASTRAL-44, engine-side, unbuilt).
+   *   WORDS ALONE — "I'd like a palm reading." / "Please read my palm."
+   *     extractor: action=SWITCH switch_conf=1.00 new_intent=palm slot_ops=0
+   *     belief:    intent SWITCH refused (conf=1.00 need 0.80,
+   *                slot_evidence=False); treating as KEEP
+   *     route:     reason=general_conversation
+   *     -> the belief never becomes `palm`, so `graph.py:3655`'s
+   *        `palm_intent_needs_upload` branch is never reached and the
+   *        role-labelled two-hand widget is never emitted.
+   *
+   *   WITH AN IMAGE — the same words plus an attachment
+   *     belief:    intent SWITCH general -> palm (slot_evidence=True)
+   *     route:     reason=multi_intent_palm_then_kundli -> node=palm
+   *     -> the ask is SKIPPED, because there is already a photo to analyse.
+   *
+   * So `palm_intent_needs_upload` is unreachable by ANY route. It is bug
+   * 8dc95a6a's fix and ASTRAL-46's whole subject — the role label is the one
+   * thing vision cannot supply, and a hand established by model guess costs
+   * the 0.65 reliability discount (`adjudication.py:57`) on every verdict the
+   * palm touches. Shipping the surface anyway would mean either a dead end
+   * (the screen reaches the engine's prose and hands off to a composer with
+   * no attach button) or a client-declared photo form that loses the role
+   * labelling — the discounted reading ASTRAL-46 exists to prevent.
+   *
+   * This map's own rule decides it: a capability map that lies is worse than
+   * a missing screen. The tile and the pushed route are REMOVED. Flipping
+   * this one entry restores both, and that is the intended repair — the
+   * client half is done and unit-tested.
+   *
+   * The palm RENDERER is unaffected and does ship: `palm_analysis` is
+   * registered in the shared block registry, so a reading produced by any
+   * route is drawn rather than silently dropped.
    */
   palm: boolean;
 
@@ -201,7 +219,7 @@ export interface Capabilities {
 export const CAPABILITIES: Capabilities = {
   accountSettings: true,
   chart: true,
-  palm: true,
+  palm: false,
   muhurta: true,
   credits: true,
   privacyAndData: true,

@@ -13,6 +13,7 @@
 
 import { parsePalmAnalysis } from '../payloads';
 import {
+  handSubtitle,
   palmHandTabs,
   palmHeader,
   palmLines,
@@ -107,6 +108,35 @@ describe('parsePalmAnalysis — the captured two-hand reading', () => {
 describe('the view model derives nothing and invents nothing', () => {
   it('draws the ENGINE heading', () => {
     expect(palmHeader(parsed).label).toBe(parsed.hand_label);
+  });
+
+  /**
+   * Found on the simulator, 2026-08-28: the header printed
+   * **"Earth · Earth — a square palm with short, sturdy fingers"**, because
+   * `hand_shape` is `"earth"` and `dominant_element` OPENS with the same
+   * word. Two payload fields, one fact, said twice.
+   */
+  it('says the hand shape ONCE', () => {
+    const subtitle = palmHeader(parsed).subtitle!;
+    expect(subtitle).toBe(parsed.dominant_element);
+    expect(subtitle.match(/earth/gi)).toHaveLength(1);
+  });
+
+  it('…and keeps both when the element genuinely says something else', () => {
+    expect(handSubtitle('Earth', 'Grounded and deliberate')).toBe(
+      'Earth · Grounded and deliberate',
+    );
+  });
+
+  it('a shape with no element becomes a noun, not a bare category', () => {
+    expect(handSubtitle('Earth', null)).toBe('Earth hand');
+  });
+
+  it('neither field means no subtitle at all — never an empty line', () => {
+    expect(handSubtitle(null, null)).toBeNull();
+    expect(palmHeader(parsePalmAnalysis({
+      ...palmTwoHandPayload, hand_shape: null, dominant_element: null,
+    })!).subtitle).toBeNull();
   });
 
   it('names how the hand was established', () => {
@@ -260,7 +290,7 @@ describe('ASTRAL-40 — no lifespan reaches the surface', () => {
   });
 
   it('the parser does not carry `predictions` at all', () => {
-    expect((parsed as Record<string, unknown>).predictions).toBeUndefined();
+    expect((parsed as unknown as Record<string, unknown>).predictions).toBeUndefined();
   });
 
   /**

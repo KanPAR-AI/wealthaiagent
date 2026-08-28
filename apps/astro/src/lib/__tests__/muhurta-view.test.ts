@@ -4,22 +4,38 @@
 // project.
 
 import {
+  MUHURTA_COMPOSE_PROMPT,
   MUHURTA_EMPTY_LINE,
-  MUHURTA_OPENING_TURN,
   MUHURTA_REPLY_HINT,
   muhurtaReplyKind,
   replyReady,
   stillAsking,
 } from '../muhurta-view';
 
-describe('the opening turn', () => {
-  it('names an intent and no value', () => {
-    expect(MUHURTA_OPENING_TURN).toMatch(/auspicious time/i);
-    // No event, no date, no place: the engine decides what it needs, and a
-    // client that pre-supplied any of them would be driving the ask.
-    expect(MUHURTA_OPENING_TURN).not.toMatch(
-      /wedding|griha|september|pune|mumbai|\d{4}-\d{2}-\d{2}/i,
+/**
+ * There is no opening turn: the user's own sentence is turn one, because a
+ * two-turn opening runs into a live subject-attribution defect (the header of
+ * `muhurta-view.ts` carries the measurement). What the screen contributes is
+ * a PROMPT, and a prompt is not a message.
+ */
+describe('the compose prompt asks; it does not answer', () => {
+  it('asks for the three things the engine needs, in the user’s words', () => {
+    expect(MUHURTA_COMPOSE_PROMPT).toMatch(/what are you planning/i);
+    expect(MUHURTA_COMPOSE_PROMPT).toMatch(/where/i);
+    expect(MUHURTA_COMPOSE_PROMPT).toMatch(/when/i);
+  });
+
+  it('carries no event, no place and no date — nothing the client decided', () => {
+    expect(MUHURTA_COMPOSE_PROMPT).not.toMatch(
+      /wedding|griha|marriage|september|pune|mumbai|\d{4}-\d{2}-\d{2}/i,
     );
+  });
+
+  it('is never sent: only a non-empty DRAFT is sendable', () => {
+    // The prompt lives on screen beside an empty box, and an empty box sends
+    // nothing. A screen that submitted its own prompt would be the client
+    // composing the turn.
+    expect(replyReady('')).toBe(false);
   });
 });
 

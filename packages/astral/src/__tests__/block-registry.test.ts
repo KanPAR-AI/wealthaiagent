@@ -1,4 +1,4 @@
-import { createBlockRegistry, readDataBlock, splitDataBlocks } from '../block-registry';
+import { createBlockRegistry, partitionAroundBlocks, readDataBlock, splitDataBlocks } from '../block-registry';
 
 describe('createBlockRegistry — docs/49 ASTRAL-20', () => {
   it('warns exactly once for an unregistered type, however many blocks arrive', () => {
@@ -176,5 +176,53 @@ describe('splitDataBlocks — text runs and data blocks, in stream order', () =>
 
   it('is empty for empty text', () => {
     expect(splitDataBlocks('')).toEqual([]);
+  });
+});
+
+/**
+ * docs/49 ASTRAL-17 / ASTRAL-48 — progress is not the reading.
+ *
+ * Found on the simulator, 2026-08-28, on the muhurta surface: the engine
+ * streams "Calculating auspicious windows… 🔮" BEFORE the block and the
+ * reading AFTER it. A screen that joined every text run printed the progress
+ * line above a finished result, so the surface read as still working.
+ */
+describe('partitionAroundBlocks', () => {
+  const split = (text: string) => splitDataBlocks(text, ['muhurta_results']);
+
+  const BLOCK = '```muhurta_results\n{"type":"muhurta_results","windows":[]}\n```';
+
+  it('separates the progress line from the reading', () => {
+    const { before, after } = partitionAroundBlocks(
+      split(`Calculating auspicious windows… 🔮\n\n${BLOCK}\n\nI evaluated 640 slots.`),
+    );
+    expect(before).toBe('Calculating auspicious windows… 🔮');
+    expect(after).toBe('I evaluated 640 slots.');
+  });
+
+  it('a turn with NO block is all reading — an ask is the thing to read', () => {
+    const { before, after } = partitionAroundBlocks(split('Which city, and when?'));
+    expect(before).toBe('');
+    expect(after).toBe('Which city, and when?');
+  });
+
+  it('text BETWEEN two blocks is not smuggled into the reading', () => {
+    // Two blocks in one turn is real (palm streams `palm_scanning` and then
+    // `palm_analysis`). Only what follows the LAST one is the reading.
+    const { before, after } = partitionAroundBlocks(
+      split(`working…\n\n${BLOCK}\n\nstill working…\n\n${BLOCK}\n\nthe reading.`),
+    );
+    expect(before).toBe('working…');
+    expect(after).toBe('the reading.');
+    expect(after).not.toContain('still working');
+  });
+
+  it('a block with nothing after it yields an empty reading, not the progress line', () => {
+    const { after } = partitionAroundBlocks(split(`Calculating…\n\n${BLOCK}`));
+    expect(after).toBe('');
+  });
+
+  it('empty input is empty, not undefined', () => {
+    expect(partitionAroundBlocks(split(''))).toEqual({ before: '', after: '' });
   });
 });

@@ -42,6 +42,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import Markdown from 'react-native-markdown-display';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg from 'react-native-svg';
 
@@ -51,17 +52,19 @@ import {
   PalmReadingView,
   parseInputRequest,
   parsePalmAnalysis,
+  partitionAroundBlocks,
   splitDataBlocks,
   type InputRequestPayload,
   type PalmAnalysisPayload,
 } from '@wealthai/astral';
 import { rnPrimitives } from '@wealthai/astral-native';
-import { useSendMessage } from '@wealthai/chat-native';
+import { chatMarkdownStyles, useSendMessage } from '@wealthai/chat-native';
 import { useChatStore, type Message } from '@wealthai/core';
 
 import { ChevronLeft, SymbolIcon } from '@/components/glyphs';
 import { SkyDefs, SkyField, Stars } from '@/components/sky';
 import { track } from '@/lib/analytics';
+import { astroChatTheme } from '@/lib/chat-theme';
 import { getToken } from '@/lib/auth';
 import { lastChatId, rememberChat } from '@/lib/chat-session';
 import { apiUrl } from '@/lib/core-adapter';
@@ -103,8 +106,13 @@ export default function Palm() {
   const [analysis, setAnalysis] = useState<PalmAnalysisPayload | null>(null);
   const [said, setSaid] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [openHand, setOpenHand] = useState<number | null>(0);
+  // Nothing expanded to start. `combine_hand_analyses` files the PRIMARY
+  // hand's geometry as the top-level lines and mounts, so opening hand 0 by
+  // default repeats the reading the user has just read, word for word,
+  // under a different heading — measured on the simulator 2026-08-28.
+  const [openHand, setOpenHand] = useState<number | null>(null);
   const [photoToken, setPhotoToken] = useState<string | null>(null);
+  const [photoBroken, setPhotoBroken] = useState(false);
 
   const [chatId, setChatId] = useState<string | null>(null);
   const chatIdRef = useRef<string | null>(null);
@@ -204,11 +212,10 @@ export default function Palm() {
     }
 
     const segments = splitDataBlocks(reply.message ?? '', PALM_LANGUAGES);
-    const prose = segments
-      .filter((seg) => seg.kind === 'text')
-      .map((seg) => (seg.kind === 'text' ? seg.text : ''))
-      .join('')
-      .trim();
+    // Only the text AFTER the reading is the reading's prose. Before it is
+    // the engine's progress line, which reads as "still working" above a
+    // finished result.
+    const { after: prose } = partitionAroundBlocks(segments);
 
     const blocks = segments.filter((seg) => seg.kind === 'block');
     const reading = blocks
@@ -221,6 +228,8 @@ export default function Palm() {
     const kind = palmReplyKind(reading !== null, prose);
     if (reading) {
       setAnalysis(reading);
+      // …and the prose the engine wrote ABOUT it rides along under the card.
+      setSaid(prose);
       setPhase('reading');
       track('palm_reading_shown', {
         both_hands: reading.both_hands ? 1 : 0,
@@ -260,6 +269,8 @@ export default function Palm() {
   const toChat = () =>
     router.push({ pathname: '/chat', params: { chatId: chatIdRef.current ?? '' } });
 
+  const markdown = chatMarkdownStyles(astroChatTheme);
+
   const disclosure = useMemo(() => palmDisclosure(), []);
   const askKind = palmAskKind(request?.ask);
   const filled = 0; // the widget owns its own field state; the hint is copy
@@ -268,18 +279,26 @@ export default function Palm() {
   // The analysed photograph, if the engine filed one. Rendered with the
   // bearer token the file endpoint requires — an <Image> cannot carry a
   // header on its own, and an unauthorised GET renders as a broken tile.
+  //
+  // An image that cannot be fetched COLLAPSES. Measured on the simulator
+  // 2026-08-28: a file id the backend does not have left a 220pt-tall empty
+  // box between the heading and the reading — a hole where a photograph is
+  // implied, which reads as a broken screen rather than as a reading without
+  // a picture. The reading is complete without it, so the honest render of
+  // "no image" is no element.
   const photo = useMemo(() => {
-    if (!analysis?.image_url || !photoToken) return null;
+    if (!analysis?.image_url || !photoToken || photoBroken) return null;
     const path = analysis.image_url.replace(/^\/api\/v1/, '');
     return (
       <Image
         source={{ uri: apiUrl(path), headers: { Authorization: `Bearer ${photoToken}` } }}
         style={st.photo}
         contentFit="cover"
+        onError={() => setPhotoBroken(true)}
         accessibilityLabel={analysis.hand_label ?? 'The analysed palm'}
       />
     );
-  }, [analysis, photoToken]);
+  }, [analysis, photoToken, photoBroken]);
 
   return (
     <View style={st.fill}>
@@ -383,6 +402,14 @@ export default function Palm() {
               openHand={openHand}
               onOpenHand={setOpenHand}
             />
+            {/* The engine's own words about the reading, through the SAME
+                markdown renderer the chat bubble uses — plain Text prints
+                `**` and `###` at the user. */}
+            {said ? (
+              <View style={st.narration}>
+                <Markdown style={markdown}>{said}</Markdown>
+              </View>
+            ) : null}
             <Pressable style={st.ctaGhost} onPress={toChat} accessibilityRole="button">
               <Text style={st.ctaGhostText}>Ask about this reading</Text>
             </Pressable>
@@ -441,6 +468,12 @@ const st = StyleSheet.create({
   caption: { ...t.type.scale.caption, color: t.palette.ink.muted },
 
   readingWrap: { paddingHorizontal: t.space(4), paddingTop: t.space(4), gap: t.space(3) },
+  narration: {
+    backgroundColor: t.palette.paper.card,
+    borderRadius: t.radius.card,
+    paddingHorizontal: t.space(4),
+    paddingVertical: t.space(2),
+  },
   photo: {
     width: '100%',
     height: 220,

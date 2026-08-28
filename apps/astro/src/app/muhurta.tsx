@@ -7,20 +7,26 @@
 //
 // ── read `lib/muhurta-view.ts` before changing this screen ────────────────
 //
-// It carries the diagnosis for the half that is NOT here: there is no
-// structured ask for the three slots muhurta needs, verified by running
-// `_input_request_block('required_slots_missing', Belief(intent='muhurta'))`
-// in the container and getting the empty string. A native event/date/place
-// form would have to flatten its values into a sentence for the extractor to
-// parse back out, which is F18's named anti-pattern with a structural test
-// behind it. So the ask is the engine's own prose and the user answers in
-// their own words — and the RESULT, which is what a muhurta screen is for,
-// is drawn natively at full width by the renderer that has existed since
-// PH-3.
+// It carries two things this file depends on and does not restate:
 //
-// The day four `InputFieldSpec` rows land in `graph.py`, this screen renders
-// the form with no change: it draws whichever block arrives rather than a
-// form it declared itself.
+//   (1) the diagnosis for the form that is NOT here — there is no structured
+//       ask for the three slots muhurta needs, verified by running
+//       `_input_request_block('required_slots_missing',
+//       Belief(intent='muhurta'))` in the container and getting the empty
+//       string. A native event/date/place form would have to flatten its
+//       values into a sentence for the extractor to parse back out, which is
+//       F18's named anti-pattern with a structural test behind it;
+//
+//   (2) the MEASUREMENT that decided the shape of this screen — the user's
+//       own sentence is turn ONE, because the two-turn opening the rest of
+//       this app uses runs into a live subject-attribution defect that reads
+//       a wedding date and a venue as somebody's birth details.
+//
+// What a muhurta screen is FOR — the windows — is drawn natively at full
+// width by the renderer that has existed since PH-3. And the day four
+// `InputFieldSpec` rows land in `graph.py`, the `form_ask` branch below
+// lights up with no change here: this screen draws whichever block arrives
+// rather than a form it declared itself.
 
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -36,6 +42,7 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
+import Markdown from 'react-native-markdown-display';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg from 'react-native-svg';
 
@@ -45,23 +52,25 @@ import {
   MuhurtaWindowsView,
   parseInputRequest,
   parseMuhurtaResults,
+  partitionAroundBlocks,
   splitDataBlocks,
   type InputRequestPayload,
   type MuhurtaResultsPayload,
 } from '@wealthai/astral';
 import { rnPrimitives } from '@wealthai/astral-native';
-import { useSendMessage } from '@wealthai/chat-native';
+import { chatMarkdownStyles, useSendMessage } from '@wealthai/chat-native';
 import { useChatStore, type Message } from '@wealthai/core';
 
 import { ChevronLeft, SymbolIcon } from '@/components/glyphs';
 import { SkyDefs, SkyField, Stars } from '@/components/sky';
 import { track } from '@/lib/analytics';
+import { astroChatTheme } from '@/lib/chat-theme';
 import { lastChatId, rememberChat } from '@/lib/chat-session';
 import { fetchBalance } from '@/lib/credits';
 import {
+  MUHURTA_COMPOSE_PROMPT,
   MUHURTA_EMPTY_LINE,
   MUHURTA_OPENING_LINE,
-  MUHURTA_OPENING_TURN,
   MUHURTA_REPLY_HINT,
   muhurtaReplyKind,
   replyReady,
@@ -81,7 +90,7 @@ export default function Muhurta() {
     if (!routeIsLive('/muhurta')) router.replace('/home');
   }, []);
 
-  const [phase, setPhase] = useState<MuhurtaPhase>('asking');
+  const [phase, setPhase] = useState<MuhurtaPhase>('compose');
   const [prose, setProse] = useState('');
   const [request, setRequest] = useState<InputRequestPayload | null>(null);
   const [results, setResults] = useState<MuhurtaResultsPayload | null>(null);
@@ -118,25 +127,19 @@ export default function Muhurta() {
     })();
   }, []);
 
+  // No opening turn. The user's own sentence IS turn one — see
+  // `muhurta-view.ts` for the measurement that decided it. What still runs
+  // on mount is the balance call, for the reason `birth-details.tsx` names:
+  // `ensure_welcome` lives inside `GET /credits/balance` and nowhere else,
+  // so a brand-new account has zero credits until something asks.
   const started = useRef(false);
   useEffect(() => {
-    if (started.current || !adopted) return;
+    if (started.current) return;
     started.current = true;
     track('muhurta_started');
-    void (async () => {
-      try {
-        await fetchBalance();
-      } catch (e: unknown) {
-        console.warn('[credits]', String((e as Error)?.message ?? e));
-      }
-      try {
-        await send(MUHURTA_OPENING_TURN, []);
-      } catch (e: unknown) {
-        setError(String((e as Error)?.message ?? e));
-        setPhase('error');
-      }
-    })();
-  }, [adopted, send]);
+    void fetchBalance().catch((e: unknown) =>
+      console.warn('[credits]', String((e as Error)?.message ?? e)));
+  }, []);
 
   const reply = useChatStore((s) => {
     const id = chatId;
@@ -159,11 +162,10 @@ export default function Muhurta() {
     }
 
     const segments = splitDataBlocks(reply.message ?? '', MUHURTA_LANGUAGES);
-    const text = segments
-      .filter((seg) => seg.kind === 'text')
-      .map((seg) => (seg.kind === 'text' ? seg.text : ''))
-      .join('')
-      .trim();
+    // Only the text AFTER the result is the reading. Everything before it is
+    // the engine's progress line ("Calculating auspicious windows… 🔮"),
+    // which read as "still working" above a finished result on the simulator.
+    const { after: text } = partitionAroundBlocks(segments);
     const blocks = segments.filter((seg) => seg.kind === 'block');
     const windows = blocks
       .map((b) => (b.kind === 'block' ? parseMuhurtaResults(b.value) : null))
@@ -202,7 +204,11 @@ export default function Muhurta() {
 
   const answer = useCallback(
     (message: string) => {
-      if (!replyReady(message)) return;
+      // Never before adoption resolves. Sending first would create a NEW
+      // chat and the muhurta would be computed in a conversation that cannot
+      // see the chart the user already cast — the node reads the natal
+      // Moon's nakshatra when it has one.
+      if (!replyReady(message) || !adopted) return;
       setDraft('');
       setPhase('computing');
       track('muhurta_answered');
@@ -211,11 +217,13 @@ export default function Muhurta() {
         setPhase('error');
       });
     },
-    [send],
+    [send, adopted],
   );
 
   const toChat = () =>
     router.push({ pathname: '/chat', params: { chatId: chatIdRef.current ?? '' } });
+
+  const markdown = chatMarkdownStyles(astroChatTheme);
 
   return (
     <View style={st.fill}>
@@ -254,14 +262,10 @@ export default function Muhurta() {
             </SafeAreaView>
           </View>
 
-          {phase === 'asking' || phase === 'computing' ? (
+          {phase === 'computing' ? (
             <View style={st.card}>
               <ActivityIndicator color={tokens.palette.accent.interactive} />
-              <Text style={st.cardBody}>
-                {phase === 'computing'
-                  ? 'Evaluating time slots against the panchang…'
-                  : MUHURTA_OPENING_LINE}
-              </Text>
+              <Text style={st.cardBody}>{MUHURTA_OPENING_LINE}</Text>
             </View>
           ) : null}
 
@@ -269,9 +273,13 @@ export default function Muhurta() {
               for the user's own sentence. Nothing here is composed from
               typed values (F18) — the text that travels is the text they
               wrote. */}
-          {phase === 'prose_ask' ? (
+          {phase === 'compose' || phase === 'prose_ask' ? (
             <View style={st.card}>
-              <Text style={st.cardBody}>{prose}</Text>
+              {/* Turn one is the user's sentence, so the first prompt is the
+                  SCREEN's; every later one is the engine's own words. */}
+              <Text style={st.cardBody}>
+                {phase === 'compose' ? MUHURTA_COMPOSE_PROMPT : prose}
+              </Text>
               <TextInput
                 style={st.input}
                 value={draft}
@@ -284,8 +292,8 @@ export default function Muhurta() {
                 testID="muhurta-reply"
               />
               <Pressable
-                style={[st.cta, replyReady(draft) ? null : st.ctaOff]}
-                disabled={!replyReady(draft)}
+                style={[st.cta, replyReady(draft) && adopted ? null : st.ctaOff]}
+                disabled={!replyReady(draft) || !adopted}
                 accessibilityRole="button"
                 accessibilityLabel="Find windows"
                 onPress={() => answer(draft)}
@@ -313,13 +321,24 @@ export default function Muhurta() {
 
           {phase === 'windows' && results ? (
             <View style={st.windowsWrap}>
-              {prose ? <Text style={st.cardBody}>{prose}</Text> : null}
+              {/* The WINDOWS first. They are what this screen is for, and
+                  the narration below them is commentary on them. */}
               <MuhurtaWindowsView
                 ui={rnPrimitives}
                 theme={LIGHT_THEME}
                 width={width - tokens.space(8)}
                 results={results}
               />
+              {/* …and the reading, through the SAME markdown renderer the
+                  chat uses. Rendered as plain text it printed `**1.` and
+                  `###` on screen, which is the raw-markdown leak the shared
+                  bubble already solved — a second renderer here would be a
+                  second answer to a solved question. */}
+              {prose ? (
+                <View style={st.narration}>
+                  <Markdown style={markdown}>{prose}</Markdown>
+                </View>
+              ) : null}
               <Pressable style={st.ctaGhost} onPress={toChat} accessibilityRole="button">
                 <Text style={st.ctaGhostText}>Ask about these windows</Text>
               </Pressable>
@@ -388,6 +407,12 @@ const st = StyleSheet.create({
   },
 
   windowsWrap: { paddingHorizontal: t.space(4), paddingTop: t.space(4), gap: t.space(3) },
+  narration: {
+    backgroundColor: t.palette.paper.card,
+    borderRadius: t.radius.card,
+    paddingHorizontal: t.space(4),
+    paddingVertical: t.space(2),
+  },
 
   notice: {
     flexDirection: 'row',

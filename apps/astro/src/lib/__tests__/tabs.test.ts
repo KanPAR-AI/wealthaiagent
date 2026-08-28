@@ -122,15 +122,20 @@ describe('ASTRAL-119’s gate-order check — the shell may not ship ahead of it
 
 describe('Home’s tile row', () => {
   /**
-   * Six tiles, and the last two are AMB-26's option (a).
+   * Five tiles today, and the fifth is AMB-26's option (a).
    *
    * The board draws four. F36 records that neither palm nor muhurta appears
    * on ANY of the twelve frames, though both are shipped engine intents and
    * the brief calls palm "the strongest part of the engine". AMB-26 asks
-   * where they live and recommends the tile row; that recommendation is taken
-   * as a default under the standing rule, and it is additive — the TAB set
-   * below is unchanged and a sixth tab remains an AMB-26 answer nobody has
-   * given.
+   * where they live and recommends the tile row; that recommendation is
+   * taken as a default under the standing rule, and it is additive — the TAB
+   * set below is unchanged and a sixth tab remains an AMB-26 answer nobody
+   * has given.
+   *
+   * Palm is DECLARED and ABSENT, which is the map working rather than the
+   * feature missing: its capability is false because the engine's capture ask
+   * is unreachable (the measurement is on `capabilities.palm`). The row below
+   * is what "a false REMOVES the tile" means when it is not hypothetical.
    */
   it('ASTRAL-125 / AMB-26(a) — the tiles link only to live screens', () => {
     expect(visibleTiles().map((t) => t.title)).toEqual([
@@ -138,9 +143,17 @@ describe('Home’s tile row', () => {
       'Compatibility',
       'AI Reading',
       'This Month',
-      'Palm Reading',
       'Muhurta',
     ]);
+  });
+
+  it('the palm tile is DECLARED, and absent only because its capability is', () => {
+    // Both halves matter. If the tile were simply deleted, restoring the
+    // surface would be a code change rather than a flag; if the capability
+    // were true, the tile would promise a flow the engine cannot complete.
+    expect(DECLARED_TILES.map((t) => t.id)).toContain('palm');
+    expect(visibleTiles().map((t) => t.id)).not.toContain('palm');
+    expect(visibleTiles({ ...CAPABILITIES, palm: true }).map((t) => t.id)).toContain('palm');
   });
 
   it('a tile whose capability is absent is not rendered dimmed — it is gone', () => {
@@ -148,19 +161,14 @@ describe('Home’s tile row', () => {
       'chart',
       'reading',
       'month',
-      'palm',
       'muhurta',
     ]);
     expect(visibleTiles({ ...CAPABILITIES, timeline: false }).map((t) => t.id)).toEqual([
       'chart',
       'compatibility',
       'reading',
-      'palm',
       'muhurta',
     ]);
-    // …and the two new ones obey the same rule, which is the only reason
-    // they were allowed to be tiles rather than constants.
-    expect(visibleTiles({ ...CAPABILITIES, palm: false }).map((t) => t.id)).not.toContain('palm');
     expect(visibleTiles({ ...CAPABILITIES, muhurta: false }).map((t) => t.id))
       .not.toContain('muhurta');
   });

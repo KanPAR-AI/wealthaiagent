@@ -44,9 +44,18 @@ import type {
 export interface PalmHeader {
   /** the engine's own heading for this reading */
   label: string;
-  /** "Earth hand" and its element sentence, when the engine named one */
-  shape: string | null;
-  element: string | null;
+  /**
+   * ONE subtitle, not two fields for a caller to join.
+   *
+   * Measured on the simulator 2026-08-28: `hand_shape` is `"earth"` and
+   * `dominant_element` is `"Earth — a square palm with short, sturdy
+   * fingers"`, and a screen that printed `shape · element` read
+   * **"Earth · Earth — a square palm…"**. The element sentence usually
+   * OPENS with the shape word, so the two are the same fact at two lengths.
+   * Deciding which to show is a decision, so it is made here and tested,
+   * rather than left to each surface to get right.
+   */
+  subtitle: string | null;
   /**
    * How the hand was established, in a sentence a reader can act on — or
    * null when the engine stamped a source that needs no caveat.
@@ -117,10 +126,11 @@ export function palmHeader(payload: PalmAnalysisPayload): PalmHeader {
   const source = payload.hand_source;
   const guessed = source === 'model_guess';
   const unverified = source === 'thumb_geometry_unverified';
+  const shape = titleCase(payload.hand_shape);
+  const element = payload.dominant_element;
   return {
     label: payload.hand_label ?? '',
-    shape: titleCase(payload.hand_shape),
-    element: payload.dominant_element,
+    subtitle: handSubtitle(shape, element),
     provenance: guessed
       ? 'Which hand this is was the model’s best guess, not something you told '
         + 'us — so every reading below is weighted down for it.'
@@ -138,6 +148,22 @@ export function palmHeader(payload: PalmAnalysisPayload): PalmHeader {
         + 'the dominant hand as what you have made of it.'
       : null,
   };
+}
+
+/**
+ * The shape and the element, without saying the same word twice.
+ *
+ * The element sentence wins when it already carries the shape ("Earth — a
+ * square palm…"); otherwise the two are genuinely different facts and are
+ * shown together. A shape alone becomes "Earth hand", because "Earth" on its
+ * own beside a hand label reads as a category with no noun.
+ */
+export function handSubtitle(shape: string | null, element: string | null): string | null {
+  if (!element) return shape ? `${shape} hand` : null;
+  if (!shape) return element;
+  return element.toLowerCase().startsWith(shape.toLowerCase())
+    ? element
+    : `${shape} · ${element}`;
 }
 
 function lineRow(line: PalmLine): PalmLineRow {

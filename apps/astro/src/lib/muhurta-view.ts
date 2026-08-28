@@ -63,9 +63,9 @@
 // would type in chat, on a surface where the answer is drawn properly.
 
 export type MuhurtaPhase =
-  /** the opening turn is out */
-  | 'asking'
-  /** the engine asked in prose; the user answers in their own words */
+  /** the screen is waiting for the user's request — the FIRST thing shown */
+  | 'compose'
+  /** the engine asked for more, in prose; the user answers in their own words */
   | 'prose_ask'
   /** the engine sent a structured ask — rendered, if it ever does */
   | 'form_ask'
@@ -78,12 +78,45 @@ export type MuhurtaPhase =
   | 'error';
 
 /**
- * The turn that opens the muhurta arc.
+ * ── THE OPENING TURN IS THE USER'S OWN SENTENCE, AND THAT WAS MEASURED ────
  *
- * A sentence naming an INTENT and no value — the same discipline as every
- * other opening turn in this app. The engine decides what it needs.
+ * This screen used to open the way `birth-details.tsx` does: send a
+ * contentless intent sentence ("I'd like to find an auspicious time."), let
+ * the engine ask, then send the answer as turn two. Driven live against the
+ * engine on 2026-08-28 that produced a good four-part prose ask — and then
+ * FAILED on the answer:
+ *
+ *     turn 2: "A wedding in Pune, between 1 September 2026 and
+ *              10 September 2026."
+ *     -> Belief: intent SWITCH general -> muhurta (conf=1.00,
+ *        slot_evidence=True)                                    [correct]
+ *     -> graph_node: node=route reason=third_person_birth_facts_held
+ *     -> "I couldn't tell whose birth details those are
+ *         (2026-09-01, Pune), so I have not written them to your own
+ *         profile…"
+ *
+ * The subject-attribution guard read the WEDDING DATE and the VENUE as
+ * somebody's birth details and interrogated the user instead of computing.
+ * The same request as ONE sentence in the FIRST turn works perfectly:
+ *
+ *     "I need an auspicious muhurta for a wedding in Pune, sometime in the
+ *      first ten days of September."
+ *     -> node=route reason=muhurta_ready_compute
+ *     -> node=muhurta status=ok ms=387.1
+ *     -> muhurta_results: 640 slots evaluated, 10 windows
+ *
+ * That is an engine defect and it is reported, not worked around — but it
+ * also settles a design question in the engine's favour. Opening with a
+ * contentless turn was always a wasted round trip: it spends a turn to ask a
+ * question the screen can ask for free. So the screen asks first, in its own
+ * words, and the user's sentence is turn ONE.
+ *
+ * Nothing about the client's discipline changes: what travels is still the
+ * user's own sentence, never values the client flattened (F18).
  */
-export const MUHURTA_OPENING_TURN = 'I’d like to find an auspicious time.';
+export const MUHURTA_COMPOSE_PROMPT =
+  'What are you planning, where, and roughly when? One sentence is enough — '
+  + 'the more of it you give me at once, the fewer questions I have to ask.';
 
 /**
  * The placeholder in the reply box.
@@ -96,8 +129,8 @@ export const MUHURTA_OPENING_TURN = 'I’d like to find an auspicious time.';
 export const MUHURTA_REPLY_HINT =
   'e.g. a wedding in Pune, sometime in the first half of September';
 
-/** What the screen says while it is waiting for the engine to ask. */
-export const MUHURTA_OPENING_LINE = 'Working out what I need to know…';
+/** What the screen says while the engine is working. */
+export const MUHURTA_OPENING_LINE = 'Evaluating time slots against the panchang…';
 
 /** Nothing came back at all — the state that used to spin forever. */
 export const MUHURTA_EMPTY_LINE =
