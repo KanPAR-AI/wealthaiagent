@@ -1,5 +1,5 @@
 /**
- * The three block payloads the astrology graph puts on the wire, and the
+ * The four block payloads the astrology graph puts on the wire, and the
  * parsers that decide whether a block is renderable at all.
  *
  * Field-for-field sources (chatservice, read-only for this phase):
@@ -7,6 +7,8 @@
  *                    PlanetPosition/HouseCusp/DashaPeriod
  *   match_report     matching.py `compute_gun_milan` return (~:492)
  *   muhurta_results  graph.py `widget_data` (~:4028) + models.py MuhurtaWindow
+ *   palm_analysis    graph.py `widget_data` (~:5026) = combine_hand_analyses
+ *                    + palm.reading_headline + palm_rules.classical_rules
  *
  * PARSE, DON'T TRUST. Every parser returns `null` rather than a partial
  * object, and every host renders nothing for `null`. The negative-space rule
@@ -248,10 +250,119 @@ export interface MuhurtaResultsPayload {
   windows: MuhurtaWindow[];
 }
 
+// ── palm_analysis ──────────────────────────────────────────────────────────
+//
+// Source: `graph.py` `widget_data` (~:5026) — `combine_hand_analyses(...)`
+// spread whole, plus `hand_label` from `palm.reading_headline`, plus the
+// image reference. The analysis itself is `palm.py`'s two-pass vision output
+// with `palm_rules.classical_rules_payload` attached at `palm.py:661`.
+//
+// This is the ONE payload in this file whose numbers come from a model rather
+// than from an ephemeris, and the shape reflects that: every reading carries
+// how its hand was established, because `adjudication.py:57` discounts a
+// model-guessed hand by 0.65 and a reader who cannot see that is reading a
+// weaker claim than they think they are.
+
+export interface PalmLine {
+  /** "Heart Line", "Jeevan Rekha" — the engine's own name, rendered verbatim */
+  name: string;
+  description: string | null;
+  interpretation: string | null;
+  /** 0..1 as the vision pass emitted it. NEVER a percentage (ASTRAL-19). */
+  confidence: number | null;
+}
+
+export interface PalmMount {
+  name: string;
+  /** "flat" | "moderate" | "prominent" — the engine's vocabulary, not ours */
+  prominence: string | null;
+  interpretation: string | null;
+}
+
+/**
+ * One classical rule that FIRED, with the citation that licenses it
+ * (`palm_rules.py:582`). The citation is the point: a palmistry claim with a
+ * page number behind it is a different object from one a model wrote.
+ */
+export interface PalmClassicalRule {
+  rule_id: string;
+  claim: string;
+  /** "career", "marriage_family", "character", … — the engine's domain key */
+  domain: string | null;
+  /** "favorable" | "unfavorable" | … — verbatim */
+  polarity: string | null;
+  /** "major_line" | "mount" | "mark" — how much weight the rule carries */
+  strength: string | null;
+  citation: string;
+  /** the derived features that matched, e.g. `mount:jupiter=prominent` */
+  matched: string[];
+}
+
+export interface PalmClassicalRules {
+  /** the edition the rules were read out of, printed as given */
+  source: string | null;
+  fired: PalmClassicalRule[];
+  /** how many rules had no opinion on this hand — the honesty margin */
+  abstained_count: number | null;
+  /** how many matches policy withheld */
+  suppressed_matches: number | null;
+}
+
+/** One hand of a two-hand reading, as `combine_hand_analyses` files it. */
+export interface PalmHand {
+  /** "left" | "right" | "unknown" — IDENTITY only. Never a heading: use
+   *  `hand_label`, which is the only string licensed to name a hand. */
+  hand: string | null;
+  /** "dominant" | "non_dominant" | null */
+  hand_role: string | null;
+  hand_shape: string | null;
+  overall_reading: string | null;
+  confidence_score: number | null;
+  lines: PalmLine[];
+  mounts: PalmMount[];
+  special_markings: string[];
+}
+
+export interface PalmAnalysisPayload {
+  type: 'palm_analysis';
+  /**
+   * The heading, computed by the engine in the one place that knows how the
+   * side was obtained (`palm.reading_headline`, stamped at `graph.py:5025`).
+   *
+   * A client that titles a reading off the raw `hand` field prints "Left
+   * hand" for a reading whose side was never established — which is exactly
+   * what the shipped mobile palm card did, and exactly what was reported.
+   * So `hand` is carried above for identity and this is what is DRAWN.
+   */
+  hand_label: string | null;
+  hand: string | null;
+  hand_role: string | null;
+  /** "declared" | "thumb_geometry" | "thumb_geometry_unverified" |
+   *  "model_guess" — the exit contract stamps one of these (GR-12a). */
+  hand_source: string | null;
+  hand_shape: string | null;
+  dominant_element: string | null;
+  /** true when two hands were filed as a PAIR rather than as a re-shoot */
+  both_hands: boolean;
+  hands: PalmHand[];
+  lines: PalmLine[];
+  mounts: PalmMount[];
+  special_markings: string[];
+  /** the 1-3 sentence answer to a question the user actually asked, or null */
+  direct_answer: string | null;
+  overall_reading: string | null;
+  confidence_score: number | null;
+  classical_rules: PalmClassicalRules | null;
+  /** the analysed photo, for a host that can fetch an authorised file */
+  image_file_id: string | null;
+  image_url: string | null;
+}
+
 export type AstralPayload =
   | NatalChartPayload
   | MatchReportPayload
-  | MuhurtaResultsPayload;
+  | MuhurtaResultsPayload
+  | PalmAnalysisPayload;
 
 // ── primitive coercions ────────────────────────────────────────────────────
 // Each one answers "is this field usable" with a yes or a null. None of them
@@ -566,5 +677,135 @@ export function parseMuhurtaResults(value: unknown): MuhurtaResultsPayload | nul
     date_range: str(value.date_range),
     total_evaluated: num(value.total_evaluated),
     windows,
+  };
+}
+
+
+// ── palm_analysis ──────────────────────────────────────────────────────────
+
+function parsePalmLine(v: unknown): PalmLine | null {
+  if (!isObj(v)) return null;
+  const name = str(v.name);
+  if (!name) return null;
+  return {
+    name,
+    description: str(v.description),
+    interpretation: str(v.interpretation),
+    confidence: num(v.confidence),
+  };
+}
+
+function parsePalmMount(v: unknown): PalmMount | null {
+  if (!isObj(v)) return null;
+  const name = str(v.name);
+  if (!name) return null;
+  return {
+    name,
+    prominence: str(v.prominence),
+    interpretation: str(v.interpretation),
+  };
+}
+
+function parseClassicalRule(v: unknown): PalmClassicalRule | null {
+  if (!isObj(v)) return null;
+  const rule_id = str(v.rule_id);
+  const claim = str(v.claim);
+  const citation = str(v.citation);
+  // A rule without its citation is not a classical rule, it is an assertion.
+  // Dropped whole rather than rendered as one (INV-3 on a screen).
+  if (!rule_id || !claim || !citation) return null;
+  return {
+    rule_id,
+    claim,
+    domain: str(v.domain),
+    polarity: str(v.polarity),
+    strength: str(v.strength),
+    citation,
+    matched: strList(v.matched),
+  };
+}
+
+function parseClassicalRules(v: unknown): PalmClassicalRules | null {
+  if (!isObj(v)) return null;
+  return {
+    source: str(v.source),
+    fired: (Array.isArray(v.fired) ? v.fired : [])
+      .map(parseClassicalRule)
+      .filter((r): r is PalmClassicalRule => r !== null),
+    abstained_count: num(v.abstained_count),
+    suppressed_matches: num(v.suppressed_matches),
+  };
+}
+
+function parsePalmHand(v: unknown): PalmHand | null {
+  if (!isObj(v)) return null;
+  return {
+    hand: str(v.hand),
+    hand_role: str(v.hand_role),
+    hand_shape: str(v.hand_shape),
+    overall_reading: str(v.overall_reading),
+    confidence_score: num(v.confidence_score),
+    lines: (Array.isArray(v.lines) ? v.lines : [])
+      .map(parsePalmLine)
+      .filter((l): l is PalmLine => l !== null),
+    mounts: (Array.isArray(v.mounts) ? v.mounts : [])
+      .map(parsePalmMount)
+      .filter((m): m is PalmMount => m !== null),
+    special_markings: strList(v.special_markings),
+  };
+}
+
+/**
+ * Parse a `palm_analysis` block.
+ *
+ * The renderability bar is `hand_label` plus SOMETHING to read: a reading
+ * with neither lines, mounts, markings nor prose is not a thin reading, it is
+ * a failed one, and the honest render of a failed reading is nothing at all.
+ *
+ * `hand_label` is required rather than defaulted because the alternative —
+ * falling back to `hand` — is the reported bug: a heading that names a side
+ * the engine never established.
+ */
+export function parsePalmAnalysis(value: unknown): PalmAnalysisPayload | null {
+  if (!isObj(value) || value.type !== 'palm_analysis') return null;
+  const hand_label = str(value.hand_label);
+  if (!hand_label) return null;
+  const lines = (Array.isArray(value.lines) ? value.lines : [])
+    .map(parsePalmLine)
+    .filter((l): l is PalmLine => l !== null);
+  const mounts = (Array.isArray(value.mounts) ? value.mounts : [])
+    .map(parsePalmMount)
+    .filter((m): m is PalmMount => m !== null);
+  const special_markings = strList(value.special_markings);
+  const overall_reading = str(value.overall_reading);
+  if (
+    lines.length === 0 &&
+    mounts.length === 0 &&
+    special_markings.length === 0 &&
+    !overall_reading
+  ) {
+    return null;
+  }
+  return {
+    type: 'palm_analysis',
+    hand_label,
+    hand: str(value.hand),
+    hand_role: str(value.hand_role),
+    hand_source: str(value.hand_source),
+    hand_shape: str(value.hand_shape),
+    dominant_element: str(value.dominant_element),
+    both_hands: bool(value.both_hands),
+    hands: (Array.isArray(value.hands) ? value.hands : [])
+      .map(parsePalmHand)
+      .filter((h): h is PalmHand => h !== null),
+    lines,
+    mounts,
+    special_markings,
+    direct_answer: str(value.direct_answer),
+    overall_reading,
+    confidence_score: num(value.confidence_score),
+    classical_rules: parseClassicalRules(value.classical_rules),
+    image_file_id: str(value.image_file_id),
+    image_url: str(value.image_url),
   };
 }

@@ -285,6 +285,44 @@ describeWithApps('ASTRAL-99 — one React Native binding, and it is not inside a
     expect(host).not.toMatch(/if \(type === /);
   });
 
+  /**
+   * docs/49 ASTRAL-48/49 — the block type that proved the registry's point.
+   *
+   * `palm_analysis` was NOT registered in the native binding, so the Astral
+   * app answered a palm upload with a full two-hand reading and drew none of
+   * it. The registry warned, once, into a console nobody was reading. So the
+   * four block types the astrology graph fences into an astro chat are named
+   * here: `natal_chart`, `match_report`, `muhurta_results`, `palm_analysis`
+   * (plus `input_request`, the ask). A fifth one shipping unregistered is the
+   * same defect again, and this is where it becomes visible.
+   */
+  it('draws every astrology block type the graph fences, palm included', () => {
+    const host = codeOf(join(WORKSPACE, 'packages/astral-native/src/astral-block.tsx'));
+    for (const type of [
+      'input_request',
+      'natal_chart',
+      'match_report',
+      'muhurta_results',
+      'palm_analysis',
+    ]) {
+      expect(host).toMatch(new RegExp(`^\\s*${type}: \\(`, 'm'));
+    }
+  });
+
+  it('has ONE palm renderer, and it is in the shared package', () => {
+    // The reading is drawn once against the primitive contract, like the
+    // scorecard and the wheel. A `PalmReadingView` declared inside an app
+    // would be the second implementation ASTRAL-18 calls a spec deviation.
+    expect(
+      filesContaining(/export function PalmReadingView/, (f) => !isTest(f)),
+    ).toEqual(['packages/astral/src/components/palm-reading.tsx']);
+    const strays = ALL_FILES.filter((f) => rel(f).startsWith('apps/'))
+      .filter((f) => !isTest(f))
+      .filter((f) => /(function|const)\s+PalmReadingView\b/.test(codeOf(f)))
+      .map(rel);
+    expect(strays).toEqual([]);
+  });
+
   it('the three host capabilities are declared in one place', () => {
     expect(filesContaining(/export interface AstralHost/, (f) => !isTest(f))).toEqual([
       'packages/astral-native/src/host.ts',
@@ -459,8 +497,13 @@ describeWithApps('ASTRAL-19 — renderers derive nothing', () => {
   });
 
   it('found the renderer modules', () => {
-    // 6 through PH-3; the 7th is PH-11's input widget (ASTRAL-91).
-    expect(RENDERER_FILES.length).toBe(7);
+    // 6 through PH-3; the 7th is PH-11's input widget (ASTRAL-91); the 8th
+    // and 9th are the palm reading's view and component (ASTRAL-48/49) —
+    // `palm_analysis` was the fourth block type the native binding drew
+    // NOTHING for. A census, so a renderer added outside `view/` or
+    // `components/` (where the derivation greps below cannot see it) shows
+    // up here as a number that did not move.
+    expect(RENDERER_FILES.length).toBe(9);
   });
 
   it.each(RENDERER_FILES.map(rel))('%s does no rounding or rescaling', (r) => {

@@ -16,6 +16,7 @@ export * from './input-request';
 export * from './view/natal';
 export * from './view/match';
 export * from './view/muhurta';
+export * from './view/palm';
 
 export { ChartDiamond, NatalChartView } from './components/natal-chart';
 export type {
@@ -26,6 +27,8 @@ export { MatchScorecard } from './components/match-scorecard';
 export type { MatchScorecardProps } from './components/match-scorecard';
 export { MuhurtaWindowsView } from './components/muhurta-windows';
 export type { MuhurtaWindowsProps } from './components/muhurta-windows';
+export { PalmReadingView } from './components/palm-reading';
+export type { PalmReadingProps } from './components/palm-reading';
 
 export { InputRequestView, inputFieldRegistry } from './components/input-request';
 export type { InputRequestViewProps } from './components/input-request';

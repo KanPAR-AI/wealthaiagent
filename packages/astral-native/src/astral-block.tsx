@@ -30,11 +30,13 @@ import {
   MatchScorecard,
   MuhurtaWindowsView,
   NatalChartView,
+  PalmReadingView,
   createBlockRegistry,
   parseInputRequest,
   parseMatchReport,
   parseMuhurtaResults,
   parseNatalChart,
+  parsePalmAnalysis,
   type AstralTheme,
 } from '@wealthai/astral';
 import type { ReactElement, ReactNode } from 'react';
@@ -108,6 +110,20 @@ const handlers: Record<string, BlockRenderer> = {
     const results = parseMuhurtaResults(data);
     return results ? (
       <MuhurtaWindowsView ui={rnPrimitives} theme={theme} width={width} results={results} />
+    ) : null;
+  },
+
+  // docs/49 ASTRAL-48/49. This entry is the registry's own argument, made
+  // twice: `palm_analysis` was UNREGISTERED here, so the Astral app answered
+  // a palm upload with a full two-hand reading and drew none of it — the
+  // block was dropped, and a dropped block is indistinguishable from a block
+  // that never arrived. No photo is passed: the chat bubble has no bearer
+  // token to fetch an authorised file with, and the reading stands without
+  // one. The palm SCREEN passes its own.
+  palm_analysis: ({ data, theme, width }) => {
+    const analysis = parsePalmAnalysis(data);
+    return analysis ? (
+      <PalmReadingView ui={rnPrimitives} theme={theme} width={width} analysis={analysis} />
     ) : null;
   },
 };

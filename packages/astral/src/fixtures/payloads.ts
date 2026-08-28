@@ -43,6 +43,28 @@
  *                   the picker opens AT it
  *   correctionPlaceAsk  the same ask for `pob`, which is the one whose
  *                   correction also kills the coordinates
+ *   palmUploadAsk   the palm capture ask (bug 8dc95a6a), captured on
+ *                   2026-08-28 from `_input_request_block(
+ *                   "palm_intent_needs_upload", Belief(intent="palm"), "en")`
+ *                   — two `image` fields, each LABELLED with its role, and
+ *                   neither of them required: one usable photo is a real
+ *                   reading, not a failed two-hand one
+ *   palmHandednessAsk the one-time handedness question, same capture, from
+ *                   `_input_request_block("handedness_for_palm", …)`
+ *   palmTwoHand     a two-hand `palm_analysis` widget payload (docs/49
+ *                   ASTRAL-48/49). **Provenance, stated precisely because it
+ *                   differs from every other fixture here:** no palm
+ *                   PHOTOGRAPH existed in this environment on 2026-08-28, so
+ *                   the vision pass could not be driven live. Everything
+ *                   downstream of it WAS: `combine_hand_analyses`,
+ *                   `palm_rules.classical_rules_payload` (which derived the
+ *                   features and fired 7 of 38 rules on its own) and
+ *                   `palm.reading_headline` were executed inside the running
+ *                   container over `palm.py`'s OWN vision exemplar
+ *                   (`palm.py:140-170`, the JSON the model is instructed to
+ *                   emit). The two hands, the pairing, the citations, the
+ *                   abstention count and the label are the engine's. Re-
+ *                   capture from a real photo when one is available.
  */
 
 export const natalTimedPayload = {
@@ -1645,4 +1667,626 @@ export const matchEmphasisPayload = {
       }
     ]
   }
+} as const;
+
+export const palmUploadAskPayload = {
+  "type": "input_request",
+  "ask": "palm_intent_needs_upload",
+  "reason": "Both hands, if you have them: the non-dominant hand reads as what you were given, the dominant as what you've made of it. One is a real reading too — skip the other and I'll say so.",
+  "fields": [
+    {
+      "key": "dominant_palm_file_id",
+      "kind": "image",
+      "label": "Your dominant hand — the one you write with",
+      "required": false,
+      "allow_unknown": false
+    },
+    {
+      "key": "non_dominant_palm_file_id",
+      "kind": "image",
+      "label": "Your other hand — the non-dominant one",
+      "required": false,
+      "allow_unknown": false
+    }
+  ]
+} as const;
+
+export const palmHandednessAskPayload = {
+  "type": "input_request",
+  "ask": "handedness_for_palm",
+  "reason": "\"Dominant\" names the hand's ROLE, not its side — and which side that is depends on which hand you write with. I only need this once.",
+  "fields": [
+    {
+      "key": "handedness",
+      "kind": "choice",
+      "label": "Which hand do you write with?",
+      "required": false,
+      "allow_unknown": false,
+      "options": [
+        {
+          "value": "right",
+          "label": "Right-handed"
+        },
+        {
+          "value": "left",
+          "label": "Left-handed"
+        }
+      ]
+    }
+  ]
+} as const;
+
+export const palmTwoHandPayload = {
+  "type": "palm_analysis",
+  "hand": "right",
+  "hand_role": "dominant",
+  "hand_role_stated_by_user": true,
+  "hand_stated_by_user": true,
+  "hand_source": "declared",
+  "thumb_side": "left",
+  "fingers_direction": "up",
+  "direct_answer": "",
+  "hand_shape": "earth",
+  "dominant_element": "Earth — a square palm with short, sturdy fingers",
+  "lines": [
+    {
+      "name": "Heart Line",
+      "description": "deep, long, curves upward toward the index finger",
+      "interpretation": "warm and expressive emotionally, seeks deep connections",
+      "confidence": 0.85
+    },
+    {
+      "name": "Head Line",
+      "description": "straight, clearly cut, reaching the Mount of Mercury",
+      "interpretation": "practical, methodical thinking; decides before speaking",
+      "confidence": 0.8
+    },
+    {
+      "name": "Life Line",
+      "description": "deep and well-formed, sweeping wide around the Mount of Venus",
+      "interpretation": "a strong, well-formed Jeevan Rekha — steady vitality and physical resilience",
+      "confidence": 0.78
+    },
+    {
+      "name": "Fate Line",
+      "description": "rises from the wrist, faint until mid-palm then deepening",
+      "interpretation": "a career that finds its direction in the middle years rather than early",
+      "confidence": 0.6
+    }
+  ],
+  "mounts": [
+    {
+      "name": "Mount of Venus",
+      "prominence": "prominent",
+      "interpretation": "strong vitality and passion for life"
+    },
+    {
+      "name": "Mount of Jupiter",
+      "prominence": "prominent",
+      "interpretation": "ambition and a natural pull toward leading"
+    },
+    {
+      "name": "Mount of Saturn",
+      "prominence": "moderate",
+      "interpretation": "a measured sense of responsibility"
+    },
+    {
+      "name": "Mount of Mercury",
+      "prominence": "flat",
+      "interpretation": "communication is effortful rather than instinctive"
+    }
+  ],
+  "special_markings": [
+    "triangle (Dhan Trikon) enclosed between the Head Line and the Fate Line in the centre of the palm — the classical money triangle",
+    "star on Mount of Jupiter — indicates exceptional leadership",
+    "island on the Head Line below Saturn — a period of divided attention"
+  ],
+  "predictions": {
+    "lifespan_years": {
+      "value": 87,
+      "low": 80,
+      "high": 92,
+      "confidence": 0.7
+    },
+    "marriage_age": {
+      "value": 32,
+      "low": 28,
+      "high": 35,
+      "confidence": 0.6
+    },
+    "children_count": {
+      "value": 2,
+      "low": 1,
+      "high": 3,
+      "confidence": 0.55
+    },
+    "career_peak_age": {
+      "value": 38,
+      "low": 35,
+      "high": 45,
+      "confidence": 0.65
+    },
+    "wealth_peak_age": {
+      "value": 47,
+      "low": 42,
+      "high": 55,
+      "confidence": 0.6
+    }
+  },
+  "overall_reading": "An Earth hand with a deep Life Line and a prominent Mount of Venus: steady vitality, practical judgement and a career that consolidates in the middle years rather than early.",
+  "confidence_score": 0.8,
+  "classical_rules": {
+    "source": "Dale, Indian Palmistry (1895), Project Gutenberg #52523",
+    "features": {
+      "line:heart": [
+        "clear",
+        "long",
+        "present"
+      ],
+      "line:head": [
+        "clear",
+        "present"
+      ],
+      "line:life": [
+        "clear",
+        "present"
+      ],
+      "line:fate": [
+        "clear",
+        "faint",
+        "present"
+      ],
+      "mount:venus": [
+        "prominent"
+      ],
+      "mount:jupiter": [
+        "prominent"
+      ],
+      "mount:saturn": [
+        "normal"
+      ],
+      "mount:mercury": [
+        "flat"
+      ],
+      "mark:plain_of_mars": [
+        "triangle"
+      ],
+      "mark:jupiter": [
+        "star"
+      ],
+      "mark:head": [
+        "island"
+      ],
+      "hand:shape": [
+        "earth"
+      ]
+    },
+    "fired": [
+      {
+        "rule_id": "mount-jupiter-prominent",
+        "claim": "ambition and a drive toward leadership; honours through position",
+        "domain": "career",
+        "polarity": "favorable",
+        "strength": "mount",
+        "citation": "Dale 1895, p. 6 (Mount of Jupiter fully shown)",
+        "matched": [
+          "mount:jupiter=prominent"
+        ]
+      },
+      {
+        "rule_id": "mount-venus-prominent",
+        "claim": "warmth, love of beauty and strong vitality",
+        "domain": "marriage_family",
+        "polarity": "favorable",
+        "strength": "mount",
+        "citation": "Dale 1895, p. 21",
+        "matched": [
+          "mount:venus=prominent"
+        ]
+      },
+      {
+        "rule_id": "head-clear",
+        "claim": "a healthy, ordered mind; judgment that can be relied on",
+        "domain": "character",
+        "polarity": "favorable",
+        "strength": "major_line",
+        "citation": "Dale 1895, p. 78 (straight and not dissected)",
+        "matched": [
+          "line:head=clear"
+        ]
+      },
+      {
+        "rule_id": "head-life-triangle",
+        "claim": "the great triangle formed with Life and Head — prudence, manly wit and fair fortune; the more perfect, the better the temper and courage",
+        "domain": "character",
+        "polarity": "favorable",
+        "strength": "figure",
+        "citation": "Dale 1895, p. 17 (No. 12; also p. 79)",
+        "matched": [
+          "line:head=clear",
+          "line:life=clear",
+          "mark:plain_of_mars=triangle"
+        ]
+      },
+      {
+        "rule_id": "heart-long-clear",
+        "claim": "constancy — in affection and in the body's principal strength",
+        "domain": "marriage_family",
+        "polarity": "favorable",
+        "strength": "major_line",
+        "citation": "Dale 1895, p. 80 (long and without incisures)",
+        "matched": [
+          "line:heart=long",
+          "line:heart=clear"
+        ]
+      },
+      {
+        "rule_id": "star-jupiter",
+        "claim": "a star on Jupiter — splendid honours, public rewards from the great",
+        "domain": "career",
+        "polarity": "favorable",
+        "strength": "minor_mark",
+        "citation": "Dale 1895, p. 89",
+        "matched": [
+          "mark:jupiter=star"
+        ]
+      },
+      {
+        "rule_id": "triangle-mount",
+        "claim": "the money triangle (Dhan Trikon) well closed — accumulation that holds",
+        "domain": "wealth",
+        "polarity": "favorable",
+        "strength": "figure",
+        "citation": "Dale 1895, p. 17",
+        "matched": [
+          "mark:plain_of_mars=triangle"
+        ]
+      }
+    ],
+    "abstained_count": 31,
+    "suppressed_matches": 0
+  },
+  "hands": [
+    {
+      "hand": "right",
+      "hand_role": "dominant",
+      "hand_role_stated_by_user": true,
+      "hand_stated_by_user": true,
+      "hand_source": "declared",
+      "thumb_side": "left",
+      "fingers_direction": "up",
+      "direct_answer": "",
+      "hand_shape": "earth",
+      "dominant_element": "Earth — a square palm with short, sturdy fingers",
+      "lines": [
+        {
+          "name": "Heart Line",
+          "description": "deep, long, curves upward toward the index finger",
+          "interpretation": "warm and expressive emotionally, seeks deep connections",
+          "confidence": 0.85
+        },
+        {
+          "name": "Head Line",
+          "description": "straight, clearly cut, reaching the Mount of Mercury",
+          "interpretation": "practical, methodical thinking; decides before speaking",
+          "confidence": 0.8
+        },
+        {
+          "name": "Life Line",
+          "description": "deep and well-formed, sweeping wide around the Mount of Venus",
+          "interpretation": "a strong, well-formed Jeevan Rekha — steady vitality and physical resilience",
+          "confidence": 0.78
+        },
+        {
+          "name": "Fate Line",
+          "description": "rises from the wrist, faint until mid-palm then deepening",
+          "interpretation": "a career that finds its direction in the middle years rather than early",
+          "confidence": 0.6
+        }
+      ],
+      "mounts": [
+        {
+          "name": "Mount of Venus",
+          "prominence": "prominent",
+          "interpretation": "strong vitality and passion for life"
+        },
+        {
+          "name": "Mount of Jupiter",
+          "prominence": "prominent",
+          "interpretation": "ambition and a natural pull toward leading"
+        },
+        {
+          "name": "Mount of Saturn",
+          "prominence": "moderate",
+          "interpretation": "a measured sense of responsibility"
+        },
+        {
+          "name": "Mount of Mercury",
+          "prominence": "flat",
+          "interpretation": "communication is effortful rather than instinctive"
+        }
+      ],
+      "special_markings": [
+        "triangle (Dhan Trikon) enclosed between the Head Line and the Fate Line in the centre of the palm — the classical money triangle",
+        "star on Mount of Jupiter — indicates exceptional leadership",
+        "island on the Head Line below Saturn — a period of divided attention"
+      ],
+      "predictions": {
+        "lifespan_years": {
+          "value": 87,
+          "low": 80,
+          "high": 92,
+          "confidence": 0.7
+        },
+        "marriage_age": {
+          "value": 32,
+          "low": 28,
+          "high": 35,
+          "confidence": 0.6
+        },
+        "children_count": {
+          "value": 2,
+          "low": 1,
+          "high": 3,
+          "confidence": 0.55
+        },
+        "career_peak_age": {
+          "value": 38,
+          "low": 35,
+          "high": 45,
+          "confidence": 0.65
+        },
+        "wealth_peak_age": {
+          "value": 47,
+          "low": 42,
+          "high": 55,
+          "confidence": 0.6
+        }
+      },
+      "overall_reading": "An Earth hand with a deep Life Line and a prominent Mount of Venus: steady vitality, practical judgement and a career that consolidates in the middle years rather than early.",
+      "confidence_score": 0.8,
+      "classical_rules": {
+        "source": "Dale, Indian Palmistry (1895), Project Gutenberg #52523",
+        "features": {
+          "line:heart": [
+            "clear",
+            "long",
+            "present"
+          ],
+          "line:head": [
+            "clear",
+            "present"
+          ],
+          "line:life": [
+            "clear",
+            "present"
+          ],
+          "line:fate": [
+            "clear",
+            "faint",
+            "present"
+          ],
+          "mount:venus": [
+            "prominent"
+          ],
+          "mount:jupiter": [
+            "prominent"
+          ],
+          "mount:saturn": [
+            "normal"
+          ],
+          "mount:mercury": [
+            "flat"
+          ],
+          "mark:plain_of_mars": [
+            "triangle"
+          ],
+          "mark:jupiter": [
+            "star"
+          ],
+          "mark:head": [
+            "island"
+          ],
+          "hand:shape": [
+            "earth"
+          ]
+        },
+        "fired": [
+          {
+            "rule_id": "mount-jupiter-prominent",
+            "claim": "ambition and a drive toward leadership; honours through position",
+            "domain": "career",
+            "polarity": "favorable",
+            "strength": "mount",
+            "citation": "Dale 1895, p. 6 (Mount of Jupiter fully shown)",
+            "matched": [
+              "mount:jupiter=prominent"
+            ]
+          },
+          {
+            "rule_id": "mount-venus-prominent",
+            "claim": "warmth, love of beauty and strong vitality",
+            "domain": "marriage_family",
+            "polarity": "favorable",
+            "strength": "mount",
+            "citation": "Dale 1895, p. 21",
+            "matched": [
+              "mount:venus=prominent"
+            ]
+          },
+          {
+            "rule_id": "head-clear",
+            "claim": "a healthy, ordered mind; judgment that can be relied on",
+            "domain": "character",
+            "polarity": "favorable",
+            "strength": "major_line",
+            "citation": "Dale 1895, p. 78 (straight and not dissected)",
+            "matched": [
+              "line:head=clear"
+            ]
+          },
+          {
+            "rule_id": "head-life-triangle",
+            "claim": "the great triangle formed with Life and Head — prudence, manly wit and fair fortune; the more perfect, the better the temper and courage",
+            "domain": "character",
+            "polarity": "favorable",
+            "strength": "figure",
+            "citation": "Dale 1895, p. 17 (No. 12; also p. 79)",
+            "matched": [
+              "line:head=clear",
+              "line:life=clear",
+              "mark:plain_of_mars=triangle"
+            ]
+          },
+          {
+            "rule_id": "heart-long-clear",
+            "claim": "constancy — in affection and in the body's principal strength",
+            "domain": "marriage_family",
+            "polarity": "favorable",
+            "strength": "major_line",
+            "citation": "Dale 1895, p. 80 (long and without incisures)",
+            "matched": [
+              "line:heart=long",
+              "line:heart=clear"
+            ]
+          },
+          {
+            "rule_id": "star-jupiter",
+            "claim": "a star on Jupiter — splendid honours, public rewards from the great",
+            "domain": "career",
+            "polarity": "favorable",
+            "strength": "minor_mark",
+            "citation": "Dale 1895, p. 89",
+            "matched": [
+              "mark:jupiter=star"
+            ]
+          },
+          {
+            "rule_id": "triangle-mount",
+            "claim": "the money triangle (Dhan Trikon) well closed — accumulation that holds",
+            "domain": "wealth",
+            "polarity": "favorable",
+            "strength": "figure",
+            "citation": "Dale 1895, p. 17",
+            "matched": [
+              "mark:plain_of_mars=triangle"
+            ]
+          }
+        ],
+        "abstained_count": 31,
+        "suppressed_matches": 0
+      }
+    },
+    {
+      "hand": "left",
+      "hand_role": "non_dominant",
+      "hand_role_stated_by_user": true,
+      "hand_stated_by_user": true,
+      "hand_source": "declared",
+      "thumb_side": "left",
+      "fingers_direction": "up",
+      "direct_answer": "",
+      "hand_shape": "earth",
+      "dominant_element": "Earth — a square palm with short, sturdy fingers",
+      "lines": [
+        {
+          "name": "Heart Line",
+          "description": "long but shallower than on the other hand",
+          "interpretation": "the inherited emotional pattern is warm but less asserted",
+          "confidence": 0.7
+        },
+        {
+          "name": "Life Line",
+          "description": "well-formed, slightly narrower arc",
+          "interpretation": "inherited constitution is sound",
+          "confidence": 0.72
+        }
+      ],
+      "mounts": [
+        {
+          "name": "Mount of Venus",
+          "prominence": "moderate",
+          "interpretation": "the inherited warmth is present, less pronounced"
+        }
+      ],
+      "special_markings": [
+        "fish (matsya) near the wrist — classically auspicious"
+      ],
+      "predictions": {
+        "lifespan_years": {
+          "value": 87,
+          "low": 80,
+          "high": 92,
+          "confidence": 0.7
+        },
+        "marriage_age": {
+          "value": 32,
+          "low": 28,
+          "high": 35,
+          "confidence": 0.6
+        },
+        "children_count": {
+          "value": 2,
+          "low": 1,
+          "high": 3,
+          "confidence": 0.55
+        },
+        "career_peak_age": {
+          "value": 38,
+          "low": 35,
+          "high": 45,
+          "confidence": 0.65
+        },
+        "wealth_peak_age": {
+          "value": 47,
+          "low": 42,
+          "high": 55,
+          "confidence": 0.6
+        }
+      },
+      "overall_reading": "The inherited hand: the same Earth shape, with the warmth present but less asserted than what the dominant hand has made of it.",
+      "confidence_score": 0.72,
+      "classical_rules": {
+        "source": "Dale, Indian Palmistry (1895), Project Gutenberg #52523",
+        "features": {
+          "line:heart": [
+            "faint",
+            "long",
+            "present"
+          ],
+          "line:life": [
+            "present"
+          ],
+          "mount:venus": [
+            "normal"
+          ],
+          "mark:wrist": [
+            "fish"
+          ],
+          "hand:shape": [
+            "earth"
+          ]
+        },
+        "fired": [
+          {
+            "rule_id": "fish-wrist",
+            "claim": "the fish (matsya) at the root of the hand — great success in the world, riches and a full house",
+            "domain": "wealth",
+            "polarity": "favorable",
+            "strength": "figure",
+            "citation": "Dale 1895, p. 67 (No. 1)",
+            "matched": [
+              "mark:wrist=fish"
+            ]
+          }
+        ],
+        "abstained_count": 47,
+        "suppressed_matches": 0
+      }
+    }
+  ],
+  "both_hands": true,
+  "hand_label": "Dominant Hand (Right)",
+  "image_file_id": "local-dev-palm-file-id",
+  "image_url": "/api/v1/files/local-dev-palm-file-id/download"
 } as const;

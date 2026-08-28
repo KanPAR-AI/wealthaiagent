@@ -239,3 +239,20 @@ export function defaultBirthYear(maxYear: number, today: Date = new Date()): num
   const plausible = today.getFullYear() - DEFAULT_BIRTH_YEARS_AGO;
   return plausible < maxYear ? plausible : maxYear;
 }
+
+/**
+ * An engine ENUM KEY as a heading: `marriage_family` → "Marriage Family".
+ *
+ * Notation, not translation — the line this module must not cross. It does
+ * NOT map `marriage_family` to "Marriage & family", because that mapping
+ * would be a second vocabulary for the adjudicator's domains living on the
+ * client, and a second vocabulary agrees with the first until somebody edits
+ * one of them. What a domain MEANS is the engine's to say; how its own key is
+ * punctuated is not a claim.
+ */
+export function keyAsWords(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const t = value.trim().replace(/_/g, ' ');
+  if (!t) return null;
+  return t.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+}
