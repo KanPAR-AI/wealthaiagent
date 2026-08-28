@@ -15,12 +15,18 @@
 // a list, not of a layout. The layout renders whatever this returns and
 // decides nothing.
 //
-// ── no sixth slot ──────────────────────────────────────────────────────────
+// ── no sixth slot, and it stayed that way ──────────────────────────────────
 //
 // Palm and muhurta are live intents and are NOT tabs (F36, AMB-26 open).
-// They are reachable through chat and named on Home's tile row per AMB-26's
-// leaning (a). Adding a sixth entry here is an AMB-26 answer, not a layout
-// tweak.
+// They are reachable through chat AND, since PH-27's surface pass, named on
+// Home's tile row with a pushed screen behind each — which is AMB-26's option
+// (a), the one this file's AMB row recommends, taken as a default under the
+// standing rule that a recommendation stands unless the owner overrides it.
+//
+// The two halves are not the same decision and only one of them is AMB-26's.
+// A TILE is additive and pre-empts nothing — `DECLARED` below is byte-for-byte
+// the same five entries it has always been, and the bar is still five. Adding
+// a sixth entry HERE is still an AMB-26 answer and still not a layout tweak.
 
 // Type-only, so this module still imports nothing at runtime and still runs
 // under the root jest project.
@@ -177,6 +183,22 @@ const TILES: HomeTile[] = [
     icon: 'calendar',
     needs: 'timeline',
   },
+  {
+    id: 'palm',
+    title: 'Palm Reading',
+    subtitle: 'Read both hands, with citations',
+    route: '/palm',
+    icon: 'hand.raised',
+    needs: 'palm',
+  },
+  {
+    id: 'muhurta',
+    title: 'Muhurta',
+    subtitle: 'An auspicious time to begin',
+    route: '/muhurta',
+    icon: 'clock',
+    needs: 'muhurta',
+  },
 ];
 
 export const DECLARED_TILES: readonly HomeTile[] = TILES;
@@ -207,6 +229,8 @@ export interface PushedRoute {
 
 const PUSHED: PushedRoute[] = [
   { path: '/chart', needs: 'chart' },
+  { path: '/palm', needs: 'palm' },
+  { path: '/muhurta', needs: 'muhurta' },
   { path: '/matches', needs: 'matches' },
   { path: '/profile', needs: 'profile' },
   { path: '/privacy', needs: 'privacyAndData' },

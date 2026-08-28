@@ -73,6 +73,51 @@ export interface Capabilities {
   chart: boolean;
 
   /**
+   * The palm reading — capture, analysis and the result, natively
+   * (docs/49 ASTRAL-44..49; F36; AMB-26 recommended (a)).
+   *
+   * TRUE, and unlike every capability above it this one is not a READ: there
+   * is no stored palm artifact to fetch, because nothing exists until a
+   * photograph has been analysed. What makes it honest is that all three
+   * halves it needs are shipped and were verified before this flipped:
+   *
+   *   the ASK      `_input_request_block("palm_intent_needs_upload", …)` —
+   *                two `image` fields, each labelled with its ROLE, neither
+   *                required (one hand is a real reading);
+   *   the ANALYSIS the two-pass vision node plus `combine_hand_analyses` and
+   *                the Dale (1895) classical-rule layer, which the engine
+   *                has run in production for months;
+   *   the RENDER   `palm_analysis` in the shared block registry — which it
+   *                was NOT until this phase, so the engine computed a full
+   *                reading and this app drew nothing.
+   *
+   * It is a capability rather than a constant for the ordinary reason: the
+   * Home tile and the pushed route both derive from it, so removing the
+   * surface is one edit and it removes BOTH — never a tile that leads
+   * somewhere this build cannot serve.
+   *
+   * What this capability does NOT license, and the map is where that is
+   * recorded: no delete affordance over an uploaded palm image (F7 — there
+   * is no DELETE route and `expiresAt` is unconditionally None, so the
+   * button would report success and remove nothing), and no "analyse without
+   * storing" option (ASTRAL-44, engine-side, unbuilt).
+   */
+  palm: boolean;
+
+  /**
+   * The muhurta surface — an auspicious window, computed and drawn natively
+   * (docs/49 ASTRAL-17; F36; AMB-26 recommended (a)).
+   *
+   * TRUE for the RESULT and the conversation that produces it; the row's own
+   * comment in `muhurta-view.ts` records what is still prose. The renderer
+   * has existed since PH-3 and is registered; `compute_muhurta_windows` is a
+   * shipped node; what does not exist is a structured ask for the three
+   * slots `MuhurtaSlots.required_for_compute` names — see `muhurta-view.ts`
+   * for the exact blocker and why the screen does not fake one.
+   */
+  muhurta: boolean;
+
+  /**
    * Screen 3, Home — the day's card (docs/49 ASTRAL-125).
    *
    * TRUE since `GET /people/self/daily`. Before that read existed a Home
@@ -156,6 +201,8 @@ export interface Capabilities {
 export const CAPABILITIES: Capabilities = {
   accountSettings: true,
   chart: true,
+  palm: true,
+  muhurta: true,
   credits: true,
   privacyAndData: true,
   birthDetails: false,

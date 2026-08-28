@@ -120,13 +120,26 @@ describe('ASTRAL-119’s gate-order check — the shell may not ship ahead of it
   });
 });
 
-describe('Home’s four tiles', () => {
-  it('ASTRAL-125 — the tiles link only to live screens', () => {
+describe('Home’s tile row', () => {
+  /**
+   * Six tiles, and the last two are AMB-26's option (a).
+   *
+   * The board draws four. F36 records that neither palm nor muhurta appears
+   * on ANY of the twelve frames, though both are shipped engine intents and
+   * the brief calls palm "the strongest part of the engine". AMB-26 asks
+   * where they live and recommends the tile row; that recommendation is taken
+   * as a default under the standing rule, and it is additive — the TAB set
+   * below is unchanged and a sixth tab remains an AMB-26 answer nobody has
+   * given.
+   */
+  it('ASTRAL-125 / AMB-26(a) — the tiles link only to live screens', () => {
     expect(visibleTiles().map((t) => t.title)).toEqual([
       'Birth Chart',
       'Compatibility',
       'AI Reading',
       'This Month',
+      'Palm Reading',
+      'Muhurta',
     ]);
   });
 
@@ -135,18 +148,26 @@ describe('Home’s four tiles', () => {
       'chart',
       'reading',
       'month',
+      'palm',
+      'muhurta',
     ]);
     expect(visibleTiles({ ...CAPABILITIES, timeline: false }).map((t) => t.id)).toEqual([
       'chart',
       'compatibility',
       'reading',
+      'palm',
+      'muhurta',
     ]);
+    // …and the two new ones obey the same rule, which is the only reason
+    // they were allowed to be tiles rather than constants.
+    expect(visibleTiles({ ...CAPABILITIES, palm: false }).map((t) => t.id)).not.toContain('palm');
+    expect(visibleTiles({ ...CAPABILITIES, muhurta: false }).map((t) => t.id))
+      .not.toContain('muhurta');
   });
 
   it('no tile points at a screen this build does not have', () => {
-    // Screen 5 (Chart · Grahas · Dasha, ASTRAL-120) is not built in this
-    // slice, so the Birth Chart tile lands on Profile — where the stamped
-    // chart summary already renders — rather than on a route that 404s.
+    // This is the test that caught `/muhurta` before it existed: the tile
+    // was declared one commit ahead of its screen and the suite said so.
     const appDir = path.resolve(__dirname, '../../app');
     for (const tile of DECLARED_TILES) {
       const name = tile.route.replace(/^\//, '');
