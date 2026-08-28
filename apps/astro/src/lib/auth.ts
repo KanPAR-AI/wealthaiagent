@@ -114,6 +114,10 @@ async function attach(credential: AuthCredential, how: string): Promise<Account>
 }
 
 export function isGoogleSignInAvailable(): boolean {
+  // Android needs only the web client id (always set — it is the project's
+  // web client); the iOS client id gates iOS alone. Keying BOTH platforms on
+  // the iOS id hid the Google button from every Android build (2026-08-28).
+  if (Platform.OS === 'android') return Boolean(FIREBASE_WEB_CLIENT_ID);
   return GOOGLE_IOS_CLIENT_ID !== null;
 }
 
@@ -132,7 +136,33 @@ export async function signInWithGoogle(): Promise<Account> {
     iosClientId: GOOGLE_IOS_CLIENT_ID ?? undefined,
   });
   await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-  const result = await GoogleSignin.signIn();
+  // Clear any half-open Play-Services session first. A prior attempt that
+  // died mid-flight (or a session from before the SHA certificate was
+  // registered) leaves state that makes the next signIn() report the user
+  // as already signed in instead of showing the account sheet (measured on
+  // the first Android sideload, 2026-08-28). Signing out of the GOOGLE
+  // layer touches nothing in Firebase — the app session is not here.
+  await GoogleSignin.signOut().catch(() => {});
+  let result: Awaited<ReturnType<typeof GoogleSignin.signIn>>;
+  try {
+    result = await GoogleSignin.signIn();
+  } catch (e: any) {
+    // The raw native codes are developer-speak; say what the user can act on.
+    const code = String(e?.code ?? '');
+    if (code === 'DEVELOPER_ERROR' || /DEVELOPER_ERROR/.test(String(e?.message ?? ''))) {
+      throw new Error(
+        'Google sign-in is not available for this build yet — its signing ' +
+        'certificate is still propagating on Google\u2019s side. Try again in a ' +
+        'few minutes, or use email sign-in.',
+      );
+    }
+    throw e;
+  }
+  if (result.type === 'cancelled') {
+    const cancel: any = new Error('Sign-in cancelled');
+    cancel.code = 'cancelled';
+    throw cancel; // the settings screen treats a cancel as a non-error
+  }
   const idToken = result.data?.idToken;
   if (!idToken) throw new Error('Google sign-in returned no ID token');
   return attach(GoogleAuthProvider.credential(idToken), 'google');

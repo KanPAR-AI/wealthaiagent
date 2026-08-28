@@ -93,8 +93,9 @@ export default function Settings() {
       if (before && result?.uid && result.uid !== before && account?.anonymous) {
         // Honest about the one case linking cannot cover.
         setNotice(
-          'Signed in to an existing account. Readings from before this ' +
-          'sign-in stay on the earlier anonymous account.',
+          'Done — you\u2019re signed in to your existing account. (Guest ' +
+          'readings made on this device before signing in stay with the ' +
+          'guest session.)',
         );
       }
     } catch (e: any) {

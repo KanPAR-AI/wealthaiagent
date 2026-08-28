@@ -28,6 +28,8 @@ import {
   signInWithEmailAndPassword,
   signOut as fbSignOut,
 } from 'firebase/auth';
+import { Platform } from 'react-native';
+
 import { getPlatform } from '@wealthai/core';
 
 import { ensureCoreInitialized } from './core-adapter';
@@ -89,6 +91,9 @@ export async function verifyEmailOtp(email: string, code: string): Promise<void>
 }
 
 export function isGoogleSignInAvailable(): boolean {
+  // Android needs only the web client id; the iOS client id gates iOS alone
+  // (same fix as astro's auth, 2026-08-28).
+  if (Platform.OS === 'android') return Boolean(FIREBASE_WEB_CLIENT_ID);
   return GOOGLE_IOS_CLIENT_ID !== null;
 }
 
@@ -129,7 +134,16 @@ export async function signInWithGoogle(): Promise<void> {
   });
 
   await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+  // Clear any half-open Play-Services session first — a prior mid-flight
+  // failure otherwise reports "already signed in" instead of opening the
+  // account sheet. Google-layer only; Firebase is untouched.
+  await GoogleSignin.signOut().catch(() => {});
   const result = await GoogleSignin.signIn();
+  if (result.type === 'cancelled') {
+    const cancel: any = new Error('Sign-in cancelled');
+    cancel.code = 'cancelled';
+    throw cancel;
+  }
   const idToken = result.data?.idToken;
   if (!idToken) {
     throw new Error('Google sign-in returned no ID token');

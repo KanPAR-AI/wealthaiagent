@@ -18,7 +18,7 @@
  * arrive through `getAstralHost()`.
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type {
   AstralImagePickerProps,
   AstralPrimitives,
@@ -276,6 +276,124 @@ function nativeDateTimePicker(): NativePicker | null {
     );
   }
   return resolvedNativePicker;
+}
+
+/**
+ * Android's OS control: the Material 3 date/time picker from `@expo/ui`'s
+ * Jetpack Compose set (`requireNativeView('ExpoUI', 'DateTimePickerView')`).
+ *
+ * Same lazy, LOUD discipline as the SwiftUI resolver above: an APK built
+ * before `@expo/ui` shipped falls back to the tap-list wheels rather than
+ * red-screening — and says so in the log, because a quiet downgrade nobody
+ * can tell apart from the real control is the failure class this file
+ * refuses (docs/49 ASTRAL-96). The wheels below stop being Android's
+ * everyday UI and become that binary-too-old fallback only.
+ */
+type JetpackPicker = (props: {
+  initialDate?: string | null;
+  onDateSelected?: (date: Date) => void;
+  displayedComponents?: 'date' | 'hourAndMinute' | 'dateAndTime';
+  variant?: 'picker' | 'input';
+  showVariantToggle?: boolean;
+  is24Hour?: boolean;
+  selectableDates?: { start?: Date; end?: Date };
+}) => React.ReactNode;
+
+let resolvedJetpackPicker: JetpackPicker | null | undefined;
+
+function jetpackDateTimePicker(): JetpackPicker | null {
+  if (Platform.OS !== 'android') return null;
+  if (resolvedJetpackPicker !== undefined) return resolvedJetpackPicker;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('@expo/ui/jetpack-compose');
+    const found = (mod?.DateTimePicker as JetpackPicker | undefined) ?? null;
+    resolvedJetpackPicker = found;
+    if (!found) {
+      console.warn(
+        '[astral-native] @expo/ui jetpack-compose resolved without a ' +
+          'DateTimePicker export, so the fallback wheels are rendering instead.',
+      );
+    }
+  } catch (e: unknown) {
+    resolvedJetpackPicker = null;
+    console.warn(
+      '[astral-native] the Material date/time picker is unavailable in this ' +
+        'binary, so the fallback wheels are rendering instead. If this is a ' +
+        'device build it predates the @expo/ui module and needs a NATIVE ' +
+        'rebuild — an OTA update cannot add a native module: ' +
+        String(e instanceof Error ? e.message : e),
+    );
+  }
+  return resolvedJetpackPicker;
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+function MaterialDateField({ value, onChange, minYear, maxYear, accessibilityLabel, testID }: DateWheelProps) {
+  const Picker = jetpackDateTimePicker();
+  // Compose fires `onDateSelected` from LaunchedEffect on FIRST composition,
+  // not only on interaction. Un-guarded, an empty ask would auto-fill the
+  // seeded default date — a birth date the user never stated, the A6 failure
+  // class in one line. The seed event is swallowed; everything after is the
+  // user's.
+  const touched = useRef(false);
+  if (!Picker) return null;
+  const seeded = value ?? `${defaultBirthYear(maxYear)}-01-01`;
+  return (
+    <View
+      accessibilityLabel={accessibilityLabel}
+      testID={`${testID}-material`}
+      style={{ width: '100%', height: 480 }}>
+      <Picker
+        initialDate={seeded}
+        displayedComponents="date"
+        variant="picker"
+        showVariantToggle
+        selectableDates={{
+          start: new Date(minYear, 0, 1, 12, 0, 0, 0),
+          end: new Date(maxYear, 11, 31, 12, 0, 0, 0),
+        }}
+        onDateSelected={(d) => {
+          // Material 3 reports the picked day as UTC-midnight millis — UTC
+          // getters or a negative-offset zone reads yesterday.
+          const iso = `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+          if (!touched.current && !value && iso === seeded) return;
+          touched.current = true;
+          onChange(iso);
+        }}
+      />
+    </View>
+  );
+}
+
+function MaterialTimeField({ value, onChange, accessibilityLabel, testID }: TimeWheelProps) {
+  const Picker = jetpackDateTimePicker();
+  const touched = useRef(false);
+  if (!Picker) return null;
+  // Noon, same default and same reason as every other path in this file.
+  const seededHhmm = value ?? '12:00';
+  return (
+    <View
+      accessibilityLabel={accessibilityLabel}
+      testID={`${testID}-material`}
+      style={{ width: '100%', height: 440 }}>
+      <Picker
+        initialDate={`2000-01-01T${seededHhmm}:00`}
+        displayedComponents="hourAndMinute"
+        is24Hour={false}
+        onDateSelected={(d) => {
+          // The time dial sets hour/minute on a DEFAULT-locale calendar
+          // native-side — local getters are the correct read here, unlike
+          // the date branch above.
+          const hhmm = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+          if (!touched.current && !value && hhmm === seededHhmm) return;
+          touched.current = true;
+          onChange(hhmm);
+        }}
+      />
+    </View>
+  );
 }
 
 function NativeDateWheel({ value, onChange, minYear, maxYear, accessibilityLabel, testID }: DateWheelProps) {
@@ -657,15 +775,15 @@ function ImagePicker({
  * wheels everywhere else — one decision, made once, per control.
  */
 function TimeWheel(props: TimeWheelProps) {
-  return nativeDateTimePicker()
-    ? <NativeTimeWheel {...props} />
-    : <FallbackTimeWheel {...props} />;
+  if (nativeDateTimePicker()) return <NativeTimeWheel {...props} />;
+  if (jetpackDateTimePicker()) return <MaterialTimeField {...props} />;
+  return <FallbackTimeWheel {...props} />;
 }
 
 function DateWheel(props: DateWheelProps) {
-  return nativeDateTimePicker()
-    ? <NativeDateWheel {...props} />
-    : <FallbackDateWheel {...props} />;
+  if (nativeDateTimePicker()) return <NativeDateWheel {...props} />;
+  if (jetpackDateTimePicker()) return <MaterialDateField {...props} />;
+  return <FallbackDateWheel {...props} />;
 }
 
 export const rnPrimitives: AstralPrimitives = {
