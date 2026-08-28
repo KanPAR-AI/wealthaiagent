@@ -6,7 +6,8 @@ import * as Updates from 'expo-updates';
 import Constants from 'expo-constants';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, useColorScheme, View,
+  ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, TextInput,
+  useColorScheme, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,7 +16,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
-import { signOut } from '@/lib/auth';
+import { hasPasswordProvider, setAccountPassword, signOut } from '@/lib/auth';
 import {
   getCreditBalance, getCreditLedger, requestCredits,
   type CreditBalance, type LedgerEntry,
@@ -62,6 +63,9 @@ export default function SettingsScreen() {
   const build = useBuildLine();
   const [updateMsg, setUpdateMsg] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const [showSetPassword, setShowSetPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
 
   const checkForUpdate = useCallback(async () => {
     if (__DEV__) { setUpdateMsg('Updates are disabled in a dev build.'); return; }
@@ -171,6 +175,74 @@ export default function SettingsScreen() {
             <Row label="Name" value={user?.displayName || (user?.isAnonymous ? 'Guest' : '—')} colors={colors} />
             <Row label="Email" value={user?.email || '—'} colors={colors} />
             <Row label="Phone" value={(user as any)?.phoneNumber || '—'} colors={colors} last />
+            {user && !user.isAnonymous && user.email ? (
+              <Pressable
+                onPress={() => {
+                  if (Platform.OS === 'ios') {
+                    // Alert.prompt is iOS-only; Android gets the inline field.
+                    Alert.prompt(
+                      hasPasswordProvider() ? 'Change password' : 'Set a password',
+                      'Min 6 characters. You can then also sign in with your ' +
+                        'email and this password, here and in Astral AI.',
+                      async (pwd) => {
+                        if (!pwd) return;
+                        try {
+                          await setAccountPassword(pwd);
+                          Alert.alert('Password set');
+                        } catch (e: any) {
+                          Alert.alert('Could not set password', String(e?.message ?? e));
+                        }
+                      },
+                      'secure-text',
+                    );
+                  } else {
+                    setShowSetPassword((v) => !v);
+                  }
+                }}
+                style={{ paddingVertical: 10 }}>
+                <ThemedText type="smallBold" style={{ color: colors.text }}>
+                  {hasPasswordProvider() ? 'Change password' : 'Set a password'}
+                </ThemedText>
+              </Pressable>
+            ) : null}
+            {showSetPassword ? (
+              <View style={{ gap: 8, paddingBottom: 10 }}>
+                <TextInput
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder="New password (min 6 characters)"
+                  placeholderTextColor={colors.textSecondary}
+                  secureTextEntry
+                  style={{
+                    borderWidth: 1, borderColor: colors.backgroundSelected,
+                    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+                    color: colors.text,
+                  }}
+                />
+                <Pressable
+                  disabled={newPassword.length < 6 || savingPassword}
+                  onPress={async () => {
+                    setSavingPassword(true);
+                    try {
+                      await setAccountPassword(newPassword);
+                      setNewPassword('');
+                      setShowSetPassword(false);
+                      Alert.alert('Password set',
+                        'You can now also sign in with your email and this ' +
+                        'password, here and in Astral AI.');
+                    } catch (e: any) {
+                      Alert.alert('Could not set password', String(e?.message ?? e));
+                    } finally {
+                      setSavingPassword(false);
+                    }
+                  }}
+                  style={[styles.requestBtn, { borderColor: colors.backgroundSelected, alignSelf: 'flex-start' }]}>
+                  <ThemedText type="smallBold" style={{ color: colors.text }}>
+                    {savingPassword ? 'Saving…' : 'Save password'}
+                  </ThemedText>
+                </Pressable>
+              </View>
+            ) : null}
           </View>
 
           {/* Credits */}

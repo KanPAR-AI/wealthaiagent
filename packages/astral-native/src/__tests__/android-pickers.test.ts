@@ -123,3 +123,24 @@ describe('the email path survives the shared-project collision (both apps)', () 
     expect(fn).toContain('EmailAuthProvider.credential');
   });
 });
+
+describe('password linking (owner ask: email form for Google-created accounts)', () => {
+  const AUTH_ASTRO = readFileSync(
+    join(__dirname, '..', '..', '..', '..', 'apps', 'astro', 'src', 'lib', 'auth.ts'), 'utf8');
+  const AUTH_MOBILE = readFileSync(
+    join(__dirname, '..', '..', '..', '..', 'apps', 'mobile', 'src', 'lib', 'auth.ts'), 'utf8');
+
+  it.each([['astro', AUTH_ASTRO], ['mobile', AUTH_MOBILE]])(
+    '%s: setAccountPassword LINKS when no password provider exists, UPDATES when one does',
+    (_app, src) => {
+      const fn = src.match(/export async function setAccountPassword[\s\S]*?\n\}/)?.[0] ?? '';
+      expect(fn).toMatch(/hasPasswordProvider\(\)[\s\S]*updatePassword\(/);
+      expect(fn).toMatch(/linkWithCredential\([\s\S]*EmailAuthProvider\.credential\(email, password\)/);
+      // the two human translations that matter
+      expect(fn).toContain("'auth/requires-recent-login'");
+      expect(fn).toContain("'auth/weak-password'");
+      // never for guests — an anonymous uid with a password is a trap account
+      expect(fn).toMatch(/isAnonymous[\s\S]*Sign in first/);
+    },
+  );
+});

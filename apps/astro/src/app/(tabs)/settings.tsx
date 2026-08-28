@@ -39,6 +39,8 @@ import {
   isAppleSignInAvailable,
   isGoogleSignInAvailable,
   signInWithApple,
+  hasPasswordProvider,
+  setAccountPassword,
   signInWithEmail,
   signInWithGoogle,
   signOut,
@@ -66,6 +68,8 @@ export default function Settings() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [showSetPassword, setShowSetPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showEmail, setShowEmail] = useState(false);
@@ -240,12 +244,48 @@ export default function Settings() {
                         ) : null}
                       </>
                     ) : (
-                      <Pressable style={s.btnGhost} disabled={!!busy}
-                        onPress={() => run('signout', signOut)}>
-                        <Text style={s.btnGhostText}>
-                          {busy === 'signout' ? 'Signing out…' : 'Sign out'}
-                        </Text>
-                      </Pressable>
+                      <>
+                        <Pressable style={s.btnGhost} disabled={!!busy}
+                          onPress={() => setShowSetPassword((v) => !v)}>
+                          <Text style={s.btnGhostText}>
+                            {showSetPassword
+                              ? 'Hide password setup'
+                              : hasPasswordProvider()
+                                ? 'Change password'
+                                : 'Set a password'}
+                          </Text>
+                        </Pressable>
+                        {showSetPassword ? (
+                          <>
+                            <TextInput style={s.input} value={newPassword}
+                              onChangeText={setNewPassword}
+                              placeholder="New password (min 6 characters)"
+                              placeholderTextColor={tokens.palette.ink.muted}
+                              secureTextEntry />
+                            <Pressable style={s.btn} disabled={!!busy || newPassword.length < 6}
+                              onPress={() => run('setpassword', async () => {
+                                await setAccountPassword(newPassword);
+                                setNewPassword('');
+                                setShowSetPassword(false);
+                                setNotice(
+                                  'Password set \u2014 you can now also sign in ' +
+                                  'with your email and this password, in this ' +
+                                  'app and in YourFinAdvisor.',
+                                );
+                              })}>
+                              <Text style={s.btnText}>
+                                {busy === 'setpassword' ? 'Saving…' : 'Save password'}
+                              </Text>
+                            </Pressable>
+                          </>
+                        ) : null}
+                        <Pressable style={s.btnGhost} disabled={!!busy}
+                          onPress={() => run('signout', signOut)}>
+                          <Text style={s.btnGhostText}>
+                            {busy === 'signout' ? 'Signing out…' : 'Sign out'}
+                          </Text>
+                        </Pressable>
+                      </>
                     )}
                     {notice ? <Text style={s.notice}>{notice}</Text> : null}
                     {error ? <Text style={s.error}>{error}</Text> : null}

@@ -26,6 +26,9 @@ import {
   signInWithCredential,
   signInWithCustomToken,
   signInWithEmailAndPassword,
+  linkWithCredential,
+  updatePassword,
+  EmailAuthProvider,
   signOut as fbSignOut,
 } from 'firebase/auth';
 import { Platform } from 'react-native';
@@ -105,6 +108,45 @@ export async function signUpWithEmail(email: string, password: string): Promise<
     await sendEmailVerification(cred.user);
   } catch (e) {
     console.warn('[auth] could not send verification email', e);
+  }
+}
+
+/** Does the current account already have a password sign-in method? */
+export function hasPasswordProvider(): boolean {
+  return Boolean(
+    auth.currentUser?.providerData.some((p) => p.providerId === 'password'),
+  );
+}
+
+/** Add (or replace) a password on the CURRENT account — how a Google-created
+ *  account gains the email form (owner ask, 2026-08-28; same as astro's). */
+export async function setAccountPassword(password: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user || user.isAnonymous) {
+    throw new Error('Sign in first, then set a password.');
+  }
+  const email = user.email;
+  if (!email) {
+    throw new Error('This account has no email address to attach a password to.');
+  }
+  try {
+    if (hasPasswordProvider()) {
+      await updatePassword(user, password);
+    } else {
+      await linkWithCredential(user, EmailAuthProvider.credential(email, password));
+    }
+  } catch (e: any) {
+    const code = String(e?.code ?? '');
+    if (code === 'auth/requires-recent-login') {
+      throw new Error(
+        'For security this needs a fresh sign-in \u2014 sign out, sign back ' +
+        'in, then set the password.',
+      );
+    }
+    if (code === 'auth/weak-password') {
+      throw new Error('Password needs at least 6 characters.');
+    }
+    throw e;
   }
 }
 
