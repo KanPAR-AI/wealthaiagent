@@ -7,10 +7,10 @@
 // what mobile has to say about it.
 
 import { installAstralHost } from '@wealthai/astral-native';
+import { uploadFileNative } from '@wealthai/chat-native';
 import { getPlatform } from '@wealthai/core';
 
 import { getToken } from './auth';
-import { uploadFileNative } from './upload';
 import { QUICK_REPLY_EVENT } from './events';
 
 export function ensureAstralHostInstalled(): void {

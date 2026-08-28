@@ -9,7 +9,7 @@
 // DIFFERENT modules rather than failing (docs/49 F22).
 
 import { installAstralHost } from '@wealthai/astral-native';
-import { CHAT_SEND_EVENT } from '@wealthai/chat-native';
+import { CHAT_SEND_EVENT, uploadFileNative } from '@wealthai/chat-native';
 import { getPlatform } from '@wealthai/core';
 
 import { FIELD_ICONS } from '@/components/field-icons';
@@ -26,11 +26,17 @@ export function ensureAstralHostInstalled(): void {
     // anonymous-first and always has a token.
     getToken,
 
-    // No `upload`. Stated rather than omitted: this app has no native
-    // multipart upload path yet — `apps/mobile/src/lib/upload.ts` is the one
-    // that exists, and moving it into a package is ASTRAL-110's job. Until
-    // then the photo slot REFUSES VISIBLY here instead of looking like it
-    // worked, which is the failure the role-labelled slot exists to prevent.
+    // The native multipart upload, ASTRAL-110's move having happened: it
+    // used to live at `apps/mobile/src/lib/upload.ts` and this file used to
+    // say so, with the honest consequence — "the photo slot REFUSES VISIBLY
+    // here instead of looking like it worked". That refusal was correct, and
+    // it was the one thing standing between this app and a palm reading,
+    // which is two role-labelled photo slots and nothing else.
+    //
+    // MOVED, not copied. A second copy here would have COMPILED (`@/*` maps
+    // to `./src/*` in both apps — F22) and drifted the first time somebody
+    // fixed one of the three Expo-SDK-57 traps its header documents.
+    upload: (token, asset) => uploadFileNative(token, asset),
 
     // ONE channel, shared with apps/mobile (`CHAT_SEND_EVENT`). It used to
     // be this app's own name for the same hop, which is how a widget works on

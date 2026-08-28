@@ -13,11 +13,31 @@
 // (Legacy import path: SDK 54+ moved the callback API there.)
 
 import * as FileSystem from 'expo-file-system/legacy';
-import type { MessageFile } from '@wealthai/core';
+import { getPlatform, type MessageFile } from '@wealthai/core';
 
-import { apiUrl as serverApiUrl } from './server-config';
-
-const apiUrl = serverApiUrl;
+/**
+ * ── the move, and why it is here (docs/49 ASTRAL-110) ──────────────────────
+ *
+ * This lived at `apps/mobile/src/lib/upload.ts`, and BOTH host files said so
+ * out loud: "`apps/astro` has no upload path yet — moving it into a package
+ * is ASTRAL-110's job. Until then the photo slot REFUSES VISIBLY here instead
+ * of looking like it worked." That refusal was correct and it was also the
+ * blocker for the palm capture flow, which is two role-labelled photo slots
+ * and nothing else.
+ *
+ * So it moved rather than being copied. A second copy in `apps/astro` would
+ * have compiled — `@/*` maps to `./src/*` in both apps (F22) — and would have
+ * drifted the first time somebody fixed one of the three Expo-SDK-57 traps
+ * documented above.
+ *
+ * `apiUrl` was app-local (`./server-config`); it is now the platform
+ * adapter's `getApiUrl`, which both apps already install at start
+ * (`ensureCoreInitialized`). Same string, one source.
+ *
+ * NOT a native module addition: `expo-file-system` is already a dependency of
+ * both apps, so nothing here needs a new binary.
+ */
+const apiUrl = (endpoint: string) => getPlatform().getApiUrl(endpoint);
 
 export async function uploadFileNative(
   token: string,
