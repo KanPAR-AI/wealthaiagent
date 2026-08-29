@@ -89,7 +89,6 @@ const AGENT_META: Record<string, AgentMeta> = {
   pregnancy_nutrition: { label: "Pregnancy",     icon: Heart,       className: "bg-fuchsia-100 text-fuchsia-800" },
   sports_nutrition:    { label: "Sports Nutr.",  icon: Trophy,      className: "bg-yellow-100 text-yellow-800" },
   fitness_nutrition:   { label: "Fitness Nutr.", icon: Apple,       className: "bg-teal-100 text-teal-800" },
-  mental_health:       { label: "Mental Health", icon: Brain,       className: "bg-violet-100 text-violet-800" },
   astrology_ai:        { label: "MysticAI",      icon: Sparkles,    className: "bg-purple-100 text-purple-800" },
   dynamic:             { label: "Agent",         icon: Utensils,    className: "bg-slate-100 text-slate-800" },
 };

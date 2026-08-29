@@ -17,7 +17,7 @@ import {
 } from "@/services/home-service";
 
 const AGENT_IDS = [
-  "", "generic", "real_estate", "insurance", "financial", "mental_health",
+  "", "generic", "real_estate", "insurance",
   "dietician", "knee_arthritis", "astrology",
 ];
 

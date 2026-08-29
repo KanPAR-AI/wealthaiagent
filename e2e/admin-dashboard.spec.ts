@@ -114,10 +114,10 @@ async function clickTab(page: Page, tabLabel: string) {
   await page.waitForTimeout(500);
 }
 
-/** Navigate to corpus tab for mental_health agent. Common setup for corpus tests. */
+/** Navigate to corpus tab for knee_arthritis agent. Common setup for corpus tests. */
 async function goToCorpusPanel(page: Page) {
   await goToAdmin(page);
-  await selectAgent(page, 'mental_health');
+  await selectAgent(page, 'knee_arthritis');
   await clickTab(page, 'Corpus');
   await page.waitForTimeout(2000);
   await expect(page.getByText('Corpus Sources')).toBeVisible({ timeout: 10_000 });
@@ -289,17 +289,17 @@ test.describe('Admin Dashboard', () => {
   // ═══════════════════════════════════════════════════════════════════
   test('Test Chat page loads with agent context', async ({ page }) => {
     await goToAdmin(page);
-    await selectAgent(page, 'mental_health');
+    await selectAgent(page, 'knee_arthritis');
 
     const testChatBtn = page.getByRole('link', { name: /Test Chat/i });
     await expect(testChatBtn).toBeVisible();
 
     await testChatBtn.click();
-    await page.waitForURL('**/admin/test/mental_health**', { timeout: 10_000 });
+    await page.waitForURL('**/admin/test/knee_arthritis**', { timeout: 10_000 });
     await page.waitForTimeout(2000);
 
     await expect(page.getByText('Test Chat:')).toBeVisible();
-    await expect(page.getByText('mental health')).toBeVisible();
+    await expect(page.getByText('knee arthritis')).toBeVisible();
     await expect(page.getByText('Back to Admin')).toBeVisible();
     await expect(page.getByRole('button', { name: 'New Test' })).toBeVisible();
 
@@ -311,7 +311,7 @@ test.describe('Admin Dashboard', () => {
   // TEST 9: Test Chat sends message with agent routing
   // ═══════════════════════════════════════════════════════════════════
   test('Test Chat sends message and gets agent-specific response', async ({ page }) => {
-    await page.goto('/chataiagent/admin/test/mental_health');
+    await page.goto('/chataiagent/admin/test/knee_arthritis');
     await page.waitForTimeout(5000);
 
     const chatInput = page.locator('textarea').first();
@@ -344,7 +344,7 @@ test.describe('Admin Dashboard', () => {
   // ═══════════════════════════════════════════════════════════════════
   test('Tab switching shows correct panel content', async ({ page }) => {
     await goToAdmin(page);
-    await selectAgent(page, 'mental_health');
+    await selectAgent(page, 'knee_arthritis');
     await page.waitForTimeout(1000);
 
     await clickTab(page, 'Corpus');
