@@ -15,6 +15,19 @@ export interface VideoSegment {
   title: string;
   sha: string;
   startSeconds: number;
+  /** Dubbed audio tracks the backend stamped into the citation URL as
+   *  `&dub=hi` (docs/44 CORP-29) — the URL is the only channel between the
+   *  resolver and this renderer. Empty for most videos; the player shows a
+   *  language toggle only when non-empty. */
+  dubLangs: string[];
+}
+
+/** The per-language MP4 for a citation URL: same signed URL, same start
+ *  moment, only `kind=source_{lang}` added — one auth surface, one timeline. */
+export function dubUrl(url: string, lang: string): string {
+  const param = `&kind=source_${lang}`;
+  const hash = url.indexOf('#');
+  return hash >= 0 ? url.slice(0, hash) + param + url.slice(hash) : url + param;
 }
 
 export interface TextSegment {
@@ -53,6 +66,8 @@ export function splitVideoSegments(text: string): MessageSegment[] {
         title,
         sha,
         startSeconds: startS ? parseInt(startS, 10) : 0,
+        dubLangs: [...fullUrl.matchAll(/[?&]dub=([a-z]{2})(?=[&#]|$)/g)]
+          .map((d) => d[1]),
       });
     }
     last = start + whole.length;
