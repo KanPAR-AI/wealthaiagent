@@ -100,19 +100,33 @@ describe('ASTRAL-119’s gate-order check — the shell may not ship ahead of it
     '../chatservice/services/agents/astrology/graph.py',
   );
 
-  it('the engine registry is where this test thinks it is', () => {
-    // Without this the grep below could pass vacuously the day someone moves
-    // the file — a gate test that cannot fail is worse than no gate test.
-    expect(fs.existsSync(registry)).toBe(true);
+  // FINDING (2026-09-03, docs/51 incident log): this gate assumed "this is a
+  // monorepo" unconditionally — true on every dev machine, FALSE in Cloud
+  // Build, which checks out wealthaiagent alone. The unconditional
+  // existsSync assertion failed there and silently blocked EVERY frontend
+  // deploy from 2026-08-28 13:44 to 2026-09-03 (five builds). The gate stays
+  // fully binding wherever the engine repo is present; where it is not, the
+  // three checks SKIP visibly (they print as skipped, never as passed) — a
+  // client-only checkout cannot inspect an engine it does not have.
+  const engineCheckedOut = fs.existsSync(registry);
+  const itWithEngine = engineCheckedOut ? it : it.skip;
+
+  it('the gate is live wherever the engine repo is present', () => {
+    // Anti-vacuity: on a machine that HAS ../chatservice, moving graph.py
+    // still fails loudly here — a gate test that cannot fail is worse than
+    // no gate test.
+    if (fs.existsSync(path.resolve(process.cwd(), '../chatservice'))) {
+      expect(engineCheckedOut).toBe(true);
+    }
   });
 
-  it('the `daily` and `timeline` nodes are in the node registry', () => {
+  itWithEngine('the `daily` and `timeline` nodes are in the node registry', () => {
     const src = fs.readFileSync(registry, 'utf8');
     expect(src).toContain('"daily": NodeSpec(');
     expect(src).toContain('"timeline": NodeSpec(');
   });
 
-  it('the user-scoped reads the tabs open with exist', () => {
+  itWithEngine('the user-scoped reads the tabs open with exist', () => {
     const api = path.resolve(process.cwd(), '../chatservice/api/v1/endpoints/people.py');
     const src = fs.readFileSync(api, 'utf8');
     expect(src).toContain('"/self/daily"');
