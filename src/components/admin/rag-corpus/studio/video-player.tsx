@@ -62,6 +62,43 @@ export function VideoPlayer({
   const [playing, setPlaying] = useState(false);
   const [hover, setHover] = useState<{ x: number; t: number } | null>(null);
   const [failed, setFailed] = useState("");
+  // "" = the original audio. Switching swaps the per-language MP4 source
+  // while preserving position (capture → swap → restore → resume) — docs/44
+  // CORP-29. The pending ref carries the position across the src change,
+  // because setting `src` resets currentTime to 0.
+  const [lang, setLang] = useState("");
+  const restore = useRef<{ t: number; play: boolean } | null>(null);
+
+  const tracks = media?.audio_tracks ?? [];
+  const activeTrack = tracks.find((t) => t.lang === lang);
+
+  // Default to the stored language preference once, when the payload first
+  // carries one that names a real track (docs/44 CORP-29). `chose` keeps a
+  // viewer's explicit click from being overridden by a media refetch.
+  const chose = useRef(false);
+  const preferred = media?.preferred_lang ?? "";
+  useEffect(() => {
+    if (chose.current || !preferred) return;
+    if (tracks.some((t) => t.lang === preferred)) setLang(preferred);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preferred, tracks.length]);
+
+  const switchLang = useCallback((next: string) => {
+    chose.current = true;
+    const v = video.current;
+    restore.current = v ? { t: v.currentTime, play: !v.paused } : null;
+    setLang(next);
+  }, []);
+
+  const onLoadedMetadata = useCallback(() => {
+    const v = video.current;
+    const r = restore.current;
+    if (!v || !r) return;
+    restore.current = null;
+    v.currentTime = r.t;
+    setAt(r.t);
+    if (r.play) void v.play();
+  }, []);
 
   const seek = useCallback((seconds: number) => {
     if (!video.current) return;
@@ -148,9 +185,10 @@ export function VideoPlayer({
         <video
           ref={video}
           className="aspect-video w-full"
-          src={mediaUrl(media.source_url || "")}
+          src={mediaUrl((activeTrack?.source_url || media.source_url) ?? "")}
           poster={media.poster_url ? mediaUrl(media.poster_url) : undefined}
           preload="metadata"
+          onLoadedMetadata={onLoadedMetadata}
           onTimeUpdate={(e) => setAt(e.currentTarget.currentTime)}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
@@ -181,6 +219,34 @@ export function VideoPlayer({
         <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
           {formatTime(at)} / {formatTime(duration)}
         </span>
+
+        {tracks.length > 0 && (
+          // Shown ONLY when a dubbed track exists (docs/44 CORP-29): a viewer
+          // of an undubbed asset sees exactly today's player.
+          <div
+            role="group"
+            aria-label="Audio language"
+            className="flex shrink-0 overflow-hidden rounded-md border border-border text-[11px]"
+          >
+            <button
+              onClick={() => switchLang("")}
+              aria-pressed={lang === ""}
+              className={`px-2 py-0.5 ${lang === "" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+            >
+              English
+            </button>
+            {tracks.map((t) => (
+              <button
+                key={t.lang}
+                onClick={() => switchLang(t.lang)}
+                aria-pressed={lang === t.lang}
+                className={`border-l border-border px-2 py-0.5 ${lang === t.lang ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* The segments ARE the scrub bar. */}
         <div

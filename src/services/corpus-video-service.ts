@@ -767,6 +767,22 @@ export interface AssetMedia {
   source_url?: string;
   poster_url?: string;
   filmstrip?: Filmstrip | null;
+  /** Dubbed language tracks (docs/44 CORP-28/29). Empty for most assets —
+   *  the selector renders only when there is something to select. Each
+   *  `source_url` is a per-language MP4 behind the SAME ticket as the
+   *  original: switching language is a src swap, not a second auth. */
+  audio_tracks?: AudioTrack[];
+  /** The viewer's stored language preference, present only when the backend
+   *  knows one AND a matching track exists (docs/44 CORP-29/CORP-24). The
+   *  player defaults to this track; absent, it defaults to the original. */
+  preferred_lang?: string;
+}
+
+export interface AudioTrack {
+  lang: string;
+  label: string;
+  source_url: string;
+  generated_at?: string;
 }
 
 export async function fetchAssetMedia(
@@ -775,6 +791,19 @@ export async function fetchAssetMedia(
 ): Promise<AssetMedia> {
   return call(
     `/${encodeURIComponent(corpusId)}/assets/${encodeURIComponent(source)}/media`,
+  );
+}
+
+/** Ask for a Hindi dub of one asset (docs/44 CORP-28; AMB-1 on-demand).
+ *  `reused` means the track already existed — content-keyed, so a dub made
+ *  through any corpus serves them all and is never paid for twice. */
+export async function requestDub(
+  corpusId: string,
+  contentSha: string,
+): Promise<{ status: 'started' | 'reused'; job_id?: string }> {
+  return call(
+    `/${encodeURIComponent(corpusId)}/assets/${encodeURIComponent(contentSha)}/dub`,
+    { method: 'POST' },
   );
 }
 

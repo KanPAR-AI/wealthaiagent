@@ -118,6 +118,37 @@ function buildMdComponents(
   };
 }
 
+/** The Hindi/English audio toggle on inline corpus players (docs/44 CORP-29).
+ *
+ *  The player is raw markdown HTML, so it cannot carry React handlers — the
+ *  toggle is a data-attributed button and this delegated handler does the
+ *  swap: capture position → swap src → restore position → resume. Videos
+ *  without a stamped Hindi track render no button and never reach here. */
+function handleDubToggle(e: React.MouseEvent) {
+  const btn = (e.target as HTMLElement).closest?.('[data-dub-toggle]');
+  if (!btn) return;
+  const video = btn.closest('.youtube-embed')?.querySelector('video');
+  if (!video) return;
+  e.preventDefault();
+  const next = btn.getAttribute('data-active') === 'hi' ? 'en' : 'hi';
+  const src = btn.getAttribute(next === 'hi' ? 'data-src-hi' : 'data-src-en');
+  if (!src) return;
+  const at = video.currentTime;
+  const wasPlaying = !video.paused;
+  video.addEventListener(
+    'loadedmetadata',
+    () => {
+      video.currentTime = at;
+      if (wasPlaying) void video.play();
+    },
+    { once: true },
+  );
+  video.src = src;
+  video.load();
+  btn.setAttribute('data-active', next);
+  btn.textContent = next === 'hi' ? 'English' : 'हिन्दी';
+}
+
 export const Response = memo(
   ({ className, children, onNavigate, isStreaming = true }: ResponseProps) => {
     const raw = typeof children === 'string' ? children : (children ?? '');
@@ -125,7 +156,10 @@ export const Response = memo(
     const withEmbeds = embedCorpusMediaLinks(embedYouTubeLinks(cleaned));
     const mdComponents = buildMdComponents(onNavigate, isStreaming);
     return (
-      <div className={cn('size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0', className)}>
+      <div
+        className={cn('size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0', className)}
+        onClick={handleDubToggle}
+      >
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           rehypePlugins={[rehypeRaw]}

@@ -12,7 +12,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import {
-  addSegment, fetchAssetDetail, fetchAssetMedia, setSegmentType,
+  addSegment, fetchAssetDetail, fetchAssetMedia, requestDub, setSegmentType,
   type AssetDetail, type AssetMedia,
 } from "@/services/corpus-video-service";
 import { CorpusAssistantPanel } from "../corpus-assistant-panel";
@@ -78,6 +78,8 @@ export function AssetDetailView({
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState({ title: "", type: "instruction", start: "", end: "" });
   const [media, setMedia] = useState<AssetMedia | null>(null);
+  // "" idle · "working" request sent · anything else is a message to show.
+  const [dubState, setDubState] = useState("");
   const [seekTo, setSeekTo] = useState<SeekRequest | null>(null);
 
   // A seek from anywhere on the screen. The nonce makes clicking the same
@@ -140,6 +142,38 @@ export function AssetDetailView({
           {media?.stored && media.filmstrip && duration > 0 && (
             <FilmstripTrack strip={media.filmstrip} duration={duration}
                             onSeek={goTo} />
+          )}
+          {/* On-demand dubbing (docs/44 AMB-1). Only offered for stored
+              footage without a Hindi track; once the track exists the
+              player's own language selector takes over. */}
+          {media?.stored && media.content_sha &&
+            !(media.audio_tracks?.length) && (
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 px-2 text-[11px]"
+                disabled={dubState === "working"}
+                onClick={async () => {
+                  setDubState("working");
+                  try {
+                    const r = await requestDub(corpusId, media.content_sha!);
+                    setDubState(
+                      r.status === "reused"
+                        ? "A Hindi track already exists — refresh to see the selector."
+                        : "Dubbing started — the Hindi option appears here when the job finishes.",
+                    );
+                  } catch (e) {
+                    setDubState(e instanceof Error ? e.message : String(e));
+                  }
+                }}
+              >
+                {dubState === "working" ? "Requesting…" : "Dub in Hindi"}
+              </Button>
+              {dubState && dubState !== "working" && (
+                <span className="text-[11px] text-muted-foreground">{dubState}</span>
+              )}
+            </div>
           )}
         </div>
         {/* Beside the player: what is actually IN this video. The counts are

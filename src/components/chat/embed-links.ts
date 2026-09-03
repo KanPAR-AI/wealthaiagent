@@ -75,12 +75,27 @@ export function embedCorpusMediaLinks(text: string): string {
     const posterUrl = fullUrl.replace(/#t=\d+$/, '') + '&kind=poster';
     // The #t= media fragment starts playback at the cited moment.
     const srcUrl = startS ? fullUrl : fullUrl.replace(/#t=\d+$/, '');
+    // The backend stamps `&dub=hi` into the URL when a Hindi track exists
+    // for this footage (docs/44 CORP-29) — the URL is the only channel
+    // between the resolver and this renderer. The toggle renders ONLY then;
+    // most videos show exactly the player they always did. The swap itself
+    // is handled by the delegated click handler in response.tsx (raw
+    // markdown HTML carries no React handlers of its own).
+    const hasHindi = /[?&]dub=hi(?:&|#|$)/.test(fullUrl);
+    const hiSrc = srcUrl.includes('#')
+      ? srcUrl.replace('#', '&kind=source_hi#')
+      : srcUrl + '&kind=source_hi';
+    const dubButton = hasHindi
+      ? `<button type="button" data-dub-toggle data-active="en" ` +
+        `data-src-en="${srcUrl}" data-src-hi="${hiSrc}" ` +
+        `class="youtube-embed-dub">हिन्दी</button>`
+      : '';
     const prefix = before.trim() ? before.trim() + '\n\n' : '';
     const suffix = after.trim() ? '\n\n' + after.trim() : '';
     return (
       `${prefix}<div class="youtube-embed my-3">` +
       `<video controls preload="none" playsinline src="${srcUrl}" poster="${posterUrl}" title="${title}"></video>` +
-      `<div class="youtube-embed-caption"><a href="${fullUrl}" target="_blank" rel="noopener noreferrer">${title}</a></div>` +
+      `<div class="youtube-embed-caption"><a href="${fullUrl}" target="_blank" rel="noopener noreferrer">${title}</a>${dubButton}</div>` +
       `</div>${suffix}`
     );
   });

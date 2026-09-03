@@ -49,4 +49,27 @@ describe('embedCorpusMediaLinks', () => {
     expect(out).toMatch(/^Intro text\n\n<div class="youtube-embed/);
     expect(out).toMatch(/closing text\.$/);
   });
+
+  // ── the Hindi audio toggle (docs/44 CORP-29) ─────────────────────────────
+
+  it('renders no dub toggle for an unstamped URL — the player is unchanged', () => {
+    const out = embedCorpusMediaLinks(`[T](${URL}#t=5)`);
+    expect(out).not.toContain('data-dub-toggle');
+  });
+
+  it('renders the toggle when the URL carries the dub stamp', () => {
+    const stamped = `${URL}&dub=hi`;
+    const out = embedCorpusMediaLinks(`[T](${stamped}#t=5)`);
+    expect(out).toContain('data-dub-toggle');
+    expect(out).toContain(`data-src-en="${stamped}#t=5"`);
+    // the Hindi source keeps the same signed URL, same start moment, and
+    // only adds the kind — one auth surface, one timeline
+    expect(out).toContain(`data-src-hi="${stamped}&kind=source_hi#t=5"`);
+    expect(out).toContain('हिन्दी');
+  });
+
+  it('does not mistake a dub stamp for another language', () => {
+    const out = embedCorpusMediaLinks(`[T](${URL}&dub=ta#t=5)`);
+    expect(out).not.toContain('data-dub-toggle');
+  });
 });

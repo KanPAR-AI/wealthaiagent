@@ -255,6 +255,23 @@
 .youtube-embed-caption a:hover {
   text-decoration: underline;
 }
+/* The Hindi/English audio toggle on inline corpus players (docs/44 CORP-29).
+   Rendered only when the citation URL carries a dubbed-track stamp. */
+.youtube-embed-dub {
+  float: right;
+  margin-left: 0.5rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--primary);
+  font-size: 0.6875rem;
+  line-height: 1.25rem;
+  cursor: pointer;
+}
+.youtube-embed-dub:hover {
+  background: var(--muted);
+}
 
 /* Trade page styles */
 @layer utilities {
