@@ -32,9 +32,14 @@ COPY . .
 # Debug: List files
 RUN echo "Files in /app:" && ls -la
 
-# Run tests during build with verbose output
-RUN echo "Running tests..." && \
-    npm run test:ci 2>&1 || (echo "Tests failed with exit code $?" && exit 1)
+# Tests do NOT run inside the image build. Cloud Build's "Run Tests" step is
+# the hard gate, on the FULL checkout. This in-image second run was gating
+# deploys on a worse copy of the same suite: the image's COPY context lacks
+# files some suites import (android-pickers died on a missing
+# apps/astro/src/lib/auth.ts), and the throttled build env timed out
+# memory-toolbar at 5s — failures impossible in the real gate. Same lesson
+# chatservice learned and recorded in its cloudbuild.yaml: test the
+# checkout, build the artifact, never re-test inside the build.
 
 # Build the application with verbose output
 RUN echo "Building application..." && \
