@@ -12,7 +12,8 @@ import {
 
 import { Button } from "@/components/ui/button";
 import {
-  addSegment, fetchAssetDetail, fetchAssetMedia, requestDub, setSegmentType,
+  addSegment, fetchAssetDetail, fetchAssetMedia, patchVideo, requestDub,
+  setSegmentType,
   type AssetDetail, type AssetMedia,
 } from "@/services/corpus-video-service";
 import { CorpusAssistantPanel } from "../corpus-assistant-panel";
@@ -80,6 +81,11 @@ export function AssetDetailView({
   const [media, setMedia] = useState<AssetMedia | null>(null);
   // "" idle · "working" request sent · anything else is a message to show.
   const [dubState, setDubState] = useState("");
+  // In-place correction of what OCR read (pipeline step 3).
+  const [ocrEditing, setOcrEditing] = useState(false);
+  const [ocrDraft, setOcrDraft] = useState("");
+  const [ocrSaving, setOcrSaving] = useState(false);
+  const [ocrError, setOcrError] = useState("");
   const [seekTo, setSeekTo] = useState<SeekRequest | null>(null);
 
   // A seek from anywhere on the screen. The nonce makes clicking the same
@@ -292,10 +298,57 @@ export function AssetDetailView({
                   >
                     {s.step}
                   </span>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium">{s.label}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">{s.detail}</p>
+                    {s.key === "ocr" && ocrEditing ? (
+                      <div className="mt-1 space-y-1">
+                        <textarea
+                          className="w-full rounded border border-border bg-background p-1.5 font-mono text-[11px]"
+                          rows={Math.max(2, ocrDraft.split("\n").length)}
+                          value={ocrDraft}
+                          onChange={(e) => setOcrDraft(e.target.value)}
+                          aria-label="On-screen text blocks, one per line"
+                        />
+                        <div className="flex gap-1.5">
+                          <Button size="sm" className="h-5 px-2 text-[10px]" disabled={ocrSaving}
+                            onClick={async () => {
+                              if (!s.ocr_doc_id) return;
+                              setOcrSaving(true);
+                              try {
+                                await patchVideo(corpusId, s.ocr_doc_id, "on_screen_text",
+                                  ocrDraft.split("\n").map((l) => l.trim()).filter(Boolean));
+                                setOcrEditing(false);
+                                await load();
+                              } catch (e) {
+                                setOcrError(e instanceof Error ? e.message : String(e));
+                              } finally { setOcrSaving(false); }
+                            }}>
+                            {ocrSaving ? "Saving…" : "Save"}
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-5 px-2 text-[10px]"
+                            onClick={() => setOcrEditing(false)}>Cancel</Button>
+                          {ocrError && <span className="text-[10px] text-destructive">{ocrError}</span>}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="truncate text-[11px] text-muted-foreground">{s.detail}</p>
+                    )}
                   </div>
+                  {/* A reviewer can correct what OCR read — a misread phase
+                      card is a wrong filter fact they can SEE on the player.
+                      Doc-level edit, stamped human, survives re-extraction. */}
+                  {s.key === "ocr" && !!s.ocr_doc_id && !ocrEditing && (
+                    <button
+                      className="shrink-0 text-[10px] text-primary underline underline-offset-2"
+                      onClick={() => {
+                        setOcrDraft((s.ocr_blocks ?? []).join("\n"));
+                        setOcrError("");
+                        setOcrEditing(true);
+                      }}
+                    >
+                      Correct
+                    </button>
+                  )}
                 </li>
               ))}
             </ol>

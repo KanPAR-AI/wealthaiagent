@@ -680,7 +680,14 @@ export interface AssetDetail {
     phases: string[];
     content_sha: string;
   };
-  pipeline: { step: number; key: string; label: string; state: string; detail: string }[];
+  pipeline: {
+    step: number; key: string; label: string; state: string; detail: string;
+    /** OCR step only: the blocks read + the document that owns them, so the
+     *  screen can offer an in-place human correction (a misread is a wrong
+     *  fact a reviewer can see right on the player). */
+    ocr_blocks?: string[];
+    ocr_doc_id?: string | null;
+  }[];
   insight: string;
   segments: AssetSegment[];
   segment_types: string[];
