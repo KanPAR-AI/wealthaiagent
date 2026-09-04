@@ -42,3 +42,5 @@ apps/astro/ios/
 apps/astro/android/
 
 .env
+apps/knee/ios/
+apps/knee/.expo/

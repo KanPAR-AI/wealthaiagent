@@ -15,7 +15,8 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "appleTeamId": "Q2ZX496SN9"
     },
     "android": {
       "package": "com.yourfinadvisor.knee",
@@ -29,7 +30,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#F7F5F0"
+          "backgroundColor": "#F7F5F0",
+          "image": "./assets/images/icon.png",
+          "imageWidth": 120
         }
       ],
       "expo-video",
@@ -42,6 +45,7 @@
     "extra": {
       "router": {}
     },
-    "owner": "ravipradeep89"
+    "owner": "ravipradeep89",
+    "icon": "./assets/images/icon.png"
   }
 }
