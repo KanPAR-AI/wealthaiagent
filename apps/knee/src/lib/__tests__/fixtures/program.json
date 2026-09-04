@@ -1,0 +1,33 @@
+{
+    "corpus_id": "knee_timed",
+    "phases": [
+        {
+            "phase": "1",
+            "name": "Calm the joint",
+            "count": 14,
+            "catalog_count": 14,
+            "complete": true
+        },
+        {
+            "phase": "2",
+            "name": "Build strength",
+            "count": 20,
+            "catalog_count": 20,
+            "complete": true
+        },
+        {
+            "phase": "3",
+            "name": "Load & balance",
+            "count": 19,
+            "catalog_count": 19,
+            "complete": true
+        },
+        {
+            "phase": "4",
+            "name": "Back to life",
+            "count": 13,
+            "catalog_count": 13,
+            "complete": true
+        }
+    ]
+}

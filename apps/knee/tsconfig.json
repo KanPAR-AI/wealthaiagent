@@ -1,0 +1,24 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    // `jest`/`node` for the same reason as apps/astro: the pure-logic modules
+    // (capability map, tab derivation, library view) are unit-tested in the
+    // ROOT jest project, and those tests read fixtures off disk.
+    "types": ["jest", "node"],
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@firebase/auth": [
+        "../../node_modules/@firebase/auth/dist/rn/index.rn.d.ts"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
+}

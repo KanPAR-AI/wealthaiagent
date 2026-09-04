@@ -1,0 +1,232 @@
+{
+    "corpus_id": "knee_timed",
+    "phase": "2",
+    "name": "Build strength",
+    "count": 20,
+    "catalog_count": 20,
+    "complete": true,
+    "exercises": [
+        {
+            "name": "Phase 2 of the Knee Arthritis Recovery Program",
+            "title": "Unnamed (El_Paso_Manual_Physical_Therapy (11).mp4)",
+            "phase": "2",
+            "start_seconds": null,
+            "end_seconds": null,
+            "video_file": "El_Paso_Manual_Physical_Therapy (10).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/85e1cc7211b18818af59946e986e10f637a00012af8e4180ee06f5b0d00012ba?t=Y29ycHVzLW1lZGlhOjg1ZTFjYzcyMTFiMTg4MThhZjU5OTQ2ZTk4NmUxMGY2MzdhMDAwMTJhZjhlNDE4MGVlMDZmNWIwZDAwMDEyYmE6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.iRjxEn5VqYVgbmn-7IiD65P7d4KbiV_W56DqhaUsPiY&dub=hi",
+            "dub_langs": [
+                "hi"
+            ]
+        },
+        {
+            "name": "knee flexion stretch",
+            "title": "knee flexion stretch",
+            "phase": "2",
+            "start_seconds": 68.0,
+            "end_seconds": 283.0,
+            "video_file": "El_Paso_Manual_Physical_Therapy (12).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/7a297eb7b6eded87086e4401d321970495a15cb8f91d7d210b4558a01f78c629?t=Y29ycHVzLW1lZGlhOjdhMjk3ZWI3YjZlZGVkODcwODZlNDQwMWQzMjE5NzA0OTVhMTVjYjhmOTFkN2QyMTBiNDU1OGEwMWY3OGM2Mjk6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.d2-KY2yBU1DF4NwoBPArJPAtTUQLPtnHohdLkazpdTI&dub=hi#t=68",
+            "dub_langs": [
+                "hi"
+            ]
+        },
+        {
+            "name": "knee extension",
+            "title": "knee extension",
+            "phase": "2",
+            "start_seconds": 283.0,
+            "end_seconds": 408.0,
+            "video_file": "El_Paso_Manual_Physical_Therapy (12).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/7a297eb7b6eded87086e4401d321970495a15cb8f91d7d210b4558a01f78c629?t=Y29ycHVzLW1lZGlhOjdhMjk3ZWI3YjZlZGVkODcwODZlNDQwMWQzMjE5NzA0OTVhMTVjYjhmOTFkN2QyMTBiNDU1OGEwMWY3OGM2Mjk6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.d2-KY2yBU1DF4NwoBPArJPAtTUQLPtnHohdLkazpdTI&dub=hi#t=283",
+            "dub_langs": [
+                "hi"
+            ]
+        },
+        {
+            "name": "toe curls",
+            "title": "toe curls",
+            "phase": "2",
+            "start_seconds": 71.0,
+            "end_seconds": 376.0,
+            "video_file": "El_Paso_Manual_Physical_Therapy (13).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/4fa96ecd1683619663274f5b02206eb6b35d9eec95ef68370acd50822fe7d8d7?t=Y29ycHVzLW1lZGlhOjRmYTk2ZWNkMTY4MzYxOTY2MzI3NGY1YjAyMjA2ZWI2YjM1ZDllZWM5NWVmNjgzNzBhY2Q1MDgyMmZlN2Q4ZDc6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.aSI0kd6Ukwx9epFOvW58DQaDHesNUum4JjiK3SNsh6o&dub=hi#t=71",
+            "dub_langs": [
+                "hi"
+            ]
+        },
+        {
+            "name": "standing foot arch raises",
+            "title": "standing foot arch raises",
+            "phase": "2",
+            "start_seconds": 376.0,
+            "end_seconds": 554.97,
+            "video_file": "El_Paso_Manual_Physical_Therapy (13).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/4fa96ecd1683619663274f5b02206eb6b35d9eec95ef68370acd50822fe7d8d7?t=Y29ycHVzLW1lZGlhOjRmYTk2ZWNkMTY4MzYxOTY2MzI3NGY1YjAyMjA2ZWI2YjM1ZDllZWM5NWVmNjgzNzBhY2Q1MDgyMmZlN2Q4ZDc6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.aSI0kd6Ukwx9epFOvW58DQaDHesNUum4JjiK3SNsh6o&dub=hi#t=376",
+            "dub_langs": [
+                "hi"
+            ]
+        },
+        {
+            "name": "bridges",
+            "title": "bridges",
+            "phase": "2",
+            "start_seconds": 61.0,
+            "end_seconds": 282.0,
+            "video_file": "El_Paso_Manual_Physical_Therapy (14).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/2bc78bd39a7f4dc41e9c5b705d3cbc332afb6c2cb573a2a32e9bfef7ba2fb9ad?t=Y29ycHVzLW1lZGlhOjJiYzc4YmQzOWE3ZjRkYzQxZTljNWI3MDVkM2NiYzMzMmFmYjZjMmNiNTczYTJhMzJlOWJmZWY3YmEyZmI5YWQ6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.dX7kUfEQFpyO3wYm4fcGOV_31UfemzF4Ku5w_2gKEwE&dub=hi#t=61",
+            "dub_langs": [
+                "hi"
+            ]
+        },
+        {
+            "name": "clamshells",
+            "title": "clamshells",
+            "phase": "2",
+            "start_seconds": 282.0,
+            "end_seconds": 520.0,
+            "video_file": "El_Paso_Manual_Physical_Therapy (14).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/2bc78bd39a7f4dc41e9c5b705d3cbc332afb6c2cb573a2a32e9bfef7ba2fb9ad?t=Y29ycHVzLW1lZGlhOjJiYzc4YmQzOWE3ZjRkYzQxZTljNWI3MDVkM2NiYzMzMmFmYjZjMmNiNTczYTJhMzJlOWJmZWY3YmEyZmI5YWQ6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.dX7kUfEQFpyO3wYm4fcGOV_31UfemzF4Ku5w_2gKEwE&dub=hi#t=282",
+            "dub_langs": [
+                "hi"
+            ]
+        },
+        {
+            "name": "donkey kicks",
+            "title": "donkey kicks",
+            "phase": "2",
+            "start_seconds": 520.0,
+            "end_seconds": 675.0,
+            "video_file": "El_Paso_Manual_Physical_Therapy (14).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/2bc78bd39a7f4dc41e9c5b705d3cbc332afb6c2cb573a2a32e9bfef7ba2fb9ad?t=Y29ycHVzLW1lZGlhOjJiYzc4YmQzOWE3ZjRkYzQxZTljNWI3MDVkM2NiYzMzMmFmYjZjMmNiNTczYTJhMzJlOWJmZWY3YmEyZmI5YWQ6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.dX7kUfEQFpyO3wYm4fcGOV_31UfemzF4Ku5w_2gKEwE&dub=hi#t=520",
+            "dub_langs": [
+                "hi"
+            ]
+        },
+        {
+            "name": "mini squats",
+            "title": "mini squats",
+            "phase": "2",
+            "start_seconds": 675.0,
+            "end_seconds": 917.0,
+            "video_file": "El_Paso_Manual_Physical_Therapy (14).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/2bc78bd39a7f4dc41e9c5b705d3cbc332afb6c2cb573a2a32e9bfef7ba2fb9ad?t=Y29ycHVzLW1lZGlhOjJiYzc4YmQzOWE3ZjRkYzQxZTljNWI3MDVkM2NiYzMzMmFmYjZjMmNiNTczYTJhMzJlOWJmZWY3YmEyZmI5YWQ6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.dX7kUfEQFpyO3wYm4fcGOV_31UfemzF4Ku5w_2gKEwE&dub=hi#t=675",
+            "dub_langs": [
+                "hi"
+            ]
+        },
+        {
+            "name": "walking properly",
+            "title": "walking properly",
+            "phase": "2",
+            "start_seconds": 83.0,
+            "end_seconds": 555.0,
+            "video_file": "El_Paso_Manual_Physical_Therapy (16).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/02a613577c2cfab3b735174c5248541898be4a250092be4ffb0a783f872801e9?t=Y29ycHVzLW1lZGlhOjAyYTYxMzU3N2MyY2ZhYjNiNzM1MTc0YzUyNDg1NDE4OThiZTRhMjUwMDkyYmU0ZmZiMGE3ODNmODcyODAxZTk6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.rLN-BXSLSFX3RbVN6V5FmxKCLIy13TnUWZjWZ7Pjm_A&dub=hi#t=83",
+            "dub_langs": [
+                "hi"
+            ]
+        },
+        {
+            "name": "PHASE 2 SUCCESS PLAN",
+            "title": "Unnamed (El_Paso_Manual_Physical_Therapy (17).mp4)",
+            "phase": "2",
+            "start_seconds": null,
+            "end_seconds": null,
+            "video_file": "El_Paso_Manual_Physical_Therapy (17).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/cb6d6cfe19c14dfcd6b4ba171aa9e409aa62dd881b225997ebe405089b65cf9e?t=Y29ycHVzLW1lZGlhOmNiNmQ2Y2ZlMTljMTRkZmNkNmI0YmExNzFhYTllNDA5YWE2MmRkODgxYjIyNTk5N2ViZTQwNTA4OWI2NWNmOWU6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.h0aEV1QGyIAkKNzSiqVVTWfz9-Qtapep_mWDXZ3Hxn8&dub=hi",
+            "dub_langs": [
+                "hi"
+            ]
+        },
+        {
+            "name": "glute bridges",
+            "title": "Unnamed (El_Paso_Manual_Physical_Therapy (18).mp4)",
+            "phase": "2",
+            "start_seconds": null,
+            "end_seconds": null,
+            "video_file": "El_Paso_Manual_Physical_Therapy (18).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/ceaa396f034d78e505b929f57c8ff693a875d9b9de3fda9814cef95b4f129e89?t=Y29ycHVzLW1lZGlhOmNlYWEzOTZmMDM0ZDc4ZTUwNWI5MjlmNTdjOGZmNjkzYTg3NWQ5YjlkZTNmZGE5ODE0Y2VmOTViNGYxMjllODk6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.X0zqQh9Lb_JjHapYdRPXBenLcmJ6U_UtEFslUlZPftI",
+            "dub_langs": []
+        },
+        {
+            "name": "BUTT BURNERS",
+            "title": "BUTT BURNERS",
+            "phase": "2",
+            "start_seconds": 6.0,
+            "end_seconds": 10.5,
+            "video_file": "El_Paso_Manual_Physical_Therapy (19).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/ef7f98ae33bf6b3141cc3f091d1be71c51b930fee62e00a940ff8f243979b48f?t=Y29ycHVzLW1lZGlhOmVmN2Y5OGFlMzNiZjZiMzE0MWNjM2YwOTFkMWJlNzFjNTFiOTMwZmVlNjJlMDBhOTQwZmY4ZjI0Mzk3OWI0OGY6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.N5dX-dp-iHzGC1ZYnXWDZuz6wA-DWTuA73uiNLf7uHU#t=6",
+            "dub_langs": []
+        },
+        {
+            "name": "ALL 4'S",
+            "title": "ALL 4'S",
+            "phase": "2",
+            "start_seconds": 10.5,
+            "end_seconds": 290.67,
+            "video_file": "El_Paso_Manual_Physical_Therapy (19).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/ef7f98ae33bf6b3141cc3f091d1be71c51b930fee62e00a940ff8f243979b48f?t=Y29ycHVzLW1lZGlhOmVmN2Y5OGFlMzNiZjZiMzE0MWNjM2YwOTFkMWJlNzFjNTFiOTMwZmVlNjJlMDBhOTQwZmY4ZjI0Mzk3OWI0OGY6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.N5dX-dp-iHzGC1ZYnXWDZuz6wA-DWTuA73uiNLf7uHU#t=10",
+            "dub_langs": []
+        },
+        {
+            "name": "GLUTE SETS",
+            "title": "GLUTE SETS",
+            "phase": "2",
+            "start_seconds": 6.0,
+            "end_seconds": 518.06,
+            "video_file": "El_Paso_Manual_Physical_Therapy (20).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/4a96536e921ae6e07ddddbcf023a21145646e8ad0422786281782397c98168d9?t=Y29ycHVzLW1lZGlhOjRhOTY1MzZlOTIxYWU2ZTA3ZGRkZGJjZjAyM2EyMTE0NTY0NmU4YWQwNDIyNzg2MjgxNzgyMzk3Yzk4MTY4ZDk6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.eYP6gu_woLY_4mmJ6P18IBUK-cFXk0x0KlZZXz7dCbo#t=6",
+            "dub_langs": []
+        },
+        {
+            "name": "ARCH ACTIVATION",
+            "title": "ARCH ACTIVATION",
+            "phase": "2",
+            "start_seconds": 6.0,
+            "end_seconds": 120.31,
+            "video_file": "El_Paso_Manual_Physical_Therapy (22).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/7ce1857ed768d51606e2a49a01caeabb8248daa517e4d5336deffd0a6a48874c?t=Y29ycHVzLW1lZGlhOjdjZTE4NTdlZDc2OGQ1MTYwNmUyYTQ5YTAxY2FlYWJiODI0OGRhYTUxN2U0ZDUzMzZkZWZmZDBhNmE0ODg3NGM6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.sszOIh3KCoUVzpJtUUnIx721BInonR8NGLHHwf5ex-o#t=6",
+            "dub_langs": []
+        },
+        {
+            "name": "single-leg balance hold",
+            "title": "Unnamed (El_Paso_Manual_Physical_Therapy (23).mp4)",
+            "phase": "2",
+            "start_seconds": null,
+            "end_seconds": null,
+            "video_file": "El_Paso_Manual_Physical_Therapy (23).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/5051523e1daeb97367da144a8d5ac79ec50efdc49d6a3798ac23276b502b33bd?t=Y29ycHVzLW1lZGlhOjUwNTE1MjNlMWRhZWI5NzM2N2RhMTQ0YThkNWFjNzllYzUwZWZkYzQ5ZDZhMzc5OGFjMjMyNzZiNTAyYjMzYmQ6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.J6nLVFV4uV_D7rA7vBmP9-4RtOF3yMHl9pnZ66uHpn4",
+            "dub_langs": []
+        },
+        {
+            "name": "standing calf raises",
+            "title": "Unnamed (El_Paso_Manual_Physical_Therapy (24).mp4)",
+            "phase": "2",
+            "start_seconds": null,
+            "end_seconds": null,
+            "video_file": "El_Paso_Manual_Physical_Therapy (24).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/f5172c960a8ee4a0e3529848e72614e058a0f25b895a34a303cdeb750eb8b33e?t=Y29ycHVzLW1lZGlhOmY1MTcyYzk2MGE4ZWU0YTBlMzUyOTg0OGU3MjYxNGUwNThhMGYyNWI4OTVhMzRhMzAzY2RlYjc1MGViOGIzM2U6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.gLGnrGYC1FPa3_n-IzjwwWxNFHwuolL-RhInH790V0o",
+            "dub_langs": []
+        },
+        {
+            "name": "SEATED KNEE EXTENSION",
+            "title": "SEATED KNEE EXTENSION",
+            "phase": "2",
+            "start_seconds": 6.0,
+            "end_seconds": 253.1,
+            "video_file": "El_Paso_Manual_Physical_Therapy (26).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/6b884f293a78fad399182bdea764523e868829f9958ff14b5669e508ae6ed1b5?t=Y29ycHVzLW1lZGlhOjZiODg0ZjI5M2E3OGZhZDM5OTE4MmJkZWE3NjQ1MjNlODY4ODI5Zjk5NThmZjE0YjU2NjllNTA4YWU2ZWQxYjU6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.IVXIdqQUD9c2AVpKyXbooheHaaT0kEC5DxAn8PrKZgo#t=6",
+            "dub_langs": []
+        },
+        {
+            "name": "walking",
+            "title": "WALKING",
+            "phase": "2",
+            "start_seconds": 6.0,
+            "end_seconds": 38.74,
+            "video_file": "El_Paso_Manual_Physical_Therapy (27).mp4",
+            "url": "http://localhost:8080/api/v1/files/corpus-media/52c30c1bca9987c87eb6bafab9e3e4fb6ee02bb83087cb70854ab098a70e27f7?t=Y29ycHVzLW1lZGlhOjUyYzMwYzFiY2E5OTg3Yzg3ZWI2YmFmYWI5ZTNlNGZiNmVlMDJiYjgzMDg3Y2I3MDg1NGFiMDk4YTcwZTI3Zjc6bG9jYWwtZGV2LXRocm93YXdheS11aWQ6MTc4OTE0NzMwOA.u4Rs0ivyRUh2RsV-1CLkYVH5emtBS8XgTHL7BWCzf20#t=6",
+            "dub_langs": []
+        }
+    ]
+}

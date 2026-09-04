@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "KneeFit",
+    "slug": "knee",
+    "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "orientation": "portrait",
+    "scheme": "kneefit",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "com.yourfinadvisor.knee",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.yourfinadvisor.knee",
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#F7F5F0"
+        }
+      ],
+      "expo-video",
+      "expo-status-bar"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {}
+    },
+    "owner": "ravipradeep89"
+  }
+}
