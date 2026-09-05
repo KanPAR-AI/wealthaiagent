@@ -6,7 +6,7 @@
 import { useFocusEffect } from 'expo-router';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -98,8 +98,33 @@ export default function Chat() {
       <StatusBar style="dark" />
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
         <View style={s.header}>
-          <Text style={s.headerTitle}>Knee coach</Text>
-          <Text style={s.headerSub}>Knows your phase and your program</Text>
+          <View style={s.headerText}>
+            <Text style={s.headerTitle}>Knee coach</Text>
+            <Text style={s.headerSub}>Knows your phase and your program</Text>
+          </View>
+          {/* New conversation. The tab deliberately resumes ONE running
+              thread (the astro ritual); this is the owner-asked escape hatch
+              (2026-09-05): clear the adopted id and forget the stored one,
+              and the next send opens a fresh chat. The old conversation is
+              not deleted — it stays on the server like every chat. */}
+          <Pressable
+            onPress={() => {
+              forgetChat();
+              setChatId(null);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="New conversation"
+            hitSlop={8}
+            style={s.newChat}
+          >
+            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+              <Path
+                d="M12 20h8M16.5 3.9a2.1 2.1 0 0 1 3 3L8 18.4l-4 1 1-4L16.5 3.9Z"
+                stroke={t.palette.ink.primary} strokeWidth={1.8}
+                strokeLinecap="round" strokeLinejoin="round"
+              />
+            </Svg>
+          </Pressable>
         </View>
         <ChatSurface
           chatId={chatId}
@@ -133,11 +158,23 @@ const s = StyleSheet.create({
   fill: { flex: 1 },
   safe: { flex: 1, backgroundColor: t.palette.paper.base },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: t.space(6),
     paddingVertical: t.space(3),
     borderBottomWidth: 1,
     borderBottomColor: t.palette.paper.line,
-    gap: 1,
+  },
+  headerText: { flex: 1, gap: 1 },
+  newChat: {
+    width: t.size.disc,
+    height: t.size.disc,
+    borderRadius: t.size.disc / 2,
+    borderWidth: 1,
+    borderColor: t.palette.paper.line,
+    backgroundColor: t.palette.paper.card,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: { ...t.type.scale.heading, ...t.type.display, color: t.palette.ink.primary },
   headerSub: { ...t.type.scale.sub, color: t.palette.ink.muted },
