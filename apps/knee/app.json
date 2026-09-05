@@ -3,9 +3,7 @@
     "name": "KneeFit",
     "slug": "knee",
     "version": "1.0.0",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "scheme": "kneefit",
     "userInterfaceStyle": "light",
