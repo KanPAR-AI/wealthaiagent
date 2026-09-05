@@ -48,6 +48,7 @@ export default function Settings() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [countryCode, setCountryCode] = useState('+91');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [otpStage, setOtpStage] = useState<'idle' | 'sent'>('idle');
@@ -192,20 +193,34 @@ export default function Settings() {
           {!account?.phone ? (
             otpStage === 'idle' ? (
               <View style={s.buttonRow}>
+                {/* Country code its own box, +91 the default (owner ask). */}
+                <TextInput
+                  style={[s.input, { width: 74 }]}
+                  placeholder="+91"
+                  placeholderTextColor={t.palette.ink.muted}
+                  keyboardType="phone-pad"
+                  autoCapitalize="none"
+                  value={countryCode}
+                  onChangeText={(v) => setCountryCode(
+                    v.startsWith('+') || v === '' ? v : `+${v}`)}
+                  accessibilityLabel="Country code"
+                />
                 <TextInput
                   style={[s.input, { flex: 1 }]}
-                  placeholder="+91 phone number"
+                  placeholder="Phone number"
                   placeholderTextColor={t.palette.ink.muted}
                   keyboardType="phone-pad"
                   value={phone}
                   onChangeText={setPhone}
+                  accessibilityLabel="Phone number"
                 />
                 <Pressable
                   style={s.secondary}
-                  disabled={busy || phone.trim().length < 8}
+                  disabled={busy || phone.trim().length < 6}
                   accessibilityRole="button"
                   onPress={() => void run(async () => {
-                    setVerificationId(await startPhoneVerification(phone));
+                    const full = `${countryCode.trim() || '+91'}${phone.trim()}`;
+                    setVerificationId(await startPhoneVerification(full));
                     setOtpStage('sent');
                   })}
                 >
