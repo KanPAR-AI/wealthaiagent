@@ -31,3 +31,12 @@ npx tsc --noEmit -p apps/knee/tsconfig.json
 npx jest apps/knee
 cd apps/knee && npx expo export --platform ios --output-dir /tmp/x
 ```
+
+## Android build traps (both measured)
+
+- `npx expo prebuild -p android` REGENERATES `android/gradle.properties`,
+  wiping the memory bump — re-apply
+  `org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=2g` after every prebuild
+  or `:expo-updates:kspReleaseKotlin` dies with a Metaspace OOM.
+- Always build with `-x lintVitalRelease -x lintVitalAnalyzeRelease -x lint`
+  (lint crashes on this dependency set under JBR 21).

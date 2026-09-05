@@ -11,19 +11,30 @@
       "bundleIdentifier": "com.yourfinadvisor.knee",
       "supportsTablet": false,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "app-1-388592327571-ios-068b4b9154ad50d835e666"
+            ]
+          }
+        ]
       },
       "buildNumber": "5",
-      "appleTeamId": "Q2ZX496SN9"
+      "appleTeamId": "Q2ZX496SN9",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "package": "com.yourfinadvisor.knee",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static"
     },
     "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
       "expo-router",
       [
         "expo-build-properties",

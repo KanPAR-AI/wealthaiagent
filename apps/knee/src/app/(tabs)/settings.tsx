@@ -20,14 +20,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchBalance, requestCredits } from '@/lib/api';
 import { getLang, setLang, subscribeLang, t as tr, type Lang } from '@/lib/i18n';
 import {
+  confirmPhoneCode,
   isGoogleSignInAvailable,
-  sendOtp,
   signInWithEmail,
   signInWithGoogle,
   signOut,
   signUpWithEmail,
+  startPhoneVerification,
   subscribeToAccount,
-  verifyOtp,
   type Account,
 } from '@/lib/auth';
 import { tokens as t } from '@/theme';
@@ -51,6 +51,7 @@ export default function Settings() {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [otpStage, setOtpStage] = useState<'idle' | 'sent'>('idle');
+  const [verificationId, setVerificationId] = useState('');
 
   useEffect(() => subscribeToAccount(setAccount), []);
 
@@ -204,7 +205,7 @@ export default function Settings() {
                   disabled={busy || phone.trim().length < 8}
                   accessibilityRole="button"
                   onPress={() => void run(async () => {
-                    await sendOtp('phone', phone);
+                    setVerificationId(await startPhoneVerification(phone));
                     setOtpStage('sent');
                   })}
                 >
@@ -226,7 +227,7 @@ export default function Settings() {
                   disabled={busy || otp.trim().length < 4}
                   accessibilityRole="button"
                   onPress={() => void run(async () => {
-                    await verifyOtp('phone', phone, otp);
+                    await confirmPhoneCode(verificationId, otp);
                     setOtpStage('idle');
                     setPhone('');
                     setOtp('');

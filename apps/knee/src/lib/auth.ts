@@ -80,7 +80,12 @@ async function attach(credential: AuthCredential): Promise<Account> {
       const linked = await linkWithCredential(existing, credential);
       return describe(linked.user)!;
     } catch (e: any) {
-      if (e?.code !== 'auth/credential-already-in-use') throw e;
+      // Either spelling of "this identifier already has an owner" (phone
+      // links throw the second — measured live with the test number): the
+      // honest outcome is signing INTO that account, guest work stays behind.
+      const code = String(e?.code ?? '');
+      if (code !== 'auth/credential-already-in-use'
+          && code !== 'auth/account-exists-with-different-credential') throw e;
     }
   }
   const signedIn = await signInWithCredential(auth, credential);
@@ -241,4 +246,30 @@ export async function verifyOtp(channel: OtpChannel, identifier: string,
   if (!token) throw new Error('Sign-in token missing from the server reply.');
   const cred = await signInWithCustomToken(auth, token);
   return describe(cred.user)!;
+}
+
+// ── phone sign-in via FIREBASE (Google delivers the SMS — owner question
+// 2026-09-05 "does Google cloud not have": it does, as Firebase Phone Auth,
+// already enabled on this project) ──────────────────────────────────────────
+//
+// The NATIVE module (@react-native-firebase/auth) performs app verification
+// (Play Integrity / APNs, reCAPTCHA sheet as fallback) and returns a
+// verificationId; the JS SDK then builds the credential and goes through the
+// SAME attach() as Google — one auth state, linking onto the anonymous
+// account so nothing is stranded, phone-link onto a signed-in account too.
+
+export async function startPhoneVerification(phone: string): Promise<string> {
+  const rnfb = (await import('@react-native-firebase/auth')).default;
+  const digits = phone.trim().startsWith('+') ? phone.trim() : `+91${phone.trim()}`;
+  const snapshot = await rnfb().verifyPhoneNumber(digits);
+  if (!snapshot.verificationId) {
+    throw new Error('Could not start phone verification — try again.');
+  }
+  return snapshot.verificationId;
+}
+
+export async function confirmPhoneCode(verificationId: string,
+                                       code: string): Promise<Account> {
+  const { PhoneAuthProvider } = await import('firebase/auth');
+  return attach(PhoneAuthProvider.credential(verificationId, code.trim()));
 }
