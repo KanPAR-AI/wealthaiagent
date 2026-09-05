@@ -33,9 +33,10 @@ export default function Player() {
   // opens ON the Hindi track when one exists — the language setting's
   // promise, kept here.
   const [lang, setLang] = useState(getLang() === 'hi' && hasHindi ? 'hi' : '');
-  const urlFor = useMemo(() => (l: string) => (l ? dubUrl(url, l) : url), [url]);
+  const urlFor = useMemo(() => (l: string) =>
+    ({ uri: l ? dubUrl(url, l) : url, useCaching: true }), [url]);
 
-  const player = useVideoPlayer(urlFor(getLang() === 'hi' && hasHindi ? 'hi' : ''), (p) => {
+  const player = useVideoPlayer(urlFor(getLang() === 'hi' && hasHindi ? 'hi' : '') as never, (p) => {
     if (start > 0) p.currentTime = start;
     p.timeUpdateEventInterval = 0.25;
     p.play();
@@ -55,7 +56,7 @@ export default function Player() {
     const at = player.currentTime;
     void (async () => {
       try {
-        await player.replaceAsync(urlFor(l));
+        await player.replaceAsync(urlFor(l) as never);
         player.currentTime = at;
         player.play();
       } catch {
@@ -74,16 +75,20 @@ export default function Player() {
     <View style={s.fill}>
       <StatusBar style="light" />
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-        <View style={s.topBar}>
+        <View style={[s.topBar, { justifyContent: 'flex-start' }]}>
           <Pressable
             onPress={() => router.back()}
             accessibilityRole="button"
-            accessibilityLabel="Close"
-            style={s.close}
+            accessibilityLabel="Back"
+            style={[s.close, { width: undefined, minWidth: 88, flexDirection: 'row', gap: 4, paddingHorizontal: 12 }]}
           >
             <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-              <Path d="M5 5l10 10M15 5 5 15" stroke="#F7F5F0" strokeWidth={2} strokeLinecap="round" />
+              <Path d="M12.5 4 6.5 10l6 6" stroke="#F7F5F0" strokeWidth={2.2}
+                strokeLinecap="round" strokeLinejoin="round" />
             </Svg>
+            <Text style={{ color: '#F7F5F0', fontSize: 15, fontWeight: '700' }}>
+              {getLang() === 'hi' ? 'वापस' : 'Back'}
+            </Text>
           </Pressable>
         </View>
 

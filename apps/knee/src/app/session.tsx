@@ -72,14 +72,19 @@ export default function Session() {
   const clipOk = exercise?.clipUrl && !brokenClips.has(exercise.clipUrl);
   const source = (clipOk ? exercise?.clipUrl : exercise?.videoUrl)
     ?? exercise?.videoUrl ?? '';
-  const player = useVideoPlayer(source, (p) => {
+  // useCaching: expo-video's native disk cache (in the binary already; the
+  // flag is JS). Clips are ~300 KB loops replayed constantly — cache hits
+  // whenever the URL is unchanged (tickets rotate hourly, so within-session
+  // and same-hour replays are free). A content-keyed cache that survives
+  // ticket rotation needs expo-file-system and rides the next native build.
+  const player = useVideoPlayer({ uri: source, useCaching: true }, (p) => {
     p.loop = true;
     p.muted = true;
     p.play();
   });
   useEffect(() => {
     if (!source) return;
-    void player.replaceAsync(source).then(() => {
+    void player.replaceAsync({ uri: source, useCaching: true }).then(() => {
       player.loop = true;
       player.muted = true;
       player.play();
@@ -242,27 +247,22 @@ export default function Session() {
       <StatusBar style="light" />
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
         <View style={s.topBar}>
-          <Pressable
-            onPress={() => index > 0 && announce(index - 1)}
-            disabled={index === 0}
-            accessibilityRole="button"
-            accessibilityLabel="Previous exercise"
-            style={[s.close, index === 0 && { opacity: 0.35 }]}
-          >
+          {/* Back where iOS hands expect it — top-left, labelled, leaves the
+              session (owner: "back button is still not shown in iOS, make it
+              easy ux"). Previous-exercise moved DOWN beside Next, into thumb
+              reach. */}
+          <Pressable onPress={closeAll} accessibilityRole="button"
+            accessibilityLabel="Leave session" style={s.backBtn}>
             <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-              <Path d="M12.5 4 6.5 10l6 6" stroke="#F7F5F0" strokeWidth={2}
+              <Path d="M12.5 4 6.5 10l6 6" stroke="#F7F5F0" strokeWidth={2.2}
                 strokeLinecap="round" strokeLinejoin="round" />
             </Svg>
+            <Text style={s.backText}>{lang === 'hi' ? 'बंद करें' : 'Exit'}</Text>
           </Pressable>
           <Text style={s.topLabel}>
             {t('session.exercise', lang)} {plan ? index + 1 : '–'} / {plan?.exercises.length ?? '–'}
           </Text>
-          <Pressable onPress={closeAll} accessibilityRole="button"
-            accessibilityLabel="Close" style={s.close}>
-            <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
-              <Path d="M5 5l10 10M15 5 5 15" stroke="#F7F5F0" strokeWidth={2} strokeLinecap="round" />
-            </Svg>
-          </Pressable>
+          <View style={{ width: 92 }} />
         </View>
 
         {source ? (
@@ -294,13 +294,28 @@ export default function Session() {
         </View>
 
         <View style={s.actions}>
-          <Pressable onPress={() => advance(index)} accessibilityRole="button" style={s.next}>
-            <Text style={s.nextText}>
-              {plan && index + 1 >= plan.exercises.length
-                ? t('session.finish', lang)
-                : t('session.next', lang)}
-            </Text>
-          </Pressable>
+          <View style={s.navRow}>
+            <Pressable
+              onPress={() => index > 0 && announce(index - 1)}
+              disabled={index === 0}
+              accessibilityRole="button"
+              accessibilityLabel="Previous exercise"
+              style={[s.prev, index === 0 && { opacity: 0.35 }]}
+            >
+              <Svg width={22} height={22} viewBox="0 0 20 20" fill="none">
+                <Path d="M12.5 4 6.5 10l6 6" stroke="#F7F5F0" strokeWidth={2.2}
+                  strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            </Pressable>
+            <Pressable onPress={() => advance(index)} accessibilityRole="button"
+              style={[s.next, { flex: 1 }]}>
+              <Text style={s.nextText}>
+                {plan && index + 1 >= plan.exercises.length
+                  ? t('session.finish', lang)
+                  : t('session.next', lang)}
+              </Text>
+            </Pressable>
+          </View>
           <Pressable
             onPress={() => { clearTimers(); Speech.stop(); router.push('/chat' as never); }}
             accessibilityRole="button" style={s.hurts}>
@@ -337,6 +352,19 @@ const s = StyleSheet.create({
   },
   countIdle: { ...tk.type.scale.heading, color: '#6B7365' },
   actions: { padding: tk.space(6), gap: tk.space(3) },
+  navRow: { flexDirection: 'row', gap: tk.space(3) },
+  prev: {
+    width: 56, minHeight: 56, borderRadius: tk.radius.button,
+    borderWidth: 1, borderColor: '#4A5443',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  backBtn: {
+    minHeight: 44, minWidth: 92, borderRadius: 22,
+    backgroundColor: 'rgba(247,245,240,0.15)',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 4, paddingHorizontal: 12,
+  },
+  backText: { ...tk.type.scale.sub, color: '#F7F5F0', fontWeight: '700' },
   next: {
     minHeight: 56, borderRadius: tk.radius.button,
     backgroundColor: tk.palette.paper.base,
