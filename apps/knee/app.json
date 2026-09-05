@@ -15,7 +15,7 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "4",
+      "buildNumber": "5",
       "appleTeamId": "Q2ZX496SN9"
     },
     "android": {
@@ -57,9 +57,18 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "d9b43847-44a6-4077-ad79-6dc0443229d4"
+      }
     },
     "owner": "ravipradeep89",
-    "icon": "./assets/images/icon.png"
+    "icon": "./assets/images/icon.png",
+    "updates": {
+      "url": "https://u.expo.dev/d9b43847-44a6-4077-ad79-6dc0443229d4",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
+    }
   }
 }
