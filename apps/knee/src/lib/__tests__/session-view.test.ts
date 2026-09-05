@@ -72,21 +72,33 @@ describe('what the voice says', () => {
     expect(setCues(x, 'en')).toEqual({ cues: [], durationS: 0 });
   });
 
-  it('rep cues tick at the stored pace after the beat of silence', () => {
+  it('rep cues: the screen shows the DIGIT, the voice says the word (owner ruling)', () => {
     const cues = repCues(3, 3, 'hi');
     expect(cues).toEqual([
-      { at: 3, text: 'एक' }, { at: 6, text: 'दो' }, { at: 9, text: 'तीन' },
+      { at: 3, show: '1', say: 'एक' },
+      { at: 6, show: '2', say: 'दो' },
+      { at: 9, show: '3', say: 'तीन' },
     ]);
   });
 
-  it('hold cues: go, a check-in every 5s, and the release', () => {
+  it('hold cues: a per-second digital clock, check-ins, and the 5-4-3-2-1 finish', () => {
     const cues = holdCues(15, 'en');
-    expect(cues).toEqual([
-      { at: 3, text: 'go' },
-      { at: 8, text: '10' },
-      { at: 13, text: '5' },
-      { at: 18, text: 'and release' },
-    ]);
+    // the clock ticks every second on screen
+    expect(cues[0]).toEqual({ at: 3, show: '0:15', say: 'go' });
+    expect(cues.find((c) => c.at === 8)).toEqual({ at: 8, show: '0:10', say: '10' });
+    // the last five seconds are called out one by one (owner ask 2026-09-05)
+    const finish = cues.filter((c) => typeof c.say === 'string'
+      && ['5', '4', '3', '2', '1'].includes(c.say));
+    expect(finish.map((c) => c.say)).toEqual(['5', '4', '3', '2', '1']);
+    expect(cues[cues.length - 1]).toEqual({ at: 18, show: '0:00', say: 'and release' });
+    // silent ticks still update the clock
+    expect(cues.find((c) => c.at === 9)).toEqual({ at: 9, show: '0:09', say: undefined });
+  });
+
+  it('the Hindi finish is spoken in Hindi but SHOWN in digits', () => {
+    const cues = holdCues(8, 'hi');
+    const three = cues.find((c) => c.show === '0:03');
+    expect(three?.say).toBe('तीन');
   });
 
   it('spoken numbers switch script with the language', () => {
@@ -118,9 +130,9 @@ describe('reps of holds — "30 seconds, 3 reps"', () => {
     };
     const { cues, durationS } = setCues(x as never, 'en');
     // three numbered holds, each with go → check-ins → release
-    expect(cues.filter((c) => c.text === 'go')).toHaveLength(3);
-    expect(cues.filter((c) => c.text === 'and release')).toHaveLength(3);
-    expect(cues[0]).toEqual({ at: 0, text: '1' });
+    expect(cues.filter((c) => c.say === 'go')).toHaveLength(3);
+    expect(cues.filter((c) => c.say === 'and release')).toHaveLength(3);
+    expect(cues[0]).toEqual({ at: 0, show: '1', say: '1' });
     expect(durationS).toBeGreaterThan(3 * 15);
   });
 });

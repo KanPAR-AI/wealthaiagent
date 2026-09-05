@@ -118,8 +118,8 @@ export default function Session() {
     }
     for (const cue of cues) {
       timers.current.push(setTimeout(() => {
-        setCount(cue.text);
-        speak(cue.text, lang);
+        if (cue.show !== undefined) setCount(cue.show);
+        if (cue.say) speak(cue.say, lang);
       }, cue.at * 1000));
     }
     timers.current.push(setTimeout(() => {

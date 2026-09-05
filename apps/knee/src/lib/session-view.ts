@@ -130,31 +130,50 @@ export function announcement(x: SessionExercise, index: number, total: number,
 export interface Cue {
   /** seconds after the set starts */
   at: number;
-  text: string;
+  /** what the SCREEN shows — always Western digits (owner ruling
+   *  2026-09-05: "instead of showing ७/10 in hindi, always keep it 7/10");
+   *  the VOICE stays localized. */
+  show?: string;
+  /** what the voice says, in the session language */
+  say?: string;
 }
 
-/** Rep counting: one spoken number per rep at the stored pace, after the
- *  design's beat of silence. */
+/** m:ss for the hold clock. */
+export function clockText(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** Rep counting: the screen shows the digit, the voice says the word. */
 export function repCues(reps: number, paceS: number, lang: Lang,
                         leadInS = 3): Cue[] {
   const out: Cue[] = [];
   for (let r = 1; r <= reps; r++) {
-    out.push({ at: leadInS + (r - 1) * paceS, text: spokenNumber(r, lang) });
+    out.push({ at: leadInS + (r - 1) * paceS,
+               show: String(r), say: spokenNumber(r, lang) });
   }
   return out;
 }
 
-/** Hold countdown: start word, then a check-in every 5 s, then the release.
- *  The design's rule verbatim: "after a pause starts counting". */
+/** Hold countdown — a DIGITAL CLOCK ticking every second on screen (owner
+ *  ask 2026-09-05), the voice at the milestones: go, a check-in every 5 s,
+ *  then the last five seconds called out 5-4-3-2-1, then the release. */
 export function holdCues(holdS: number, lang: Lang, leadInS = 3): Cue[] {
   const out: Cue[] = [
-    { at: leadInS, text: lang === 'hi' ? 'शुरू' : 'go' },
+    { at: leadInS, show: clockText(holdS), say: lang === 'hi' ? 'शुरू' : 'go' },
   ];
-  for (let remaining = holdS - 5; remaining >= 5; remaining -= 5) {
-    out.push({ at: leadInS + (holdS - remaining),
-               text: spokenNumber(remaining, lang) });
+  for (let t = 1; t <= holdS; t++) {
+    const remaining = holdS - t;
+    let say: string | undefined;
+    if (remaining >= 1 && remaining <= 5) {
+      say = spokenNumber(remaining, lang);          // the 5-4-3-2-1 finish
+    } else if (remaining >= 10 && remaining % 5 === 0) {
+      say = spokenNumber(remaining, lang);          // the every-5s check-in
+    } else if (remaining === 0) {
+      say = lang === 'hi' ? 'छोड़िए' : 'and release';
+    }
+    out.push({ at: leadInS + t, show: clockText(remaining), say });
   }
-  out.push({ at: leadInS + holdS, text: lang === 'hi' ? 'छोड़िए' : 'and release' });
   return out;
 }
 
@@ -168,9 +187,9 @@ export function setCues(x: SessionExercise, lang: Lang): { cues: Cue[]; duration
     const cues: Cue[] = [];
     let base = 0;
     for (let r = 1; r <= reps; r++) {
-      if (reps > 1) cues.push({ at: base, text: spokenNumber(r, lang) });
+      if (reps > 1) cues.push({ at: base, show: String(r), say: spokenNumber(r, lang) });
       const hold = holdCues(x.dose.holdSeconds, lang).map((c) => ({
-        at: base + c.at, text: c.text,
+        ...c, at: base + c.at,
       }));
       cues.push(...hold);
       base = hold[hold.length - 1].at + 4; // release + a breath before the next
