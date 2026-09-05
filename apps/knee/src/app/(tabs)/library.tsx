@@ -26,11 +26,14 @@ import {
   type WirePhaseDetail,
   type WireProgram,
 } from '@/lib/library-view';
+import { getLang, subscribeLang, t as tr } from '@/lib/i18n';
 import { phaseColor, tokens as t } from '@/theme';
 
 export default function Library() {
   useFocusEffect(useCallback(() => setStatusBarStyle('dark'), []));
 
+  const [lang, setLangState] = useState(getLang());
+  useEffect(() => subscribeLang(setLangState), []);
   const [program, setProgram] = useState<WireProgram | null>(null);
   const [phase, setPhase] = useState('2');
   const [detail, setDetail] = useState<WirePhaseDetail | null>(null);
@@ -98,6 +101,40 @@ export default function Library() {
               </Text>
               <Text style={s.phaseSub}>{phaseSubtitle(current)}</Text>
             </View>
+          </View>
+        ) : null}
+
+        {/* About row — strategy/plan videos, ON TOP, never counted
+            (owner ruling 2026-09-05; served separately as `about`). */}
+        {detail && detail.phase === phase && detail.about?.length ? (
+          <View style={s.card}>
+            {detail.about.map((a, i) => (
+              <Pressable
+                key={`about:${i}`}
+                onPress={() => a.url && router.push({
+                  pathname: '/player',
+                  params: {
+                    name: a.name, url: a.url,
+                    start: a.start_seconds == null ? '' : String(a.start_seconds),
+                    end: '', hindi: a.dub_langs.includes('hi') ? '1' : '',
+                  },
+                } as never)}
+                disabled={!a.url}
+                accessibilityRole={a.url ? 'button' : undefined}
+                style={[s.row, i < (detail.about?.length ?? 0) - 1 && s.rowLine]}
+              >
+                <View style={[s.thumb, { backgroundColor: '#3A4632' }]}>
+                  <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
+                    <Path d="M9 4v6M9 12.5v1" stroke="rgba(247,245,240,0.92)"
+                      strokeWidth={2} strokeLinecap="round" />
+                  </Svg>
+                </View>
+                <View style={s.rowBody}>
+                  <Text style={s.rowName} numberOfLines={2}>{a.name}</Text>
+                  <Text style={s.rowClock}>{tr('library.about', lang)}</Text>
+                </View>
+              </Pressable>
+            ))}
           </View>
         ) : null}
 

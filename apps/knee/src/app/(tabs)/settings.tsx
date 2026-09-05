@@ -17,6 +17,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { fetchBalance, requestCredits } from '@/lib/api';
+import { getLang, setLang, subscribeLang, t as tr, type Lang } from '@/lib/i18n';
 import {
   isGoogleSignInAvailable,
   signInWithEmail,
@@ -32,6 +34,15 @@ export default function Settings() {
   useFocusEffect(useCallback(() => setStatusBarStyle('dark'), []));
 
   const [account, setAccount] = useState<Account | null>(null);
+  const [lang, setLangState] = useState<Lang>(getLang());
+  useEffect(() => subscribeLang(setLangState), []);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [unlimited, setUnlimited] = useState(false);
+  const [requested, setRequested] = useState(false);
+  useEffect(() => {
+    fetchBalance().then((b) => { setBalance(b.balance); setUnlimited(b.unlimited); })
+      .catch(() => {});
+  }, []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -141,6 +152,50 @@ export default function Settings() {
             <Text style={s.secondaryText}>Sign out</Text>
           </Pressable>
         )}
+
+        <View style={s.card}>
+          <Text style={s.cardLabel}>{tr('profile.language', lang)}</Text>
+          <View style={s.buttonRow}>
+            {([['en', 'English'], ['hi', 'हिन्दी']] as const).map(([value, label]) => (
+              <Pressable
+                key={value}
+                onPress={() => setLang(value)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: lang === value }}
+                style={lang === value ? s.primary : s.secondary}
+              >
+                <Text style={lang === value ? s.primaryText : s.secondaryText}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={s.bodyMuted}>
+            {lang === 'hi'
+              ? 'सब कुछ हिन्दी में — आवाज़, गिनती, और वीडियो हिन्दी ट्रैक पर।'
+              : 'Everything follows: labels, the counting voice, and videos open on the Hindi track.'}
+          </Text>
+        </View>
+
+        <View style={s.card}>
+          <Text style={s.cardLabel}>{tr('profile.credits', lang)}</Text>
+          <Text style={s.body}>
+            {unlimited ? 'Unlimited' : balance === null ? '…' : balance.toLocaleString()}
+          </Text>
+          {!unlimited ? (
+            requested ? (
+              <Text style={s.bodyMuted}>{tr('profile.creditsRequested', lang)}</Text>
+            ) : (
+              <Pressable
+                style={s.secondary}
+                accessibilityRole="button"
+                onPress={() => void requestCredits('KneeFit user request')
+                  .then(() => setRequested(true))
+                  .catch(() => setRequested(true))}
+              >
+                <Text style={s.secondaryText}>{tr('profile.requestCredits', lang)}</Text>
+              </Pressable>
+            )
+          ) : null}
+        </View>
 
         <View style={s.card}>
           <Text style={s.cardLabel}>About</Text>

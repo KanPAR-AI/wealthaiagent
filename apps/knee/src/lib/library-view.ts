@@ -21,6 +21,14 @@ export interface WireProgram {
   phases: WirePhase[];
 }
 
+export interface WireDose {
+  reps?: number;
+  sets?: number;
+  hold_seconds?: number;
+  pace_seconds_per_rep?: number;
+  source?: string;
+}
+
 export interface WireExercise {
   name: string;
   title: string;
@@ -29,11 +37,26 @@ export interface WireExercise {
   end_seconds: number | null;
   video_file: string | null;
   url: string | null;
+  /** the muted ~15s demo loop, present only when its artifact exists */
+  clip_url?: string | null;
+  /** the transcript's own dose, or absent — never defaulted client-side */
+  dose?: WireDose | null;
+  dub_langs: string[];
+}
+
+export interface WireAbout {
+  name: string;
+  start_seconds: number | null;
+  end_seconds: number | null;
+  url: string | null;
+  clip_url?: string | null;
   dub_langs: string[];
 }
 
 export interface WirePhaseDetail extends WirePhase {
   exercises: WireExercise[];
+  /** strategy / plan videos — ON TOP, never counted (owner ruling) */
+  about?: WireAbout[];
 }
 
 /** 71 → "1:11"; 554.97 → "9:14". Presentation only. */

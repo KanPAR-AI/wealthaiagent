@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { VideoView, useVideoPlayer } from 'expo-video';
 
+import { getLang } from '@/lib/i18n';
 import { dubUrl, formatClock } from '@/lib/library-view';
 import { tokens as t } from '@/theme';
 
@@ -28,11 +29,13 @@ export default function Player() {
   const hasHindi = params.hindi === '1';
 
   // '' = original audio; a switch swaps the source on the SAME player and
-  // restores position (the apps/mobile replaceAsync pattern).
-  const [lang, setLang] = useState('');
+  // restores position (the apps/mobile replaceAsync pattern). Hindi mode
+  // opens ON the Hindi track when one exists — the language setting's
+  // promise, kept here.
+  const [lang, setLang] = useState(getLang() === 'hi' && hasHindi ? 'hi' : '');
   const urlFor = useMemo(() => (l: string) => (l ? dubUrl(url, l) : url), [url]);
 
-  const player = useVideoPlayer(urlFor(''), (p) => {
+  const player = useVideoPlayer(urlFor(getLang() === 'hi' && hasHindi ? 'hi' : ''), (p) => {
     if (start > 0) p.currentTime = start;
     p.timeUpdateEventInterval = 0.25;
     p.play();

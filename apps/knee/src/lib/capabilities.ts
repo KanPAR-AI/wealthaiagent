@@ -13,13 +13,11 @@
 
 export interface Capabilities {
   /**
-   * Today's routine — the Home tab.
+   * Today — session recipes + the follow-along.
    *
-   * FALSE: there is no user_progress store anywhere in chatservice. "Today's
-   * 4 exercises", done-marks, resume-mid-routine and the streak all need
-   * per-user writes that do not exist yet; a Home tab rendering them would
-   * be inventing state client-side, which is the one thing the client never
-   * does. The tab is ABSENT until the store ships.
+   * TRUE since 2026-09-05: POST /knee/session and GET /knee/progress are the
+   * user_progress store this entry waited for (chatservice ed762fd), and the
+   * program read carries doses + demo-clip URLs. The capability IS the write.
    */
   today: boolean;
 
@@ -39,13 +37,8 @@ export interface Capabilities {
    *  surface + a pinned agent), and the agent has been live for months. */
   coach: boolean;
 
-  /**
-   * Progress — adherence, pain trend, the phase gate.
-   *
-   * FALSE for exactly the reason `today` is: every number on that screen
-   * (sessions done, pain check-outs, pain-free-day count) is user_progress
-   * data with no store behind it. Same ship-together flag.
-   */
+  /** Progress — streak, pain trend, the Flow-3 phase gate, all computed
+   *  server-side by GET /knee/progress. TRUE with `today`, same store. */
   progress: boolean;
 
   /** Sign in / sign out / account state. TRUE — `lib/auth.ts`,
@@ -53,12 +46,13 @@ export interface Capabilities {
   accountSettings: boolean;
 
   /**
-   * The voice coach (spoken rep counts, 5-second check-ins, "next"/"pause").
+   * The voice coach — announcements + counting (docs/55 tier 1).
    *
-   * FALSE: no on-device speech recognition or TTS is wired in this build —
-   * no module, no mic permission in app.json. The design's own rule makes
-   * this cheap to hold: every voice action has an on-screen twin, so the
-   * player ships complete without it.
+   * TRUE for the SPEAKING half: expo-speech announces each exercise and
+   * counts reps/holds in EN or hi-IN, fully on-device, no mic. The LISTENING
+   * half ("next"/"pause" commands) is still absent — no recognition module,
+   * no mic permission — and every voice action keeps its on-screen twin, so
+   * the session is complete without it.
    */
   voiceCoach: boolean;
 
@@ -75,11 +69,11 @@ export interface Capabilities {
 }
 
 export const CAPABILITIES: Capabilities = {
-  today: false,
+  today: true,
   library: true,
   coach: true,
-  progress: false,
+  progress: true,
   accountSettings: true,
-  voiceCoach: false,
+  voiceCoach: true,
   xrayUpload: false,
 };

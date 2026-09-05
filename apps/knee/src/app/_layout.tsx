@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { ensureChatHostInstalled } from '@/lib/chat-host';
+import { initLang } from '@/lib/i18n';
 import { ensureCoreInitialized } from '@/lib/core-adapter';
 import { tokens } from '@/theme';
 
@@ -13,6 +14,7 @@ import { tokens } from '@/theme';
 // imports the shared chat client (the astro boot order).
 ensureCoreInitialized();
 ensureChatHostInstalled();
+initLang();
 
 /** Take a published update on THIS launch — same fix as apps/astro and
  *  apps/mobile; expo-updates' apply-next-launch default bit both. */
@@ -55,6 +57,7 @@ export default function RootLayout() {
         >
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="player" options={{ presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="session" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
         </Stack>
       </KeyboardProvider>
     </GestureHandlerRootView>
