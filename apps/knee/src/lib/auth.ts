@@ -6,6 +6,7 @@
 
 import {
   EmailAuthProvider,
+  GoogleAuthProvider,
   linkWithCredential,
   signInAnonymously as fbSignInAnonymously,
   signInWithCredential,
@@ -14,8 +15,10 @@ import {
   type AuthCredential,
   type User,
 } from 'firebase/auth';
+import { Platform } from 'react-native';
 
 import { ensureCoreInitialized } from './core-adapter';
+import { FIREBASE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID } from './env';
 import { auth } from './firebase';
 
 ensureCoreInitialized();
@@ -73,6 +76,52 @@ async function attach(credential: AuthCredential): Promise<Account> {
   }
   const signedIn = await signInWithCredential(auth, credential);
   return describe(signedIn.user)!;
+}
+
+export function isGoogleSignInAvailable(): boolean {
+  // Android needs only the web client id; the iOS client id gates iOS alone —
+  // keying both on the iOS id hid the button from Android once (astro,
+  // 2026-08-28).
+  if (Platform.OS === 'android') return Boolean(FIREBASE_WEB_CLIENT_ID);
+  return GOOGLE_IOS_CLIENT_ID !== null;
+}
+
+export async function signInWithGoogle(): Promise<Account> {
+  // Dynamic import: the native module exists only in a dev/release build.
+  const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
+  GoogleSignin.configure({
+    // webClientId controls the ID token's `aud`; it must be the Firebase web
+    // client or Firebase rejects the credential.
+    webClientId: FIREBASE_WEB_CLIENT_ID,
+    iosClientId: GOOGLE_IOS_CLIENT_ID ?? undefined,
+  });
+  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+  // Clear any half-open Play-Services session — a prior attempt that died
+  // mid-flight makes the next signIn() skip the account sheet (astro,
+  // measured on the first Android sideload).
+  await GoogleSignin.signOut().catch(() => {});
+  let result: Awaited<ReturnType<typeof GoogleSignin.signIn>>;
+  try {
+    result = await GoogleSignin.signIn();
+  } catch (e: any) {
+    const code = String(e?.code ?? '');
+    if (code === 'DEVELOPER_ERROR' || /DEVELOPER_ERROR/.test(String(e?.message ?? ''))) {
+      throw new Error(
+        'Google sign-in is not available for this build yet — its signing ' +
+        'certificate is still propagating on Google’s side. Try again in a ' +
+        'few minutes, or use email sign-in.',
+      );
+    }
+    throw e;
+  }
+  if (result.type === 'cancelled') {
+    const cancel: any = new Error('Sign-in cancelled');
+    cancel.code = 'cancelled';
+    throw cancel; // the settings screen treats a cancel as a non-error
+  }
+  const idToken = result.data?.idToken;
+  if (!idToken) throw new Error('Google sign-in returned no ID token');
+  return attach(GoogleAuthProvider.credential(idToken));
 }
 
 function emailAuthError(e: any): Error {

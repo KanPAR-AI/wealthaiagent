@@ -18,7 +18,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
+  isGoogleSignInAvailable,
   signInWithEmail,
+  signInWithGoogle,
   signOut,
   signUpWithEmail,
   subscribeToAccount,
@@ -69,9 +71,27 @@ export default function Settings() {
           <View style={s.card}>
             <Text style={s.cardLabel}>Keep your history</Text>
             <Text style={s.bodyMuted}>
-              Add an email so your conversations and, later, your progress
-              survive a new phone.
+              Sign in so your conversations and, later, your progress survive
+              a new phone.
             </Text>
+            {isGoogleSignInAvailable() ? (
+              <Pressable
+                style={s.primary}
+                disabled={busy}
+                accessibilityRole="button"
+                onPress={() => void run(async () => {
+                  try {
+                    await signInWithGoogle();
+                  } catch (e: any) {
+                    if (e?.code === 'cancelled') return; // not an error
+                    throw e;
+                  }
+                })}
+              >
+                <Text style={s.primaryText}>Continue with Google</Text>
+              </Pressable>
+            ) : null}
+            <Text style={s.bodyMuted}>or with email:</Text>
             <TextInput
               style={s.input}
               placeholder="Email"
