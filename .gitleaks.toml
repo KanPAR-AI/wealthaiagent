@@ -13,7 +13,10 @@ paths = [
   # Firebase CLIENT config — public by design; shipped in every app
   # bundle. Access control is Firebase security rules, not key secrecy.
   '''google-services\.json$''',
+  '''GoogleService-Info\.plist$''',
   '''apps/astro/src/lib/env\.ts$''',
+  # Same rationale, KneeFit's registrations (2026-09-05).
+  '''apps/knee/src/lib/env\.ts$''',
   # Dependency lockfile integrity checksums, not credentials.
   '''Podfile\.lock$''',
   '''Manifest\.lock$''',
