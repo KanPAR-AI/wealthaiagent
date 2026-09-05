@@ -162,7 +162,19 @@ export function holdCues(holdS: number, lang: Lang, leadInS = 3): Cue[] {
 export function setCues(x: SessionExercise, lang: Lang): { cues: Cue[]; durationS: number } {
   if (!x.dose) return { cues: [], durationS: 0 };
   if (x.dose.holdSeconds) {
-    const cues = holdCues(x.dose.holdSeconds, lang);
+    // reps × holds ("30 seconds, 3 reps" — the program's own phrasing):
+    // each rep is a full guided hold, its number spoken before it starts.
+    const reps = x.dose.reps && x.dose.reps > 1 ? x.dose.reps : 1;
+    const cues: Cue[] = [];
+    let base = 0;
+    for (let r = 1; r <= reps; r++) {
+      if (reps > 1) cues.push({ at: base, text: spokenNumber(r, lang) });
+      const hold = holdCues(x.dose.holdSeconds, lang).map((c) => ({
+        at: base + c.at, text: c.text,
+      }));
+      cues.push(...hold);
+      base = hold[hold.length - 1].at + 4; // release + a breath before the next
+    }
     return { cues, durationS: cues[cues.length - 1].at + 2 };
   }
   const reps = x.dose.reps ?? 0;

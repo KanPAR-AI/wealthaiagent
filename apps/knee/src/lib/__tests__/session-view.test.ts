@@ -109,3 +109,18 @@ describe('localDate', () => {
     expect(localDate(new Date(2026, 0, 1))).toBe('2026-01-01');
   });
 });
+
+describe('reps of holds — "30 seconds, 3 reps"', () => {
+  it('runs the guided hold once per rep, numbering each', () => {
+    const x = {
+      name: 'knee flexion stretch', clipUrl: 'c', videoUrl: 'v', hasHindi: false,
+      dose: { reps: 3, sets: 1, holdSeconds: 15, paceSecondsPerRep: 3 },
+    };
+    const { cues, durationS } = setCues(x as never, 'en');
+    // three numbered holds, each with go → check-ins → release
+    expect(cues.filter((c) => c.text === 'go')).toHaveLength(3);
+    expect(cues.filter((c) => c.text === 'and release')).toHaveLength(3);
+    expect(cues[0]).toEqual({ at: 0, text: '1' });
+    expect(durationS).toBeGreaterThan(3 * 15);
+  });
+});
