@@ -259,6 +259,15 @@ export async function verifyOtp(channel: OtpChannel, identifier: string,
 // account so nothing is stranded, phone-link onto a signed-in account too.
 
 export async function startPhoneVerification(phone: string): Promise<string> {
+  // GUARD before touching react-native-firebase: an OTA update can reach a
+  // binary that predates the native module, and requiring it there is a hard
+  // CRASH, not a catchable error (measured on the owner's iPhone, build ≤5).
+  const { NativeModules } = await import('react-native');
+  if (!NativeModules.RNFBAppModule) {
+    throw new Error(
+      'Phone sign-in needs the newest app build — update KneeFit from '
+      + 'TestFlight first, then try again.');
+  }
   const rnfb = (await import('@react-native-firebase/auth')).default;
   const digits = phone.trim().startsWith('+') ? phone.trim() : `+91${phone.trim()}`;
   const snapshot = await rnfb().verifyPhoneNumber(digits);
