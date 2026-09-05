@@ -4,13 +4,18 @@
 // through `href: null` no route to it either.
 
 import { Tabs } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
 import { TabIcon } from '@/components/tab-icons';
+import { getLang, subscribeLang, t } from '@/lib/i18n';
 import { DECLARED_TABS, visibleTabs } from '@/lib/tabs';
 import { tokens } from '@/theme';
 
 export default function TabsLayout() {
+  // Tab labels follow the language setting like every other label.
+  const [lang, setLangState] = useState(getLang());
+  useEffect(() => subscribeLang(setLangState), []);
   const live = visibleTabs();
   const isLive = (id: string) => live.some((t) => t.id === id);
 
@@ -35,7 +40,7 @@ export default function TabsLayout() {
           options={
             isLive(tab.id)
               ? {
-                  title: tab.label,
+                  title: t(`tab.${tab.id}`, lang),
                   tabBarIcon: ({ color, size }) => (
                     <TabIcon
                       id={tab.id}
