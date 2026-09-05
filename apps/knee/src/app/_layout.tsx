@@ -48,7 +48,11 @@ export default function RootLayout() {
   useApplyUpdatesPromptly();
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <KeyboardProvider>
+      {/* statusBarTranslucent/navigationBarTranslucent: required for the
+          keyboard-controller to measure the keyboard under Android
+          edge-to-edge — without them the composer sits behind the keyboard
+          (owner-reported: send button hidden). No effect on iOS. */}
+      <KeyboardProvider statusBarTranslucent navigationBarTranslucent>
         <Stack
           screenOptions={{
             headerShown: false,

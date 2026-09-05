@@ -21,11 +21,13 @@ import { fetchBalance, requestCredits } from '@/lib/api';
 import { getLang, setLang, subscribeLang, t as tr, type Lang } from '@/lib/i18n';
 import {
   isGoogleSignInAvailable,
+  sendOtp,
   signInWithEmail,
   signInWithGoogle,
   signOut,
   signUpWithEmail,
   subscribeToAccount,
+  verifyOtp,
   type Account,
 } from '@/lib/auth';
 import { tokens as t } from '@/theme';
@@ -46,6 +48,9 @@ export default function Settings() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpStage, setOtpStage] = useState<'idle' | 'sent'>('idle');
 
   useEffect(() => subscribeToAccount(setAccount), []);
 
@@ -152,6 +157,87 @@ export default function Settings() {
             <Text style={s.secondaryText}>Sign out</Text>
           </Pressable>
         )}
+
+        {/* Sign-in methods — one account across KneeFit, Arthur and the
+            web: chats, credits and progress follow the uid. Linking an
+            identifier that belongs to ANOTHER account is refused server-side
+            (409), never merged; Google onto a same-email account links
+            automatically through the attach() path. */}
+        <View style={s.card}>
+          <Text style={s.cardLabel}>Sign-in methods</Text>
+          <Text style={s.bodyMuted}>
+            {account && !account.anonymous
+              ? [account.email, account.phone,
+                 account.providers.includes('google.com') ? 'Google' : null]
+                  .filter(Boolean).join(' · ') || account.uid
+              : 'Guest — add any of these and your chats, credits and progress follow you into Arthur and the web app too.'}
+          </Text>
+          {account && !account.anonymous && !account.providers.includes('google.com')
+            && isGoogleSignInAvailable() ? (
+            <Pressable
+              style={s.secondary}
+              disabled={busy}
+              accessibilityRole="button"
+              onPress={() => void run(async () => {
+                try { await signInWithGoogle(); } catch (e: any) {
+                  if (e?.code === 'cancelled') return;
+                  throw e;
+                }
+              })}
+            >
+              <Text style={s.secondaryText}>Link Google</Text>
+            </Pressable>
+          ) : null}
+          {!account?.phone ? (
+            otpStage === 'idle' ? (
+              <View style={s.buttonRow}>
+                <TextInput
+                  style={[s.input, { flex: 1 }]}
+                  placeholder="+91 phone number"
+                  placeholderTextColor={t.palette.ink.muted}
+                  keyboardType="phone-pad"
+                  value={phone}
+                  onChangeText={setPhone}
+                />
+                <Pressable
+                  style={s.secondary}
+                  disabled={busy || phone.trim().length < 8}
+                  accessibilityRole="button"
+                  onPress={() => void run(async () => {
+                    await sendOtp('phone', phone);
+                    setOtpStage('sent');
+                  })}
+                >
+                  <Text style={s.secondaryText}>Send code</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={s.buttonRow}>
+                <TextInput
+                  style={[s.input, { flex: 1 }]}
+                  placeholder="6-digit code"
+                  placeholderTextColor={t.palette.ink.muted}
+                  keyboardType="number-pad"
+                  value={otp}
+                  onChangeText={setOtp}
+                />
+                <Pressable
+                  style={s.primary}
+                  disabled={busy || otp.trim().length < 4}
+                  accessibilityRole="button"
+                  onPress={() => void run(async () => {
+                    await verifyOtp('phone', phone, otp);
+                    setOtpStage('idle');
+                    setPhone('');
+                    setOtp('');
+                  })}
+                >
+                  <Text style={s.primaryText}>Verify</Text>
+                </Pressable>
+              </View>
+            )
+          ) : null}
+        </View>
 
         <View style={s.card}>
           <Text style={s.cardLabel}>{tr('profile.language', lang)}</Text>

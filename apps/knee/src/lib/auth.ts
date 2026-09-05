@@ -10,11 +10,15 @@ import {
   linkWithCredential,
   signInAnonymously as fbSignInAnonymously,
   signInWithCredential,
+  signInWithCustomToken,
   signInWithEmailAndPassword,
   signOut as fbSignOut,
   type AuthCredential,
   type User,
 } from 'firebase/auth';
+import { fetch as expoFetch } from 'expo/fetch';
+
+import { apiUrl } from './core-adapter';
 import { Platform } from 'react-native';
 
 import { ensureCoreInitialized } from './core-adapter';
@@ -27,7 +31,10 @@ export interface Account {
   uid: string;
   anonymous: boolean;
   email: string | null;
+  phone: string | null;
   displayName: string | null;
+  /** provider ids on the account: 'google.com' | 'password' | 'phone' | … */
+  providers: string[];
 }
 
 function describe(user: User | null): Account | null {
@@ -36,7 +43,9 @@ function describe(user: User | null): Account | null {
     uid: user.uid,
     anonymous: user.isAnonymous,
     email: user.email,
+    phone: user.phoneNumber,
     displayName: user.displayName,
+    providers: user.providerData.map((p) => p.providerId),
   };
 }
 
@@ -176,4 +185,60 @@ export async function signUpWithEmail(email: string, password: string): Promise<
 export async function signOut(): Promise<void> {
   await fbSignOut(auth);
   await fbSignInAnonymously(auth);
+}
+
+
+// ── OTP sign-in / linking (email today; phone the moment the platform has
+// an SMS provider key — the server answers honestly until then) ────────────
+//
+// The platform endpoints do the heavy lifting (chatservice /auth/otp/*):
+// verify with a Bearer token LINKS the identifier onto the current account
+// (409 if it belongs to someone else — never auto-merged); without one it
+// signs in/up. Either way a Firebase custom token comes back and we sign in
+// with it, which keeps chats, credits and progress on ONE uid across
+// KneeFit, Arthur and the web.
+
+export type OtpChannel = 'email' | 'phone';
+
+export async function sendOtp(channel: OtpChannel, identifier: string): Promise<void> {
+  const res = await expoFetch(apiUrl('/auth/otp/send'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel, identifier: identifier.trim() }),
+  });
+  if (res.status === 501) {
+    throw new Error('Phone codes aren’t enabled yet — use email or Google for now.');
+  }
+  if (res.status === 429) {
+    throw new Error('Please wait a moment before requesting another code.');
+  }
+  if (!res.ok) throw new Error(`Could not send the code (HTTP ${res.status}).`);
+}
+
+export async function verifyOtp(channel: OtpChannel, identifier: string,
+                                code: string): Promise<Account> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const current = auth.currentUser;
+  if (current && !current.isAnonymous) {
+    // Link mode: attach this identifier to the signed-in account.
+    headers.Authorization = `Bearer ${await current.getIdToken()}`;
+  }
+  const res = await expoFetch(apiUrl('/auth/otp/verify'), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ channel, identifier: identifier.trim(), code: code.trim() }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (res.status === 409) {
+    throw new Error(String(body?.error?.message ?? body?.detail ??
+      'Already linked to a different account.'));
+  }
+  if (!res.ok) {
+    throw new Error(String(body?.error?.message ?? body?.detail ??
+      'That code didn’t match — try again.'));
+  }
+  const token = body?.custom_token ?? body?.token;
+  if (!token) throw new Error('Sign-in token missing from the server reply.');
+  const cred = await signInWithCustomToken(auth, token);
+  return describe(cred.user)!;
 }

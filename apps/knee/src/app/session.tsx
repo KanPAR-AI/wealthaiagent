@@ -10,7 +10,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Speech from 'expo-speech';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -65,8 +65,13 @@ export default function Session() {
 
   const exercise = plan?.exercises[index] ?? null;
 
-  // one player, source swapped per exercise — clip if cut, else full video
-  const source = exercise?.clipUrl ?? exercise?.videoUrl ?? '';
+  // one player, source swapped per exercise — clip if cut, else full video.
+  // A clip that fails to LOAD (owner-reported: black player while the clip
+  // route deployed) falls back to the full video rather than a dead card.
+  const [brokenClips, setBrokenClips] = useState<Set<string>>(new Set());
+  const clipOk = exercise?.clipUrl && !brokenClips.has(exercise.clipUrl);
+  const source = (clipOk ? exercise?.clipUrl : exercise?.videoUrl)
+    ?? exercise?.videoUrl ?? '';
   const player = useVideoPlayer(source, (p) => {
     p.loop = true;
     p.muted = true;
@@ -78,9 +83,26 @@ export default function Session() {
       player.loop = true;
       player.muted = true;
       player.play();
-    }).catch(() => {});
+    }).catch(() => {
+      if (exercise?.clipUrl && source === exercise.clipUrl) {
+        setBrokenClips((prev) => new Set(prev).add(exercise.clipUrl!));
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source]);
+
+  // The system back button leaves the session — fullScreenModal +
+  // gestureEnabled:false must never mean trapped (owner-reported).
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      clearTimers();
+      Speech.stop();
+      router.back();
+      return true;
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** Run one set: schedule the cues, advance set/exercise when it ends. */
   const runSet = useCallback((exIndex: number, whichSet: number) => {
@@ -220,6 +242,18 @@ export default function Session() {
       <StatusBar style="light" />
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
         <View style={s.topBar}>
+          <Pressable
+            onPress={() => index > 0 && announce(index - 1)}
+            disabled={index === 0}
+            accessibilityRole="button"
+            accessibilityLabel="Previous exercise"
+            style={[s.close, index === 0 && { opacity: 0.35 }]}
+          >
+            <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
+              <Path d="M12.5 4 6.5 10l6 6" stroke="#F7F5F0" strokeWidth={2}
+                strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+          </Pressable>
           <Text style={s.topLabel}>
             {t('session.exercise', lang)} {plan ? index + 1 : '–'} / {plan?.exercises.length ?? '–'}
           </Text>
