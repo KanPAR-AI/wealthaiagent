@@ -40,3 +40,7 @@ cd apps/knee && npx expo export --platform ios --output-dir /tmp/x
   or `:expo-updates:kspReleaseKotlin` dies with a Metaspace OOM.
 - Always build with `-x lintVitalRelease -x lintVitalAnalyzeRelease -x lint`
   (lint crashes on this dependency set under JBR 21).
+- Adding a NATIVE module: bump `runtimeVersion` in the same change, or the
+  next `eas update` crashes every older binary (measured live: the phone-auth
+  JS reached module-less iPhone builds). A `NativeModules` guard is the
+  belt; the runtime bump is the braces.
