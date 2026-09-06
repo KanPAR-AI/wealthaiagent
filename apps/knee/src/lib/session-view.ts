@@ -8,7 +8,7 @@
 import type { Lang } from './i18n';
 import type { WireExercise, WirePhaseDetail } from './library-view';
 
-export type RecipeId = 'full' | 'short' | 'gentle';
+export type RecipeId = 'full' | 'short' | 'gentle' | 'custom';
 
 export interface SessionExercise {
   name: string;
@@ -83,6 +83,23 @@ export function buildPlan(detail: WirePhaseDetail, recipe: RecipeId): SessionPla
     recipe,
     phase: detail.phase,
     exercises: chosen,
+    estimatedMinutes: Math.max(1, Math.round(seconds / 60)),
+  };
+}
+
+/** A hand-picked session (the design's "Build my own from the library"):
+ *  the chosen names, SERVER ORDER preserved — picking never reorders. */
+export function buildCustomPlan(detail: WirePhaseDetail,
+                                names: string[]): SessionPlan {
+  const wanted = new Set(names.map((n) => n.toLowerCase()));
+  const playable = detail.exercises
+    .filter((e) => (e.url || e.clip_url) && wanted.has(e.name.toLowerCase()))
+    .map(toSessionExercise);
+  const seconds = playable.reduce((n, x) => n + estimateSeconds(x), 0);
+  return {
+    recipe: 'custom',
+    phase: detail.phase,
+    exercises: playable,
     estimatedMinutes: Math.max(1, Math.round(seconds / 60)),
   };
 }

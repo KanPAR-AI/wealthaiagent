@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchPhase, fetchProgress } from '@/lib/api';
 import { getLang, subscribeLang, t } from '@/lib/i18n';
 import type { WirePhaseDetail } from '@/lib/library-view';
-import { buildPlan, localDate, type RecipeId } from '@/lib/session-view';
+import { buildCustomPlan, buildPlan, localDate, type RecipeId } from '@/lib/session-view';
 import { phaseColor, tokens as tk } from '@/theme';
 
 const PHASE = '2'; // until phase assignment ships, the program's active phase
@@ -24,6 +24,7 @@ export default function Today() {
   const [detail, setDetail] = useState<WirePhaseDetail | null>(null);
   const [todayDone, setTodayDone] = useState(false);
   const [recipe, setRecipe] = useState<RecipeId>('full');
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -46,12 +47,27 @@ export default function Today() {
         full: buildPlan(detail, 'full'),
         short: buildPlan(detail, 'short'),
         gentle: buildPlan(detail, 'gentle'),
+        custom: buildCustomPlan(detail, [...picked]),
       }
     : null;
 
   const start = () => {
     if (!plans) return;
-    router.push({ pathname: '/session', params: { phase: PHASE, recipe } } as never);
+    if (recipe === 'custom' && picked.size === 0) return;
+    router.push({
+      pathname: '/session',
+      params: recipe === 'custom'
+        ? { phase: PHASE, recipe, names: [...picked].join('|') }
+        : { phase: PHASE, recipe },
+    } as never);
+  };
+
+  const togglePick = (name: string) => {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
   };
 
   const card = (id: RecipeId, title: string, sub: string, badge?: string) => {
@@ -95,12 +111,43 @@ export default function Today() {
               t('today.recommended', lang))}
         {card('short', t('today.short', lang), t('today.shortSub', lang))}
         {card('gentle', t('today.gentle', lang), t('today.gentleSub', lang))}
+        {card('custom', t('today.custom', lang), t('today.customSub', lang))}
+
+        {/* The design's "Build my own from the library": tapping the custom
+            card opens the phase's playable exercises as toggle rows —
+            selection never reorders; the program's order is kept. */}
+        {recipe === 'custom' && detail ? (
+          <View style={s.pickerCard}>
+            <Text style={s.pickerHint}>{t('today.customPick', lang)}</Text>
+            {detail.exercises.filter((e) => e.url || e.clip_url).map((e) => {
+              const on = picked.has(e.name);
+              return (
+                <Pressable
+                  key={e.name}
+                  onPress={() => togglePick(e.name)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: on }}
+                  style={s.pickRow}
+                >
+                  <View style={[s.pickBox, on && s.pickBoxOn]}>
+                    {on ? <Text style={s.pickTick}>✓</Text> : null}
+                  </View>
+                  <Text style={[s.pickName, on && { fontWeight: '700' }]}
+                    numberOfLines={1}>
+                    {e.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
 
         <Pressable
           onPress={start}
-          disabled={!plans}
+          disabled={!plans || (recipe === 'custom' && picked.size === 0)}
           accessibilityRole="button"
-          style={[s.start, !plans && { opacity: 0.5 }]}
+          style={[s.start,
+            (!plans || (recipe === 'custom' && picked.size === 0)) && { opacity: 0.5 }]}
         >
           <Text style={s.startText}>{t('today.start', lang)}</Text>
         </Pressable>
@@ -140,6 +187,28 @@ const s = StyleSheet.create({
   cardTitle: { ...tk.type.scale.label, fontSize: 18, color: tk.palette.ink.primary },
   badge: { ...tk.type.scale.caption, fontWeight: '700', letterSpacing: 0.8 },
   cardSub: { ...tk.type.scale.sub, color: tk.palette.ink.muted },
+  pickerCard: {
+    backgroundColor: tk.palette.paper.card,
+    borderWidth: 1,
+    borderColor: tk.palette.paper.line,
+    borderStyle: 'dashed',
+    borderRadius: tk.radius.card,
+    padding: tk.space(3.5),
+    gap: 2,
+  },
+  pickerHint: { ...tk.type.scale.sub, color: tk.palette.ink.muted, marginBottom: tk.space(1.5) },
+  pickRow: {
+    flexDirection: 'row', alignItems: 'center', gap: tk.space(3),
+    minHeight: 44, paddingHorizontal: tk.space(1),
+  },
+  pickBox: {
+    width: 24, height: 24, borderRadius: 6,
+    borderWidth: 2, borderColor: '#C9C4B6',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  pickBoxOn: { backgroundColor: phaseColor('2'), borderColor: phaseColor('2') },
+  pickTick: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  pickName: { ...tk.type.scale.body, color: tk.palette.ink.primary, flex: 1 },
   start: {
     minHeight: 56,
     borderRadius: tk.radius.button,

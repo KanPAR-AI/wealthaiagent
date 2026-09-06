@@ -6,6 +6,7 @@
 import type { WireExercise, WirePhaseDetail } from '../library-view';
 import {
   announcement,
+  buildCustomPlan,
   buildPlan,
   doseLabel,
   holdCues,
@@ -134,5 +135,29 @@ describe('reps of holds — "30 seconds, 3 reps"', () => {
     expect(cues.filter((c) => c.say === 'and release')).toHaveLength(3);
     expect(cues[0]).toEqual({ at: 0, show: '1', say: '1' });
     expect(durationS).toBeGreaterThan(3 * 15);
+  });
+});
+
+describe('buildCustomPlan — the design\'s "Build my own"', () => {
+  const d = detail([
+    ex({ name: 'bridges' }),
+    ex({ name: 'toe curls' }),
+    ex({ name: 'clamshells' }),
+    ex({ name: 'unplayable', url: null, clip_url: null }),
+  ]);
+
+  it('keeps SERVER order regardless of pick order', () => {
+    const plan = buildCustomPlan(d, ['clamshells', 'bridges']);
+    expect(plan.exercises.map((x) => x.name)).toEqual(['bridges', 'clamshells']);
+    expect(plan.recipe).toBe('custom');
+  });
+
+  it('never includes the unplayable, even if picked', () => {
+    const plan = buildCustomPlan(d, ['unplayable', 'toe curls']);
+    expect(plan.exercises.map((x) => x.name)).toEqual(['toe curls']);
+  });
+
+  it('matches names case-insensitively', () => {
+    expect(buildCustomPlan(d, ['BRIDGES']).exercises).toHaveLength(1);
   });
 });

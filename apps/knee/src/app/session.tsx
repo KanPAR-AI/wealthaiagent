@@ -19,6 +19,7 @@ import { fetchPhase, recordSession } from '@/lib/api';
 import { getLang, speechLocale, t, type Lang } from '@/lib/i18n';
 import {
   announcement,
+  buildCustomPlan,
   buildPlan,
   doseLabel,
   localDate,
@@ -37,9 +38,10 @@ function speak(text: string, lang: Lang) {
 export default function Session() {
   const insets = useSafeAreaInsets();
   const topPad = Math.max(insets.top, Platform.OS === 'ios' ? 59 : 24);
-  const params = useLocalSearchParams<{ phase?: string; recipe?: string }>();
+  const params = useLocalSearchParams<{ phase?: string; recipe?: string; names?: string }>();
   const phase = params.phase ?? '2';
   const recipe = (params.recipe ?? 'full') as RecipeId;
+  const customNames = (params.names ?? '').split('|').filter(Boolean);
   const lang = getLang();
 
   const [plan, setPlan] = useState<SessionPlan | null>(null);
@@ -59,7 +61,8 @@ export default function Session() {
   };
 
   useEffect(() => {
-    void fetchPhase(phase).then((d) => setPlan(buildPlan(d, recipe)))
+    void fetchPhase(phase).then((d) => setPlan(
+      recipe === 'custom' ? buildCustomPlan(d, customNames) : buildPlan(d, recipe)))
       .catch(() => setPlan(null));
     return () => { clearTimers(); Speech.stop(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
