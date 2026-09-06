@@ -38,8 +38,12 @@ export default function Player() {
   // opens ON the Hindi track when one exists — the language setting's
   // promise, kept here.
   const [lang, setLang] = useState(getLang() === 'hi' && hasHindi ? 'hi' : '');
+  // useCaching is ANDROID-only here: expo-video's iOS cache layer breaks on
+  // our redirecting ticketed URLs — the can't-play glyph on a stream the
+  // server serves fine (owner screenshot 2026-09-06; both tracks probed 206).
   const urlFor = useMemo(() => (l: string) =>
-    ({ uri: l ? dubUrl(url, l) : url, useCaching: true }), [url]);
+    ({ uri: l ? dubUrl(url, l) : url,
+       useCaching: Platform.OS === 'android' }), [url]);
 
   const player = useVideoPlayer(urlFor(getLang() === 'hi' && hasHindi ? 'hi' : '') as never, (p) => {
     if (start > 0) p.currentTime = start;

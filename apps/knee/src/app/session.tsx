@@ -79,14 +79,14 @@ export default function Session() {
   // whenever the URL is unchanged (tickets rotate hourly, so within-session
   // and same-hour replays are free). A content-keyed cache that survives
   // ticket rotation needs expo-file-system and rides the next native build.
-  const player = useVideoPlayer({ uri: source, useCaching: true }, (p) => {
+  const player = useVideoPlayer({ uri: source, useCaching: Platform.OS === 'android' }, (p) => {
     p.loop = true;
     p.muted = true;
     p.play();
   });
   useEffect(() => {
     if (!source) return;
-    void player.replaceAsync({ uri: source, useCaching: true }).then(() => {
+    void player.replaceAsync({ uri: source, useCaching: Platform.OS === 'android' }).then(() => {
       player.loop = true;
       player.muted = true;
       player.play();
