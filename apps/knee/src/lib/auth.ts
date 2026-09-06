@@ -258,10 +258,30 @@ export async function verifyOtp(channel: OtpChannel, identifier: string,
 // SAME attach() as Google — one auth state, linking onto the anonymous
 // account so nothing is stranded, phone-link onto a signed-in account too.
 
+// PLATFORM SPLIT (owner-reported iOS crash, repeated through build 7).
+//
+// iOS Firebase Phone Auth needs APNs silent push or it falls to a native
+// reCAPTCHA flow that CRASHES the app on Send code — a native SIGABRT no JS
+// guard or OTA can catch. So iOS never touches the native phone module: it
+// uses the platform's own OTP endpoints (/auth/otp/*), which mint a Firebase
+// CUSTOM TOKEN we sign in with through the JS SDK — no native module, no
+// APNs, no reCAPTCHA, no crash surface. Delivery there needs a server SMS key
+// (MSG91/Twilio); with none it returns an honest 501, never a crash.
+//
+// Android keeps the native Firebase path — Google delivers the SMS free and
+// it works. `verificationId === 'backend'` is the sentinel that routes the
+// code step to the backend verify.
+
 export async function startPhoneVerification(phone: string): Promise<string> {
-  // GUARD before touching react-native-firebase: an OTA update can reach a
-  // binary that predates the native module, and requiring it there is a hard
-  // CRASH, not a catchable error (measured on the owner's iPhone, build ≤5).
+  const digits = phone.trim().startsWith('+') ? phone.trim() : `+91${phone.trim()}`;
+
+  if (Platform.OS !== 'android') {
+    // iOS + web: backend OTP. Throws the honest 'not enabled yet' if no SMS
+    // key is set — a catchable error, not a crash.
+    await sendOtp('phone', digits);
+    return 'backend';
+  }
+
   const { NativeModules } = await import('react-native');
   if (!NativeModules.RNFBAppModule) {
     throw new Error(
@@ -269,13 +289,6 @@ export async function startPhoneVerification(phone: string): Promise<string> {
       + 'TestFlight first, then try again.');
   }
   const rnfb = (await import('@react-native-firebase/auth')).default;
-  const digits = phone.trim().startsWith('+') ? phone.trim() : `+91${phone.trim()}`;
-  // signInWithPhoneNumber, NOT verifyPhoneNumber: the listener API rides a
-  // NativeEventEmitter that took the app down on iOS release builds the
-  // moment Send code was tapped (owner-reported on build 6; Android was
-  // fine). This native method is a plain promise — no emitter — and we use
-  // only its verificationId: the CODE is confirmed through the JS SDK via
-  // attach(), so there is still exactly one auth state.
   const confirmation = await rnfb().signInWithPhoneNumber(digits);
   const verificationId = (confirmation as { verificationId?: string }).verificationId;
   if (!verificationId) {
@@ -284,8 +297,13 @@ export async function startPhoneVerification(phone: string): Promise<string> {
   return verificationId;
 }
 
-export async function confirmPhoneCode(verificationId: string,
-                                       code: string): Promise<Account> {
+export async function confirmPhoneCode(verificationId: string, code: string,
+                                       fullPhone?: string): Promise<Account> {
+  if (verificationId === 'backend') {
+    // iOS/web: confirm through the backend, which links or signs in and hands
+    // back a custom token (verifyOtp does the signInWithCustomToken).
+    return verifyOtp('phone', fullPhone ?? '', code);
+  }
   const { PhoneAuthProvider } = await import('firebase/auth');
   return attach(PhoneAuthProvider.credential(verificationId, code.trim()));
 }

@@ -271,7 +271,8 @@ export default function Settings() {
                 <Pressable style={s.primary}
                   disabled={busy || otp.trim().length < 4}
                   accessibilityRole="button"
-                  onPress={() => void run(() => confirmPhoneCode(verificationId, otp))}>
+                  onPress={() => void run(() => confirmPhoneCode(
+                    verificationId, otp, `${countryCode.trim() || '+91'}${phone.trim()}`))}>
                   <Text style={s.primaryText}>{lang === 'hi' ? 'पुष्टि करें' : 'Verify'}</Text>
                 </Pressable>
               </View>
