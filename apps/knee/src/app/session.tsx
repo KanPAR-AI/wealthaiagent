@@ -176,9 +176,9 @@ export default function Session() {
   // Leaving the screen (Full video, coach, background) PAUSES the sequence —
   // the timer and video must not run unseen (owner-reported: Full video left
   // the sequence running). Coming back leaves it paused; resume is deliberate.
-  useFocusEffect(useCallback(() => {
-    return () => { pause(); };
-  }, [pause]));
+  const pauseRef = useRef(pause);
+  pauseRef.current = pause;
+  useFocusEffect(useCallback(() => () => { pauseRef.current(); }, []));
 
   /** Announce exercise i, then start its first set after the beat. */
   const announce = useCallback((i: number) => {
