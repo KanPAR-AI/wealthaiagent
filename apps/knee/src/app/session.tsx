@@ -6,7 +6,7 @@
 // Every voice action has an on-screen twin (Next / Finish buttons), so the
 // session is complete with the sound off.
 
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Speech from 'expo-speech';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -54,6 +54,11 @@ export default function Session() {
   const [saved, setSaved] = useState(false);
   const startedAt = useRef(Date.now());
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [paused, setPaused] = useState(false);
+  // The current set's context, so pause() can reschedule what's left.
+  const setCtx = useRef<{ exIndex: number; whichSet: number;
+                          setStart: number } | null>(null);
+  const elapsedRef = useRef(0);
 
   const clearTimers = () => {
     timers.current.forEach(clearTimeout);
@@ -111,27 +116,30 @@ export default function Session() {
       return true;
     });
     return () => sub.remove();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
-  /** Run one set: schedule the cues, advance set/exercise when it ends. */
-  const runSet = useCallback((exIndex: number, whichSet: number) => {
+  /** Schedule (or re-schedule from `offsetMs`) one set's cues. */
+  const runSet = useCallback((exIndex: number, whichSet: number, offsetMs = 0) => {
     if (!plan) return;
     const x = plan.exercises[exIndex];
     clearTimers();
     setPhaseOfSet('counting');
+    setCtx.current = { exIndex, whichSet, setStart: Date.now() - offsetMs };
     const { cues, durationS } = setCues(x, lang);
     if (!cues.length) {
-      // follow-the-video mode: no counting; the user taps Next when done
-      setCount(null);
+      setCount(null); // follow-the-video mode: user taps Next
       return;
     }
     for (const cue of cues) {
+      const at = cue.at * 1000 - offsetMs;
+      if (at < 0) { if (cue.show !== undefined) setCount(cue.show); continue; }
       timers.current.push(setTimeout(() => {
         if (cue.show !== undefined) setCount(cue.show);
         if (cue.say) speak(cue.say, lang);
-      }, cue.at * 1000));
+      }, at));
     }
+    const endAt = (durationS + 1) * 1000 - offsetMs;
     timers.current.push(setTimeout(() => {
       const sets = x.dose?.sets ?? 1;
       if (whichSet < sets) {
@@ -143,9 +151,34 @@ export default function Session() {
       } else {
         advance(exIndex);
       }
-    }, (durationS + 1) * 1000));
+    }, Math.max(0, endAt)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan, lang]);
+
+  /** Halt everything, remembering how far into the current set we are. */
+  const pause = useCallback(() => {
+    if (paused) return;
+    clearTimers();
+    Speech.stop();
+    try { player.pause(); } catch {}
+    if (setCtx.current) elapsedRef.current = Date.now() - setCtx.current.setStart;
+    setPaused(true);
+  }, [paused, player]);
+
+  const resume = useCallback(() => {
+    if (!paused) return;
+    setPaused(false);
+    try { player.play(); } catch {}
+    const c = setCtx.current;
+    if (c) runSet(c.exIndex, c.whichSet, elapsedRef.current);
+  }, [paused, player, runSet]);
+
+  // Leaving the screen (Full video, coach, background) PAUSES the sequence —
+  // the timer and video must not run unseen (owner-reported: Full video left
+  // the sequence running). Coming back leaves it paused; resume is deliberate.
+  useFocusEffect(useCallback(() => {
+    return () => { pause(); };
+  }, [pause]));
 
   /** Announce exercise i, then start its first set after the beat. */
   const announce = useCallback((i: number) => {
@@ -267,7 +300,25 @@ export default function Session() {
           <Text style={s.topLabel}>
             {t('session.exercise', lang)} {plan ? index + 1 : '–'} / {plan?.exercises.length ?? '–'}
           </Text>
-          <View style={{ width: 92 }} />
+          <Pressable
+            onPress={() => (paused ? resume() : pause())}
+            accessibilityRole="button"
+            accessibilityLabel={paused ? 'Resume' : 'Pause'}
+            style={s.pausePill}
+          >
+            {paused ? (
+              <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+                <Path d="M5 3.5 12.5 8 5 12.5Z" fill="#F7F5F0" />
+              </Svg>
+            ) : (
+              <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+                <Path d="M5 3h2.2v10H5zM8.8 3H11v10H8.8z" fill="#F7F5F0" />
+              </Svg>
+            )}
+            <Text style={s.pausePillText}>
+              {paused ? (lang === 'hi' ? 'जारी' : 'Resume') : (lang === 'hi' ? 'रुकें' : 'Pause')}
+            </Text>
+          </Pressable>
         </View>
 
         {source ? (
@@ -284,8 +335,22 @@ export default function Session() {
           </Text>
         </View>
 
-        <View style={s.countBlock}>
-          {count ? (
+        <Pressable
+          style={s.countBlock}
+          onPress={() => (paused ? resume() : pause())}
+          accessibilityRole="button"
+          accessibilityLabel={paused ? 'Resume' : 'Pause'}
+        >
+          {paused ? (
+            <View style={s.pausedWrap}>
+              <View style={s.playBtn}>
+                <Svg width={34} height={34} viewBox="0 0 34 34" fill="none">
+                  <Path d="M11 8 26 17 11 26Z" fill="#202B22" />
+                </Svg>
+              </View>
+              <Text style={s.pausedText}>{lang === 'hi' ? 'रुका हुआ — जारी रखने के लिए टैप करें' : 'Paused — tap to resume'}</Text>
+            </View>
+          ) : count ? (
             <Text style={s.count}>{count}</Text>
           ) : (
             <Text style={s.countIdle}>
@@ -296,7 +361,7 @@ export default function Session() {
                   : '…'}
             </Text>
           )}
-        </View>
+        </Pressable>
 
         <View style={s.actions}>
           <View style={s.navRow}>
@@ -373,6 +438,20 @@ const s = StyleSheet.create({
   },
   countIdle: { ...tk.type.scale.heading, color: '#6B7365' },
   actions: { padding: tk.space(6), gap: tk.space(3) },
+  pausePill: {
+    minWidth: 92, minHeight: 44, borderRadius: 22,
+    backgroundColor: 'rgba(247,245,240,0.15)',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingHorizontal: 12,
+  },
+  pausePillText: { ...tk.type.scale.sub, color: '#F7F5F0', fontWeight: '700' },
+  pausedWrap: { alignItems: 'center', gap: tk.space(3) },
+  playBtn: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: '#F7F5F0',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  pausedText: { ...tk.type.scale.body, color: '#C9C4B6' },
   navRow: { flexDirection: 'row', gap: tk.space(3) },
   prev: {
     width: 56, minHeight: 56, borderRadius: tk.radius.button,
