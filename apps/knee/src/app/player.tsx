@@ -9,8 +9,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useEventListener } from 'expo';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { VideoView, useVideoPlayer } from 'expo-video';
 
@@ -19,6 +19,11 @@ import { dubUrl, formatClock } from '@/lib/library-view';
 import { tokens as t } from '@/theme';
 
 export default function Player() {
+  // fullScreenModal on iOS can report a 0 top inset on first render — the
+  // Back pill rendered under the status-bar clock (owner screenshot,
+  // 2026-09-06). Floor it: Dynamic-Island iPhones need ~59pt.
+  const insets = useSafeAreaInsets();
+  const topPad = Math.max(insets.top, Platform.OS === 'ios' ? 59 : 24);
   const params = useLocalSearchParams<{
     name?: string; url?: string; start?: string; end?: string; hindi?: string;
   }>();
@@ -47,7 +52,12 @@ export default function Player() {
   useEventListener(player, 'timeUpdate', ({ currentTime }) => {
     if (end !== null && currentTime >= end) {
       player.currentTime = start;
+      player.play(); // reaching the end pauses natively; a loop must resume
     }
+  });
+  useEventListener(player, 'playToEnd', () => {
+    player.currentTime = start;
+    player.play();
   });
 
   const switchLang = (l: string) => {
@@ -74,8 +84,8 @@ export default function Player() {
   return (
     <View style={s.fill}>
       <StatusBar style="light" />
-      <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-        <View style={[s.topBar, { justifyContent: 'flex-start' }]}>
+      <SafeAreaView style={s.safe} edges={['bottom']}>
+        <View style={[s.topBar, { justifyContent: 'flex-start', paddingTop: topPad }]}>
           <Pressable
             onPress={() => router.back()}
             accessibilityRole="button"

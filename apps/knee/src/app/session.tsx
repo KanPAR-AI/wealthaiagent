@@ -10,8 +10,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Speech from 'expo-speech';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { VideoView, useVideoPlayer } from 'expo-video';
 
@@ -35,6 +35,8 @@ function speak(text: string, lang: Lang) {
 }
 
 export default function Session() {
+  const insets = useSafeAreaInsets();
+  const topPad = Math.max(insets.top, Platform.OS === 'ios' ? 59 : 24);
   const params = useLocalSearchParams<{ phase?: string; recipe?: string }>();
   const phase = params.phase ?? '2';
   const recipe = (params.recipe ?? 'full') as RecipeId;
@@ -245,8 +247,8 @@ export default function Session() {
   return (
     <View style={s.fill}>
       <StatusBar style="light" />
-      <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-        <View style={s.topBar}>
+      <SafeAreaView style={s.safe} edges={['bottom']}>
+        <View style={[s.topBar, { paddingTop: topPad }]}>
           {/* Back where iOS hands expect it — top-left, labelled, leaves the
               session (owner: "back button is still not shown in iOS, make it
               easy ux"). Previous-exercise moved DOWN beside Next, into thumb
