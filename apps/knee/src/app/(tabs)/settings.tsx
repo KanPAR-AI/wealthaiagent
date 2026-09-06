@@ -1,6 +1,10 @@
-// Profile — account state and sign-out. Deliberately small: rows exist only
-// for what this build can do (capabilities.ts is the authority), and the
-// email upgrade keeps the anonymous history by LINKING (lib/auth.ts).
+// Profile — one identity card, progressive disclosure (owner: "a lot more
+// elegant … account and then connect account; now there is clutter").
+//
+// The rule: at rest the screen shows WHO YOU ARE and one action. Forms exist
+// only after you choose a method — never three input rows and five buttons
+// stacked on a first paint. Signed in, methods render as quiet chips with
+// one "add" affordance; sign-out is a text action, not a competing button.
 
 import { useFocusEffect } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
@@ -16,6 +20,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import { fetchBalance, requestCredits } from '@/lib/api';
 import { getLang, setLang, subscribeLang, t as tr, type Lang } from '@/lib/i18n';
@@ -32,6 +37,8 @@ import {
 } from '@/lib/auth';
 import { tokens as t } from '@/theme';
 
+type ConnectMode = 'closed' | 'email' | 'phone' | 'phone-code';
+
 export default function Settings() {
   useFocusEffect(useCallback(() => setStatusBarStyle('dark'), []));
 
@@ -45,161 +52,171 @@ export default function Settings() {
     fetchBalance().then((b) => { setBalance(b.balance); setUnlimited(b.unlimited); })
       .catch(() => {});
   }, []);
+  useEffect(() => subscribeToAccount(setAccount), []);
+
+  const [mode, setMode] = useState<ConnectMode>('closed');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
   const [countryCode, setCountryCode] = useState('+91');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
-  const [otpStage, setOtpStage] = useState<'idle' | 'sent'>('idle');
   const [verificationId, setVerificationId] = useState('');
-
-  useEffect(() => subscribeToAccount(setAccount), []);
+  const [busy, setBusy] = useState(false);
 
   const run = useCallback(async (fn: () => Promise<unknown>) => {
     setBusy(true);
     try {
       await fn();
-      setEmail('');
-      setPassword('');
+      setEmail(''); setPassword(''); setOtp(''); setPhone('');
+      setMode('closed');
     } catch (e: any) {
-      Alert.alert('Sign in', String(e?.message ?? e));
+      if (e?.code !== 'cancelled') Alert.alert('Sign in', String(e?.message ?? e));
     } finally {
       setBusy(false);
     }
   }, []);
 
+  const guest = !account || account.anonymous;
+  const hasGoogle = account?.providers.includes('google.com');
+
+  const identityLine = guest
+    ? (lang === 'hi' ? 'अतिथि' : 'Guest')
+    : account?.displayName || account?.email || account?.phone || 'Signed in';
+  const identitySub = guest
+    ? (lang === 'hi'
+        ? 'आपका प्रोग्राम इसी डिवाइस पर है'
+        : 'Your program lives on this device')
+    : [account?.email, account?.phone, hasGoogle ? 'Google' : null]
+        .filter(Boolean).join(' · ');
+
+  const connectLabel = guest
+    ? (lang === 'hi' ? 'खाता जोड़ें' : 'Connect account')
+    : (lang === 'hi' ? 'साइन-इन तरीक़ा जोड़ें' : 'Add a sign-in method');
+
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.title}>Profile</Text>
+        <Text style={s.title}>{tr('tab.profile', lang)}</Text>
 
+        {/* ── the identity card ── */}
         <View style={s.card}>
-          <Text style={s.cardLabel}>Account</Text>
-          <Text style={s.body}>
-            {account
-              ? account.anonymous
-                ? 'Guest — your program lives on this device’s account.'
-                : account.email ?? account.uid
-              : 'Signing in…'}
-          </Text>
-        </View>
+          <View style={s.idRow}>
+            <View style={s.avatar}>
+              <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                <Circle cx={12} cy={8} r={4} stroke={t.palette.accent.interactiveInk} strokeWidth={2} />
+                <Path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5"
+                  stroke={t.palette.accent.interactiveInk} strokeWidth={2} strokeLinecap="round" />
+              </Svg>
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={s.idName}>{identityLine}</Text>
+              <Text style={s.idSub} numberOfLines={2}>{identitySub}</Text>
+            </View>
+          </View>
 
-        {account?.anonymous ? (
-          <View style={s.card}>
-            <Text style={s.cardLabel}>Keep your history</Text>
-            <Text style={s.bodyMuted}>
-              Sign in so your conversations and, later, your progress survive
-              a new phone.
-            </Text>
-            {isGoogleSignInAvailable() ? (
+          {mode === 'closed' ? (
+            <View style={s.connectRow}>
               <Pressable
                 style={s.primary}
                 disabled={busy}
                 accessibilityRole="button"
-                onPress={() => void run(async () => {
-                  try {
-                    await signInWithGoogle();
-                  } catch (e: any) {
-                    if (e?.code === 'cancelled') return; // not an error
-                    throw e;
+                onPress={() => {
+                  if (guest && isGoogleSignInAvailable()) {
+                    void run(signInWithGoogle);
+                  } else {
+                    setMode('email');
                   }
-                })}
-              >
-                <Text style={s.primaryText}>Continue with Google</Text>
-              </Pressable>
-            ) : null}
-            <Text style={s.bodyMuted}>or with email:</Text>
-            <TextInput
-              style={s.input}
-              placeholder="Email"
-              placeholderTextColor={t.palette.ink.muted}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-            />
-            <TextInput
-              style={s.input}
-              placeholder="Password"
-              placeholderTextColor={t.palette.ink.muted}
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
-            <View style={s.buttonRow}>
-              <Pressable
-                style={s.primary}
-                disabled={busy}
-                accessibilityRole="button"
-                onPress={() => void run(() => signUpWithEmail(email, password))}
+                }}
               >
                 {busy ? (
                   <ActivityIndicator color={t.palette.accent.interactiveInk} />
                 ) : (
-                  <Text style={s.primaryText}>Create account</Text>
+                  <Text style={s.primaryText}>
+                    {guest && isGoogleSignInAvailable()
+                      ? (lang === 'hi' ? 'Google से जुड़ें' : 'Continue with Google')
+                      : connectLabel}
+                  </Text>
                 )}
               </Pressable>
-              <Pressable
-                style={s.secondary}
-                disabled={busy}
-                accessibilityRole="button"
-                onPress={() => void run(() => signInWithEmail(email, password))}
-              >
-                <Text style={s.secondaryText}>Sign in</Text>
+              <View style={s.quietRow}>
+                {guest && isGoogleSignInAvailable() ? (
+                  <Pressable onPress={() => setMode('email')} accessibilityRole="button"
+                    style={s.quiet} hitSlop={8}>
+                    <Text style={s.quietText}>{lang === 'hi' ? 'ईमेल' : 'Email'}</Text>
+                  </Pressable>
+                ) : null}
+                {!account?.phone ? (
+                  <Pressable onPress={() => setMode('phone')} accessibilityRole="button"
+                    style={s.quiet} hitSlop={8}>
+                    <Text style={s.quietText}>{lang === 'hi' ? 'फ़ोन' : 'Phone'}</Text>
+                  </Pressable>
+                ) : null}
+                {!guest && !hasGoogle && isGoogleSignInAvailable() ? (
+                  <Pressable onPress={() => void run(signInWithGoogle)}
+                    accessibilityRole="button" style={s.quiet} hitSlop={8}>
+                    <Text style={s.quietText}>Google</Text>
+                  </Pressable>
+                ) : null}
+                {!guest ? (
+                  <Pressable onPress={() => void run(signOut)} accessibilityRole="button"
+                    style={s.quiet} hitSlop={8}>
+                    <Text style={[s.quietText, { color: t.palette.danger }]}>
+                      {lang === 'hi' ? 'साइन आउट' : 'Sign out'}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
+
+          {/* ── email, only when chosen ── */}
+          {mode === 'email' ? (
+            <View style={s.form}>
+              <TextInput
+                style={s.input}
+                placeholder="Email"
+                placeholderTextColor={t.palette.ink.muted}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+              />
+              <TextInput
+                style={s.input}
+                placeholder="Password"
+                placeholderTextColor={t.palette.ink.muted}
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+              />
+              <View style={s.formRow}>
+                <Pressable style={[s.primary, { flex: 1 }]} disabled={busy}
+                  accessibilityRole="button"
+                  onPress={() => void run(() => signUpWithEmail(email, password))}>
+                  <Text style={s.primaryText}>{lang === 'hi' ? 'खाता बनाएँ' : 'Create account'}</Text>
+                </Pressable>
+                <Pressable style={[s.secondary, { flex: 1 }]} disabled={busy}
+                  accessibilityRole="button"
+                  onPress={() => void run(() => signInWithEmail(email, password))}>
+                  <Text style={s.secondaryText}>{lang === 'hi' ? 'साइन इन' : 'Sign in'}</Text>
+                </Pressable>
+              </View>
+              <Pressable onPress={() => setMode('closed')} accessibilityRole="button"
+                style={s.cancel} hitSlop={8}>
+                <Text style={s.quietText}>{lang === 'hi' ? 'रद्द करें' : 'Cancel'}</Text>
               </Pressable>
             </View>
-          </View>
-        ) : (
-          <Pressable
-            style={s.secondary}
-            accessibilityRole="button"
-            onPress={() => void run(signOut)}
-          >
-            <Text style={s.secondaryText}>Sign out</Text>
-          </Pressable>
-        )}
-
-        {/* Sign-in methods — one account across KneeFit, Arthur and the
-            web: chats, credits and progress follow the uid. Linking an
-            identifier that belongs to ANOTHER account is refused server-side
-            (409), never merged; Google onto a same-email account links
-            automatically through the attach() path. */}
-        <View style={s.card}>
-          <Text style={s.cardLabel}>Sign-in methods</Text>
-          <Text style={s.bodyMuted}>
-            {account && !account.anonymous
-              ? [account.email, account.phone,
-                 account.providers.includes('google.com') ? 'Google' : null]
-                  .filter(Boolean).join(' · ') || account.uid
-              : 'Guest — add any of these and your chats, credits and progress follow you into Arthur and the web app too.'}
-          </Text>
-          {account && !account.anonymous && !account.providers.includes('google.com')
-            && isGoogleSignInAvailable() ? (
-            <Pressable
-              style={s.secondary}
-              disabled={busy}
-              accessibilityRole="button"
-              onPress={() => void run(async () => {
-                try { await signInWithGoogle(); } catch (e: any) {
-                  if (e?.code === 'cancelled') return;
-                  throw e;
-                }
-              })}
-            >
-              <Text style={s.secondaryText}>Link Google</Text>
-            </Pressable>
           ) : null}
-          {!account?.phone ? (
-            otpStage === 'idle' ? (
-              <View style={s.buttonRow}>
-                {/* Country code its own box, +91 the default (owner ask). */}
+
+          {/* ── phone, only when chosen ── */}
+          {mode === 'phone' ? (
+            <View style={s.form}>
+              <View style={s.formRow}>
                 <TextInput
                   style={[s.input, { width: 74 }]}
                   placeholder="+91"
                   placeholderTextColor={t.palette.ink.muted}
                   keyboardType="phone-pad"
-                  autoCapitalize="none"
                   value={countryCode}
                   onChangeText={(v) => setCountryCode(
                     v.startsWith('+') || v === '' ? v : `+${v}`)}
@@ -207,84 +224,94 @@ export default function Settings() {
                 />
                 <TextInput
                   style={[s.input, { flex: 1 }]}
-                  placeholder="Phone number"
+                  placeholder={lang === 'hi' ? 'फ़ोन नंबर' : 'Phone number'}
                   placeholderTextColor={t.palette.ink.muted}
                   keyboardType="phone-pad"
                   value={phone}
                   onChangeText={setPhone}
                   accessibilityLabel="Phone number"
                 />
-                <Pressable
-                  style={s.secondary}
-                  disabled={busy || phone.trim().length < 6}
-                  accessibilityRole="button"
-                  onPress={() => void run(async () => {
-                    const full = `${countryCode.trim() || '+91'}${phone.trim()}`;
-                    setVerificationId(await startPhoneVerification(full));
-                    setOtpStage('sent');
-                  })}
-                >
-                  <Text style={s.secondaryText}>Send code</Text>
-                </Pressable>
               </View>
-            ) : (
-              <View style={s.buttonRow}>
+              <Pressable style={s.primary}
+                disabled={busy || phone.trim().length < 6}
+                accessibilityRole="button"
+                onPress={() => {
+                  setBusy(true);
+                  startPhoneVerification(`${countryCode.trim() || '+91'}${phone.trim()}`)
+                    .then((id) => { setVerificationId(id); setMode('phone-code'); })
+                    .catch((e) => Alert.alert('Sign in', String(e?.message ?? e)))
+                    .finally(() => setBusy(false));
+                }}>
+                {busy ? <ActivityIndicator color={t.palette.accent.interactiveInk} />
+                      : <Text style={s.primaryText}>{lang === 'hi' ? 'कोड भेजें' : 'Send code'}</Text>}
+              </Pressable>
+              <Pressable onPress={() => setMode('closed')} accessibilityRole="button"
+                style={s.cancel} hitSlop={8}>
+                <Text style={s.quietText}>{lang === 'hi' ? 'रद्द करें' : 'Cancel'}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {mode === 'phone-code' ? (
+            <View style={s.form}>
+              <Text style={s.idSub}>
+                {lang === 'hi'
+                  ? `${countryCode}${phone} पर कोड भेजा गया`
+                  : `Code sent to ${countryCode}${phone}`}
+              </Text>
+              <View style={s.formRow}>
                 <TextInput
                   style={[s.input, { flex: 1 }]}
-                  placeholder="6-digit code"
+                  placeholder={lang === 'hi' ? '6 अंकों का कोड' : '6-digit code'}
                   placeholderTextColor={t.palette.ink.muted}
                   keyboardType="number-pad"
                   value={otp}
                   onChangeText={setOtp}
                 />
-                <Pressable
-                  style={s.primary}
+                <Pressable style={s.primary}
                   disabled={busy || otp.trim().length < 4}
                   accessibilityRole="button"
-                  onPress={() => void run(async () => {
-                    await confirmPhoneCode(verificationId, otp);
-                    setOtpStage('idle');
-                    setPhone('');
-                    setOtp('');
-                  })}
-                >
-                  <Text style={s.primaryText}>Verify</Text>
+                  onPress={() => void run(() => confirmPhoneCode(verificationId, otp))}>
+                  <Text style={s.primaryText}>{lang === 'hi' ? 'पुष्टि करें' : 'Verify'}</Text>
                 </Pressable>
               </View>
-            )
+              <Pressable onPress={() => setMode('phone')} accessibilityRole="button"
+                style={s.cancel} hitSlop={8}>
+                <Text style={s.quietText}>{lang === 'hi' ? 'वापस' : 'Back'}</Text>
+              </Pressable>
+            </View>
           ) : null}
         </View>
 
+        {/* ── language ── */}
         <View style={s.card}>
           <Text style={s.cardLabel}>{tr('profile.language', lang)}</Text>
-          <View style={s.buttonRow}>
+          <View style={s.formRow}>
             {([['en', 'English'], ['hi', 'हिन्दी']] as const).map(([value, label]) => (
               <Pressable
                 key={value}
                 onPress={() => setLang(value)}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: lang === value }}
-                style={lang === value ? s.primary : s.secondary}
+                style={[lang === value ? s.primary : s.secondary, { flex: 1 }]}
               >
                 <Text style={lang === value ? s.primaryText : s.secondaryText}>{label}</Text>
               </Pressable>
             ))}
           </View>
-          <Text style={s.bodyMuted}>
-            {lang === 'hi'
-              ? 'सब कुछ हिन्दी में — आवाज़, गिनती, और वीडियो हिन्दी ट्रैक पर।'
-              : 'Everything follows: labels, the counting voice, and videos open on the Hindi track.'}
-          </Text>
         </View>
 
+        {/* ── credits ── */}
         <View style={s.card}>
-          <Text style={s.cardLabel}>{tr('profile.credits', lang)}</Text>
-          <Text style={s.body}>
-            {unlimited ? 'Unlimited' : balance === null ? '…' : balance.toLocaleString()}
-          </Text>
+          <View style={s.rowBetween}>
+            <Text style={s.cardLabel}>{tr('profile.credits', lang)}</Text>
+            <Text style={s.creditNum}>
+              {unlimited ? '∞' : balance === null ? '…' : balance.toLocaleString()}
+            </Text>
+          </View>
           {!unlimited ? (
             requested ? (
-              <Text style={s.bodyMuted}>{tr('profile.creditsRequested', lang)}</Text>
+              <Text style={s.idSub}>{tr('profile.creditsRequested', lang)}</Text>
             ) : (
               <Pressable
                 style={s.secondary}
@@ -299,13 +326,9 @@ export default function Settings() {
           ) : null}
         </View>
 
-        <View style={s.card}>
-          <Text style={s.cardLabel}>About</Text>
-          <Text style={s.bodyMuted}>
-            {t.wordmark} — {t.tagline} The program and its videos come from the
-            same coach library the chat answers from.
-          </Text>
-        </View>
+        <Text style={s.about}>
+          {t.wordmark} — {t.tagline}
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -321,15 +344,36 @@ const s = StyleSheet.create({
     borderColor: t.palette.paper.line,
     borderRadius: t.radius.card,
     padding: t.space(4.5),
-    gap: t.space(2),
+    gap: t.space(3),
   },
   cardLabel: {
     ...t.type.scale.eyebrow,
     color: t.palette.ink.muted,
     textTransform: 'uppercase',
   },
-  body: { ...t.type.scale.body, color: t.palette.ink.primary },
-  bodyMuted: { ...t.type.scale.sub, color: t.palette.ink.muted },
+  idRow: { flexDirection: 'row', alignItems: 'center', gap: t.space(3.5) },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: t.palette.accent.interactive,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  idName: { ...t.type.scale.label, fontSize: 18, color: t.palette.ink.primary },
+  idSub: { ...t.type.scale.sub, color: t.palette.ink.muted },
+  connectRow: { gap: t.space(2.5) },
+  quietRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: t.space(6),
+    flexWrap: 'wrap',
+  },
+  quiet: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  quietText: { ...t.type.scale.sub, color: t.palette.accent.interactive, fontWeight: '700' },
+  cancel: { alignSelf: 'center', minHeight: 44, justifyContent: 'center' },
+  form: { gap: t.space(2.5) },
+  formRow: { flexDirection: 'row', gap: t.space(2.5) },
   input: {
     minHeight: t.size.disc,
     borderWidth: 1,
@@ -340,18 +384,16 @@ const s = StyleSheet.create({
     color: t.palette.ink.primary,
     backgroundColor: t.palette.paper.base,
   },
-  buttonRow: { flexDirection: 'row', gap: t.space(2.5) },
   primary: {
-    flex: 1,
     minHeight: t.size.disc,
     borderRadius: t.radius.button,
     backgroundColor: t.palette.accent.interactive,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: t.space(4),
   },
   primaryText: { ...t.type.scale.label, color: t.palette.accent.interactiveInk },
   secondary: {
-    flex: 1,
     minHeight: t.size.disc,
     borderRadius: t.radius.button,
     borderWidth: 1,
@@ -359,6 +401,20 @@ const s = StyleSheet.create({
     backgroundColor: t.palette.paper.card,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: t.space(4),
   },
   secondaryText: { ...t.type.scale.label, color: t.palette.ink.primary },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  creditNum: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: t.palette.ink.primary,
+    fontVariant: ['tabular-nums'],
+  },
+  about: {
+    ...t.type.scale.sub,
+    color: t.palette.ink.muted,
+    textAlign: 'center',
+    marginTop: t.space(2),
+  },
 });
