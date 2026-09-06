@@ -8,13 +8,18 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { getPlatform } from '@wealthai/core';
+
 import { fetchPhase, fetchProgress } from '@/lib/api';
 import { getLang, subscribeLang, t } from '@/lib/i18n';
 import type { WirePhaseDetail } from '@/lib/library-view';
 import { buildCustomPlan, buildPlan, localDate, type RecipeId } from '@/lib/session-view';
 import { phaseColor, tokens as tk } from '@/theme';
 
-const PHASE = '2'; // until phase assignment ships, the program's active phase
+// The user's current phase, chosen HERE and remembered on-device (owner:
+// "can I not change the phase"). The formal phase-gate assignment (Flow 3)
+// still arrives server-side later; until then the choice is the user's.
+const PHASE_KEY = 'knee.phase';
 
 export default function Today() {
   useFocusEffect(useCallback(() => setStatusBarStyle('dark'), []));
@@ -26,11 +31,24 @@ export default function Today() {
   const [recipe, setRecipe] = useState<RecipeId>('full');
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [phase, setPhaseState] = useState('2');
+
+  useEffect(() => {
+    void getPlatform().storage.getItem(PHASE_KEY).then((v) => {
+      if (v && ['1', '2', '3', '4'].includes(v)) setPhaseState(v);
+    });
+  }, []);
+
+  const setPhase = (ph: string) => {
+    setPhaseState(ph);
+    setPicked(new Set()); // picks belong to a phase
+    void getPlatform().storage.setItem(PHASE_KEY, ph);
+  };
 
   const load = useCallback(async () => {
     try {
       const [d, p] = await Promise.all([
-        fetchPhase(PHASE),
+        fetchPhase(phase),
         fetchProgress(localDate()),
       ]);
       setDetail(d);
@@ -39,7 +57,7 @@ export default function Today() {
     } catch (e: any) {
       setError(String(e?.message ?? e));
     }
-  }, []);
+  }, [phase]);
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   const plans = detail
@@ -57,8 +75,8 @@ export default function Today() {
     router.push({
       pathname: '/session',
       params: recipe === 'custom'
-        ? { phase: PHASE, recipe, names: [...picked].join('|') }
-        : { phase: PHASE, recipe },
+        ? { phase, recipe, names: [...picked].join('|') }
+        : { phase, recipe },
     } as never);
   };
 
@@ -79,11 +97,11 @@ export default function Today() {
         onPress={() => setRecipe(id)}
         accessibilityRole="button"
         accessibilityState={{ selected: on }}
-        style={[s.card, on && s.cardOn]}
+        style={[s.card, on && { borderWidth: 2, borderColor: phaseColor(phase) }]}
       >
         <View style={s.cardHead}>
           <Text style={s.cardTitle}>{title}</Text>
-          {badge ? <Text style={[s.badge, { color: phaseColor(PHASE) }]}>{badge}</Text> : null}
+          {badge ? <Text style={[s.badge, { color: phaseColor(phase) }]}>{badge}</Text> : null}
         </View>
         <Text style={s.cardSub}>
           {plan ? `${plan.exercises.length} · ~${plan.estimatedMinutes} ${t('today.minutes', lang)} — ` : ''}
@@ -96,8 +114,30 @@ export default function Today() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.eyebrow}>{t('tab.today', lang)} · {t('library.phase', lang)} {PHASE}</Text>
+        <Text style={s.eyebrow}>{t('tab.today', lang)}</Text>
         <Text style={s.title}>{t('today.title', lang)}</Text>
+
+        {/* which phase today runs in — remembered on this device */}
+        <View style={s.phaseRow}>
+          {(['1', '2', '3', '4'] as const).map((ph) => {
+            const on = phase === ph;
+            return (
+              <Pressable
+                key={ph}
+                onPress={() => setPhase(ph)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on }}
+                style={[s.phaseItem, on && {
+                  backgroundColor: phaseColor(ph), borderColor: phaseColor(ph),
+                }]}
+              >
+                <Text style={[s.phaseText, on && { color: '#FFFFFF', fontWeight: '700' }]}>
+                  {t('library.phase', lang)} {ph}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
         {todayDone ? (
           <View style={s.doneCard}>
@@ -182,7 +222,15 @@ const s = StyleSheet.create({
     padding: tk.space(4.5),
     gap: tk.space(1.5),
   },
-  cardOn: { borderWidth: 2, borderColor: phaseColor('2') },
+  cardOn: { borderWidth: 2, borderColor: phaseColor('2') }, // superseded inline
+  phaseRow: { flexDirection: 'row', gap: tk.space(2) },
+  phaseItem: {
+    flex: 1, minHeight: 44, borderRadius: tk.radius.button,
+    borderWidth: 1, borderColor: tk.palette.paper.line,
+    backgroundColor: tk.palette.paper.card,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  phaseText: { ...tk.type.scale.sub, color: tk.palette.ink.primary },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   cardTitle: { ...tk.type.scale.label, fontSize: 18, color: tk.palette.ink.primary },
   badge: { ...tk.type.scale.caption, fontWeight: '700', letterSpacing: 0.8 },
@@ -206,7 +254,7 @@ const s = StyleSheet.create({
     borderWidth: 2, borderColor: '#C9C4B6',
     alignItems: 'center', justifyContent: 'center',
   },
-  pickBoxOn: { backgroundColor: phaseColor('2'), borderColor: phaseColor('2') },
+  pickBoxOn: { backgroundColor: phaseColor('2'), borderColor: phaseColor('2') }, // overridden inline
   pickTick: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   pickName: { ...tk.type.scale.body, color: tk.palette.ink.primary, flex: 1 },
   start: {
