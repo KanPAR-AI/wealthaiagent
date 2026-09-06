@@ -321,6 +321,22 @@ export default function Session() {
               </Text>
             </Pressable>
           </View>
+          {exercise?.videoUrl ? (
+            <Pressable
+              onPress={() => router.push({
+                pathname: '/player',
+                params: {
+                  name: exercise.name,
+                  url: exercise.videoUrl!,
+                  start: String(exercise.startSeconds ?? 0),
+                  end: exercise.endSeconds == null ? '' : String(exercise.endSeconds),
+                  hindi: exercise.hasHindi ? '1' : '',
+                },
+              } as never)}
+              accessibilityRole="button" style={s.watch}>
+              <Text style={s.watchText}>{t('session.fullVideo', lang)} ▸</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={() => { clearTimers(); Speech.stop(); router.push('/chat' as never); }}
             accessibilityRole="button" style={s.hurts}>
@@ -382,6 +398,12 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   hurtsText: { ...tk.type.scale.label, color: '#E8B4A0' },
+  watch: {
+    minHeight: 52, borderRadius: tk.radius.button,
+    borderWidth: 1, borderColor: '#4A5443',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  watchText: { ...tk.type.scale.label, color: '#F7F5F0' },
   completeBody: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: tk.space(8), gap: tk.space(4) },
   ring: {
     width: 120, height: 120, borderRadius: 60,

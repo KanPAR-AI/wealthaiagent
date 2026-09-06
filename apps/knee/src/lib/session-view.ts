@@ -15,6 +15,9 @@ export interface SessionExercise {
   clipUrl: string | null;
   videoUrl: string | null;
   hasHindi: boolean;
+  /** the segment window inside the full video, for looping WITH audio */
+  startSeconds: number;
+  endSeconds: number | null;
   /** null = follow-the-video mode: announce, show the loop, no counting. */
   dose: {
     reps?: number;
@@ -38,6 +41,8 @@ function toSessionExercise(e: WireExercise): SessionExercise {
     clipUrl: e.clip_url ?? null,
     videoUrl: e.url,
     hasHindi: e.dub_langs.includes('hi'),
+    startSeconds: typeof e.start_seconds === 'number' ? e.start_seconds : 0,
+    endSeconds: typeof e.end_seconds === 'number' ? e.end_seconds : null,
     dose: d
       ? {
           reps: typeof d.reps === 'number' ? d.reps : undefined,

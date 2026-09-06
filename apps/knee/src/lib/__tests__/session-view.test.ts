@@ -127,6 +127,7 @@ describe('reps of holds — "30 seconds, 3 reps"', () => {
   it('runs the guided hold once per rep, numbering each', () => {
     const x = {
       name: 'knee flexion stretch', clipUrl: 'c', videoUrl: 'v', hasHindi: false,
+      startSeconds: 0, endSeconds: 30,
       dose: { reps: 3, sets: 1, holdSeconds: 15, paceSecondsPerRep: 3 },
     };
     const { cues, durationS } = setCues(x as never, 'en');
