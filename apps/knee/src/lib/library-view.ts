@@ -42,6 +42,10 @@ export interface WireExercise {
   /** the transcript's own dose, or absent — never defaulted client-side */
   dose?: WireDose | null;
   dub_langs: string[];
+  /** near-duplicate group decided by the engine (services/knee_movements.py);
+   *  null = unique. Two exercises are near-duplicates iff same non-null group.
+   *  The client compares, never decides. */
+  movement_group?: string | null;
 }
 
 export interface WireAbout {

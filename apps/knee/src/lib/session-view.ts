@@ -109,6 +109,34 @@ export function buildCustomPlan(detail: WirePhaseDetail,
   };
 }
 
+/** A near-duplicate collision among the picked exercises: one movement group
+ *  with two or more chosen members (e.g. "heel raise" + "standing calf raises").
+ *  The engine decides the group (services/knee_movements.py); this only groups
+ *  the CURRENT selection so the "Build my own" screen can warn and let the user
+ *  keep both or swap one — it never removes anything (owner request 2026-09-06). */
+export interface NearDuplicateWarning {
+  group: string;
+  names: string[];
+}
+
+export function nearDuplicateWarnings(detail: WirePhaseDetail,
+                                      selectedNames: string[]): NearDuplicateWarning[] {
+  const wanted = new Set(selectedNames.map((n) => n.toLowerCase()));
+  const byGroup = new Map<string, string[]>();
+  for (const e of detail.exercises) {
+    const g = e.movement_group;
+    if (!g || !wanted.has(e.name.toLowerCase())) continue;
+    const list = byGroup.get(g) ?? [];
+    if (!list.some((n) => n.toLowerCase() === e.name.toLowerCase())) list.push(e.name);
+    byGroup.set(g, list);
+  }
+  const out: NearDuplicateWarning[] = [];
+  for (const [group, names] of byGroup) {
+    if (names.length > 1) out.push({ group, names });
+  }
+  return out;
+}
+
 // ── what the voice says ─────────────────────────────────────────────────────
 
 const HI_NUMS = [

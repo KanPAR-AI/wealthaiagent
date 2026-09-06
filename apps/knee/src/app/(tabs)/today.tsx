@@ -13,7 +13,7 @@ import { getPlatform } from '@wealthai/core';
 import { fetchPhase, fetchProgress } from '@/lib/api';
 import { getLang, subscribeLang, t } from '@/lib/i18n';
 import type { WirePhaseDetail } from '@/lib/library-view';
-import { buildCustomPlan, buildPlan, localDate, type RecipeId } from '@/lib/session-view';
+import { buildCustomPlan, buildPlan, localDate, nearDuplicateWarnings, type RecipeId } from '@/lib/session-view';
 import { phaseColor, tokens as tk } from '@/theme';
 
 // The user's current phase, chosen HERE and remembered on-device (owner:
@@ -179,6 +179,18 @@ export default function Today() {
                 </Pressable>
               );
             })}
+
+            {/* Near-duplicate warning (owner request): the engine decides the
+                movement group; we only surface a collision and let the user
+                keep both or swap one. Never removes a pick. */}
+            {nearDuplicateWarnings(detail, [...picked]).map((w) => (
+              <View key={w.group} style={s.dupWarn}>
+                <Text style={s.dupTitle}>⚠ {t('today.dupTitle', lang)}</Text>
+                <Text style={s.dupBody}>
+                  {w.names.join(' + ')} {t('today.dupBody', lang)}
+                </Text>
+              </View>
+            ))}
           </View>
         ) : null}
 
@@ -214,6 +226,19 @@ const s = StyleSheet.create({
   },
   doneText: { ...tk.type.scale.body, color: tk.palette.ink.secondary, fontWeight: '700' },
   error: { ...tk.type.scale.sub, color: tk.palette.danger },
+  // caution, not alarm: a warm ochre banner (red is reserved for pain, green
+  // for done) that advises without blocking the pick.
+  dupWarn: {
+    backgroundColor: '#FBF3E2',
+    borderWidth: 1,
+    borderColor: '#E9D9AE',
+    borderRadius: tk.radius.card,
+    padding: tk.space(3),
+    gap: tk.space(1),
+    marginTop: tk.space(2),
+  },
+  dupTitle: { ...tk.type.scale.sub, color: '#8A6A1F', fontWeight: '700' },
+  dupBody: { ...tk.type.scale.sub, color: tk.palette.ink.secondary },
   card: {
     backgroundColor: tk.palette.paper.card,
     borderWidth: 1,

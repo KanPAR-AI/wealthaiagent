@@ -11,6 +11,7 @@ import {
   doseLabel,
   holdCues,
   localDate,
+  nearDuplicateWarnings,
   repCues,
   setCues,
   spokenNumber,
@@ -160,5 +161,36 @@ describe('buildCustomPlan — the design\'s "Build my own"', () => {
 
   it('matches names case-insensitively', () => {
     expect(buildCustomPlan(d, ['BRIDGES']).exercises).toHaveLength(1);
+  });
+});
+
+describe('nearDuplicateWarnings — warn, never remove', () => {
+  const d = detail([
+    ex({ name: 'heel raise', movement_group: 'calf raise' }),
+    ex({ name: 'standing calf raises', movement_group: 'calf raise' }),
+    ex({ name: 'bridges', movement_group: 'bridge' }),
+    ex({ name: 'toe curls', movement_group: 'toe curl' }),
+    ex({ name: 'GLUTE SETS', movement_group: null }),
+  ]);
+
+  it('flags two picks from the same movement group', () => {
+    const w = nearDuplicateWarnings(d, ['heel raise', 'standing calf raises', 'toe curls']);
+    expect(w).toHaveLength(1);
+    expect(w[0].group).toBe('calf raise');
+    expect(w[0].names.sort()).toEqual(['heel raise', 'standing calf raises']);
+  });
+
+  it('is silent when picks are all distinct movements', () => {
+    expect(nearDuplicateWarnings(d, ['heel raise', 'bridges', 'toe curls'])).toEqual([]);
+  });
+
+  it('never warns on ungrouped exercises', () => {
+    expect(nearDuplicateWarnings(d, ['GLUTE SETS', 'bridges'])).toEqual([]);
+  });
+
+  it('does not remove anything — buildCustomPlan still keeps both', () => {
+    // The warning is advisory; the plan the user confirms is untouched.
+    const plan = buildCustomPlan(d, ['heel raise', 'standing calf raises']);
+    expect(plan.exercises.map((x) => x.name)).toEqual(['heel raise', 'standing calf raises']);
   });
 });

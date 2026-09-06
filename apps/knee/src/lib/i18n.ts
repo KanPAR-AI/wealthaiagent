@@ -68,6 +68,8 @@ const STRINGS: Record<string, { en: string; hi: string }> = {
   'today.custom': { en: 'Build my own', hi: 'खुद चुनें' },
   'today.customSub': { en: 'pick exercises from the library', hi: 'लाइब्रेरी से व्यायाम चुनिए' },
   'today.customPick': { en: 'Tap to include — the program’s order is kept', hi: 'शामिल करने के लिए टैप करें — क्रम प्रोग्राम का ही रहेगा' },
+  'today.dupTitle': { en: 'Very similar picks', hi: 'बहुत मिलते-जुलते विकल्प' },
+  'today.dupBody': { en: 'are basically the same movement. Keep both or swap one — your call.', hi: 'लगभग एक ही व्यायाम हैं। दोनों रखें या एक बदलें — आपकी मर्ज़ी।' },
   'today.recommended': { en: 'RECOMMENDED', hi: 'सुझावित' },
   'today.done': { en: 'Today’s session is done', hi: 'आज का सत्र पूरा हो गया' },
   'today.minutes': { en: 'min', hi: 'मिनट' },
