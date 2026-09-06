@@ -19,6 +19,7 @@ import {
 } from '@wealthai/chat-native';
 import { getPlatform, useChatStore } from '@wealthai/core';
 
+import { fetchBalance } from '@/lib/api';
 import { forgetChat, lastChatId, rememberChat } from '@/lib/chat-session';
 import { kneeChatTheme } from '@/lib/chat-theme';
 import { tokens } from '@/theme';
@@ -55,6 +56,14 @@ export default function Chat() {
   }, [chatId]);
 
   const { send, cancel, isSending, isCreatingChat } = useSendMessage(chatId, onChatCreated);
+
+  // Trigger the one-time welcome grant on first entry to the coach — without
+  // this a fresh anonymous account that opens Coach before Profile sits at
+  // ZERO credits and the first turn is refused, which renders as "Couldn't
+  // get a response" (owner-reported 2026-09-06; the astro build-3 defect).
+  useEffect(() => {
+    fetchBalance().catch((e) => console.warn('[credits]', String(e?.message ?? e)));
+  }, []);
   const busy = isSending || isCreatingChat;
 
   // Resume the device's last conversation — hydrated from the server through
@@ -66,12 +75,19 @@ export default function Chat() {
     void lastChatId()
       .then(async (id) => {
         if (!id) return;
-        setChatId(id);
+        // Load FIRST, adopt only if it loads. The stored id can belong to a
+        // PRIOR account (the anonymous uid changes on sign-in/out) and now
+        // 404s — adopting it before the load check left the dead id as the
+        // active chat, so every send POSTed to a missing chat and returned
+        // "Couldn't get a response" (owner-reported 2026-09-06, seen as
+        // repeated 404s on /chats/{stale} in the logs).
         await loadChatIntoStore(id);
+        setChatId(id);
       })
       .catch((e) => {
-        console.warn('[chat] could not resume', String(e?.message ?? e));
+        console.warn('[chat] could not resume — starting fresh', String(e?.message ?? e));
         forgetChat();
+        setChatId(null); // fall back to a NEW chat on the next send
       });
   }, []);
 
