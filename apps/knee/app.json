@@ -15,7 +15,9 @@
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
-              "app-1-388592327571-ios-068b4b9154ad50d835e666"
+              "kneefit",
+              "app-1-388592327571-ios-068b4b9154ad50d835e666",
+              "com.googleusercontent.apps.388592327571-b2qqp1ac7n8skgenmk4ac5dke6jmsv16"
             ]
           }
         ]

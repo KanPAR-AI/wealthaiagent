@@ -270,11 +270,18 @@ export async function startPhoneVerification(phone: string): Promise<string> {
   }
   const rnfb = (await import('@react-native-firebase/auth')).default;
   const digits = phone.trim().startsWith('+') ? phone.trim() : `+91${phone.trim()}`;
-  const snapshot = await rnfb().verifyPhoneNumber(digits);
-  if (!snapshot.verificationId) {
+  // signInWithPhoneNumber, NOT verifyPhoneNumber: the listener API rides a
+  // NativeEventEmitter that took the app down on iOS release builds the
+  // moment Send code was tapped (owner-reported on build 6; Android was
+  // fine). This native method is a plain promise — no emitter — and we use
+  // only its verificationId: the CODE is confirmed through the JS SDK via
+  // attach(), so there is still exactly one auth state.
+  const confirmation = await rnfb().signInWithPhoneNumber(digits);
+  const verificationId = (confirmation as { verificationId?: string }).verificationId;
+  if (!verificationId) {
     throw new Error('Could not start phone verification — try again.');
   }
-  return snapshot.verificationId;
+  return verificationId;
 }
 
 export async function confirmPhoneCode(verificationId: string,
