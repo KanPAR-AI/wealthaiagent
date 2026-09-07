@@ -3,7 +3,7 @@
     "name": "KneeFit",
     "slug": "knee",
     "version": "1.0.0",
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": "1.1.0",
     "orientation": "portrait",
     "scheme": "kneefit",
     "userInterfaceStyle": "light",
@@ -22,7 +22,7 @@
           }
         ]
       },
-      "buildNumber": "8",
+      "buildNumber": "9",
       "appleTeamId": "Q2ZX496SN9",
       "googleServicesFile": "./GoogleService-Info.plist"
     },
@@ -56,6 +56,12 @@
       ],
       "expo-video",
       "expo-status-bar",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "KneeFit needs access to your photos so you can attach an X-ray for the coach to read."
+        }
+      ],
       [
         "@react-native-google-signin/google-signin",
         {

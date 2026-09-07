@@ -59,11 +59,12 @@ export interface Capabilities {
   /**
    * X-ray upload from the chat composer.
    *
-   * FALSE for the same reason astro's composer ships without an attach
-   * button: this app has no native multipart upload path (the one that
-   * exists lives in apps/mobile and has not been extracted). The knee
-   * agent's KL-grading works today through apps/mobile and the web app; the
-   * composer here ships with no attach affordance rather than a dead one.
+   * TRUE since the shared upload path (`uploadFileNative`) is wired in
+   * chat-host.ts — the composer shows the attach button and a user can send an
+   * X-ray for the knee agent's KL-grading. It pulls in expo-image-picker (a
+   * native module) + the photo-library permission in app.json, so it reaches
+   * users only on a NATIVE BUILD (runtimeVersion bumped to 1.1.0 in the same
+   * change), never an OTA to an older binary.
    */
   xrayUpload: boolean;
 
@@ -89,6 +90,6 @@ export const CAPABILITIES: Capabilities = {
   progress: true,
   accountSettings: true,
   voiceCoach: true,
-  xrayUpload: false,
+  xrayUpload: true,
   phaseFinder: true,
 };
