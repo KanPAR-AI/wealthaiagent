@@ -122,6 +122,11 @@ const STRINGS: Record<string, { en: string; hi: string }> = {
   // profile
   'profile.language': { en: 'Language · भाषा', hi: 'भाषा · Language' },
   'profile.credits': { en: 'Credits', hi: 'क्रेडिट' },
+  'profile.reportBug': { en: 'Report a bug', hi: 'बग रिपोर्ट करें' },
+  'profile.bugPlaceholder': { en: 'What went wrong? The more detail, the faster we can fix it.', hi: 'क्या गड़बड़ हुई? जितना ज़्यादा विवरण, उतनी जल्दी ठीक होगा।' },
+  'profile.bugSend': { en: 'Send report', hi: 'रिपोर्ट भेजें' },
+  'profile.bugSent': { en: 'Thanks — your report reached the team. 🙏', hi: 'धन्यवाद — आपकी रिपोर्ट टीम तक पहुँच गई। 🙏' },
+  'profile.bugFailed': { en: 'Couldn’t send just now — please try again.', hi: 'अभी नहीं भेज सके — कृपया फिर से कोशिश करें।' },
   'profile.requestCredits': { en: 'Request more credits', hi: 'और क्रेडिट माँगें' },
   'profile.creditsRequested': { en: 'Request sent — the team will top you up.', hi: 'अनुरोध भेज दिया गया — जल्द क्रेडिट मिलेंगे।' },
 };

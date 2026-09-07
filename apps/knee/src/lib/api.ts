@@ -75,3 +75,21 @@ export function fetchBalance(): Promise<{ balance: number; unlimited: boolean }>
 export function requestCredits(note: string): Promise<unknown> {
   return post(`/credits/request`, { amount: 200000, note });
 }
+
+/** File a bug report — text only (multipart Form the /bug-reports endpoint
+ *  expects; the screenshot part is optional and omitted here). The context
+ *  marks it as KneeFit so /admin/bugs triage can tell the apps apart. */
+export async function reportBug(description: string, where: string): Promise<void> {
+  const token = await getToken();
+  const form = new FormData();
+  form.append('description', description);
+  form.append('context', JSON.stringify({
+    user_agent: 'KneeFit (Expo)', url: `app://knee/${where}`,
+  }));
+  const res = await expoFetch(apiUrl('/bug-reports'), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form as unknown as BodyInit,
+  });
+  if (!res.ok) throw new Error(`Couldn’t send the report (HTTP ${res.status}).`);
+}

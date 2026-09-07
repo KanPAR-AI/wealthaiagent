@@ -22,7 +22,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-import { fetchBalance, requestCredits } from '@/lib/api';
+import { fetchBalance, reportBug, requestCredits } from '@/lib/api';
 import { getLang, setLang, subscribeLang, t as tr, type Lang } from '@/lib/i18n';
 import {
   confirmPhoneCode,
@@ -59,6 +59,8 @@ export default function Settings() {
   const [password, setPassword] = useState('');
   const [countryCode, setCountryCode] = useState('+91');
   const [phone, setPhone] = useState('');
+  const [bugText, setBugText] = useState('');
+  const [bugStatus, setBugStatus] = useState<'idle' | 'sent' | 'failed'>('idle');
   const [otp, setOtp] = useState('');
   const [verificationId, setVerificationId] = useState('');
   const [busy, setBusy] = useState(false);
@@ -325,6 +327,42 @@ export default function Settings() {
               </Pressable>
             )
           ) : null}
+        </View>
+
+        {/* ── report a bug ── */}
+        <View style={s.card}>
+          <Text style={s.cardLabel}>{tr('profile.reportBug', lang)}</Text>
+          {bugStatus === 'sent' ? (
+            <Text style={s.idSub}>{tr('profile.bugSent', lang)}</Text>
+          ) : (
+            <>
+              <TextInput
+                style={[s.input, { minHeight: 88, paddingTop: t.space(3) }]}
+                placeholder={tr('profile.bugPlaceholder', lang)}
+                placeholderTextColor={t.palette.ink.muted}
+                multiline
+                textAlignVertical="top"
+                value={bugText}
+                onChangeText={setBugText}
+              />
+              {bugStatus === 'failed' ? (
+                <Text style={[s.idSub, { color: t.palette.danger }]}>{tr('profile.bugFailed', lang)}</Text>
+              ) : null}
+              <Pressable
+                style={[s.secondary, bugText.trim().length < 3 && { opacity: 0.5 }]}
+                accessibilityRole="button"
+                disabled={bugText.trim().length < 3}
+                onPress={() => {
+                  setBugStatus('idle');
+                  void reportBug(bugText.trim(), 'settings')
+                    .then(() => { setBugStatus('sent'); setBugText(''); })
+                    .catch(() => setBugStatus('failed'));
+                }}
+              >
+                <Text style={s.secondaryText}>{tr('profile.bugSend', lang)}</Text>
+              </Pressable>
+            </>
+          )}
         </View>
 
         <Text style={s.about}>
