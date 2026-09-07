@@ -20,7 +20,7 @@ import {
 import { getPlatform, useChatStore } from '@wealthai/core';
 
 import { fetchBalance } from '@/lib/api';
-import { forgetChat, lastChatId, rememberChat } from '@/lib/chat-session';
+import { forgetChat, lastChatId, rememberChat, takePendingCoachPrompt } from '@/lib/chat-session';
 import { kneeChatTheme } from '@/lib/chat-theme';
 import { tokens } from '@/theme';
 
@@ -99,6 +99,15 @@ export default function Chat() {
       if (typeof text === 'string' && text.trim()) void send(text, []);
     });
   }, [send]);
+
+  // A screen handed the coach a context question ("ask the coach" from a
+  // session or a phase). Send it once, on focus, through the same one send
+  // path — so the coach opens already asking, with the screen's context. Read
+  // clears it, so returning to the tab later never re-sends.
+  useFocusEffect(useCallback(() => {
+    const pending = takePendingCoachPrompt();
+    if (pending) void send(pending, []);
+  }, [send]));
 
   useEffect(() => {
     return getPlatform().events.on(CHAT_RETRY_EVENT, () => {

@@ -17,3 +17,20 @@ export function lastChatId(): Promise<string | null> {
 export function forgetChat(): void {
   void getPlatform().storage.removeItem(LAST_CHAT_KEY);
 }
+
+// A message a screen hands the coach when the user taps "ask the coach" from
+// context (a session, a phase). In-memory and one-shot: the coach reads it on
+// focus and sends it once, so tapping arrives in the chat already asking the
+// right question with the screen's context attached. Cleared on read so it
+// never re-fires on a later visit.
+let pendingCoachPrompt: string | null = null;
+
+export function setPendingCoachPrompt(text: string): void {
+  pendingCoachPrompt = text.trim() || null;
+}
+
+export function takePendingCoachPrompt(): string | null {
+  const p = pendingCoachPrompt;
+  pendingCoachPrompt = null;
+  return p;
+}

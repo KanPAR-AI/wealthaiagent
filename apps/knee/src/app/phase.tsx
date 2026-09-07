@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getPlatform } from '@wealthai/core';
 
 import { fetchProgramPhases } from '@/lib/api';
+import { setPendingCoachPrompt } from '@/lib/chat-session';
 import { getLang, subscribeLang, t } from '@/lib/i18n';
 import {
   evaluateFinder,
@@ -260,6 +261,18 @@ export default function Phase() {
                 <Text style={s.videoTxt}>{t('phase.watchBrief', lang)}</Text>
               </Pressable>
             ) : null}
+
+            <Pressable
+              onPress={() => {
+                setPendingCoachPrompt(
+                  `I'm looking at Phase ${detail.phase} (${detail.name}) of the knee `
+                  + 'program. Can you explain what it means for me and what to focus on?');
+                router.push('/chat' as never);
+              }}
+              accessibilityRole="button" style={s.askCoach}
+            >
+              <Text style={s.askCoachTxt}>{t('phase.askCoach', lang)}  ›</Text>
+            </Pressable>
           </View>
         ) : null}
 
@@ -408,4 +421,6 @@ const s = StyleSheet.create({
               alignItems: 'center', justifyContent: 'center' },
   playTri: { fontSize: 16 },
   videoTxt: { ...tk.type.scale.label, color: '#FFFFFF' },
+  askCoach: { alignSelf: 'flex-start', marginTop: tk.space(4), paddingVertical: tk.space(1) },
+  askCoachTxt: { ...tk.type.scale.sub, color: tk.palette.accent.interactive, fontWeight: '700' },
 });

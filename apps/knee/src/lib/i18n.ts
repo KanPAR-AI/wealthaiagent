@@ -76,6 +76,7 @@ const STRINGS: Record<string, { en: string; hi: string }> = {
   'phase.close': { en: 'Close', hi: 'बंद करें' },
   'phase.seeResult': { en: 'See my phase', hi: 'मेरा फ़ेज़ देखें' },
   'phase.startOver': { en: 'Start over', hi: 'फिर से' },
+  'phase.askCoach': { en: 'Ask the coach about this phase', hi: 'इस फ़ेज़ के बारे में कोच से पूछें' },
   'library.noFootage': { en: 'no footage yet', hi: 'वीडियो उपलब्ध नहीं' },
   'library.at': { en: 'at', hi: 'समय' },
   // today

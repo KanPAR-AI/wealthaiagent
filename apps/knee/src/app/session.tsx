@@ -16,6 +16,7 @@ import Svg, { Path } from 'react-native-svg';
 import { VideoView, useVideoPlayer } from 'expo-video';
 
 import { fetchPhase, recordSession } from '@/lib/api';
+import { setPendingCoachPrompt } from '@/lib/chat-session';
 import { getLang, speechLocale, t, type Lang } from '@/lib/i18n';
 import {
   announcement,
@@ -403,7 +404,16 @@ export default function Session() {
             </Pressable>
           ) : null}
           <Pressable
-            onPress={() => { clearTimers(); Speech.stop(); router.push('/chat' as never); }}
+            onPress={() => {
+              clearTimers();
+              Speech.stop();
+              // Carry the context into the coach: which exercise, which phase.
+              const ex = exercise?.name;
+              setPendingCoachPrompt(
+                `I'm doing ${ex ? `"${ex}"` : 'my session'} in Phase ${phase} and my `
+                + 'knee is hurting during it. Is that normal, and what should I adjust?');
+              router.push('/chat' as never);
+            }}
             accessibilityRole="button" style={s.hurts}>
             <Text style={s.hurtsText}>{t('session.hurts', lang)}</Text>
           </Pressable>
