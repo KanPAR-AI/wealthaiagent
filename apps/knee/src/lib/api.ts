@@ -8,6 +8,7 @@ import { fetch as expoFetch } from 'expo/fetch';
 import { getToken } from './auth';
 import { apiUrl } from './core-adapter';
 import type { WirePhaseDetail, WireProgram } from './library-view';
+import type { WirePhasesResponse } from './phase-view';
 
 async function get<T>(endpoint: string): Promise<T> {
   const token = await getToken();
@@ -26,6 +27,11 @@ export function fetchProgram(): Promise<WireProgram> {
 
 export function fetchPhase(phase: string): Promise<WirePhaseDetail> {
   return get<WirePhaseDetail>(`/knee/program/${encodeURIComponent(phase)}`);
+}
+
+/** The phase experience: the four phases' content + the self-assessment. */
+export function fetchProgramPhases(): Promise<WirePhasesResponse> {
+  return get<WirePhasesResponse>('/knee/program/phases');
 }
 
 export interface WireProgress {

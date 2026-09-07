@@ -66,6 +66,20 @@ export interface Capabilities {
    * composer here ships with no attach affordance rather than a dead one.
    */
   xrayUpload: boolean;
+
+  /**
+   * The phase experience — the four-phase journey, the "Find my phase"
+   * self-assessment, and the phase detail (goal, criteria, success plan,
+   * strategy video).
+   *
+   * TRUE: `GET /api/v1/knee/program/phases` is live (chatservice) — it returns
+   * every name, goal, criterion and exit step from Dr. David's STRATEGY /
+   * SUCCESS-PLAN transcripts, the honest count, the strategy video URL, and the
+   * self-assessment definition. The client renders it and applies the finder
+   * rules the engine defined; it derives no phase itself. The capability IS the
+   * read.
+   */
+  phaseFinder: boolean;
 }
 
 export const CAPABILITIES: Capabilities = {
@@ -76,4 +90,5 @@ export const CAPABILITIES: Capabilities = {
   accountSettings: true,
   voiceCoach: true,
   xrayUpload: false,
+  phaseFinder: true,
 };

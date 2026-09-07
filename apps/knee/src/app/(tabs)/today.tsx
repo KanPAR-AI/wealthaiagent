@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getPlatform } from '@wealthai/core';
 
 import { fetchPhase, fetchProgress } from '@/lib/api';
+import { CAPABILITIES } from '@/lib/capabilities';
 import { getLang, subscribeLang, t } from '@/lib/i18n';
 import type { WirePhaseDetail } from '@/lib/library-view';
 import { buildCustomPlan, buildPlan, localDate, nearDuplicateWarnings, type RecipeId } from '@/lib/session-view';
@@ -139,6 +140,13 @@ export default function Today() {
           })}
         </View>
 
+        {CAPABILITIES.phaseFinder ? (
+          <Pressable onPress={() => router.push('/phase' as never)}
+                     accessibilityRole="button" style={s.phaseLink}>
+            <Text style={s.phaseLinkTxt}>{t('phase.title', lang)}  ›</Text>
+          </Pressable>
+        ) : null}
+
         {todayDone ? (
           <View style={s.doneCard}>
             <Text style={s.doneText}>{t('today.done', lang)}</Text>
@@ -226,6 +234,8 @@ const s = StyleSheet.create({
   },
   doneText: { ...tk.type.scale.body, color: tk.palette.ink.secondary, fontWeight: '700' },
   error: { ...tk.type.scale.sub, color: tk.palette.danger },
+  phaseLink: { alignSelf: 'flex-start', paddingVertical: tk.space(1) },
+  phaseLinkTxt: { ...tk.type.scale.sub, color: tk.palette.accent.interactive, fontWeight: '700' },
   // caution, not alarm: a warm ochre banner (red is reserved for pain, green
   // for done) that advises without blocking the pick.
   dupWarn: {
