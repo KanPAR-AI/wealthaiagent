@@ -7,6 +7,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { ensureChatHostInstalled } from '@/lib/chat-host';
 import { initLang } from '@/lib/i18n';
+import { track } from '@/lib/telemetry';
 import { ensureCoreInitialized } from '@/lib/core-adapter';
 import { tokens } from '@/theme';
 
@@ -46,6 +47,7 @@ function useApplyUpdatesPromptly() {
 
 export default function RootLayout() {
   useApplyUpdatesPromptly();
+  useEffect(() => { track('app_open'); }, []);   // very basic engagement telemetry
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       {/* statusBarTranslucent/navigationBarTranslucent: required for the

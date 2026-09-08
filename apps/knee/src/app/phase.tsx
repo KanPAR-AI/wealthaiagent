@@ -14,6 +14,7 @@ import { getPlatform } from '@wealthai/core';
 import { fetchProgramPhases } from '@/lib/api';
 import { setPendingCoachPrompt } from '@/lib/chat-session';
 import { getLang, subscribeLang, t } from '@/lib/i18n';
+import { track } from '@/lib/telemetry';
 import {
   evaluateFinder,
   nextPhase,
@@ -40,6 +41,8 @@ export default function Phase() {
   const [answers, setAnswers] = useState<FinderAnswers>({});
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => { track('phase_open'); }, []);
 
   useEffect(() => {
     let alive = true;
@@ -73,6 +76,7 @@ export default function Phase() {
     setAnswers((prev) => ({ ...prev, [id]: v }));
 
   const setMyPhase = (ph: string) => {
+    track('find_phase_result', { phase: ph });
     void getPlatform().storage.setItem(PHASE_KEY, ph);
     setCurrent(ph);
     setViewing(ph);

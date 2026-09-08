@@ -22,6 +22,7 @@ import { getPlatform, useChatStore } from '@wealthai/core';
 import { fetchBalance } from '@/lib/api';
 import { forgetChat, lastChatId, rememberChat, takePendingCoachPrompt } from '@/lib/chat-session';
 import { kneeChatTheme } from '@/lib/chat-theme';
+import { track } from '@/lib/telemetry';
 import { tokens } from '@/theme';
 
 /** Stand-ins only when a settled reply carried no follow-ups of its own —
@@ -105,6 +106,7 @@ export default function Chat() {
   // path — so the coach opens already asking, with the screen's context. Read
   // clears it, so returning to the tab later never re-sends.
   useFocusEffect(useCallback(() => {
+    track('coach_open');
     const pending = takePendingCoachPrompt();
     if (pending) void send(pending, []);
   }, [send]));

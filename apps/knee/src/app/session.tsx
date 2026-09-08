@@ -18,6 +18,7 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import { fetchPhase, recordSession } from '@/lib/api';
 import { setPendingCoachPrompt } from '@/lib/chat-session';
 import { getLang, speechLocale, t, type Lang } from '@/lib/i18n';
+import { track } from '@/lib/telemetry';
 import {
   announcement,
   buildCustomPlan,
@@ -44,6 +45,8 @@ export default function Session() {
   const recipe = (params.recipe ?? 'full') as RecipeId;
   const customNames = (params.names ?? '').split('|').filter(Boolean);
   const lang = getLang();
+
+  useEffect(() => { track('session_start', { phase, recipe }); }, [phase, recipe]);
 
   const [plan, setPlan] = useState<SessionPlan | null>(null);
   const [index, setIndex] = useState(0);
