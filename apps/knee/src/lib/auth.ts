@@ -109,7 +109,17 @@ export async function signInWithGoogle(): Promise<Account> {
     webClientId: FIREBASE_WEB_CLIENT_ID,
     iosClientId: GOOGLE_IOS_CLIENT_ID ?? undefined,
   });
-  await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+  // Play Services must be present AND current — a device/emulator without the
+  // Google Play image cannot do native Google sign-in at all, and that failure
+  // is distinct from a config problem.
+  try {
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+  } catch (e: any) {
+    throw new Error(
+      'Google Play Services isn’t available on this device, so Google sign-in '
+      + `can’t run here. Use email sign-in. [${String(e?.code ?? 'PLAY_SERVICES')}]`,
+    );
+  }
   // Clear any half-open Play-Services session — a prior attempt that died
   // mid-flight makes the next signIn() skip the account sheet (astro,
   // measured on the first Android sideload).
@@ -119,14 +129,24 @@ export async function signInWithGoogle(): Promise<Account> {
     result = await GoogleSignin.signIn();
   } catch (e: any) {
     const code = String(e?.code ?? '');
-    if (code === 'DEVELOPER_ERROR' || /DEVELOPER_ERROR/.test(String(e?.message ?? ''))) {
+    const msg = String(e?.message ?? '');
+    if (code === 'cancelled' || code === 'SIGN_IN_CANCELLED') {
+      const cancel: any = new Error('Sign-in cancelled');
+      cancel.code = 'cancelled';
+      throw cancel;
+    }
+    // Surface the REAL failure rather than guessing. DEVELOPER_ERROR is almost
+    // always a SHA-1 the live Firebase console hasn't registered for this app's
+    // signing cert (our checked-in google-services.json can be ahead of the
+    // console) — say that, and carry the code so it's diagnosable on-device.
+    if (code === 'DEVELOPER_ERROR' || /DEVELOPER_ERROR/.test(msg)) {
       throw new Error(
-        'Google sign-in is not available for this build yet — its signing ' +
-        'certificate is still propagating on Google’s side. Try again in a ' +
-        'few minutes, or use email sign-in.',
+        'Google rejected this app’s configuration (DEVELOPER_ERROR) — its '
+        + 'signing certificate SHA-1 isn’t registered in the Firebase console '
+        + 'for this app yet. Use email sign-in meanwhile.',
       );
     }
-    throw e;
+    throw new Error(`Google sign-in failed [${code || 'unknown'}]: ${msg}`);
   }
   if (result.type === 'cancelled') {
     const cancel: any = new Error('Sign-in cancelled');
