@@ -17,15 +17,19 @@ name **Astral AI**.
 
 ## ⚠️ Before you run anything
 
-The local backend is configured as a **real production user** against the
-**production Firestore project**:
+The local backend talks to the **production Firestore project**. Since
+2026-08-25 the container identity is a throwaway uid
+(`SKIP_AUTH_USER_ID=local-dev-throwaway-uid`) — but that is a configuration,
+not a law, and `docker compose restart` does **not** re-read `.env`. Verify it
+every session before any write-capable run:
 
 ```bash
 docker exec yourfinadvisor_api env | grep -E "SKIP_AUTH_USER_ID|GOOGLE_CLOUD_PROJECT"
 ```
 
-`GET` is safe. **Typing into a form is a production write** — that is how the
-owner's real birth record was overwritten on 2026-08-25 (docs/51 §3 and §9).
+`GET` is safe. **Typing into a form is still a write to production Firestore**
+(under whatever uid is set) — a real-user uid here is how the owner's birth
+record was overwritten on 2026-08-25 (docs/51 §3 and §9).
 
 `.env.local` (gitignored) points the app at a backend; with no `.env.local` it
 talks to **production**. `EXPO_PUBLIC_*` is inlined at bundle time, so restart
@@ -46,6 +50,12 @@ src/app/            expo-router routes
     settings.tsx        screen 12 — "Profile" on the bar; rows from the map
   birth-details.tsx   screen 2 · profile.tsx · matches.tsx · preferences.tsx
                       privacy.tsx · help.tsx · about.tsx   (push OVER the bar)
+  chart.tsx           screen 5 — Your Birth Chart (chart/grahas/dasha tabs;
+                      capability `chart`)                         (PH-27)
+  match.tsx           screen 6 — native scorecard from one stored read (PH-27)
+  palm.tsx            palm capture → reading; Home tile — capability `palm`
+                      currently FALSE, so tile + route are removed  (AMB-26a)
+  muhurta.tsx         muhurta windows; Home tile                   (AMB-26a)
 src/lib/            the decisions — pure modules, tested at the workspace ROOT
 src/components/     drawn glyphs, sky/scene SVG, tab icons
 src/theme/          the ONLY place a colour, size or type step is declared
@@ -93,3 +103,9 @@ cd apps/astro && npx expo lint && npx expo export --platform ios --output-dir /t
 Run revision changed, then OTA (`eas update --channel production`) for JS, or a
 TestFlight build for anything native — bumping `CURRENT_PROJECT_VERSION` **and**
 `app.json`'s `ios.buildNumber`, because `ios/` is gitignored.
+
+Android exists since 2026-08-28: `eas.json` has one `production` profile
+(EAS Build, APK, internal distribution, `node: 24.10.0`) — unlike iOS, the
+Android binary is EAS-built, so EAS injects the OTA channel/runtime headers
+itself. And after ANY push, confirm the frontend Cloud Build **STATUS** —
+five builds failed silently 2026-08-28→09-03 (docs/51 §9, ASTRAL-119).

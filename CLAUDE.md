@@ -162,6 +162,10 @@ npx jest apps/astro packages/astral
 cd apps/astro && npx expo lint && npx expo export --platform ios --output-dir /tmp/x
 ```
 
+astro also targets **Android** since 2026-08-28: `apps/astro/eas.json` has a
+single `production` profile (EAS Build, APK, internal distribution). iOS
+binaries stay locally built; the Android binary is EAS-built.
+
 ## Auth
 
 Firebase Auth with anonymous → signed-in → admin tiers.

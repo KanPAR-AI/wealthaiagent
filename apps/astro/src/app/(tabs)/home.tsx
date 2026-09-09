@@ -21,10 +21,10 @@
 // — so `capabilities.notifications` is false and the affordance is ABSENT
 // rather than drawn-and-inert (ASTRAL-119's negative space).
 //
-// The four tiles come from the same capability map as the tab bar, and each
-// one lands on a screen this build has: Birth Chart on Profile (screen 5 is
-// ASTRAL-120 and is not built in this slice), Compatibility on Matches, AI
-// Reading on chat, This Month on Timeline.
+// The tiles come from the same capability map as the tab bar, and each one
+// lands on a screen this build has: Birth Chart on /chart (screen 5, PH-27),
+// Compatibility on Matches, AI Reading on chat, This Month on Timeline,
+// Muhurta on /muhurta; the Palm tile is removed while `palm` is false.
 
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
