@@ -57,10 +57,33 @@ export interface WireAbout {
   dub_langs: string[];
 }
 
+/** One stamped non-exercise row (SEG-5, docs/59): the walker/cane/biking
+ *  rows that left the exercise set but stay in the Library under their own
+ *  category heading. Same playback contract as an exercise row. */
+export interface WireSectionItem {
+  name: string;
+  category: string;
+  start_seconds: number | null;
+  end_seconds: number | null;
+  video_file: string | null;
+  url: string | null;
+  clip_url?: string | null;
+  dub_langs: string[];
+}
+
+export interface WireSection {
+  category: string;
+  items: WireSectionItem[];
+}
+
 export interface WirePhaseDetail extends WirePhase {
   exercises: WireExercise[];
   /** strategy / plan videos — ON TOP, never counted (owner ruling) */
   about?: WireAbout[];
+  /** stamped non-exercise categories, AFTER the exercise list; absent or
+   *  empty on a server that has nothing stamped — the screen renders
+   *  sections only when they arrive (capability honesty). */
+  sections?: WireSection[];
 }
 
 /** 71 → "1:11"; 554.97 → "9:14". Presentation only. */
@@ -116,6 +139,33 @@ export function exerciseRows(detail: WirePhaseDetail): ExerciseRow[] {
 /** The count the screen states is the server's, verbatim. */
 export function statedCount(detail: WirePhaseDetail): number {
   return detail.count;
+}
+
+export interface SectionRows {
+  category: string;
+  rows: ExerciseRow[];
+}
+
+/** Section wire rows → render rows, mirroring exerciseRows: SERVER ORDER for
+ *  sections and for the items inside them, no recount, no dead affordances.
+ *  A section with no items is dropped — an empty heading is a claim the
+ *  server never made. */
+export function sectionsRows(detail: WirePhaseDetail): SectionRows[] {
+  return (detail.sections ?? [])
+    .filter((s) => s.items.length > 0)
+    .map((s) => ({
+      category: s.category,
+      rows: s.items.map((it, i) => ({
+        key: `${detail.phase}:${s.category}:${i}:${it.name}`,
+        name: it.name,
+        clock: formatClock(it.start_seconds),
+        hasHindi: it.dub_langs.includes('hi'),
+        playable: Boolean(it.url),
+        url: it.url,
+        startSeconds: it.start_seconds,
+        endSeconds: it.end_seconds,
+      })),
+    }));
 }
 
 /**

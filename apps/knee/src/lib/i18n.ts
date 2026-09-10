@@ -79,6 +79,14 @@ const STRINGS: Record<string, { en: string; hi: string }> = {
   'phase.askCoach': { en: 'Ask the coach about this phase', hi: 'इस फ़ेज़ के बारे में कोच से पूछें' },
   'library.noFootage': { en: 'no footage yet', hi: 'वीडियो उपलब्ध नहीं' },
   'library.at': { en: 'at', hi: 'समय' },
+  // section headings — the stamped non-exercise categories (SEG-5, docs/59).
+  // One key per category the promoted vocabulary can send; an unknown future
+  // category falls back to its own name in the screen, never a raw key.
+  'library.section.activity': { en: 'Activities to keep up', hi: 'जारी रखने वाली गतिविधियाँ' },
+  'library.section.equipment': { en: 'Walking aids & equipment', hi: 'सहायक उपकरण' },
+  'library.section.instruction': { en: 'Technique notes', hi: 'तकनीक के निर्देश' },
+  'library.section.program': { en: 'Program guides', hi: 'प्रोग्राम गाइड' },
+  'library.section.other': { en: 'Also in this phase', hi: 'इस फ़ेज़ में और भी' },
   // today
   'today.title': { en: 'Pick today’s session', hi: 'आज का सत्र चुनें' },
   'today.full': { en: 'The full session', hi: 'पूरा सत्र' },

@@ -22,6 +22,7 @@ import { fetchPhase, fetchProgram } from '@/lib/api';
 import {
   exerciseRows,
   phaseSubtitle,
+  sectionsRows,
   type ExerciseRow,
   type WirePhaseDetail,
   type WireProgram,
@@ -63,6 +64,10 @@ export default function Library() {
 
   const current = program?.phases.find((p) => p.phase === phase) ?? null;
   const rows = detail && detail.phase === phase ? exerciseRows(detail) : [];
+  // The stamped non-exercise categories (SEG-5) — rendered ONLY when the
+  // wire carries them, so a backend without sections shows no empty
+  // headings (capability honesty, the astro D3 pattern).
+  const sections = detail && detail.phase === phase ? sectionsRows(detail) : [];
   const accent = phaseColor(phase);
 
   return (
@@ -153,6 +158,31 @@ export default function Library() {
             <ExerciseLine key={row.key} row={row} last={i === rows.length - 1} accent={accent} />
           ))}
         </View>
+
+        {/* Stamped non-exercise categories, AFTER the exercise list — the
+            walker/cane/biking rows SEG-5 moved out of the exercise set.
+            Each opens the same player route as an exercise row. */}
+        {sections.map((sec) => {
+          const key = `library.section.${sec.category}`;
+          const label = tr(key, lang);
+          return (
+            <View key={`sec:${sec.category}`} style={s.sectionBlock}>
+              <Text style={s.sectionHeading}>
+                {label === key ? sec.category : label}
+              </Text>
+              <View style={s.card}>
+                {sec.rows.map((row, i) => (
+                  <ExerciseLine
+                    key={row.key}
+                    row={row}
+                    last={i === sec.rows.length - 1}
+                    accent={accent}
+                  />
+                ))}
+              </View>
+            </View>
+          );
+        })}
       </ScrollView>
     </SafeAreaView>
   );
@@ -271,6 +301,12 @@ const s = StyleSheet.create({
     minHeight: 56,
   },
   rowLine: { borderBottomWidth: 1, borderBottomColor: '#F0EDE5' },
+  sectionBlock: { gap: t.space(2) },
+  sectionHeading: {
+    ...t.type.scale.label,
+    color: t.palette.ink.secondary,
+    marginTop: t.space(1),
+  },
   thumb: {
     width: t.size.thumb,
     height: 52,

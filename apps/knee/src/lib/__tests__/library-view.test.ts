@@ -12,6 +12,7 @@ import {
   exerciseRows,
   formatClock,
   phaseSubtitle,
+  sectionsRows,
   statedCount,
   type WirePhaseDetail,
   type WireProgram,
@@ -96,5 +97,55 @@ describe('dubUrl', () => {
         withDub.url!.slice(withDub.url!.indexOf('#')),
       );
     }
+  });
+});
+
+describe('sectionsRows — the stamped non-exercise categories (SEG-5)', () => {
+  // The wire shape is pinned server-side (test_knee_program_api.py); these
+  // sections mirror the live knee_timed phase-1 read (walker/cane are
+  // equipment now, not exercises) on top of the captured fixture.
+  const withSections: WirePhaseDetail = {
+    ...phase2,
+    sections: [
+      {
+        category: 'equipment',
+        items: [
+          { name: 'walker', category: 'equipment', start_seconds: 5,
+            end_seconds: 60, video_file: 'A.mp4',
+            url: 'https://x/m/a?t=tok&dub=hi#t=5', dub_langs: ['hi'] },
+          { name: 'cane', category: 'equipment', start_seconds: null,
+            end_seconds: null, video_file: null, url: null, dub_langs: [] },
+        ],
+      },
+      { category: 'activity', items: [] },
+    ],
+  };
+
+  it('mirrors exerciseRows: server order, clocks, playability, Hindi', () => {
+    const sections = sectionsRows(withSections);
+    expect(sections).toHaveLength(1); // the empty category never renders
+    const [eq] = sections;
+    expect(eq.category).toBe('equipment');
+    expect(eq.rows.map((r) => r.name)).toEqual(['walker', 'cane']);
+    expect(eq.rows[0].clock).toBe('0:05');
+    expect(eq.rows[0].hasHindi).toBe(true);
+    expect(eq.rows[0].playable).toBe(true);
+    // no URL => no dead affordance, same rule as the exercise list
+    expect(eq.rows[1].playable).toBe(false);
+    expect(eq.rows[1].clock).toBeNull();
+  });
+
+  it('rows carry the player params the exercise route uses', () => {
+    const [eq] = sectionsRows(withSections);
+    expect(eq.rows[0].url).toBe('https://x/m/a?t=tok&dub=hi#t=5');
+    expect(eq.rows[0].startSeconds).toBe(5);
+    expect(eq.rows[0].endSeconds).toBe(60);
+    // keys are unique across sections and phases
+    expect(eq.rows[0].key).toBe(`${phase2.phase}:equipment:0:walker`);
+  });
+
+  it('a wire without sections renders none — no empty headings', () => {
+    expect(sectionsRows(phase2)).toEqual([]); // captured fixture: pre-SEG-5
+    expect(sectionsRows({ ...phase2, sections: [] })).toEqual([]);
   });
 });
