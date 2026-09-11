@@ -21,9 +21,10 @@
 // ── exactly one way out ──────────────────────────────────────────────────
 //
 // One affordance opens a conversation, and it carries a NAME (ASTRAL-146).
-// It adopts the running chat, which is what ships today; AMB-53's ruling
-// (one session per saved match) is gated on ASTRAL-260's hydration eval and
-// is NOT implemented here.
+// It opens a FRESH chat — the owner ruled it directly on 2026-09-11 ("when
+// ask about my match always start a new chat"), which is AMB-53's one-
+// session-per-match made real: chatservice `dea07ce`'s stored-match
+// rehydration is the hydration that ruling was gated on.
 
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -45,7 +46,6 @@ import { rnPrimitives } from '@wealthai/astral-native';
 import { ChevronLeft } from '@/components/glyphs';
 import { track } from '@/lib/analytics';
 import { astroChartTheme } from '@/lib/chart-theme';
-import { lastChatId } from '@/lib/chat-session';
 import {
   ASK_AI_LABEL,
   askTurn,
@@ -90,12 +90,21 @@ export default function Match() {
   const card = detail ? report(detail) : null;
   const refused = detail ? refusal(detail) : null;
 
-  /** The ONE affordance on this screen that opens a conversation. */
-  const askAi = useCallback(async () => {
+  /** The ONE affordance on this screen that opens a conversation.
+   *
+   *  ALWAYS a fresh chat (owner ruling 2026-09-11) — no `chatId`, so the
+   *  running reading is never joined. Servable since chatservice
+   *  `dea07ce`: the fresh chat answers from the STORED scorecard rather
+   *  than re-asking for birth details. `handoffKey` lets a second match
+   *  ask go through in the same app launch. */
+  const askAi = useCallback(() => {
     if (!detail) return;
     track('match_ask_ai', { from: 'scorecard' });
-    const chatId = (await lastChatId()) ?? '';
-    router.push({ pathname: '/chat', params: { chatId, pending: askTurn(detail) } });
+    router.push({
+      pathname: '/chat',
+      params: { pending: askTurn(detail), fresh: '1',
+                handoffKey: String(Date.now()) },
+    });
   }, [detail]);
 
   return (

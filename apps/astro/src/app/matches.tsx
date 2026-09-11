@@ -44,7 +44,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChevronLeft, SymbolIcon } from '@/components/glyphs';
 import { track } from '@/lib/analytics';
-import { lastChatId } from '@/lib/chat-session';
 import {
   EMPTY_BODY,
   EMPTY_TITLE,
@@ -100,18 +99,21 @@ export default function Matches() {
    * restates birth facts is a second write path wearing a prompt's clothes,
    * and the restated copy is the one that goes stale.
    *
-   * It continues the conversation this device is already in rather than
-   * opening a fresh one, because a fresh chat knows nothing about the pair —
-   * the engine has no read-back path from the People store into a turn's
-   * belief yet, so a new session would answer by asking for birth details
-   * again. Reported as a gap rather than papered over with a re-ask.
+   * It opens a FRESH conversation (owner ruling 2026-09-11) — the join-
+   * the-running-chat behaviour that used to live here was a workaround for
+   * a gap the engine has since closed (details on the call below).
    */
-  const askAbout = useCallback(async (row: MatchRowView) => {
+  const askAbout = useCallback((row: MatchRowView) => {
     track('match_ask_ai');
-    const chatId = (await lastChatId()) ?? '';
+    // ALWAYS a fresh chat (owner ruling 2026-09-11). The old join-the-last-
+    // chat behaviour was a workaround for the engine having no read-back
+    // path from the People store — closed by chatservice `dea07ce`'s
+    // stored-match rehydration, so a fresh chat now answers from the
+    // stored scorecard instead of re-asking for birth details.
     router.push({
       pathname: '/chat',
-      params: { chatId, pending: askAboutTurn(row.name) },
+      params: { pending: askAboutTurn(row.name), fresh: '1',
+                handoffKey: String(Date.now()) },
     });
   }, []);
 

@@ -52,6 +52,7 @@ import { getPlatform, useChatStore } from '@wealthai/core';
 import { ArrowUp, ChevronLeft, DotGrid, StopSquare } from '@/components/glyphs';
 import { CornerWash } from '@/components/sky';
 import { useReportProblem } from '@/lib/bug-report';
+import { handoffAction } from '@/lib/chat-handoff';
 import { forgetChat, lastChatId, rememberChat } from '@/lib/chat-session';
 import { astroChatTheme } from '@/lib/chat-theme';
 import { ASTRO_DATA_LANGUAGES, AstroWidget } from '@/lib/chat-widgets';
@@ -91,7 +92,9 @@ export default function Chat() {
   // than sending it: this screen owns the ONE send path. `chatId` carries the
   // conversation the form already started — without it the answer would land
   // in a NEW chat, where the ask it answers never happened.
-  const handoff = useLocalSearchParams<{ chatId?: string; pending?: string }>();
+  const handoff = useLocalSearchParams<{
+    chatId?: string; pending?: string; fresh?: string; handoffKey?: string;
+  }>();
   const [chatId, setChatId] = useState<string | null>(null);
   const [washWidth, setWashWidth] = useState(0);
 
@@ -216,18 +219,27 @@ export default function Chat() {
       });
   }, [handoff.chatId, handoff.pending]);
 
-  // The handed-off turn, sent exactly once — and only once the chat it
-  // belongs to has been adopted, because the lifecycle reads the chat id
-  // from its argument and would otherwise open a second conversation.
-  const sentHandoff = useRef(false);
+  // The handed-off turn. The decision — join the named chat, start fresh
+  // (owner ruling 2026-09-11: a match ask ALWAYS opens a new conversation,
+  // even on a mounted tab already holding one), wait for adoption, or
+  // ignore a handoff already served — is `lib/chat-handoff.ts`'s, tested
+  // at the root. The per-handoff key replaces the old once-ever ref, which
+  // meant the SECOND "Ask AI" of an app launch silently did nothing.
+  const lastHandoffKey = useRef<string | null>(null);
   useEffect(() => {
-    const pending = handoff.pending;
-    if (!pending || sentHandoff.current) return;
-    const incoming = handoff.chatId?.trim();
-    if (incoming && chatId !== incoming) return;
-    sentHandoff.current = true;
-    void send(pending, []);
-  }, [handoff.pending, handoff.chatId, chatId, send]);
+    const action = handoffAction(
+      { pending: handoff.pending, chatId: handoff.chatId,
+        fresh: handoff.fresh, handoffKey: handoff.handoffKey },
+      chatId, lastHandoffKey.current);
+    if (action.kind === 'reset') {
+      setChatId(null);            // the effect re-runs at null and sends
+      return;
+    }
+    if (action.kind !== 'send') return;
+    lastHandoffKey.current = action.key;
+    void send(handoff.pending as string, []);
+  }, [handoff.pending, handoff.chatId, handoff.fresh, handoff.handoffKey,
+      chatId, send]);
 
   // A widget answer — a chip, a picker, the input widget's typed
   // `input_response` carrier — arrives on the ONE channel the shared surface
