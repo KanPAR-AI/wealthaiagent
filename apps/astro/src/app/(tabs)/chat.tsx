@@ -126,24 +126,54 @@ export default function Chat() {
   // chat, and a menu icon that opens a menu costs the frame nothing — no
   // fourth control, no re-centred wordmark.
   const reportProblem = useReportProblem();
+
+  // Owner ask (2026-09-11): "there should be an option to start new or
+  // fresh" — this app was ONE running reading forever (chat-session.ts
+  // documents the difference from mobile's drawer), and nothing let the
+  // user leave it. Starting fresh forgets the REMEMBERED id and clears the
+  // screen's own; the next send mints a new conversation through the same
+  // lifecycle that made the first one. The old reading is not deleted — it
+  // stays on the server (and in the account's history) — so the confirm
+  // says "stays saved", never "will be lost".
+  const startFresh = useCallback(() => {
+    const begin = () => {
+      if (busy) cancel();
+      forgetChat();
+      setChatId(null);
+    };
+    Alert.alert(
+      'Start a new reading?',
+      'Your current reading stays saved. A fresh conversation begins.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Start new', onPress: begin },
+      ],
+    );
+  }, [busy, cancel]);
+
   const openMenu = useCallback(() => {
     const settings = () => router.push('/settings');
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Cancel', 'Report a problem', 'Settings'], cancelButtonIndex: 0 },
+        {
+          options: ['Cancel', 'Start a new reading', 'Report a problem', 'Settings'],
+          cancelButtonIndex: 0,
+        },
         (i) => {
-          if (i === 1) reportProblem();
-          if (i === 2) settings();
+          if (i === 1) startFresh();
+          if (i === 2) reportProblem();
+          if (i === 3) settings();
         },
       );
       return;
     }
     Alert.alert('Menu', undefined, [
+      { text: 'Start a new reading', onPress: startFresh },
       { text: 'Report a problem', onPress: reportProblem },
       { text: 'Settings', onPress: settings },
       { text: 'Cancel', style: 'cancel' },
     ]);
-  }, [reportProblem]);
+  }, [reportProblem, startFresh]);
 
   // Asking for the balance triggers the server's one-time welcome grant —
   // without this call a fresh account sits at zero and the first reading is
