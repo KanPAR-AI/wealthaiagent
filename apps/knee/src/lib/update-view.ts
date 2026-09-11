@@ -2,7 +2,7 @@
 // "if there is an ota upgrade and app is opened display a pop up so user can
 // upgrade" — replacing the silent immediate reload, which could yank the app
 // out from under a user mid-workout. The screen renders what this returns and
-// decides nothing.
+// decides nothing. (rev 2 — first popup-visible update.)
 
 export interface UpdatePromptState {
   /** an update is fetched and ready — the popup is showing */
