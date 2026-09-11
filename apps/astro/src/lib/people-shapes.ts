@@ -99,6 +99,18 @@ export interface PersonView {
   /** self only (AMB-30: priorities are self-only in v1) */
   priorities?: unknown;
   chart?: ChartSummary;
+  /** docs/60 SL-2: the durable hands — REFERENCE shapes (file id, how the
+   *  side was decided, when), never the reading body. Optional because a
+   *  backend older than chatservice 5a2b6b8 does not serve the field: a
+   *  missing key means no hands section, not a broken one. */
+  palms?: Record<string, PalmRefView>;
+}
+
+/** One stored hand (`services/people/views.py` — the reference shape). */
+export interface PalmRefView {
+  file_id: string;
+  hand_source: string;
+  read_at: string;
 }
 
 /** A complete scorecard: `n` out of 36. */

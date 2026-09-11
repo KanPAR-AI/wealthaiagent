@@ -75,12 +75,16 @@ import {
   editDisclosure,
   factRows,
   frameLine,
+  handRows,
   shouldRecordOffer,
   timeAskState,
   undeterminedNotes,
   withdrawalNote,
   type FactRow,
 } from '@/lib/profile-view';
+import { Image } from 'expo-image';
+import { apiUrl } from '@/lib/core-adapter';
+import { getToken } from '@/lib/auth';
 import { rememberTimeAskOffered, timeAskAlreadyOffered } from '@/lib/profile-prefs';
 import { routeIsLive } from '@/lib/tabs';
 import { tokens } from '@/theme';
@@ -342,6 +346,14 @@ function Established({
   const state = chartState(person.chart);
   const readable = chartIsReadable(state);
   const lines = readable ? chartLines(person.chart) : [];
+  const hands = handRows(person);
+  // The bearer the file endpoint requires — palm.tsx's own measured
+  // pattern; without it an <Image> renders a broken tile.
+  const [photoToken, setPhotoToken] = useState<string | null>(null);
+  useEffect(() => {
+    if (hands.length === 0) return;
+    void getToken().then(setPhotoToken).catch(() => setPhotoToken(null));
+  }, [hands.length]);
   const frame = readable ? frameLine(person.chart) : null;
   const notes = undeterminedNotes(person.chart);
   const ask = timeAskState(person, askOffered);
@@ -446,6 +458,41 @@ function Established({
           <Text style={s.caption}>{state.sentence}</Text>
         </View>
       </View>
+
+      {/* docs/60 SL-2 (owner ask 2026-09-11) — the durable hands. A READ of
+          what the chat's palm readings filed to the person record; no
+          upload lives here yet (that is the Sanctum build, S1–S6). No
+          stored hands → NO section: an empty gallery implies a photograph
+          the way palm.tsx measured a broken screen. */}
+      {hands.length > 0 ? (
+        <>
+          <Text style={s.section}>My hands</Text>
+          <View style={s.card}>
+            <View style={s.handsRow}>
+              {hands.map((h) => (
+                <View key={h.side} style={s.handCell}>
+                  {photoToken ? (
+                    <Image
+                      source={{
+                        uri: apiUrl(h.imagePath),
+                        headers: { Authorization: `Bearer ${photoToken}` },
+                      }}
+                      style={s.handImage}
+                      contentFit="cover"
+                      accessibilityLabel={`${h.label}, on file`}
+                    />
+                  ) : null}
+                  <Text style={s.rowLabel}>{h.label}</Text>
+                  <Text style={s.caption}>{h.readLine}</Text>
+                  {h.sourceLine ? (
+                    <Text style={s.caption}>{h.sourceLine}</Text>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          </View>
+        </>
+      ) : null}
 
       {/* docs/49 PH-19 (ASTRAL-152/154) — the owner's question, answered in
           the place they would look for it: what matters to YOU, beside the
@@ -553,6 +600,18 @@ const s = StyleSheet.create({
   },
   sentence: { ...t.type.scale.sub, color: t.palette.ink.secondary },
   caption: { ...t.type.scale.caption, color: t.palette.ink.muted },
+  handsRow: {
+    flexDirection: 'row',
+    gap: t.space(3),
+    padding: t.space(4),
+  },
+  handCell: { flex: 1, gap: t.space(1) },
+  handImage: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: t.radius.card - 4,
+    backgroundColor: t.palette.cosmic.deep,
+  },
   cta: {
     backgroundColor: t.palette.accent.interactive,
     borderRadius: t.radius.button,

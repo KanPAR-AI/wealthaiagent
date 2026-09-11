@@ -457,6 +457,50 @@ function joinParts(parts: string[]): string {
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
 }
 
+// ── the durable hands (docs/60 SL-2; owner ask 2026-09-11) ─────────────────
+//
+// RENDER WHAT ARRIVES, hands edition: a person with no stored hands gets NO
+// section (an empty gallery with an implied photograph is the broken-screen
+// shape palm.tsx measured), and a backend that predates the field looks
+// exactly like a person with no hands — which is the honest render of both.
+
+export interface HandRow {
+  side: 'left' | 'right';
+  label: string;
+  /** API path (no /api/v1 prefix) — the screen makes the authed URL. */
+  imagePath: string;
+  /** "Read 11 Sep" — from the ref's own date, never a device clock. */
+  readLine: string;
+  /** How the SIDE was decided, said gently (GR-12a's vocabulary). */
+  sourceLine: string;
+}
+
+const HAND_SOURCE_PHRASES: Record<string, string> = {
+  declared: 'side: you said',
+  thumb_geometry: 'side: read from the photo',
+  thumb_geometry_unverified: 'side: read from the photo',
+  model_guess: 'side: best guess',
+};
+
+export function handRows(person: PersonView | null | undefined): HandRow[] {
+  const palms = person?.palms;
+  if (!palms) return [];
+  const rows: HandRow[] = [];
+  for (const side of ['left', 'right'] as const) {
+    const ref = palms[side];
+    if (!ref || !ref.file_id) continue;
+    const date = formatIsoDate(String(ref.read_at).slice(0, 10));
+    rows.push({
+      side,
+      label: side === 'left' ? 'Left hand' : 'Right hand',
+      imagePath: `files/${ref.file_id}/download`,
+      readLine: date ? `Read ${date}` : 'On file',
+      sourceLine: HAND_SOURCE_PHRASES[ref.hand_source] ?? '',
+    });
+  }
+  return rows;
+}
+
 // The turn that opens a correction MOVED to `lib/edit-fact.ts` when the
 // 2026-08-26 ruling made the edit in-place (docs/49 ASTRAL-138).
 //

@@ -19,6 +19,7 @@ import {
   chartState,
   editDisclosure,
   factRows,
+  handRows,
   frameLine,
   provenancePhrase,
   registerTitle,
@@ -318,4 +319,45 @@ describe('ASTRAL-138 — the cascade is disclosed from the edges, not from a sen
   // in-place (docs/49 ASTRAL-138), and the property it was pinning — intent,
   // never a value — is pinned there over the declared constants, together
   // with the engine-side match this file could never see.
+});
+
+// ── the durable hands (docs/60 SL-2; owner ask 2026-09-11) ─────────────────
+
+describe('handRows', () => {
+  const base = { id: 'self', relation: 'self' } as never;
+
+  it('no palms field — an older backend — means no rows, not a crash', () => {
+    expect(handRows(null)).toEqual([]);
+    expect(handRows(base)).toEqual([]);
+  });
+
+  it('a stored hand becomes a reference row: path, date, side phrasing', () => {
+    const rows = handRows({
+      ...(base as object),
+      palms: {
+        right: { file_id: 'f-1', hand_source: 'declared',
+                 read_at: '2026-09-11T05:14:00Z' },
+      },
+    } as never);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].label).toBe('Right hand');
+    expect(rows[0].imagePath).toBe('files/f-1/download');
+    expect(rows[0].readLine).toMatch(/^Read /);
+    expect(rows[0].sourceLine).toBe('side: you said');
+  });
+
+  it('sides render left-then-right and an unknown source says nothing', () => {
+    const rows = handRows({
+      ...(base as object),
+      palms: {
+        right: { file_id: 'r1', hand_source: 'weird_new_source',
+                 read_at: '2026-09-11' },
+        left: { file_id: 'l1', hand_source: 'thumb_geometry',
+                read_at: '2026-09-11' },
+      },
+    } as never);
+    expect(rows.map((r: { side: string }) => r.side)).toEqual(['left', 'right']);
+    expect(rows[1].sourceLine).toBe('');
+    expect(rows[0].sourceLine).toBe('side: read from the photo');
+  });
 });
