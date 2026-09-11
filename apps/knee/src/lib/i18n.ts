@@ -131,6 +131,10 @@ const STRINGS: Record<string, { en: string; hi: string }> = {
   // profile
   'profile.language': { en: 'Language · भाषा', hi: 'भाषा · Language' },
   'profile.credits': { en: 'Credits', hi: 'क्रेडिट' },
+  'update.title': { en: 'Update ready', hi: 'अपडेट तैयार है' },
+  'update.body': { en: 'A new version of KneeFit is ready to install. It takes a second.', hi: 'KneeFit का नया वर्शन तैयार है। बस एक सेकंड लगेगा।' },
+  'update.now': { en: 'Update now', hi: 'अभी अपडेट करें' },
+  'update.later': { en: 'Later', hi: 'बाद में' },
   'profile.reportBug': { en: 'Report a bug', hi: 'बग रिपोर्ट करें' },
   'profile.bugPlaceholder': { en: 'What went wrong? The more detail, the faster we can fix it.', hi: 'क्या गड़बड़ हुई? जितना ज़्यादा विवरण, उतनी जल्दी ठीक होगा।' },
   'profile.bugSend': { en: 'Send report', hi: 'रिपोर्ट भेजें' },
