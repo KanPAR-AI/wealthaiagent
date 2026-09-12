@@ -43,8 +43,11 @@ import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import {
+  ActionSheetIOS,
   ActivityIndicator,
+  Alert,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -58,9 +61,12 @@ import { track } from '@/lib/analytics';
 import { editRoute } from '@/lib/edit-fact';
 import { useEditOutcome } from '@/lib/edit-outcome';
 import {
+  clearPartner,
   fetchEditImpact,
+  fetchPeople,
   fetchPriorities,
   fetchSelf,
+  setPartner,
   type EditImpact,
   type PersonView,
   type PrioritiesResponse,
@@ -239,6 +245,7 @@ export default function Profile() {
           ) : (
             <Established
               person={load.person}
+              onReload={read}
               priorities={priorities}
               askOffered={askOffered}
               editBusy={editBusy}
@@ -333,11 +340,13 @@ function NotEstablished({ reason }: { reason: string }) {
 
 function Established({
   person, priorities, askOffered, editBusy, onEdit, onOfferTime, onOffered,
+  onReload,
 }: {
   person: PersonView;
   priorities: PrioritiesResponse | null;
   askOffered: boolean;
   editBusy: string | null;
+  onReload: () => void;
   onEdit: (row: FactRow) => void;
   onOfferTime: () => void;
   onOffered: () => void;
@@ -347,6 +356,92 @@ function Established({
   const readable = chartIsReadable(state);
   const lines = readable ? chartLines(person.chart) : [];
   const hands = handRows(person);
+
+  // docs/60 SL-5: the relationship row's data and its two sheets. The
+  // partner NAME is joined at read (ASTRAL-141: names come from the
+  // person, never denormalised onto a link).
+  const [partnerName, setPartnerName] = useState<string | null>(null);
+  const [people, setPeople] = useState<PersonView[]>([]);
+  useEffect(() => {
+    fetchPeople()
+      .then((res) => {
+        setPeople(res.people.filter((p) => p.id !== 'self'));
+        const pid = person.partner?.person_id;
+        if (pid) {
+          const match = res.people.find((p) => p.id === pid);
+          setPartnerName(match?.display_name || 'Your partner');
+        } else {
+          setPartnerName(null);
+        }
+      })
+      .catch(() => setPartnerName(person.partner ? 'Your partner' : null));
+  }, [person.partner?.person_id, person.partner]);
+
+  const declare = useCallback((p: PersonView) => {
+    track('relationship_set', { partner: 1 });
+    setPartner(p.id)
+      .then(onReload)
+      .catch((e: any) => console.warn('[partner]', String(e?.message ?? e)));
+  }, [onReload]);
+
+  const onRelationship = useCallback(() => {
+    if (person.partner) {
+      const unlink = () => {
+        track('relationship_cleared');
+        clearPartner()
+          .then(onReload)
+          .catch((e: any) =>
+            console.warn('[partner]', String(e?.message ?? e)));
+      };
+      if (Platform.OS === 'ios') {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options: ['Cancel', 'Open your match',
+                      "We're no longer together"],
+            cancelButtonIndex: 0,
+            destructiveButtonIndex: 2,
+          },
+          (i) => {
+            if (i === 1) router.push('/matches');
+            if (i === 2) unlink();
+          },
+        );
+        return;
+      }
+      Alert.alert(partnerName ?? 'Partner', undefined, [
+        { text: 'Open your match', onPress: () => router.push('/matches') },
+        { text: "We're no longer together", style: 'destructive',
+          onPress: unlink },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+      return;
+    }
+    if (!people.length) {
+      Alert.alert(
+        'No one on file yet',
+        'Save a match or add a person in chat first — then declare them '
+        + 'here.');
+      return;
+    }
+    const names = people.map((p) => p.display_name || 'Unnamed');
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancel', ...names], cancelButtonIndex: 0,
+          title: 'Who is your partner?' },
+        (i) => {
+          if (i > 0) declare(people[i - 1]);
+        },
+      );
+      return;
+    }
+    Alert.alert('Who is your partner?', undefined, [
+      ...people.slice(0, 6).map((p) => ({
+        text: p.display_name || 'Unnamed',
+        onPress: () => declare(p),
+      })),
+      { text: 'Cancel', style: 'cancel' as const },
+    ]);
+  }, [person.partner, people, partnerName, declare, onReload]);
   // The bearer the file endpoint requires — palm.tsx's own measured
   // pattern; without it an <Image> renders a broken tile.
   const [photoToken, setPhotoToken] = useState<string | null>(null);
@@ -498,6 +593,38 @@ function Established({
           the place they would look for it: what matters to YOU, beside the
           chart it is read alongside. The row is a READ; the edit happens on
           its own screen, through the chat carrier (F24). */}
+      {/* docs/60 SL-5 (owner, 2026-09-12): the relationship. Partnered
+          takes the several-matches surfaces away and keeps the one person;
+          the link is a PATCH on self and deletes nothing. */}
+      <Text style={s.section}>Relationship</Text>
+      <View style={s.card}>
+        <Pressable
+          style={s.row}
+          onPress={onRelationship}
+          accessibilityRole="button"
+          accessibilityLabel="Relationship"
+        >
+          <View style={s.rowText}>
+            <Text style={s.rowLabel}>
+              {person.partner ? 'Partner' : 'Status'}
+            </Text>
+            <Text style={s.rowValue}>
+              {person.partner ? (partnerName ?? '…') : 'Open to matches'}
+            </Text>
+            <Text style={s.caption}>
+              {person.partner
+                ? 'Your matches list is set aside. Daily guidance reads '
+                  + 'their day beside yours.'
+                : 'Declare a partner and the matches list steps aside for '
+                  + 'them.'}
+            </Text>
+          </View>
+          <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
+        </Pressable>
+      </View>
+
+      {person.partner ? null : (
+      <>
       <Text style={s.section}>What matters to you</Text>
       <View style={s.card}>
         <Pressable
@@ -522,6 +649,8 @@ function Established({
           <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
         </Pressable>
       </View>
+      </>
+      )}
 
       {notes.length ? (
         <>

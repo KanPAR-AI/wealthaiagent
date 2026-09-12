@@ -49,10 +49,17 @@ import {
   EMPTY_TITLE,
   askAboutTurn,
   isEmpty,
+  partnerMode,
   sections,
   type MatchRowView,
 } from '@/lib/matches-view';
-import { fetchMatches, patchLabels, type MatchesResponse } from '@/lib/people';
+import {
+  fetchMatches,
+  fetchSelf,
+  patchLabels,
+  type MatchesResponse,
+  type PersonView,
+} from '@/lib/people';
 import { tokens } from '@/theme';
 
 export default function Matches() {
@@ -60,13 +67,18 @@ export default function Matches() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
   const [starBusy, setStarBusy] = useState<string | null>(null);
+  const [partner, setPartner] = useState<PersonView['partner']>(null);
 
   const read = useCallback(() => {
     setBusy(true);
     setError(null);
-    fetchMatches()
-      .then((res) => {
+    // docs/60 SL-5: the partner link decides this screen's whole shape,
+    // so it is read WITH the list — a partnered user must never flash the
+    // full list before it steps aside.
+    Promise.all([fetchMatches(), fetchSelf().catch(() => null)])
+      .then(([res, self]) => {
         setData(res);
+        setPartner(self?.person?.partner ?? null);
         track('matches_shown', { total: res.total });
       })
       // "No matches saved" and "the read failed" are different sentences and
@@ -118,6 +130,7 @@ export default function Matches() {
   }, []);
 
   const view = sections(data);
+  const partnered = partner ? partnerMode(data, partner.person_id) : null;
 
   return (
     <View style={s.fill}>
@@ -149,6 +162,41 @@ export default function Matches() {
               <Pressable style={s.cta} onPress={read} accessibilityRole="button" accessibilityLabel="Try again">
                 <Text style={s.ctaText}>Try again</Text>
               </Pressable>
+            </View>
+          ) : partnered ? (
+            /* docs/60 SL-5: partnered mode — the list steps aside for ONE
+               person. Set aside, never deleted: un-partnering on Profile
+               brings every saved match straight back. */
+            <View style={s.gap}>
+              <Text style={s.section}>Your partner</Text>
+              {partnered.partnerRow ? (
+                <Row
+                  row={partnered.partnerRow}
+                  starBusy={starBusy === partnered.partnerRow.pairKey}
+                  onStar={() => toggleStar(partnered.partnerRow!)}
+                  onAsk={() => askAbout(partnered.partnerRow!)}
+                  onOpen={() =>
+                    router.push({
+                      pathname: '/match',
+                      params: { pairKey: partnered.partnerRow!.pairKey },
+                    })}
+                />
+              ) : (
+                <View style={s.gap}>
+                  <Text style={s.sentence}>
+                    No Kundli Milan is on file for your partner yet — ask
+                    about your match in chat and it appears here.
+                  </Text>
+                </View>
+              )}
+              {partnered.setAsideCount > 0 ? (
+                <Text style={s.caption}>
+                  {partnered.setAsideCount} saved
+                  {partnered.setAsideCount === 1 ? ' match is' : ' matches are'}
+                  {' '}set aside while you are partnered — nothing was
+                  deleted. Change this on your Profile.
+                </Text>
+              ) : null}
             </View>
           ) : isEmpty(data) ? (
             <View style={s.gap}>

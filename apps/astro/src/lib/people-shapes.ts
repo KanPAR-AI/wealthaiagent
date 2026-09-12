@@ -99,6 +99,12 @@ export interface PersonView {
   /** self only (AMB-30: priorities are self-only in v1) */
   priorities?: unknown;
   chart?: ChartSummary;
+  /** docs/60 SL-5 (self only): the declared partner, or null (seeking).
+   *  The whole partnered-mode surface set derives from this one field —
+   *  matches collapse to the partner, preferences step aside, the daily
+   *  card gains their day. Optional: an older backend never sends it. */
+  partner?: { status: string; person_id: string;
+              declared_at: string } | null;
   /** docs/60 SL-2: the durable hands — REFERENCE shapes (file id, how the
    *  side was decided, when), never the reading body. Optional because a
    *  backend older than chatservice 5a2b6b8 does not serve the field: a

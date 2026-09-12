@@ -161,6 +161,25 @@ export function patchLabels(
   });
 }
 
+/** docs/60 SL-5: declare / clear the partner. A LINK on `self` — the
+ *  server validates the person exists and is not self; nothing is deleted
+ *  in either direction, the surfaces just change what they read. */
+export function setPartner(personId: string):
+    Promise<{ person: PersonView; invalidated: string[] }> {
+  return call('people/self', {
+    method: 'PATCH',
+    body: JSON.stringify({ partner_person_id: personId }),
+  });
+}
+
+export function clearPartner():
+    Promise<{ person: PersonView; invalidated: string[] }> {
+  return call('people/self', {
+    method: 'PATCH',
+    body: JSON.stringify({ partner_clear: true }),
+  });
+}
+
 /** ASTRAL-36's cascade. `self` is refused by the server, not hidden here. */
 export function deletePerson(personId: string): Promise<{
   person_id: string;

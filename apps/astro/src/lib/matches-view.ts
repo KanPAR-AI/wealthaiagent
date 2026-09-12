@@ -217,6 +217,25 @@ function rowView(row: MatchRow, index: number, section: MatchGroup): MatchRowVie
  * claim that something belongs there. Every section that HAS rows keeps its
  * label, and no row ever moves between them.
  */
+/** docs/60 SL-5 (owner, 2026-09-12): partnered mode. The list steps aside
+ *  for ONE person — their row if a stored match exists, and the count of
+ *  what was set aside (set aside, never deleted: un-partnering brings the
+ *  list straight back). Pure, tested at the root. */
+export interface PartnerModeView {
+  partnerRow: MatchRowView | null;
+  setAsideCount: number;
+}
+
+export function partnerMode(response: MatchesResponse | null,
+                            partnerPersonId: string): PartnerModeView {
+  const all = sections(response).flatMap((s) => s.rows);
+  const partnerRow = all.find((r) => r.personId === partnerPersonId) ?? null;
+  return {
+    partnerRow,
+    setAsideCount: all.length - (partnerRow ? 1 : 0),
+  };
+}
+
 export function sections(response: MatchesResponse | null): MatchSectionView[] {
   if (!response) return [];
   return (response.groups ?? [])
