@@ -89,7 +89,11 @@ export default function Timeline() {
         setLoad({ phase: 'error', message: String((e as Error)?.message ?? e) }),
       )
       .finally(() => setRefreshing(false));
-  }, []);
+  // `blocked` in deps — the gate check inside must see the RESOLVED
+    // value; frozen at first-render true it starved every fetch
+    // (owner-reported: 'home page is not loading', 2026-09-12).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocked]);
 
   useFocusEffect(
     useCallback(() => {

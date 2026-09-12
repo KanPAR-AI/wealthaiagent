@@ -89,7 +89,11 @@ export default function Matches() {
       // the screen says the right one because this does not swallow.
       .catch((e: any) => setError(String(e?.message ?? e)))
       .finally(() => setBusy(false));
-  }, []);
+  // `blocked` in deps — the gate check inside must see the RESOLVED
+    // value; frozen at first-render true it starved every fetch
+    // (owner-reported: 'home page is not loading', 2026-09-12).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocked]);
 
   useEffect(read, [read]);
   // eslint-disable-next-line react-hooks/exhaustive-deps

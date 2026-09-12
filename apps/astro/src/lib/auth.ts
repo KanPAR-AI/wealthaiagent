@@ -67,9 +67,18 @@ function authReady(): Promise<void> {
   });
 }
 
-/** Watch the signed-in account. Fires immediately with the current value. */
+/** Watch the signed-in account. Fires immediately with the current value.
+ *
+ *  `onIdTokenChanged`, not `onAuthStateChanged` (owner-reported through the
+ *  sign-in gate, 2026-09-12): linking a provider onto an anonymous session
+ *  — the attach path every sign-up here rides — keeps the SAME uid, so
+ *  auth-state listeners never fire and `anonymous` stayed true for every
+ *  subscriber. The gate held its door shut on a user who had just signed
+ *  in. `onIdTokenChanged` fires on the token refresh a link produces
+ *  (and `attach` forces one, belt and braces), at the cost of extra
+ *  emissions `describe` renders harmless. */
 export function subscribeToAccount(fn: (a: Account | null) => void): () => void {
-  return auth.onAuthStateChanged((u) => fn(describe(u)));
+  return auth.onIdTokenChanged((u) => fn(describe(u)));
 }
 
 export async function currentAccount(): Promise<Account | null> {
@@ -97,6 +106,10 @@ async function attach(credential: AuthCredential, how: string): Promise<Account>
   if (existing?.isAnonymous) {
     try {
       const linked = await linkWithCredential(existing, credential);
+      // Belt to the subscription's suspenders: force the token refresh so
+      // onIdTokenChanged fires NOW — the gate releases the moment the link
+      // lands, not whenever the old token happens to expire.
+      await linked.user.getIdToken(true).catch(() => {});
       track('sign_in', { how, upgraded: 1 });
       identify(linked.user.uid);
       return describe(linked.user)!;
