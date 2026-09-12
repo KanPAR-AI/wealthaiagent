@@ -78,6 +78,7 @@ import {
   type MuhurtaPhase,
 } from '@/lib/muhurta-view';
 import { routeIsLive } from '@/lib/tabs';
+import { useReadingBlocked } from '@/lib/use-account';
 import { tokens } from '@/theme';
 
 const MUHURTA_LANGUAGES = ['input_request', 'muhurta_results'];
@@ -99,6 +100,14 @@ export default function Muhurta() {
 
   const [chatId, setChatId] = useState<string | null>(null);
   const chatIdRef = useRef<string | null>(null);
+  // Owner ruling 2026-09-12: this screen runs a reading — a guest is
+  // routed through the gate before any turn fires. `replace`, so Back
+  // from the gate does not land on a screen that immediately re-gates.
+  const { blocked: readingGated, resolved: authResolved } = useReadingBlocked();
+  useEffect(() => {
+    if (authResolved && readingGated) router.replace('/sign-in');
+  }, [authResolved, readingGated]);
+
   const { send } = useSendMessage(chatId, (id) => {
     chatIdRef.current = id;
     setChatId(id);

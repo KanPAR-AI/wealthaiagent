@@ -104,6 +104,12 @@ type Load =
 /** The turn that opens the birth-details arc for a user who has none yet. */
 const ESTABLISH_TURN = "I'd like my birth chart.";
 
+/** The turn that opens the PARTNER details arc (docs/60 SL-5): the
+ *  synastry flow asks for exactly their date, time and place through the
+ *  structured carrier — no form here writes a fact (F24) — computes the
+ *  match, and keeps their chart. */
+const PARTNER_DETAILS_TURN = "Match my kundli with my partner's.";
+
 export default function Profile() {
   const [load, setLoad] = useState<Load>({ phase: 'loading' });
   const [askOffered, setAskOffered] = useState(true);
@@ -416,29 +422,52 @@ function Established({
       ]);
       return;
     }
+    // "Someone new…" opens the SAME flow every birth fact rides (F24):
+    // the engine's partner-only ask, full-screen over screen 2's
+    // mechanism — DOB, time, place through the structured carrier into
+    // reconcile, the match computed (which now also keeps their chart),
+    // and the new person then appears in this sheet to declare.
+    const addNew = () =>
+      router.push({
+        pathname: '/birth-details',
+        params: { opening: PARTNER_DETAILS_TURN },
+      });
     if (!people.length) {
-      Alert.alert(
-        'No one on file yet',
-        'Save a match or add a person in chat first — then declare them '
-        + 'here.');
+      if (Platform.OS === 'ios') {
+        ActionSheetIOS.showActionSheetWithOptions(
+          { options: ['Cancel', 'Add their details…'], cancelButtonIndex: 0,
+            title: 'Who is your partner?' },
+          (i) => {
+            if (i === 1) addNew();
+          },
+        );
+        return;
+      }
+      Alert.alert('Who is your partner?', undefined, [
+        { text: 'Add their details…', onPress: addNew },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
       return;
     }
     const names = people.map((p) => p.display_name || 'Unnamed');
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Cancel', ...names], cancelButtonIndex: 0,
+        { options: ['Cancel', ...names, 'Someone new…'],
+          cancelButtonIndex: 0,
           title: 'Who is your partner?' },
         (i) => {
-          if (i > 0) declare(people[i - 1]);
+          if (i > 0 && i <= names.length) declare(people[i - 1]);
+          if (i === names.length + 1) addNew();
         },
       );
       return;
     }
     Alert.alert('Who is your partner?', undefined, [
-      ...people.slice(0, 6).map((p) => ({
+      ...people.slice(0, 5).map((p) => ({
         text: p.display_name || 'Unnamed',
         onPress: () => declare(p),
       })),
+      { text: 'Someone new…', onPress: addNew },
       { text: 'Cancel', style: 'cancel' as const },
     ]);
   }, [person.partner, people, partnerName, declare, onReload]);

@@ -83,6 +83,7 @@ import { lastChatId, rememberChat } from '@/lib/chat-session';
 import { fetchBalance } from '@/lib/credits';
 import { editFailure, isReturningEdit, outcomeLine } from '@/lib/edit-fact';
 import { useEditOutcome } from '@/lib/edit-outcome';
+import { useReadingBlocked } from '@/lib/use-account';
 import { tokens } from '@/theme';
 
 /**
@@ -141,6 +142,14 @@ export default function BirthDetails() {
   const chatIdRef = useRef<string | null>(null);
   /** the last bot message the adopted chat already had, if any */
   const priorBotId = useRef<string | null>(null);
+  // Owner ruling 2026-09-12: this screen runs a reading — a guest is
+  // routed through the gate before any turn fires. `replace`, so Back
+  // from the gate does not land on a screen that immediately re-gates.
+  const { blocked: readingGated, resolved: authResolved } = useReadingBlocked();
+  useEffect(() => {
+    if (authResolved && readingGated) router.replace('/sign-in');
+  }, [authResolved, readingGated]);
+
   const { send } = useSendMessage(chatId, (id) => {
     chatIdRef.current = id;
     setChatId(id);

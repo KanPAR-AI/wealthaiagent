@@ -27,7 +27,7 @@
 
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -55,6 +55,8 @@ import {
   type SadeSatiBar,
   type TimelineRow,
 } from '@/lib/timeline-view';
+import { SignInGateCard } from '@/components/sign-in-gate';
+import { useReadingBlocked } from '@/lib/use-account';
 import { tokens } from '@/theme';
 
 type Load =
@@ -74,7 +76,9 @@ export default function Timeline() {
   const [refreshing, setRefreshing] = useState(false);
   const asked = useRef(false);
 
+  const { blocked, resolved } = useReadingBlocked();
   const read = useCallback((manual = false) => {
+    if (blocked) return Promise.resolve();   // the gate card is the screen
     if (manual) setRefreshing(true);
     return fetchTimeline()
       .then((res) => {
@@ -95,6 +99,8 @@ export default function Timeline() {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [read]),
   );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (resolved && !blocked) void read(); }, [resolved, blocked]);
 
   const res = load.phase === 'done' ? load.res : null;
   const artifact = res && isReady(res) ? res.timeline : null;
@@ -153,7 +159,8 @@ export default function Timeline() {
           contentContainerStyle={s.body}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => read(true)} />}
         >
-          {load.phase === 'loading' ? (
+          {resolved && blocked ? <SignInGateCard /> : null}
+          {!blocked && load.phase === 'loading' ? (
             <ActivityIndicator color={tokens.palette.accent.interactive} />
           ) : null}
 

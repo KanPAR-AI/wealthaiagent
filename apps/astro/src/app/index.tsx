@@ -40,6 +40,7 @@ import {
 } from '@/components/sky';
 import { LakeScene, SCENE_RATIO } from '@/components/scene';
 import { track } from '@/lib/analytics';
+import { useReadingBlocked } from '@/lib/use-account';
 import { tokens } from '@/theme';
 
 const ENTERED_KEY = 'astro.entered';
@@ -73,7 +74,16 @@ export default function Onboarding() {
     }).catch(() => setChecked(true));
   }, []);
 
+  // Owner ruling 2026-09-12: sign-in is mandatory for any reading. The
+  // first reading is the chart, so Get Started routes a guest through the
+  // gate first; the gate pops back here and the next tap proceeds.
+  const { blocked } = useReadingBlocked();
   const begin = (to: '/birth-details' | '/settings') => {
+    if (to === '/birth-details' && blocked) {
+      track('onboarding_gate');
+      router.push('/sign-in');
+      return;
+    }
     void AsyncStorage.setItem(ENTERED_KEY, '1');
     track('onboarding_proceed', { to });
     router.replace(to);

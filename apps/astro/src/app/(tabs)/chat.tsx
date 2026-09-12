@@ -53,6 +53,7 @@ import { ArrowUp, ChevronLeft, DotGrid, StopSquare } from '@/components/glyphs';
 import { CornerWash } from '@/components/sky';
 import { useReportProblem } from '@/lib/bug-report';
 import { handoffAction } from '@/lib/chat-handoff';
+import { useReadingBlocked } from '@/lib/use-account';
 import { forgetChat, lastChatId, rememberChat } from '@/lib/chat-session';
 import { astroChatTheme } from '@/lib/chat-theme';
 import { ASTRO_DATA_LANGUAGES, AstroWidget } from '@/lib/chat-widgets';
@@ -121,7 +122,18 @@ export default function Chat() {
     if (chatId) rememberChat(chatId);
   }, [chatId]);
 
-  const { send, cancel, isSending, isCreatingChat } = useSendMessage(chatId, onChatCreated);
+  const { send: rawSend, cancel, isSending, isCreatingChat } = useSendMessage(chatId, onChatCreated);
+  // Owner ruling 2026-09-12: a turn IS a reading — a guest's send routes
+  // to the gate instead. `readingBlocked(null)` blocks the auth race too:
+  // an unresolved send is refused, never risked.
+  const { blocked: readingGated } = useReadingBlocked();
+  const send = useCallback((text: string, atts: unknown[]) => {
+    if (readingGated) {
+      router.push('/sign-in');
+      return Promise.resolve();
+    }
+    return rawSend(text, atts as never);
+  }, [readingGated, rawSend]) as typeof rawSend;
   const busy = isSending || isCreatingChat;
 
   // The board draws a MENU glyph in the header's right slot, and it used to
@@ -236,10 +248,15 @@ export default function Chat() {
       return;
     }
     if (action.kind !== 'send') return;
+    if (readingGated) {
+      // The key is NOT consumed: after signing in the same handoff sends.
+      router.push('/sign-in');
+      return;
+    }
     lastHandoffKey.current = action.key;
     void send(handoff.pending as string, []);
   }, [handoff.pending, handoff.chatId, handoff.fresh, handoff.handoffKey,
-      chatId, send]);
+      chatId, send, readingGated]);
 
   // A widget answer — a chip, a picker, the input widget's typed
   // `input_response` carrier — arrives on the ONE channel the shared surface

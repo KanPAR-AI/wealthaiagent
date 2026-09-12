@@ -25,7 +25,7 @@
 
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -48,6 +48,8 @@ import {
 } from '@/lib/daily-view';
 import { fetchDaily } from '@/lib/people';
 import type { DailyResponse, FacetItem } from '@/lib/people-shapes';
+import { SignInGateCard } from '@/components/sign-in-gate';
+import { useReadingBlocked } from '@/lib/use-account';
 import { tokens } from '@/theme';
 
 type Load =
@@ -62,12 +64,14 @@ export default function Insights() {
   // night sky, where it cannot be read.
   useFocusEffect(useCallback(() => setStatusBarStyle('dark'), []));
 
+  const { blocked, resolved } = useReadingBlocked();
   const [load, setLoad] = useState<Load>({ phase: 'loading' });
   const [tab, setTab] = useState('guidance');
   const [refreshing, setRefreshing] = useState(false);
   const asked = useRef(false);
 
   const read = useCallback((manual = false) => {
+    if (blocked) return Promise.resolve();   // the gate card is the screen
     if (manual) setRefreshing(true);
     return fetchDaily()
       .then((res) => {
@@ -90,6 +94,8 @@ export default function Insights() {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [read]),
   );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (resolved && !blocked) void read(); }, [resolved, blocked]);
 
   const res = load.phase === 'done' ? load.res : null;
   const facets = res && isReady(res) ? tabs(res) : [];
@@ -133,7 +139,8 @@ export default function Insights() {
             <RefreshControl refreshing={refreshing} onRefresh={() => read(true)} />
           }
         >
-          {load.phase === 'loading' ? <ActivityIndicator color={tokens.palette.accent.interactive} /> : null}
+          {resolved && blocked ? <SignInGateCard /> : null}
+          {!blocked && load.phase === 'loading' ? <ActivityIndicator color={tokens.palette.accent.interactive} /> : null}
 
           {load.phase === 'error' ? (
             <View style={s.card}>

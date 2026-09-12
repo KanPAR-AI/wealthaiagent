@@ -61,6 +61,8 @@ import {
 import { adoptAccountNameIfUnnamed, fetchDaily, fetchSelf } from '@/lib/people';
 import type { DailyResponse } from '@/lib/people-shapes';
 import { visibleTiles } from '@/lib/tabs';
+import { SignInGateCard } from '@/components/sign-in-gate';
+import { useReadingBlocked } from '@/lib/use-account';
 import { tokens } from '@/theme';
 
 const HEADER_HEIGHT = 260;
@@ -97,7 +99,9 @@ export default function Home() {
     setAccount(a);
   }), []);
 
+  const { blocked, resolved } = useReadingBlocked();
   const read = useCallback((manual = false) => {
+    if (blocked) return Promise.resolve();   // the gate card is the screen
     if (manual) setRefreshing(true);
     return fetchDaily()
       .then((res) => {
@@ -139,6 +143,9 @@ export default function Home() {
       void read();
     }, [read]),
   );
+  // The moment auth resolves signed-in, the card loads without a re-focus.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (resolved && !blocked) void read(); }, [resolved, blocked]);
 
   const res = load.phase === 'done' ? load.res : null;
   const name = greetingName(
@@ -185,7 +192,9 @@ export default function Home() {
               <Text style={s.greetSub}>Here’s your day, from your own chart.</Text>
             </View>
 
-            {load.phase === 'loading' ? (
+            {resolved && blocked ? <SignInGateCard dark /> : null}
+
+            {!blocked && load.phase === 'loading' ? (
               <View style={s.card}>
                 <ActivityIndicator color={tokens.palette.accent.interactive} />
               </View>

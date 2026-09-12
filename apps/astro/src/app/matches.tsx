@@ -60,9 +60,12 @@ import {
   type MatchesResponse,
   type PersonView,
 } from '@/lib/people';
+import { SignInGateCard } from '@/components/sign-in-gate';
+import { useReadingBlocked } from '@/lib/use-account';
 import { tokens } from '@/theme';
 
 export default function Matches() {
+  const { blocked, resolved } = useReadingBlocked();
   const [data, setData] = useState<MatchesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
@@ -70,6 +73,7 @@ export default function Matches() {
   const [partner, setPartner] = useState<PersonView['partner']>(null);
 
   const read = useCallback(() => {
+    if (blocked) { setBusy(false); return; }
     setBusy(true);
     setError(null);
     // docs/60 SL-5: the partner link decides this screen's whole shape,
@@ -88,6 +92,8 @@ export default function Matches() {
   }, []);
 
   useEffect(read, [read]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (resolved && !blocked) read(); }, [resolved, blocked]);
 
   /** The star is owner-authored metadata, not a fact: `PATCH /people/{id}`
    *  takes `favourite` and returns an empty `invalidated` list, because the
@@ -154,7 +160,9 @@ export default function Matches() {
         >
           <Text style={s.title}>My Matches</Text>
 
-          {busy && !data ? (
+          {resolved && blocked ? <SignInGateCard /> : null}
+
+          {blocked ? null : busy && !data ? (
             <ActivityIndicator color={tokens.palette.accent.interactive} />
           ) : error ? (
             <View style={s.gap}>

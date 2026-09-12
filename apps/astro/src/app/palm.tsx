@@ -79,6 +79,7 @@ import {
   palmReplyKind,
 } from '@/lib/palm-view';
 import { routeIsLive } from '@/lib/tabs';
+import { useReadingBlocked } from '@/lib/use-account';
 import { tokens } from '@/theme';
 
 /** The block languages this screen splits out of the stream. Asked for by
@@ -116,6 +117,14 @@ export default function Palm() {
 
   const [chatId, setChatId] = useState<string | null>(null);
   const chatIdRef = useRef<string | null>(null);
+  // Owner ruling 2026-09-12: this screen runs a reading — a guest is
+  // routed through the gate before any turn fires. `replace`, so Back
+  // from the gate does not land on a screen that immediately re-gates.
+  const { blocked: readingGated, resolved: authResolved } = useReadingBlocked();
+  useEffect(() => {
+    if (authResolved && readingGated) router.replace('/sign-in');
+  }, [authResolved, readingGated]);
+
   const { send } = useSendMessage(chatId, (id) => {
     chatIdRef.current = id;
     setChatId(id);
