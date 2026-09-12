@@ -216,6 +216,12 @@ function Item({ item }: { item: FacetItem }) {
       <Text style={[s.itemTitle, honest && s.itemTitleHonest]}>{item.title}</Text>
       {range ? <Text style={s.itemDetail}>{range}</Text> : null}
       {item.detail ? <Text style={s.itemDetail}>{item.detail}</Text> : null}
+      {/* facet v2: the advice line — the fact's real-world meaning, from
+          the engine's curated vocabulary. Distinct style so a reader can
+          always tell the computed fact from what to do about it. */}
+      {(item.meaning ?? '').trim() ? (
+        <Text style={s.itemMeaning}>{item.meaning}</Text>
+      ) : null}
       {item.alternatives?.length ? (
         <Text style={s.itemBasis}>Either {item.alternatives.join(' or ')}.</Text>
       ) : null}
@@ -271,6 +277,11 @@ const s = StyleSheet.create({
   itemTitleHonest: { color: t.palette.ink.secondary },
   itemDetail: { ...t.type.scale.sub, color: t.palette.ink.secondary },
   itemBasis: { ...t.type.scale.caption, color: t.palette.ink.muted },
+  itemMeaning: {
+    ...t.type.scale.sub,
+    color: t.palette.accent.interactive,
+    marginTop: t.space(1),
+  },
   footnote: { ...t.type.scale.caption, color: t.palette.ink.muted, textAlign: 'center' },
 
   card: {

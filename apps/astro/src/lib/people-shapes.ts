@@ -402,6 +402,12 @@ export interface FacetItem {
   place?: { name?: string | null; basis?: string };
   alternatives?: string[];
   unlocked_by?: string | null;
+  /** facet v2 (owner, 2026-09-12): the real-world advice line — what this
+   *  fact asks of the person's day, from the engine's curated vocabulary.
+   *  Optional: a v1 backend serves items without it, and an item whose
+   *  fact earns no advice (a domainless position) carries "" — both
+   *  render as no line, never as a blank. */
+  meaning?: string | null;
 }
 
 export interface FacetTab {
