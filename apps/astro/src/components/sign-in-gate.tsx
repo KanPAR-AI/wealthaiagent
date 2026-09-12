@@ -36,8 +36,8 @@ const s = StyleSheet.create({
     padding: t.space(5), gap: t.space(3),
   },
   cardDark: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: t.palette.cosmic.card,
+    borderColor: t.palette.cosmic.line,
   },
   title: { ...t.type.display, ...t.type.scale.lead,
            color: t.palette.ink.primary },

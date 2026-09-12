@@ -50,7 +50,8 @@ const astro: BrandTokens = {
     // frame 12's header sits at #04112f. The values that shipped first
     // (#171233 / #0e0a24 / #2c2158) were a purple-leaning invention and read
     // as mauve next to the frames.
-    cosmic: { base: '#0a1330', deep: '#02061b', glow: '#182651', horizon: '#eeb49c' },
+    cosmic: { base: '#0a1330', deep: '#02061b', glow: '#182651', horizon: '#eeb49c',
+              card: 'rgba(255, 255, 255, 0.06)', line: 'rgba(255, 255, 255, 0.14)' },
     paper: { base: '#faf6ef', card: '#fbf9f5', line: '#e7e0d4' },
     ink: {
       primary: '#23203a',

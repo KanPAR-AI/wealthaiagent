@@ -71,7 +71,10 @@ export interface BrandTokens {
     /** Ceremonial ground — the deep cosmic field (screens 1, 3, 6, 12's header).
      *  `horizon` is the warm apricot the board burns into the lower third of
      *  screen 1 where the sky meets the water. */
-    cosmic: { base: string; deep: string; glow: string; horizon: string };
+    /** `card`/`line`: a raised surface ON the cosmic ground (the Home gate
+     *  card) — declared here so no screen invents its own white-alpha. */
+    cosmic: { base: string; deep: string; glow: string; horizon: string;
+              card: string; line: string };
     /** Working ground — light card surfaces with dark ink (screens 2, 4, 5, 7, 8). */
     paper: { base: string; card: string; line: string };
     ink: { primary: string; secondary: string; muted: string; onCosmic: string; onCosmicMuted: string };

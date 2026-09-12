@@ -134,7 +134,11 @@ describe('what the screen does with a reply', () => {
     expect(palmReplyKind(false, '')).toBe('empty');
     expect(palmReplyKind(false, '   ')).toBe('empty');
     expect(PALM_EMPTY_LINE).toMatch(/did not come back/i);
-    expect(PALM_EMPTY_LINE).toMatch(/nothing was stored/i);
+    // Deliberate spec change 2026-09-13: the line no longer claims "nothing
+    // was stored" — uploads land before the send and a finished reading
+    // files a PalmRef, so that sentence was false whenever it showed.
+    expect(PALM_EMPTY_LINE).not.toMatch(/nothing was stored/i);
+    expect(PALM_EMPTY_LINE).toMatch(/try again/i);
   });
 });
 

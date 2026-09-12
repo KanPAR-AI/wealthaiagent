@@ -155,10 +155,17 @@ export function palmReplyKind(hasBlock: boolean, prose: string): PalmReplyKind {
   return 'empty';
 }
 
-/** What to show when the reply carried neither a block nor a word. */
+/**
+ * What to show when the reply carried neither a block nor a word.
+ *
+ * The line claims only what this screen knows: the reply was empty. It does
+ * NOT say "nothing was stored" — the photographs upload before the turn is
+ * sent, and since 2026-09-12 a completed reading also files a durable
+ * `PalmRef` on the People store; this screen cannot see which of those
+ * happened, so it asserts neither (Role-3 flag, 2026-09-13).
+ */
 export const PALM_EMPTY_LINE =
-  'The reading did not come back. Nothing was stored for it — try again, or '
-  + 'continue in chat.';
+  'The reading did not come back — try again, or continue in chat.';
 
 /**
  * The turn that opens the palm arc.
