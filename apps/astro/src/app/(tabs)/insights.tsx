@@ -39,9 +39,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { track } from '@/lib/analytics';
 import {
+  ADD_PARTNER_TURN,
   absentView,
   basisAddsAnything,
   cardDate,
+  isPartnerDoor,
   isReady,
   itemRange,
   tabs,
@@ -85,7 +87,7 @@ export default function Insights() {
   // `blocked` in deps — the gate check inside must see the RESOLVED
     // value; frozen at first-render true it starved every fetch
     // (owner-reported: 'home page is not loading', 2026-09-12).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [blocked]);
 
   useFocusEffect(
@@ -236,10 +238,26 @@ function Item({ item }: { item: FacetItem }) {
       {item.alternatives?.length ? (
         <Text style={s.itemBasis}>Either {item.alternatives.join(' or ')}.</Text>
       ) : null}
-      {!honest && basisAddsAnything(item) ? (
+      {!honest && !isPartnerDoor(item) && basisAddsAnything(item) ? (
         <Text style={s.itemBasis}>{item.basis}</Text>
       ) : null}
-      {item.unlocked_by ? (
+      {isPartnerDoor(item) ? (
+        // facet v3: the Couple tab's add-one-partner door — the same flow
+        // every birth fact rides (F24): the engine's partner ask through
+        // the structured carrier into reconcile.
+        <Pressable
+          style={s.doorCta}
+          onPress={() =>
+            router.push({
+              pathname: '/birth-details',
+              params: { opening: ADD_PARTNER_TURN },
+            })}
+          accessibilityRole="button"
+          accessibilityLabel="Add your partner"
+        >
+          <Text style={s.doorCtaText}>Add your partner</Text>
+        </Pressable>
+      ) : item.unlocked_by ? (
         <Text style={s.itemBasis}>
           Your {item.unlocked_by.replace(/_/g, ' ')} would settle this.
         </Text>
@@ -288,6 +306,13 @@ const s = StyleSheet.create({
   itemTitleHonest: { color: t.palette.ink.secondary },
   itemDetail: { ...t.type.scale.sub, color: t.palette.ink.secondary },
   itemBasis: { ...t.type.scale.caption, color: t.palette.ink.muted },
+  doorCta: {
+    backgroundColor: t.palette.accent.ceremonial,
+    borderRadius: t.radius.button,
+    paddingVertical: t.space(3), alignItems: 'center',
+    marginTop: t.space(2),
+  },
+  doorCtaText: { ...t.type.scale.label, color: t.palette.accent.ceremonialInk },
   itemMeaning: {
     ...t.type.scale.sub,
     color: t.palette.accent.interactive,

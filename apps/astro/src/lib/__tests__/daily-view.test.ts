@@ -412,3 +412,19 @@ describe('isReady is the compiler’s guard, not a convention', () => {
     expect(isReady(null)).toBe(false);
   });
 });
+
+describe("the Couple tab's door (facet v3)", () => {
+  const { ADD_PARTNER_TURN, isPartnerDoor } = require('../daily-view');
+
+  it('recognises exactly the engine door item', () => {
+    expect(isPartnerDoor({ unlocked_by: 'partner' })).toBe(true);
+    expect(isPartnerDoor({ unlocked_by: 'time_of_birth' })).toBe(false);
+    expect(isPartnerDoor({ unlocked_by: undefined })).toBe(false);
+  });
+
+  it('sends the SAME opening sentence as the profile flow — one ask, one wording', () => {
+    expect(ADD_PARTNER_TURN).toBe("Match my kundli with my partner's.");
+    // A sentence, naming an intent and no value (ASTRAL-83's discipline).
+    expect(ADD_PARTNER_TURN).not.toMatch(/dob|slot|file_id|partner_dob/i);
+  });
+});

@@ -372,3 +372,20 @@ export function titleFromKey(key: string): string {
     .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
     .join(' ');
 }
+
+// ── the Couple tab's door (facet v3; owner, 2026-09-13) ───────────────────
+//
+// An unpartnered Couple tab carries ONE engine item whose `unlocked_by`
+// is "partner" — the add-one-partner door. The client renders it as the
+// call to action; the ENGINE decided the tab needs it, this module only
+// recognises it. The opening sentence is the SAME one Profile's
+// "Someone new…" flow sends (one ask, one wording, one destination —
+// birth facts enter only through chat → reconcile, F24).
+
+export const ADD_PARTNER_TURN = "Match my kundli with my partner's.";
+
+export function isPartnerDoor(
+  item: Pick<FacetItem, 'unlocked_by'>,
+): boolean {
+  return item.unlocked_by === 'partner';
+}

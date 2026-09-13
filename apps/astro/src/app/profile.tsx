@@ -58,6 +58,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChevronLeft, ChevronRight, SymbolIcon } from '@/components/glyphs';
 import { track } from '@/lib/analytics';
+import { ADD_PARTNER_TURN } from '@/lib/daily-view';
 import { editRoute } from '@/lib/edit-fact';
 import { useEditOutcome } from '@/lib/edit-outcome';
 import {
@@ -108,7 +109,9 @@ const ESTABLISH_TURN = "I'd like my birth chart.";
  *  synastry flow asks for exactly their date, time and place through the
  *  structured carrier — no form here writes a fact (F24) — computes the
  *  match, and keeps their chart. */
-const PARTNER_DETAILS_TURN = "Match my kundli with my partner's.";
+// facet v3: single-sourced with the Couple tab's door (lib/daily-view's
+// ADD_PARTNER_TURN) — one ask, one wording, one destination.
+const PARTNER_DETAILS_TURN = ADD_PARTNER_TURN;
 
 export default function Profile() {
   const [load, setLoad] = useState<Load>({ phase: 'loading' });
