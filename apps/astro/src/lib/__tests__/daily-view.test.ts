@@ -529,6 +529,17 @@ describe('the day strip (docs/62 A-1/A-2, ASTRAL-267..271)', () => {
     expect(dayView(card)).toBeNull();
   });
 
+  it('the time-less capture is served the day’s own band and says so (ASTRAL-268)', () => {
+    // Recaptured after Role-3: this chart's Moon crossed a nakshatra on
+    // its birth day, so the tara is withheld — the fixture carries the
+    // honest shape, not a noon default dressed as "your Moon".
+    const v = dayView(TIMELESS.card)!;
+    expect(TIMELESS.card.day!.personalized).toBe(false);
+    expect(v.notYours).toMatch(/two nakshatras/);
+    expect(v.reasons.some((r) => /your Moon in/.test(r))).toBe(false);
+    expect(withheld(TIMELESS.card).map((w) => w.field)).toContain('Tara Bala');
+  });
+
   it('the day item leads the Guidance tab (facet v4)', () => {
     expect(READY.facets.version).toBe(4);
     const guidance = tabById(READY, 'guidance')!;

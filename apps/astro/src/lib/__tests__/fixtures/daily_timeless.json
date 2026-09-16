@@ -50,40 +50,34 @@
      "value": "Purva Ashadha"
     },
     {
-     "day_nakshatra": "Purva Ashadha",
-     "factor": "tara",
-     "natal_nakshatra": "Bharani",
-     "score": 0.5,
-     "value": "Janma"
-    },
-    {
      "factor": "moon_from_natal_moon",
      "natal_moon_sign": "Aries",
      "transit_moon_sign": "Sagittarius",
      "value": 9
     }
    ],
-   "line": "a green day \u2014 lean in: start the thing, make the ask, say yes to the meeting. Janma tara from your Moon \u2014 a self-facing day.",
+   "line": "a green day \u2014 lean in: start the thing, make the ask, say yes to the meeting.",
    "moments": {
     "golden": [
      {
       "all_day": false,
       "end": "10:54",
-      "score": 0.733,
+      "score": 0.774,
       "slots": 11,
       "start": "05:24"
      },
      {
       "all_day": false,
       "end": "13:54",
-      "score": 0.708,
+      "score": 0.745,
       "slots": 3,
       "start": "12:24"
      }
     ],
     "scanned": {
+     "cap": null,
      "end": "18:10",
-     "personalized": true,
+     "personalized": false,
      "slots": 25,
      "start": "05:24",
      "step_minutes": 30
@@ -98,7 +92,7 @@
      }
     ]
    },
-   "personalized": true,
+   "personalized": false,
    "place": {
     "basis": "birth_place",
     "latitude": 22.8046,
@@ -112,18 +106,17 @@
     "start": "07:00"
    },
    "reasons": [
-    "Janma tara \u2014 today's Moon in Purva Ashadha, counted from your Moon in Bharani",
     "Dwadashi tithi \u2014 a strong tithi"
    ],
-   "score": 0.755,
+   "score": 0.8,
    "strip": [
     {
      "band": "green",
      "date": "2026-08-24",
      "nakshatra": "Purva Ashadha",
-     "personalized": true,
-     "score": 0.755,
-     "tara": "Janma",
+     "personalized": false,
+     "score": 0.8,
+     "tara": null,
      "tithi": "Dwadashi",
      "weekday": "Mon"
     },
@@ -131,9 +124,9 @@
      "band": "green",
      "date": "2026-08-25",
      "nakshatra": "Uttara Ashadha",
-     "personalized": true,
-     "score": 0.862,
-     "tara": "Sampat",
+     "personalized": false,
+     "score": 0.837,
+     "tara": null,
      "tithi": "Trayodashi",
      "weekday": "Tue"
     },
@@ -141,9 +134,9 @@
      "band": "green",
      "date": "2026-08-26",
      "nakshatra": "Shravana",
-     "personalized": true,
-     "score": 0.632,
-     "tara": "Vipat",
+     "personalized": false,
+     "score": 0.7,
+     "tara": null,
      "tithi": "Chaturdashi",
      "weekday": "Wed"
     },
@@ -151,9 +144,9 @@
      "band": "red",
      "date": "2026-08-27",
      "nakshatra": "Dhanishtha",
-     "personalized": true,
+     "personalized": false,
      "score": 0.35,
-     "tara": "Kshema",
+     "tara": null,
      "tithi": "Purnima/Amavasya",
      "weekday": "Thu"
     },
@@ -161,9 +154,9 @@
      "band": "amber",
      "date": "2026-08-28",
      "nakshatra": "Shatabhisha",
-     "personalized": true,
-     "score": 0.526,
-     "tara": "Pratyak",
+     "personalized": false,
+     "score": 0.575,
+     "tara": null,
      "tithi": "Pratipada",
      "weekday": "Fri"
     },
@@ -171,24 +164,25 @@
      "band": "green",
      "date": "2026-08-29",
      "nakshatra": "Purva Bhadrapada",
-     "personalized": true,
-     "score": 0.681,
-     "tara": "Sadhana",
+     "personalized": false,
+     "score": 0.625,
+     "tara": null,
      "tithi": "Dwitiya",
      "weekday": "Sat"
     },
     {
-     "band": "red",
+     "band": "green",
      "date": "2026-08-30",
      "nakshatra": "Uttara Bhadrapada",
-     "personalized": true,
-     "score": 0.3,
-     "tara": "Naidhana",
+     "personalized": false,
+     "score": 0.688,
+     "tara": null,
      "tithi": "Tritiya",
      "weekday": "Sun"
     }
    ],
-   "tara": "Janma",
+   "tara": null,
+   "tara_absent": "your natal Moon could be in either of two nakshatras without a birth time, so the tara \u2014 the personal part of the score \u2014 is withheld",
    "thresholds": {
     "amber_at": 0.45,
     "green_at": 0.6
@@ -392,17 +386,27 @@
    }
   },
   "type": "daily_card",
-  "undetermined": []
+  "undetermined": [
+   {
+    "alternatives": [
+     "Bharani",
+     "Krittika"
+    ],
+    "field": "tara_bala",
+    "reason": "your natal Moon could be in either of two nakshatras without a birth time, so the tara \u2014 the personal part of the score \u2014 is withheld",
+    "unlocked_by": "time_of_birth"
+   }
+  ]
  },
  "chart": {
-  "computed_at": "2026-09-16T20:18:08.373238+00:00",
+  "computed_at": "2026-09-16T20:38:23.347540+00:00",
   "status": "fresh"
  },
  "date": "2026-08-24",
  "facets": {
   "artifact_key": "699e9f4182b1814d:2026-08-24",
   "date": "2026-08-24",
-  "item_count": 14,
+  "item_count": 15,
   "tabs": [
    {
     "domains": [],
@@ -411,14 +415,14 @@
     "items": [
      {
       "band": "green",
-      "basis": "day score from your Moon",
-      "detail": "Janma tara \u2014 today's Moon in Purva Ashadha, counted from your Moon in Bharani; Dwadashi tithi \u2014 a strong tithi. Rahu Kaal 07:00\u201308:36",
+      "basis": "day score \u2014 the day's own, not yet yours",
+      "detail": "Dwadashi tithi \u2014 a strong tithi. Rahu Kaal 07:00\u201308:36",
       "domains": [],
       "id": "day",
       "kind": "day_score",
-      "meaning": "a green day \u2014 lean in: start the thing, make the ask, say yes to the meeting. Janma tara from your Moon \u2014 a self-facing day.",
-      "personalized": true,
-      "score": 0.755,
+      "meaning": "a green day \u2014 lean in: start the thing, make the ask, say yes to the meeting.",
+      "personalized": false,
+      "score": 0.8,
       "title": "Today: Green day"
      },
      {
@@ -531,6 +535,19 @@
       "id": "absent:dasha",
       "kind": "absent_layer",
       "title": "Dasha \u2014 not computed",
+      "unlocked_by": "time_of_birth"
+     },
+     {
+      "alternatives": [
+       "Bharani",
+       "Krittika"
+      ],
+      "basis": "undetermined",
+      "detail": "your natal Moon could be in either of two nakshatras without a birth time, so the tara \u2014 the personal part of the score \u2014 is withheld",
+      "domains": [],
+      "id": "withheld:tara_bala",
+      "kind": "undetermined",
+      "title": "tara bala \u2014 withheld",
       "unlocked_by": "time_of_birth"
      }
     ],

@@ -89,6 +89,7 @@
      }
     ],
     "scanned": {
+     "cap": null,
      "end": "18:10",
      "personalized": true,
      "slots": 25,
@@ -407,7 +408,7 @@
   "undetermined": []
  },
  "chart": {
-  "computed_at": "2026-09-16T20:18:08.076248+00:00",
+  "computed_at": "2026-09-16T20:38:23.061986+00:00",
   "status": "fresh"
  },
  "date": "2026-08-24",
