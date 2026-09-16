@@ -140,6 +140,17 @@ export interface Capabilities {
   dailyGuidance: boolean;
 
   /**
+   * The day strip — Green / Amber / Red for today and the week, Rahu Kaal,
+   * the golden and silence moments (docs/62 A-1/A-2, docs/49 ASTRAL-267..
+   * 271). TRUE since daily_card/3: it rides the SAME `GET /people/self/daily`
+   * read as Home, as the card's `day` layer — no second fetch, no client
+   * arithmetic; a card without the layer renders nothing for it (a v2 card,
+   * the US shape, or a stated absence). Withdrawing it removes the strip and
+   * the week card together.
+   */
+  dayStrip: boolean;
+
+  /**
    * Screen 9, Timeline — the dasha periods with transit windows folded in
    * (ASTRAL-127).
    *
@@ -209,6 +220,7 @@ export const CAPABILITIES: Capabilities = {
   birthDetails: false,
   home: true,
   dailyGuidance: true,
+  dayStrip: true,
   timeline: true,
   aiChat: true,
   profile: true,

@@ -30,6 +30,8 @@ import {
   withheld,
   ADD_PARTNER_TURN,
   isPartnerDoor,
+  dayView,
+  BAND_LABEL,
 } from '../daily-view';
 import { absentView as timelineAbsentView } from '../timeline-view';
 import type { DailyReady, DailyResponse } from '../people-shapes';
@@ -212,9 +214,12 @@ describe('the time-less card says what it cannot say (AMB-13(c) / ASTRAL-80)', (
 });
 
 describe('screen 8’s tabs are a filter over ONE artifact (ASTRAL-126)', () => {
-  it('all four arrive in the response the screen already holds', () => {
-    expect(tabs(READY).map((t) => t.id)).toEqual(['guidance', 'love', 'career', 'self']);
-    expect(tabs(READY).map((t) => t.label)).toEqual(['Guidance', 'Love', 'Career', 'Self']);
+  it('all five arrive in the response the screen already holds', () => {
+    // Five since facet v3 (the Couple lens); the fixture was recaptured
+    // for facet v4 (ASTRAL-267) and finally carries the tab set the
+    // engine has served since 2026-09-13.
+    expect(tabs(READY).map((t) => t.id)).toEqual(['guidance', 'love', 'career', 'self', 'couple']);
+    expect(tabs(READY).map((t) => t.label)).toEqual(['Guidance', 'Love', 'Career', 'Self', 'Couple']);
   });
 
   it('switching a tab needs no fetch — this module has none', () => {
@@ -427,5 +432,108 @@ describe("the Couple tab's door (facet v3)", () => {
     expect(ADD_PARTNER_TURN).toBe("Match my kundli with my partner's.");
     // A sentence, naming an intent and no value (ASTRAL-83's discipline).
     expect(ADD_PARTNER_TURN).not.toMatch(/dob|slot|file_id|partner_dob/i);
+  });
+});
+
+
+describe('the day strip (docs/62 A-1/A-2, ASTRAL-267..271)', () => {
+  const view = dayView(READY.card)!;
+
+  it('renders the band the engine served, word and colour together', () => {
+    expect(READY.card.day?.band).toBe('green');
+    expect(view.band).toBe('green');
+    expect(view.label).toBe(BAND_LABEL.green);
+    expect(view.line.startsWith('a green day')).toBe(true);
+    // The band is NEVER thresholded here: the module has no threshold
+    // number in it at all.
+    const code = codeOf('daily-view.ts');
+    expect(code).not.toMatch(/0\.6\b|0\.45\b|score\s*[<>]=?/);
+  });
+
+  it('is seven dots from the card’s own day, with today marked by the layer', () => {
+    expect(view.strip).toHaveLength(7);
+    expect(view.strip[0].date).toBe(READY.card.date);
+    expect(view.strip[0].isToday).toBe(true);
+    expect(view.strip.filter((d) => d.isToday)).toHaveLength(1);
+    expect(view.strip.map((d) => d.band)).toEqual(
+      READY.card.day!.strip.map((e) => e.band),
+    );
+    // The weekday label is the engine's, not derived from the date.
+    expect(view.strip.map((d) => d.weekday)).toEqual(
+      READY.card.day!.strip.map((e) => e.weekday),
+    );
+    expect(view.strip[0].weekday).toBe('Mon');
+    expect(new Set(view.strip.map((d) => d.band)).size).toBeGreaterThan(1);
+  });
+
+  it('carries the cited reasons verbatim and the place it is scored for', () => {
+    expect(view.reasons).toEqual(READY.card.day!.reasons);
+    expect(view.reasons.length).toBeGreaterThan(0);
+    expect(view.reasons.some((r) => /tara/.test(r))).toBe(true);
+    expect(view.place).toBe('Jamshedpur, India');
+    expect(view.notYours).toBeNull();
+  });
+
+  it('formats Rahu Kaal and the moments from the layer’s clocks', () => {
+    const d = READY.card.day!;
+    expect(view.rahuKaal).toBe(`${d.rahu_kaal!.start}–${d.rahu_kaal!.end}`);
+    expect(view.rahuKaalAbsent).toBeNull();
+    expect(view.golden).toHaveLength(d.moments!.golden.length);
+    expect(view.golden[0]).toMatch(/^\d\d:\d\d–\d\d:\d\d$/);
+    expect(view.silence).toHaveLength(d.moments!.silence.length);
+    expect(view.momentsAbsent).toBeNull();
+  });
+
+  it('says "all day" for a run that is the whole scan, not two clocks', () => {
+    const card = JSON.parse(JSON.stringify(READY.card));
+    card.day.moments.silence = [
+      { start: '05:24', end: '18:10', score: 0.26, slots: 25, all_day: true },
+    ];
+    expect(dayView(card)!.silence).toEqual(['all day']);
+  });
+
+  it('a day the engine could not score is a hollow dot with its reason', () => {
+    const card = JSON.parse(JSON.stringify(READY.card));
+    card.day.strip[3] = { date: card.day.strip[3].date, weekday: 'Thu', absent: 'the ephemeris refused that date' };
+    const dots = dayView(card)!.strip;
+    expect(dots[3].band).toBeNull();
+    expect(dots[3].absent).toBe('the ephemeris refused that date');
+  });
+
+  it('an unpersonalized layer says whose day the score is', () => {
+    const card = JSON.parse(JSON.stringify(READY.card));
+    card.day.personalized = false;
+    card.day.tara = null;
+    card.day.tara_absent = 'your natal Moon could be in either of two nakshatras without a birth time';
+    expect(dayView(card)!.notYours).toMatch(/two nakshatras/);
+  });
+
+  it('a clock the engine could not state is its reason, never a blank', () => {
+    const card = JSON.parse(JSON.stringify(READY.card));
+    delete card.day.rahu_kaal;
+    card.day.rahu_kaal_absent = 'the Sun does not rise there on that day';
+    delete card.day.moments;
+    card.day.moments_absent = 'the Sun does not rise there on that day';
+    const v = dayView(card)!;
+    expect(v.rahuKaal).toBeNull();
+    expect(v.rahuKaalAbsent).toMatch(/does not rise/);
+    expect(v.golden).toEqual([]);
+    expect(v.momentsAbsent).toMatch(/does not rise/);
+  });
+
+  it('a card without the layer renders nothing for it — a v2 card, the US shape, or a stated absence', () => {
+    const card = JSON.parse(JSON.stringify(READY.card));
+    delete card.day;
+    expect(dayView(card)).toBeNull();
+    card.day = { band: 'blue', strip: [] };
+    expect(dayView(card)).toBeNull();
+  });
+
+  it('the day item leads the Guidance tab (facet v4)', () => {
+    expect(READY.facets.version).toBe(4);
+    const guidance = tabById(READY, 'guidance')!;
+    expect(guidance.items[0].kind).toBe('day_score');
+    expect(guidance.items[0].title).toBe('Today: Green day');
+    expect((guidance.items[0].meaning ?? '').startsWith('a green day')).toBe(true);
   });
 });

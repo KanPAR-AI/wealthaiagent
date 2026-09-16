@@ -5,8 +5,8 @@
   "captured_by": "chatservice/scripts/capture_astral_fixtures.py",
   "engine_version": "kerykeion/5.12.9",
   "fn": "daily_card",
-  "fn_identity": "daily_card/2+d0a6e637fb302caa",
-  "fn_version": 2
+  "fn_identity": "daily_card/3+d0a6e637fb302caa",
+  "fn_version": 3
  },
  "card": {
   "absent_layers": [
@@ -18,17 +18,188 @@
   ],
   "calculation": {
    "ayanamsa": "LAHIRI",
-   "fn_version": "daily_card/2+d0a6e637fb302caa",
+   "fn_version": "daily_card/3+d0a6e637fb302caa",
    "house_system": "W",
    "settings_digest": "d0a6e637fb302caa",
    "zodiac_mode": "sidereal"
   },
   "date": "2026-08-24",
-  "inputs_hash": "8872b8a66ea1ca577c7ca17d54c5c647d8765b401572a6391576e2e890c71428",
-  "key": "8872b8a66ea1ca57:2026-08-24",
+  "day": {
+   "as_of": "2026-08-24",
+   "band": "green",
+   "caps": [],
+   "factors": [
+    {
+     "factor": "tithi",
+     "score": 0.8,
+     "value": "Dwadashi"
+    },
+    {
+     "factor": "yoga",
+     "score": 0.9,
+     "value": "Ayushman"
+    },
+    {
+     "factor": "karana",
+     "score": 0.85,
+     "value": "Bava"
+    },
+    {
+     "factor": "nakshatra",
+     "score": 0.65,
+     "value": "Purva Ashadha"
+    },
+    {
+     "day_nakshatra": "Purva Ashadha",
+     "factor": "tara",
+     "natal_nakshatra": "Bharani",
+     "score": 0.5,
+     "value": "Janma"
+    },
+    {
+     "factor": "moon_from_natal_moon",
+     "natal_moon_sign": "Aries",
+     "transit_moon_sign": "Sagittarius",
+     "value": 9
+    }
+   ],
+   "line": "a green day \u2014 lean in: start the thing, make the ask, say yes to the meeting. Janma tara from your Moon \u2014 a self-facing day.",
+   "moments": {
+    "golden": [
+     {
+      "all_day": false,
+      "end": "10:54",
+      "score": 0.733,
+      "slots": 11,
+      "start": "05:24"
+     },
+     {
+      "all_day": false,
+      "end": "13:54",
+      "score": 0.708,
+      "slots": 3,
+      "start": "12:24"
+     }
+    ],
+    "scanned": {
+     "end": "18:10",
+     "personalized": true,
+     "slots": 25,
+     "start": "05:24",
+     "step_minutes": 30
+    },
+    "silence": [
+     {
+      "all_day": false,
+      "end": "16:54",
+      "score": 0.0,
+      "slots": 3,
+      "start": "15:24"
+     }
+    ]
+   },
+   "personalized": true,
+   "place": {
+    "basis": "birth_place",
+    "latitude": 22.8046,
+    "longitude": 86.2029,
+    "name": "Jamshedpur, India",
+    "timezone": "Asia/Kolkata"
+   },
+   "rahu_kaal": {
+    "basis": "the 2nd of eight daylight parts, sunrise 05:24 to sunset 18:10",
+    "end": "08:36",
+    "start": "07:00"
+   },
+   "reasons": [
+    "Janma tara \u2014 today's Moon in Purva Ashadha, counted from your Moon in Bharani",
+    "Dwadashi tithi \u2014 a strong tithi"
+   ],
+   "score": 0.755,
+   "strip": [
+    {
+     "band": "green",
+     "date": "2026-08-24",
+     "nakshatra": "Purva Ashadha",
+     "personalized": true,
+     "score": 0.755,
+     "tara": "Janma",
+     "tithi": "Dwadashi",
+     "weekday": "Mon"
+    },
+    {
+     "band": "green",
+     "date": "2026-08-25",
+     "nakshatra": "Uttara Ashadha",
+     "personalized": true,
+     "score": 0.862,
+     "tara": "Sampat",
+     "tithi": "Trayodashi",
+     "weekday": "Tue"
+    },
+    {
+     "band": "green",
+     "date": "2026-08-26",
+     "nakshatra": "Shravana",
+     "personalized": true,
+     "score": 0.632,
+     "tara": "Vipat",
+     "tithi": "Chaturdashi",
+     "weekday": "Wed"
+    },
+    {
+     "band": "red",
+     "date": "2026-08-27",
+     "nakshatra": "Dhanishtha",
+     "personalized": true,
+     "score": 0.35,
+     "tara": "Kshema",
+     "tithi": "Purnima/Amavasya",
+     "weekday": "Thu"
+    },
+    {
+     "band": "amber",
+     "date": "2026-08-28",
+     "nakshatra": "Shatabhisha",
+     "personalized": true,
+     "score": 0.526,
+     "tara": "Pratyak",
+     "tithi": "Pratipada",
+     "weekday": "Fri"
+    },
+    {
+     "band": "green",
+     "date": "2026-08-29",
+     "nakshatra": "Purva Bhadrapada",
+     "personalized": true,
+     "score": 0.681,
+     "tara": "Sadhana",
+     "tithi": "Dwitiya",
+     "weekday": "Sat"
+    },
+    {
+     "band": "red",
+     "date": "2026-08-30",
+     "nakshatra": "Uttara Bhadrapada",
+     "personalized": true,
+     "score": 0.3,
+     "tara": "Naidhana",
+     "tithi": "Tritiya",
+     "weekday": "Sun"
+    }
+   ],
+   "tara": "Janma",
+   "thresholds": {
+    "amber_at": 0.45,
+    "green_at": 0.6
+   }
+  },
+  "inputs_hash": "699e9f4182b1814d6fdfbfc8f9d78c0ade73fa0e57cb49d642811f5a9d1033cb",
+  "key": "699e9f4182b1814d:2026-08-24",
   "layers": [
    "transit",
-   "panchang"
+   "panchang",
+   "day"
   ],
   "market": "india",
   "omitted_by_shape": [],
@@ -36,6 +207,7 @@
    "as_of": "2026-08-24",
    "is_bhadra": false,
    "karana": "Bava",
+   "moon_sign": "Sagittarius",
    "nakshatra": "Purva Ashadha",
    "nakshatra_pada": 3,
    "notes": [],
@@ -223,14 +395,14 @@
   "undetermined": []
  },
  "chart": {
-  "computed_at": "2026-08-27T17:15:21.078002+00:00",
+  "computed_at": "2026-09-16T20:18:08.373238+00:00",
   "status": "fresh"
  },
  "date": "2026-08-24",
  "facets": {
-  "artifact_key": "8872b8a66ea1ca57:2026-08-24",
+  "artifact_key": "699e9f4182b1814d:2026-08-24",
   "date": "2026-08-24",
-  "item_count": 12,
+  "item_count": 14,
   "tabs": [
    {
     "domains": [],
@@ -238,11 +410,24 @@
     "id": "guidance",
     "items": [
      {
+      "band": "green",
+      "basis": "day score from your Moon",
+      "detail": "Janma tara \u2014 today's Moon in Purva Ashadha, counted from your Moon in Bharani; Dwadashi tithi \u2014 a strong tithi. Rahu Kaal 07:00\u201308:36",
+      "domains": [],
+      "id": "day",
+      "kind": "day_score",
+      "meaning": "a green day \u2014 lean in: start the thing, make the ask, say yes to the meeting. Janma tara from your Moon \u2014 a self-facing day.",
+      "personalized": true,
+      "score": 0.755,
+      "title": "Today: Green day"
+     },
+     {
       "basis": "classical transit rule",
       "detail": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries).",
       "domains": [],
       "id": "rule:sade_sati",
       "kind": "transit_rule",
+      "meaning": "commit to fewer things and finish them \u2014 steady beats bold in this season, and it does end",
       "title": "Sade Sati"
      },
      {
@@ -251,6 +436,7 @@
       "domains": [],
       "id": "transit:Sun",
       "kind": "transit_position",
+      "meaning": "",
       "title": "Sun in Leo"
      },
      {
@@ -259,6 +445,7 @@
       "domains": [],
       "id": "transit:Moon",
       "kind": "transit_position",
+      "meaning": "",
       "title": "Moon in Sagittarius"
      },
      {
@@ -267,6 +454,7 @@
       "domains": [],
       "id": "transit:Mars",
       "kind": "transit_position",
+      "meaning": "",
       "title": "Mars in Gemini"
      },
      {
@@ -275,6 +463,7 @@
       "domains": [],
       "id": "transit:Mercury",
       "kind": "transit_position",
+      "meaning": "",
       "title": "Mercury in Leo"
      },
      {
@@ -283,6 +472,7 @@
       "domains": [],
       "id": "transit:Jupiter",
       "kind": "transit_position",
+      "meaning": "",
       "title": "Jupiter in Cancer"
      },
      {
@@ -291,6 +481,7 @@
       "domains": [],
       "id": "transit:Venus",
       "kind": "transit_position",
+      "meaning": "",
       "title": "Venus in Virgo"
      },
      {
@@ -299,6 +490,7 @@
       "domains": [],
       "id": "transit:Saturn",
       "kind": "transit_position",
+      "meaning": "",
       "title": "Saturn in Pisces"
      },
      {
@@ -307,6 +499,7 @@
       "domains": [],
       "id": "transit:Rahu",
       "kind": "transit_position",
+      "meaning": "",
       "title": "Rahu in Aquarius"
      },
      {
@@ -315,6 +508,7 @@
       "domains": [],
       "id": "transit:Ketu",
       "kind": "transit_position",
+      "meaning": "",
       "title": "Ketu in Leo"
      },
      {
@@ -323,6 +517,7 @@
       "domains": [],
       "id": "panchang",
       "kind": "panchang",
+      "meaning": "a good day to start things \u2014 conversations, purchases, first steps.",
       "place": {
        "basis": "birth_place",
        "name": "Jamshedpur, India"
@@ -373,9 +568,30 @@
     "id": "self",
     "items": [],
     "label": "Self"
+   },
+   {
+    "domains": [
+     "couple"
+    ],
+    "empty_reason": null,
+    "id": "couple",
+    "items": [
+     {
+      "basis": "stated absence",
+      "detail": "One partner, their birth details, and this tab becomes your reading as a couple \u2014 the phase you are in together, and where your shared momentum is.",
+      "domains": [
+       "couple"
+      ],
+      "id": "couple:add_partner",
+      "kind": "couple_day",
+      "title": "Add your partner",
+      "unlocked_by": "partner"
+     }
+    ],
+    "label": "Couple"
    }
   ],
-  "version": 1
+  "version": 4
  },
  "narration": {
   "available": false,

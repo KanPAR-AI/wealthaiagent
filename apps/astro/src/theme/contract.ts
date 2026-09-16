@@ -87,6 +87,12 @@ export interface BrandTokens {
       interactiveInk: string;
     };
     danger: string;
+    /** The day strip's three bands (docs/62 A-1). Semantic, NOT the accent:
+     *  a band is a verdict about the day, and it is never the only carrier —
+     *  the word travels with the colour (accessibility). `Ink` is the text
+     *  that sits ON the band. */
+    day: { green: string; greenInk: string; amber: string; amberInk: string;
+           red: string; redInk: string };
     /** The wash behind a modal sheet. A colour like any other: two screens
      *  each picking their own "black at 40%" is two scrims. */
     scrim: string;

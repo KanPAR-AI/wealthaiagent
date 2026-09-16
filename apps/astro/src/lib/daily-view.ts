@@ -31,6 +31,7 @@ import { formatIsoDate } from '@wealthai/astral';
 import { staleSentence } from './staleness';
 
 import type {
+  DayWindow,
   StaleBlock,
   AbsentLayer,
   DailyCard,
@@ -388,4 +389,83 @@ export function isPartnerDoor(
   item: Pick<FacetItem, 'unlocked_by'>,
 ): boolean {
   return item.unlocked_by === 'partner';
+}
+
+// ── the day strip (docs/62 A-1/A-2, ASTRAL-267..271) ──────────────────────
+//
+// Green / Amber / Red for today and the week, Rahu Kaal, the moments. ALL of
+// it arrives on the card's `day` layer: the band, the week's bands, the
+// weekday labels, the clocks and the cited reasons are the ENGINE's. This
+// module formats; it never thresholds a score, never names a weekday from
+// a date, and never reads a clock to decide which day is today — the layer
+// says so (`as_of`), and the strip's first entry is that day by contract.
+
+export type DayBand = 'green' | 'amber' | 'red';
+
+export const BAND_LABEL: Record<DayBand, string> = {
+  green: 'Green day',
+  amber: 'Amber day',
+  red: 'Red day',
+};
+
+export interface DayStripDot {
+  date: string;
+  weekday: string;
+  band: DayBand | null;
+  isToday: boolean;
+  /** the engine's reason when that day could not be scored */
+  absent: string | null;
+}
+
+export interface DayView {
+  band: DayBand;
+  label: string;
+  /** the curated meaning line, verbatim */
+  line: string;
+  /** the cited reasons, verbatim, in the engine's order */
+  reasons: string[];
+  /** when the score is the day's own and not the person's: the reason */
+  notYours: string | null;
+  strip: DayStripDot[];
+  rahuKaal: string | null;
+  rahuKaalAbsent: string | null;
+  golden: string[];
+  silence: string[];
+  momentsAbsent: string | null;
+  /** the place the day is scored for (F31: a day is a fact about a place) */
+  place: string | null;
+}
+
+function windowText(w: DayWindow): string {
+  return w.all_day ? 'all day' : `${w.start}–${w.end}`;
+}
+
+/** The strip's view, or null when the card carries no `day` layer — a v2
+ *  card, the US shape (omitted) or a stated absence (in `absences()`), each
+ *  of which the screen already says in its own words. */
+export function dayView(card: DailyCard): DayView | null {
+  const d = card.day;
+  if (!d || !d.band || !Array.isArray(d.strip)) return null;
+  const label = BAND_LABEL[d.band];
+  if (!label) return null;
+  return {
+    band: d.band,
+    label,
+    line: d.line ?? '',
+    reasons: (d.reasons ?? []).filter(Boolean),
+    notYours: d.personalized ? null : (d.tara_absent ?? null),
+    strip: d.strip.map((e) => ({
+      date: e.date,
+      weekday: e.weekday,
+      band: e.absent ? null : ((e.band as DayBand | undefined) ?? null),
+      isToday: e.date === d.as_of,
+      absent: e.absent ?? null,
+    })),
+    rahuKaal: d.rahu_kaal ? `${d.rahu_kaal.start}–${d.rahu_kaal.end}` : null,
+    rahuKaalAbsent: d.rahu_kaal ? null : (d.rahu_kaal_absent ?? null),
+    golden: (d.moments?.golden ?? []).map(windowText),
+    silence: (d.moments?.silence ?? []).map(windowText),
+    momentsAbsent: d.moments ? null : (d.moments_absent ?? null),
+    place: d.place?.name?.trim() || null,
+  };
 }

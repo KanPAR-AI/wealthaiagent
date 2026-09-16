@@ -45,12 +45,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight, SymbolIcon } from '@/components/glyphs';
 import { SkyDefs, SkyField, Stars } from '@/components/sky';
 import { track } from '@/lib/analytics';
+import { CAPABILITIES } from '@/lib/capabilities';
 import { subscribeToAccount, type Account } from '@/lib/auth';
 import {
   absences,
   absentView,
   cardDate,
   dashaLines,
+  dayView,
   greeting,
   greetingName,
   isReady,
@@ -59,6 +61,7 @@ import {
   transitLines,
 } from '@/lib/daily-view';
 import { adoptAccountNameIfUnnamed, fetchDaily, fetchSelf } from '@/lib/people';
+import type { DayView } from '@/lib/daily-view';
 import type { DailyResponse } from '@/lib/people-shapes';
 import { visibleTiles } from '@/lib/tabs';
 import { SignInGateCard } from '@/components/sign-in-gate';
@@ -85,6 +88,9 @@ export default function Home() {
   const [load, setLoad] = useState<Load>({ phase: 'loading' });
   const [refreshing, setRefreshing] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
+  // docs/62 A-1: "Why is today red?" — the engine's cited reasons, shown on
+  // demand. A toggle, not a fetch: the reasons are on the card already.
+  const [whyOpen, setWhyOpen] = useState(false);
   const asked = useRef(false);
 
   // The greeting's second source. MEASURED on-sim: a `self` established
@@ -229,6 +235,20 @@ export default function Home() {
                 <Text style={s.transitTitle}>Today’s transits</Text>
                 <Text style={s.transitDate}>{cardDate(res.card)}</Text>
 
+                {/* docs/62 A-1: the day's colour, from the user's own Moon —
+                    the WORD travels with the colour (never colour alone).
+                    Everything here is the card's `day` layer verbatim. */}
+                {CAPABILITIES.dayStrip && dayView(res.card) ? (
+                  <View style={s.bandRow}>
+                    <View style={[s.bandPill, { backgroundColor: t.palette.day[dayView(res.card)!.band] }]}>
+                      <Text style={[s.bandPillText, { color: t.palette.day[`${dayView(res.card)!.band}Ink`] }]}>
+                        {dayView(res.card)!.label}
+                      </Text>
+                    </View>
+                    <Text style={s.bandLine} numberOfLines={3}>{dayView(res.card)!.line}</Text>
+                  </View>
+                ) : null}
+
                 {transitLines(res.card)
                   .slice(0, CARD_LINES)
                   .map((line) => (
@@ -254,6 +274,13 @@ export default function Home() {
                   <ChevronRight size={16} color={tokens.palette.accent.ceremonial} />
                 </View>
               </Pressable>
+            ) : null}
+
+            {res && isReady(res) && CAPABILITIES.dayStrip && dayView(res.card) ? (
+              <WeekCard view={dayView(res.card)!} open={whyOpen} onToggle={() => {
+                track('home_day_why', { open: !whyOpen, band: dayView(res.card)!.band });
+                setWhyOpen((v) => !v);
+              }} />
             ) : null}
           </View>
 
@@ -330,6 +357,73 @@ export default function Home() {
   );
 }
 
+/** docs/62 A-1/A-2 — the week as seven dots, and the day opened up: the
+ *  engine's cited reasons, Rahu Kaal from the real sunrise, the golden and
+ *  silence windows. Nothing here is computed: every word and every colour is
+ *  the card's `day` layer; a day the engine could not score is a hollow dot
+ *  with its reason, never a guess. */
+function WeekCard({ view, open, onToggle }: { view: DayView; open: boolean; onToggle: () => void }) {
+  return (
+    <View style={s.weekCard} accessibilityLabel={`Your week: ${view.strip.map((d) => `${d.weekday} ${d.band ?? 'not scored'}`).join(', ')}`}>
+      <Text style={s.weekTitle}>Your week</Text>
+      <View style={s.weekRow}>
+        {view.strip.map((d) => (
+          <View key={d.date} style={s.weekDay} accessibilityLabel={`${d.weekday}: ${d.band ?? 'not scored'}`}>
+            <Text style={[s.weekLabel, d.isToday && s.weekLabelToday]}>{d.weekday}</Text>
+            <View
+              style={[
+                s.weekDot,
+                d.band ? { backgroundColor: t.palette.day[d.band] } : s.weekDotAbsent,
+                d.isToday && s.weekDotToday,
+              ]}
+            />
+          </View>
+        ))}
+      </View>
+      {view.strip.some((d) => d.absent) ? (
+        <Text style={s.weekNote}>
+          {view.strip.filter((d) => d.absent).map((d) => `${d.weekday}: ${d.absent}`).join(' · ')}
+        </Text>
+      ) : null}
+      {view.place ? <Text style={s.weekNote}>scored for {view.place}, from your Moon</Text> : null}
+      {view.notYours ? <Text style={s.weekNote}>{view.notYours}.</Text> : null}
+
+      <Pressable
+        style={s.whyRow}
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityLabel={open ? 'Hide why today is this colour' : 'Why is today this colour?'}
+      >
+        <Text style={s.whyText}>{open ? 'Hide the why' : `Why a ${view.label.toLowerCase()}?`}</Text>
+        <ChevronRight size={14} color={t.palette.accent.ceremonial} />
+      </Pressable>
+      {open ? (
+        <View style={s.whyBody}>
+          {view.reasons.map((r) => (
+            <Text key={r} style={s.whyLine}>• {r}</Text>
+          ))}
+          {view.rahuKaal ? (
+            <Text style={s.whyLine}>• Rahu Kaal {view.rahuKaal} — keep beginnings out of it</Text>
+          ) : view.rahuKaalAbsent ? (
+            <Text style={s.whyLine}>• Rahu Kaal not stated: {view.rahuKaalAbsent}</Text>
+          ) : null}
+          {view.golden.length ? (
+            <Text style={s.whyLine}>• Golden {view.golden.join(' · ')} — the big ask goes here</Text>
+          ) : view.momentsAbsent ? null : (
+            <Text style={s.whyLine}>• No golden window today — that is the day, not a gap</Text>
+          )}
+          {view.silence.length ? (
+            <Text style={s.whyLine}>• Silence {view.silence.join(' · ')} — lie low</Text>
+          ) : null}
+          {view.momentsAbsent ? (
+            <Text style={s.whyLine}>• Moments not stated: {view.momentsAbsent}</Text>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 /** The designed absence: one sentence per state, and the one control that is
  *  honest for it — a chat TURN, because the chart is recast by the turn that
  *  needs it and there is no endpoint a screen may call (F24 / INV-1). */
@@ -397,6 +491,32 @@ const s = StyleSheet.create({
   transitLine: { ...t.type.scale.sub, color: t.palette.ink.onCosmic },
   transitLead: { fontWeight: '700' },
   transitProse: { ...t.type.scale.body, color: t.palette.ink.onCosmicMuted, marginTop: t.space(2) },
+  bandRow: { flexDirection: 'row', alignItems: 'flex-start', gap: t.space(2), marginTop: t.space(1) },
+  bandPill: { borderRadius: t.radius.pill, paddingVertical: t.space(1), paddingHorizontal: t.space(2.5) },
+  bandPillText: { ...t.type.scale.caption, fontWeight: '700' },
+  bandLine: { ...t.type.scale.caption, color: t.palette.ink.onCosmic, flex: 1 },
+
+  weekCard: {
+    backgroundColor: t.palette.cosmic.card,
+    borderRadius: t.radius.card,
+    padding: t.space(4),
+    gap: t.space(2),
+    borderWidth: 1,
+    borderColor: t.palette.cosmic.line,
+  },
+  weekTitle: { ...t.type.scale.label, color: t.palette.ink.onCosmicMuted, fontWeight: '700' },
+  weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  weekDay: { alignItems: 'center', gap: t.space(1), minWidth: 34 },
+  weekLabel: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
+  weekLabelToday: { color: t.palette.ink.onCosmic, fontWeight: '700' },
+  weekDot: { width: 18, height: 18, borderRadius: t.radius.pill },
+  weekDotAbsent: { borderWidth: 1, borderColor: t.palette.ink.onCosmicMuted, backgroundColor: 'transparent' },
+  weekDotToday: { borderWidth: 2, borderColor: t.palette.accent.ceremonial },
+  weekNote: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
+  whyRow: { flexDirection: 'row', alignItems: 'center', gap: t.space(1) },
+  whyText: { ...t.type.scale.sub, color: t.palette.accent.ceremonial, fontWeight: '600' },
+  whyBody: { gap: t.space(1) },
+  whyLine: { ...t.type.scale.caption, color: t.palette.ink.onCosmic },
   more: { flexDirection: 'row', alignItems: 'center', gap: t.space(1), marginTop: t.space(2) },
   moreText: { ...t.type.scale.sub, color: t.palette.accent.ceremonial, fontWeight: '600' },
 

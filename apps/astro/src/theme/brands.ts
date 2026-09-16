@@ -68,6 +68,11 @@ const astro: BrandTokens = {
       interactiveInk: '#ffffff',
     },
     danger: '#b3453e',
+    // The strip. Muted, paper-side greens/ambers/reds so the three read as
+    // one family beside the violet accent rather than as traffic lights.
+    day: { green: '#2f7d5b', greenInk: '#ffffff',
+           amber: '#c48a2a', amberInk: '#2b2043',
+           red: '#b3453e', redInk: '#ffffff' },
     // The cosmic deep, carried under a sheet — the ceremonial ground doing
     // the dimming rather than a neutral black nobody chose.
     scrim: 'rgba(2, 6, 27, 0.45)',

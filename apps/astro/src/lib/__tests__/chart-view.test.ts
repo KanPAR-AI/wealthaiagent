@@ -76,7 +76,7 @@ const TIMELESS = load<ChartResponse>('chart_timeless');
  */
 const EXPECTED_FN_VERSIONS: Record<string, number> = {
   natal_chart: 7,     // ASTRAL-230 — placements carry their labels
-  daily_card: 2,      // PH-20
+  daily_card: 3,      // ASTRAL-267 — the `day` layer (PH-20 was v2)
   timeline: 3,        // ASTRAL-239 — the Sade Sati legs travel
   gun_milan: 4,       // PH-20's Manglik verdict
 };

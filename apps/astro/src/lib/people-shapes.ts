@@ -387,9 +387,67 @@ export interface DailyCard {
     nakshatra?: string;
     yoga?: string;
     karana?: string;
+    /** additive since daily_card/3 (ASTRAL-267) */
+    moon_sign?: string;
     panchang_place?: PanchangPlace;
   };
+  /** the day strip (docs/62 A-1 / ASTRAL-267..269), daily_card/3. Absent on
+   *  a v2 card, on the US shape (omitted_by_shape) and when the engine
+   *  states its absence in `absent_layers` — three different sentences. */
+  day?: DayLayer;
   narration?: { text: string; task: string; narrated_for: string };
+}
+
+export type DayBand = 'green' | 'amber' | 'red';
+
+export interface DayWindow {
+  start: string;
+  end: string;
+  score: number;
+  slots: number;
+  /** the run IS the whole scan — "all day", not two clocks */
+  all_day: boolean;
+}
+
+export interface DayStripEntry {
+  date: string;
+  /** the engine's own weekday label — the client derives none */
+  weekday: string;
+  band?: DayBand;
+  score?: number;
+  tara?: string | null;
+  personalized?: boolean;
+  tithi?: string;
+  nakshatra?: string;
+  /** present, with a reason, when that day could not be scored */
+  absent?: string;
+}
+
+export interface DayLayer {
+  as_of: string;
+  band: DayBand;
+  score: number;
+  tara: string | null;
+  personalized: boolean;
+  /** when not personalized: why the score is the day's own, not yours */
+  tara_absent?: string;
+  factors: Array<Record<string, unknown>>;
+  caps: string[];
+  /** cited, computed sentences — the answer to "why is today red?" */
+  reasons: string[];
+  /** the curated meaning line (daily_meaning.day_meaning) */
+  line: string;
+  strip: DayStripEntry[];
+  thresholds: { green_at: number; amber_at: number };
+  place: PanchangPlace;
+  rahu_kaal?: { start: string; end: string; basis: string };
+  rahu_kaal_absent?: string;
+  moments?: {
+    golden: DayWindow[];
+    silence: DayWindow[];
+    scanned: { start: string; end: string; slots: number; step_minutes: number; personalized: boolean };
+  };
+  moments_absent?: string;
 }
 
 export interface FacetItem {
