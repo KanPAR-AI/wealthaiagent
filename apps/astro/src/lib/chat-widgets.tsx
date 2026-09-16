@@ -22,6 +22,9 @@ import {
   type ChatWidgetHandler,
 } from '@wealthai/chat-native';
 import type { Widget } from '@wealthai/core';
+import { useEffect } from 'react';
+
+import { parseSubjectBlock, subjectStore } from '@/lib/subject-view';
 
 /** natal_chart, match_report, muhurta_results, input_request, … — whatever
  *  the one binding can draw. */
@@ -32,6 +35,18 @@ const astralHandlers: Record<string, ChatWidgetHandler> = Object.fromEntries(
   ]),
 );
 
+// docs/60 SL-4: the engine ends every astrology turn with its reading
+// subject. The block draws NOTHING — it feeds the chip on the chat screen
+// through the subject store, so the chip renders engine state, never a
+// client guess (the client derives nothing).
+function SubjectSink({ data }: { data: unknown }) {
+  useEffect(() => {
+    const s = parseSubjectBlock(data);
+    if (s) subjectStore.set(s);
+  }, [data]);
+  return null;
+}
+
 export const astroWidgetRegistry = createBlockRegistry<ChatWidgetHandler>(
   {
     // The three any chat has — the engine's follow-up chips among them, from
@@ -39,6 +54,7 @@ export const astroWidgetRegistry = createBlockRegistry<ChatWidgetHandler>(
     // way they were in build 7.
     ...sharedWidgetHandlers,
     ...astralHandlers,
+    reading_subject: ((data) => <SubjectSink data={data} />) as ChatWidgetHandler,
   },
   { surface: 'astro-chat' },
 );

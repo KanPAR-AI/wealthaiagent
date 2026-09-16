@@ -57,6 +57,10 @@ import { useReadingBlocked } from '@/lib/use-account';
 import { forgetChat, lastChatId, rememberChat } from '@/lib/chat-session';
 import { astroChatTheme } from '@/lib/chat-theme';
 import { ASTRO_DATA_LANGUAGES, AstroWidget } from '@/lib/chat-widgets';
+import { track } from '@/lib/analytics';
+import { fetchPeople } from '@/lib/people';
+import type { PersonView } from '@/lib/people-shapes';
+import { chipLabel, subjectSheet, subjectStore, type ReadingSubject } from '@/lib/subject-view';
 import { fetchBalance } from '@/lib/credits';
 import { tokens } from '@/theme';
 
@@ -127,6 +131,18 @@ export default function Chat() {
   // to the gate instead. `readingBlocked(null)` blocks the auth race too:
   // an unresolved send is refused, never risked.
   const { blocked: readingGated } = useReadingBlocked();
+
+  // docs/60 SL-4: the subject chip. The chip shows what the ENGINE last
+  // said the subject is (the reading_subject block feeds the store); a
+  // chat switch resets it to You until the engine says otherwise.
+  const [subject, setSubject] = useState<ReadingSubject>(subjectStore.get());
+  useEffect(() => subjectStore.subscribe(setSubject), []);
+  useEffect(() => { subjectStore.reset(); }, [chatId]);
+  const [people, setPeople] = useState<PersonView[]>([]);
+  useEffect(() => {
+    if (readingGated) return;
+    fetchPeople().then((r) => setPeople(r.people)).catch(() => setPeople([]));
+  }, [readingGated]);
   const send = useCallback((text: string, atts: unknown[]) => {
     if (readingGated) {
       router.push('/sign-in');
@@ -134,6 +150,28 @@ export default function Chat() {
     }
     return rawSend(text, atts as never);
   }, [readingGated, rawSend]) as typeof rawSend;
+
+  const openSubjectSheet = useCallback(() => {
+    const rows = subjectSheet(people);
+    const labels = rows.map((r) => r.label);
+    const pick = (i: number) => {
+      const row = rows[i];
+      if (!row) return;
+      track('subject_switch', { mode: i === 0 ? 'self' : i === rows.length - 1 ? 'adhoc' : 'person' });
+      send(row.turn, []);
+    };
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Cancel', ...labels], cancelButtonIndex: 0, title: 'Who is this reading for?' },
+        (i) => { if (i > 0) pick(i - 1); },
+      );
+      return;
+    }
+    Alert.alert('Who is this reading for?', undefined, [
+      ...rows.slice(0, 6).map((r, i) => ({ text: r.label, onPress: () => pick(i) })),
+      { text: 'Cancel', style: 'cancel' as const },
+    ]);
+  }, [people, send]);
   const busy = isSending || isCreatingChat;
 
   // The board draws a MENU glyph in the header's right slot, and it used to
@@ -342,6 +380,19 @@ export default function Chat() {
             <AstroWidget key={key} widget={widget} theme={astroChatTheme} />
           )}
           dataLanguages={ASTRO_DATA_LANGUAGES}
+          belowTranscript={
+            // docs/60 S3: composer-adjacent — in thumb reach, visible on
+            // every message. State made visible, not a new write path.
+            <Pressable
+              style={s.subjectChip}
+              onPress={openSubjectSheet}
+              disabled={readingGated}
+              accessibilityRole="button"
+              accessibilityLabel={`${chipLabel(subject)}. Change who this reading is for`}
+            >
+              <Text style={s.subjectChipText}>{chipLabel(subject)} ▾</Text>
+            </Pressable>
+          }
           fallbackSuggestions={FALLBACK_SUGGESTIONS}
           placeholder={`Message ${tokens.wordmark}...`}
           renderSendIcon={(streaming, color, size) =>
@@ -387,4 +438,12 @@ const s = StyleSheet.create({
   headerSub: { ...t.type.scale.caption, color: t.palette.ink.muted },
   emptyBody: { flex: 1, padding: t.space(4) },
   hint: { ...t.type.scale.sub, color: t.palette.ink.muted, marginTop: t.space(2) },
+  subjectChip: {
+    alignSelf: 'flex-start',
+    marginHorizontal: t.space(4), marginBottom: t.space(1.5),
+    paddingHorizontal: t.space(3), paddingVertical: t.space(1.5),
+    borderRadius: t.radius.button,
+    backgroundColor: t.palette.accent.interactive,
+  },
+  subjectChipText: { ...t.type.scale.label, color: t.palette.accent.interactiveInk },
 });

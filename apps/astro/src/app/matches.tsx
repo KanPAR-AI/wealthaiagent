@@ -62,6 +62,7 @@ import {
 } from '@/lib/people';
 import { SignInGateCard } from '@/components/sign-in-gate';
 import { useReadingBlocked } from '@/lib/use-account';
+import { turnForPerson } from '@/lib/subject-view';
 import { tokens } from '@/theme';
 
 export default function Matches() {
@@ -139,6 +140,17 @@ export default function Matches() {
     });
   }, []);
 
+  // docs/60 SL-4 §C: one tap into a chat bound to THIS person. Same fresh
+  // chat mechanics as askAbout; the sentence is the engine's subject cue.
+  const askAboutPerson = useCallback((row: MatchRowView) => {
+    track('person_ask_ai');
+    router.push({
+      pathname: '/chat',
+      params: { pending: turnForPerson(row.name), fresh: '1',
+                handoffKey: String(Date.now()) },
+    });
+  }, []);
+
   const view = sections(data);
   const partnered = partner ? partnerMode(data, partner.person_id) : null;
 
@@ -187,6 +199,7 @@ export default function Matches() {
                   starBusy={starBusy === partnered.partnerRow.pairKey}
                   onStar={() => toggleStar(partnered.partnerRow!)}
                   onAsk={() => askAbout(partnered.partnerRow!)}
+                  onAskAbout={() => askAboutPerson(partnered.partnerRow!)}
                   onOpen={() =>
                     router.push({
                       pathname: '/match',
@@ -245,6 +258,7 @@ export default function Matches() {
                     starBusy={starBusy === row.pairKey}
                     onStar={() => toggleStar(row)}
                     onAsk={() => void askAbout(row)}
+                    onAskAbout={() => askAboutPerson(row)}
                     onOpen={() => {
                       // docs/49 ASTRAL-241: the scorecard is a SCREEN now,
                       // not a question. Every koota, its points and its
@@ -268,12 +282,15 @@ export default function Matches() {
 }
 
 function Row({
-  row, starBusy, onStar, onAsk, onOpen,
+  row, starBusy, onStar, onAsk, onAskAbout, onOpen,
 }: {
   row: MatchRowView;
   starBusy: boolean;
   onStar: () => void;
   onAsk: () => void;
+  /** docs/60 SL-4 §C: a conversation ABOUT this person — their chart,
+   *  their palm — not about the match. Binds the chat's reading subject. */
+  onAskAbout: () => void;
   onOpen: () => void;
 }) {
   return (
@@ -373,6 +390,14 @@ function Row({
           accessibilityLabel={`Ask AI about your match with ${row.name}`}
         >
           <Text style={s.ghostText}>Ask AI about this match</Text>
+        </Pressable>
+        <Pressable
+          style={s.ghost}
+          onPress={onAskAbout}
+          accessibilityRole="button"
+          accessibilityLabel={`Ask about ${row.name} — their chart and palm`}
+        >
+          <Text style={s.ghostText}>Ask about {row.name}</Text>
         </Pressable>
       </View>
     </View>

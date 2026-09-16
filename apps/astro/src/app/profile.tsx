@@ -59,6 +59,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, ChevronRight, SymbolIcon } from '@/components/glyphs';
 import { track } from '@/lib/analytics';
 import { ADD_PARTNER_TURN } from '@/lib/daily-view';
+import { turnForPerson } from '@/lib/subject-view';
 import { editRoute } from '@/lib/edit-fact';
 import { useEditOutcome } from '@/lib/edit-outcome';
 import {
@@ -591,9 +592,9 @@ function Established({
           upload lives here yet (that is the Sanctum build, S1–S6). No
           stored hands → NO section: an empty gallery implies a photograph
           the way palm.tsx measured a broken screen. */}
+      <Text style={s.section}>My hands</Text>
       {hands.length > 0 ? (
         <>
-          <Text style={s.section}>My hands</Text>
           <View style={s.card}>
             <View style={s.handsRow}>
               {hands.map((h) => (
@@ -617,9 +618,41 @@ function Established({
                 </View>
               ))}
             </View>
+            {/* docs/60 SL-3: capture or replace from the Sanctum — the same
+                palm screen, the same engine ask; the reading files to your
+                own record because this chat's subject is you. */}
+            <Pressable
+              style={s.row}
+              onPress={() => router.push('/palm')}
+              accessibilityRole="button"
+              accessibilityLabel="Capture or replace a hand"
+            >
+              <View style={s.rowText}>
+                <Text style={s.rowLabel}>Capture or replace a hand</Text>
+              </View>
+              <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
+            </Pressable>
           </View>
         </>
-      ) : null}
+      ) : (
+        <View style={s.card}>
+          <Pressable
+            style={s.row}
+            onPress={() => router.push('/palm')}
+            accessibilityRole="button"
+            accessibilityLabel="Add your hands"
+          >
+            <View style={s.rowText}>
+              <Text style={s.rowLabel}>Add your hands</Text>
+              <Text style={s.caption}>
+                Both palms, read as a pair — kept here, and read into your
+                daily guidance for 90 days.
+              </Text>
+            </View>
+            <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
+          </Pressable>
+        </View>
+      )}
 
       {/* docs/49 PH-19 (ASTRAL-152/154) — the owner's question, answered in
           the place they would look for it: what matters to YOU, beside the
@@ -654,6 +687,39 @@ function Established({
           <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
         </Pressable>
       </View>
+
+      {/* docs/60 SL-4 §C — "Friend insights are one tap". Every person on
+          the list opens a chat BOUND to them (the engine's subject cue);
+          "How's Rohan's career?" then answers from Rohan's chart. */}
+      {people.length > 0 ? (
+        <>
+          <Text style={s.section}>Your people</Text>
+          <View style={s.card}>
+            {people.map((p) => (
+              <Pressable
+                key={p.id}
+                style={s.row}
+                onPress={() => {
+                  track('person_ask_ai');
+                  router.push({
+                    pathname: '/chat',
+                    params: { pending: turnForPerson(p.display_name || 'Them'),
+                              fresh: '1', handoffKey: String(Date.now()) },
+                  });
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Ask about ${p.display_name || 'this person'}`}
+              >
+                <View style={s.rowText}>
+                  <Text style={s.rowLabel}>{p.display_name || 'Unnamed'}</Text>
+                  <Text style={s.caption}>Ask about their chart, palm or match</Text>
+                </View>
+                <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
+              </Pressable>
+            ))}
+          </View>
+        </>
+      ) : null}
 
       {person.partner ? null : (
       <>

@@ -28,6 +28,8 @@ import {
   tabs,
   transitLines,
   withheld,
+  ADD_PARTNER_TURN,
+  isPartnerDoor,
 } from '../daily-view';
 import { absentView as timelineAbsentView } from '../timeline-view';
 import type { DailyReady, DailyResponse } from '../people-shapes';
@@ -414,7 +416,6 @@ describe('isReady is the compiler’s guard, not a convention', () => {
 });
 
 describe("the Couple tab's door (facet v3)", () => {
-  const { ADD_PARTNER_TURN, isPartnerDoor } = require('../daily-view');
 
   it('recognises exactly the engine door item', () => {
     expect(isPartnerDoor({ unlocked_by: 'partner' })).toBe(true);
