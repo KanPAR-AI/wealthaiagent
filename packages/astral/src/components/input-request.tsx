@@ -43,7 +43,7 @@
  * that sentence is the whole point of the feature.
  */
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { createBlockRegistry } from '../block-registry';
 // Display formatting only, and from the module the ASTRAL-19 structural test
@@ -115,6 +115,27 @@ export interface InputRequestViewProps extends AstralRenderProps {
    * changed.
    */
   layout?: 'card' | 'page';
+  /** docs/65 B2: the host's place lookup for the `place` kind */
+  suggestPlaces?: PlaceSuggester;
+}
+
+/** docs/65 B2: a city the host can suggest as the user types. The host
+ *  supplies the lookup (the app's gazetteer read); this package draws the
+ *  rows and hands the PICK back as text — the engine still geocodes it in
+ *  reconcile, zone-honest, exactly as a typed place. */
+export interface PlaceSuggestion {
+  name: string;
+  country?: string | null;
+  timezone?: string | null;
+}
+export type PlaceSuggester = (query: string) => Promise<PlaceSuggestion[]>;
+
+/** What a picked suggestion becomes on the wire — the same text a careful
+ *  user would have typed, so the engine's place path is unchanged. */
+export function placePickText(s: PlaceSuggestion): string {
+  const name = (s.name || '').trim();
+  const country = (s.country || '').trim();
+  return country ? `${name}, ${country}` : name;
 }
 
 interface FieldRenderContext {
@@ -124,6 +145,8 @@ interface FieldRenderContext {
   field: InputField;
   value: InputValue | undefined;
   onChange: (value: InputValue) => void;
+  /** docs/65 B2: present when the host can suggest places */
+  suggestPlaces?: PlaceSuggester;
   /** the engine's `hint` if it sent one, otherwise the host's brand copy */
   hint?: string;
   /**
@@ -456,6 +479,11 @@ function PlaceField(ctx: FieldRenderContext) {
   // "new delhi" is the same place and should not look like a mistake, and
   // `done` because this is the last field and the keyboard has to get out of
   // the way of Continue.
+  if (ctx.suggestPlaces) {
+    // A component, not a plain call: the suggestion list is state, and a
+    // field renderer is invoked as a function (see FieldRenderContext).
+    return <PlaceSuggestField ctx={ctx} />;
+  }
   return TextField(ctx, {
     autoCapitalize: 'words',
     autoCorrect: false,
@@ -463,20 +491,76 @@ function PlaceField(ctx: FieldRenderContext) {
   });
 }
 
-/**
- * A role-labelled photo slot (bug 8dc95a6a).
- *
- * The reported failure was a PAIRING failure: two palms, the vision layer
- * called both the same side, and the engine deduped by side — so a pair read
- * as a re-shoot and the user got a one-hand reading. Two slots each LABELLED
- * with the role removes the ambiguity at the source: two roles is
- * definitionally two hands, whatever the pixels say.
- *
- * The picking and the upload belong to the host (`ui.ImagePicker`); what is
- * shared is the question, the label, the skip and the carrier. Once a photo
- * is attached the slot SAYS SO — a control that looks identical before and
- * after a tap is how a user uploads the same hand twice.
- */
+/** Minimum characters before the host is asked; the debounce keeps one
+ *  request in flight per pause, and a stale answer never lands. */
+export const PLACE_SUGGEST_MIN = 2;
+export const PLACE_SUGGEST_DEBOUNCE_MS = 180;
+
+function PlaceSuggestField({ ctx }: { ctx: FieldRenderContext }) {
+  const { ui, theme, value, onChange, suggestPlaces } = ctx;
+  const { Box, Text, Pressable } = ui;
+  const [hits, setHits] = useState<PlaceSuggestion[]>([]);
+  const [picked, setPicked] = useState<string | null>(null);
+  const seq = useRef(0);
+  const query = typeof value === 'string' ? value.trim() : '';
+
+  useEffect(() => {
+    if (!suggestPlaces || query.length < PLACE_SUGGEST_MIN || query === picked) {
+      setHits([]);
+      return;
+    }
+    const mine = ++seq.current;
+    const t = setTimeout(() => {
+      suggestPlaces(query)
+        .then((res) => { if (mine === seq.current) setHits(res.slice(0, 6)); })
+        .catch(() => { if (mine === seq.current) setHits([]); });
+    }, PLACE_SUGGEST_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [query, picked, suggestPlaces]);
+
+  const pick = (s: PlaceSuggestion) => {
+    const text = placePickText(s);
+    setPicked(text);
+    setHits([]);
+    onChange(text);
+  };
+
+  return (
+    <Box style={{ gap: 6 }}>
+      {TextField(ctx, { autoCapitalize: 'words', autoCorrect: false, returnKey: 'done' })}
+      {hits.length ? (
+        <Box
+          testID={`input-place-suggestions-${ctx.field.key}`}
+          style={{
+            borderWidth: 1,
+            borderColor: theme.line,
+            borderRadius: ROW_RADIUS,
+            backgroundColor: theme.surface,
+          }}
+        >
+          {hits.map((s, i) => (
+            <Pressable
+              key={`${s.name}|${s.country ?? ''}|${i}`}
+              onPress={() => pick(s)}
+              accessibilityLabel={placePickText(s)}
+              testID={`input-place-suggestion-${i}`}
+              style={{
+                paddingTop: 10, paddingBottom: 10, paddingLeft: 12, paddingRight: 12,
+                borderTopWidth: i === 0 ? 0 : 1, borderColor: theme.line,
+              }}
+            >
+              <Text style={{ fontSize: ROW_FONT, color: theme.text }}>{s.name}</Text>
+              <Text style={{ fontSize: 12, color: theme.textMuted }}>
+                {[s.country, s.timezone].filter(Boolean).join(' · ')}
+              </Text>
+            </Pressable>
+          ))}
+        </Box>
+      ) : null}
+    </Box>
+  );
+}
+
 function ImageField({ ui, theme, field, value, onChange, hint }: FieldRenderContext) {
   const { Box, ImagePicker, Text } = ui;
   const attached = typeof value === 'string' && value.length > 0;
@@ -773,6 +857,7 @@ export function InputRequestView({
   requiredNote,
   fieldIcons,
   layout = 'card',
+  suggestPlaces,
 }: InputRequestViewProps) {
   const { Box, Pressable, Text } = ui;
   const [step, setStep] = useState(0);
@@ -842,6 +927,7 @@ export function InputRequestView({
     ui,
     theme,
     width,
+    suggestPlaces,
     field: f,
     value: values[f.key],
     onChange: (value) => setValue(f.key, value),

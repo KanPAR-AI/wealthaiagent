@@ -82,6 +82,13 @@ export interface AstralHost {
   send: (text: string) => void;
 
   /**
+   * docs/65 B2: the place lookup the birth-details carrier suggests from
+   * as the user types — the app's gazetteer read. OPTIONAL: a host without
+   * one gets the plain place field, exactly as before.
+   */
+  suggestPlaces?: (query: string) => Promise<Array<{ name: string; country?: string | null; timezone?: string | null }>>;
+
+  /**
    * Per-field helper copy, keyed by field `key` then field `kind`
    * (docs/49 ASTRAL-104's amendment).
    *

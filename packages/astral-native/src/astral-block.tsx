@@ -69,12 +69,14 @@ interface BlockContext {
   fieldHints?: Record<string, string>;
   /** …and its glyphs, so the bubble draws the board's rows too */
   fieldIcons?: Record<string, ReactNode>;
+  /** docs/65 B2: the host's place lookup, when it has one */
+  suggestPlaces?: (query: string) => Promise<Array<{ name: string; country?: string | null; timezone?: string | null }>>;
 }
 
 type BlockRenderer = (ctx: BlockContext) => ReactElement | null;
 
 const handlers: Record<string, BlockRenderer> = {
-  input_request: ({ data, theme, width, send, fieldHints, fieldIcons }) => {
+  input_request: ({ data, theme, width, send, fieldHints, fieldIcons, suggestPlaces }) => {
     const request = parseInputRequest(data);
     // The answer rides the host's send capability. What travels is the typed
     // fence the shared component builds; nothing here assembles a sentence
@@ -88,6 +90,7 @@ const handlers: Record<string, BlockRenderer> = {
         onSend={send}
         hints={fieldHints}
         fieldIcons={fieldIcons}
+        suggestPlaces={suggestPlaces}
       />
     ) : null;
   },
@@ -158,5 +161,6 @@ export function AstralBlock({ type, data }: { type: string; data: unknown }) {
   // the honest question and there is no `try {} catch {}` here.
   const fieldHints = isAstralHostInstalled() ? getAstralHost().fieldHints : undefined;
   const fieldIcons = isAstralHostInstalled() ? getAstralHost().fieldIcons : undefined;
-  return render({ data, theme, width, send, fieldHints, fieldIcons });
+  const suggestPlaces = isAstralHostInstalled() ? getAstralHost().suggestPlaces : undefined;
+  return render({ data, theme, width, send, fieldHints, fieldIcons, suggestPlaces });
 }

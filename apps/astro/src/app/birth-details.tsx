@@ -84,6 +84,7 @@ import { fetchBalance } from '@/lib/credits';
 import { editFailure, isReturningEdit, outcomeLine } from '@/lib/edit-fact';
 import { useEditOutcome } from '@/lib/edit-outcome';
 import { useReadingBlocked } from '@/lib/use-account';
+import { suggestPlaces } from '@/lib/people';
 import { tokens } from '@/theme';
 
 /**
@@ -454,6 +455,7 @@ export default function BirthDetails() {
                 onSend={handOff}
                 hints={{ place: tokens.copy.fieldHints.placeBirthHint }}
                 fieldIcons={FIELD_ICONS}
+                suggestPlaces={(q) => suggestPlaces(q).then((r) => r.places)}
               />
             </>
           ) : error ? (
