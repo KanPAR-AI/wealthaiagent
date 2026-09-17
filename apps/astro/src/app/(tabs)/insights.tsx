@@ -250,7 +250,7 @@ function Item({ item, onDeclared }: { item: FacetItem; onDeclared: () => void })
         // own cue sentence, sent to chat as is.
         <Pressable
           style={s.doorCta}
-          onPress={() => router.push({ pathname: '/chat', params: { pending: item.cue! } })}
+          onPress={() => router.push({ pathname: '/chat', params: { pending: item.cue!, handoffKey: String(Date.now()) } })}
           accessibilityRole="button"
           accessibilityLabel="When should I…? — ask for the best days"
         >

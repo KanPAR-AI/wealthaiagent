@@ -418,7 +418,9 @@ function PurposeChips({ chips }: { chips: PurposeChip[] }) {
           accessibilityLabel={chip.cue}
           onPress={() => {
             track('home_purpose_chip', { key: chip.key });
-            router.push({ pathname: '/chat', params: { pending: chip.cue } });
+            // A fresh key each tap: the handoff is deduped by key (chat-handoff.ts),
+            // and the same chip asked twice is two asks.
+            router.push({ pathname: '/chat', params: { pending: chip.cue, handoffKey: String(Date.now()) } });
           }}
         >
           <Text style={s.purposeChipText}>{chip.label}</Text>
@@ -464,7 +466,7 @@ function CoupleHomeCard({ card, onDeclared, partnerChip }: { card: CoupleCard; o
         <Pressable
           onPress={() => {
             track('home_couple_best_day');
-            router.push({ pathname: '/chat', params: { pending: partnerChip.cue } });
+            router.push({ pathname: '/chat', params: { pending: partnerChip.cue, handoffKey: String(Date.now()) } });
           }}
           accessibilityRole="button"
           accessibilityLabel={`${bestLine} Ask when to talk`}
