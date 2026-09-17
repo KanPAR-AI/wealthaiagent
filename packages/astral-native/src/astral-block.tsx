@@ -38,6 +38,8 @@ import {
   parseNatalChart,
   parsePalmAnalysis,
   type AstralTheme,
+  parseBestDays,
+  BestDaysView,
 } from '@wealthai/astral';
 import type { ReactElement, ReactNode } from 'react';
 import { useWindowDimensions } from 'react-native';
@@ -71,6 +73,8 @@ interface BlockContext {
   fieldIcons?: Record<string, ReactNode>;
   /** docs/65 B2: the host's place lookup, when it has one */
   suggestPlaces?: (query: string) => Promise<Array<{ name: string; country?: string | null; timezone?: string | null }>>;
+  /** docs/64 W-3: the host's door to a day's card, when it has one */
+  openDay?: (isoDate: string) => void;
 }
 
 type BlockRenderer = (ctx: BlockContext) => ReactElement | null;
@@ -123,6 +127,15 @@ const handlers: Record<string, BlockRenderer> = {
   // that never arrived. No photo is passed: the chat bubble has no bearer
   // token to fetch an authorised file with, and the reading stands without
   // one. The palm SCREEN passes its own.
+  // docs/64 W-3: the ranked days under a "when should I…?" reply. The
+  // engine ranked and banded them; a row's tap is the host's door.
+  best_days: ({ data, theme, width, openDay }) => {
+    const payload = parseBestDays(data);
+    return payload ? (
+      <BestDaysView ui={rnPrimitives} theme={theme} width={width} payload={payload} onOpenDay={openDay} />
+    ) : null;
+  },
+
   palm_analysis: ({ data, theme, width }) => {
     const analysis = parsePalmAnalysis(data);
     return analysis ? (
@@ -162,5 +175,6 @@ export function AstralBlock({ type, data }: { type: string; data: unknown }) {
   const fieldHints = isAstralHostInstalled() ? getAstralHost().fieldHints : undefined;
   const fieldIcons = isAstralHostInstalled() ? getAstralHost().fieldIcons : undefined;
   const suggestPlaces = isAstralHostInstalled() ? getAstralHost().suggestPlaces : undefined;
-  return render({ data, theme, width, send, fieldHints, fieldIcons, suggestPlaces });
+  const openDay = isAstralHostInstalled() ? getAstralHost().openDay : undefined;
+  return render({ data, theme, width, send, fieldHints, fieldIcons, suggestPlaces, openDay });
 }

@@ -39,6 +39,7 @@ import type {
   DailyResponse,
   FacetItem,
   FacetTab,
+  PurposeChip,
 } from './people-shapes';
 
 export function isReady(res: DailyResponse | null): res is DailyReady {
@@ -513,4 +514,19 @@ export function coupleCard(res: DailyReady): CoupleCard | null {
     lines,
     cta: 'Open your Couple reading',
   };
+}
+
+
+/** docs/64 W-4: the purpose chips under the week strip — the engine's
+ *  table as served (the partner chip is present only when there is one).
+ *  Pure: nothing is composed here; each chip's `cue` is sent as is. */
+export function purposeChips(res: DailyReady): PurposeChip[] {
+  return Array.isArray(res.purposes) ? res.purposes : [];
+}
+
+/** The couple card's one computed line: the engine's verdict for
+ *  `talk_partner` over the week, sentence-cased. Null when there is none. */
+export function coupleBestLine(verdict: string | null | undefined): string | null {
+  const v = (verdict ?? '').trim();
+  return v ? v.charAt(0).toUpperCase() + v.slice(1) + '.' : null;
 }

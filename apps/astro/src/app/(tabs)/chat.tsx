@@ -78,7 +78,9 @@ import { tokens } from '@/theme';
  * Copy, so it belongs to the brand — it should become a `copy.*` token in
  * ASTRAL-124's sweep, alongside the hint below.
  */
-const FALLBACK_SUGGESTIONS = ['Yes, please', 'Tell me more', 'Another question'];
+// docs/64 W-4: the timing question as a tile — the engine's cue grammar
+// reads it and ranks the days (generic purpose; the chips name specific ones).
+const FALLBACK_SUGGESTIONS = ['Yes, please', 'Tell me more', 'When should I…?', 'Another question'];
 
 const WASH_HEIGHT = 132;
 /** how far across the header the corner bleed reaches — it must not touch the

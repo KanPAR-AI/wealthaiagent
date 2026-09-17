@@ -11,6 +11,7 @@
 import { installAstralHost } from '@wealthai/astral-native';
 import { CHAT_SEND_EVENT, uploadFileNative } from '@wealthai/chat-native';
 import { getPlatform } from '@wealthai/core';
+import { router } from 'expo-router';
 
 import { FIELD_ICONS } from '@/components/field-icons';
 import { tokens } from '@/theme';
@@ -54,5 +55,9 @@ export function ensureAstralHostInstalled(): void {
     // rather than by screen 2 alone, so the birth-time ask that arrives mid
     // chat draws the same field rows the full-screen form does.
     fieldIcons: FIELD_ICONS,
+
+    // docs/64 W-3: a ranked day's tap opens that day's card — the same
+    // door the week strip's dots are (docs/64 W-1).
+    openDay: (isoDate) => router.push({ pathname: '/day', params: { date: isoDate } }),
   });
 }

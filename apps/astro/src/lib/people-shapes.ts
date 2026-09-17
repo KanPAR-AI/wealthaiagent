@@ -495,6 +495,8 @@ export interface FacetItem {
    *  fact earns no advice (a domainless position) carries "" — both
    *  render as no line, never as a blank. */
   meaning?: string | null;
+  /** docs/64 W-4: the "Plan ahead" item's door — a chat sentence */
+  cue?: string | null;
 }
 
 export interface FacetTab {
@@ -506,9 +508,34 @@ export interface FacetTab {
   empty_reason: string | null;
 }
 
+/** docs/64 W-4: one purpose chip — the engine's PURPOSES table, the
+ *  partner's name already filled in; `cue` is the sentence the chip sends. */
+export interface PurposeChip {
+  key: string;
+  label: string;
+  cue: string;
+  needs_partner: boolean;
+}
+
+/** docs/64 W-2: `GET /people/self/best-days` — the timing node's result
+ *  (parsed with `parseBestDays` from @wealthai/astral) beside the chips. */
+export interface BestDaysReady {
+  state: 'ready';
+  today: string;
+  place: { name?: string | null; basis?: string } | null;
+  best_days: unknown;
+  purposes: PurposeChip[];
+  chart: { status: string; computed_at?: string | null };
+  person: { id: string; display_name: string };
+}
+export type BestDaysResponse = BestDaysReady | ReadAbsent;
+
 export interface DailyReady {
   state: 'ready';
   date: string;
+  /** docs/64 W-4: the purpose chips under the week strip. Optional: an
+   *  older backend serves the card without them, and the row is absent. */
+  purposes?: PurposeChip[];
   /** docs/64 W-1: which day this card is relative to the person's own
    *  today. Optional: an older backend serves today only. */
   is_today?: boolean;

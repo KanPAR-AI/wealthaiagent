@@ -503,7 +503,9 @@ describeWithApps('ASTRAL-19 — renderers derive nothing', () => {
     // NOTHING for. A census, so a renderer added outside `view/` or
     // `components/` (where the derivation greps below cannot see it) shows
     // up here as a number that did not move.
-    expect(RENDERER_FILES.length).toBe(9);
+    // 11 since docs/64 W-3 (2026-09-17): + view/best-days.ts and
+    // components/best-days.tsx — the ranked-days block, checked above.
+    expect(RENDERER_FILES.length).toBe(11);
   });
 
   it.each(RENDERER_FILES.map(rel))('%s does no rounding or rescaling', (r) => {

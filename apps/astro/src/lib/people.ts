@@ -38,6 +38,7 @@ import type {
   SelfResponse,
   TimelineResponse,
   PlaceSuggestion,
+  BestDaysResponse,
 } from './people-shapes';
 import { getToken } from './auth';
 import { apiUrl } from './core-adapter';
@@ -95,6 +96,17 @@ export function fetchDaily(date?: string): Promise<DailyResponse> {
   return call<DailyResponse>(
     date ? `people/self/daily?date=${encodeURIComponent(date)}` : 'people/self/daily',
   );
+}
+
+/**
+ * docs/64 W-2: the next days ranked for a purpose. `purpose` is a key from
+ * the engine's own table (the daily read carries it as chips); `horizon`
+ * is the server's to bound. The result is parsed with `parseBestDays`.
+ */
+export function fetchBestDays(purpose: string, horizon?: number): Promise<BestDaysResponse> {
+  const q = new URLSearchParams({ purpose });
+  if (horizon) q.set('horizon', String(horizon));
+  return call<BestDaysResponse>(`people/self/best-days?${q.toString()}`);
 }
 
 /**

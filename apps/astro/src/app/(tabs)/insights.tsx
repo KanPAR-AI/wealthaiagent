@@ -245,6 +245,18 @@ function Item({ item, onDeclared }: { item: FacetItem; onDeclared: () => void })
       {!honest && !isPartnerDoor(item) && basisAddsAnything(item) ? (
         <Text style={s.itemBasis}>{item.basis}</Text>
       ) : null}
+      {item.kind === 'plan_ahead' && item.cue ? (
+        // docs/64 W-4: the Guidance door to the ranked days — the engine's
+        // own cue sentence, sent to chat as is.
+        <Pressable
+          style={s.doorCta}
+          onPress={() => router.push({ pathname: '/chat', params: { pending: item.cue! } })}
+          accessibilityRole="button"
+          accessibilityLabel="When should I…? — ask for the best days"
+        >
+          <Text style={s.doorCtaText}>When should I…?</Text>
+        </Pressable>
+      ) : null}
       {isPartnerDoor(item) ? (
         // facet v3: the Couple tab's add-one-partner door — the same flow
         // every birth fact rides (F24): the engine's partner ask through

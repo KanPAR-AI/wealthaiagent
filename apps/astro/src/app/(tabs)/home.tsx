@@ -64,10 +64,13 @@ import {
   panchangLine,
   ruleLines,
   transitLines,
+  purposeChips,
+  coupleBestLine,
 } from '@/lib/daily-view';
-import { adoptAccountNameIfUnnamed, fetchDaily, fetchSelf } from '@/lib/people';
+import { adoptAccountNameIfUnnamed, fetchBestDays, fetchDaily, fetchSelf } from '@/lib/people';
+import { parseBestDays } from '@wealthai/astral';
 import type { CoupleCard, DayView } from '@/lib/daily-view';
-import type { DailyResponse } from '@/lib/people-shapes';
+import type { DailyResponse, PurposeChip } from '@/lib/people-shapes';
 import { visibleTiles } from '@/lib/tabs';
 import { SignInGateCard } from '@/components/sign-in-gate';
 import { useReadingBlocked } from '@/lib/use-account';
@@ -304,6 +307,9 @@ export default function Home() {
                 setWhyOpen((v) => !v);
               }} selfPlace={selfPlace} onChangePlace={() => { track('home_change_city'); setCityOpen('change'); }} />
             ) : null}
+            {res && isReady(res) && CAPABILITIES.dayStrip && purposeChips(res).length ? (
+              <PurposeChips chips={purposeChips(res)} />
+            ) : null}
           </View>
 
           {res && isReady(res) ? (
@@ -313,7 +319,11 @@ export default function Home() {
                   partner, both people's day when there is. Every word is the
                   Couple tab's own items; the door opens the ONE partner sheet. */}
               {coupleCard(res) ? (
-                <CoupleHomeCard card={coupleCard(res)!} onDeclared={() => read(true)} />
+                <CoupleHomeCard
+                  card={coupleCard(res)!}
+                  onDeclared={() => read(true)}
+                  partnerChip={purposeChips(res).find((c) => c.key === 'talk_partner') ?? null}
+                />
               ) : null}
 
               <View style={s.tiles}>
@@ -393,8 +403,53 @@ export default function Home() {
   );
 }
 
-function CoupleHomeCard({ card, onDeclared }: { card: CoupleCard; onDeclared: () => void }) {
+/** docs/64 W-4: the purpose chips under the week strip — each is one of
+ *  the engine's cue sentences, sent to chat as is ("When should I talk
+ *  something sensitive over with Nisha?"). The chips teach the question;
+ *  the engine ranks the days. */
+function PurposeChips({ chips }: { chips: PurposeChip[] }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.purposeRow} accessibilityLabel="When should I…? — pick a purpose">
+      {chips.map((chip) => (
+        <Pressable
+          key={chip.key}
+          style={s.purposeChip}
+          accessibilityRole="button"
+          accessibilityLabel={chip.cue}
+          onPress={() => {
+            track('home_purpose_chip', { key: chip.key });
+            router.push({ pathname: '/chat', params: { pending: chip.cue } });
+          }}
+        >
+          <Text style={s.purposeChipText}>{chip.label}</Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+}
+
+/** The couple card's computed line — the engine's verdict for the week
+ *  (`talk_partner`, 7 days), fetched AFTER the card so Home never waits on
+ *  it; a failure leaves the line out rather than a spinner in. */
+function useCoupleBestLine(enabled: boolean): string | null {
+  const [line, setLine] = useState<string | null>(null);
+  useEffect(() => {
+    if (!enabled) { setLine(null); return; }
+    let live = true;
+    fetchBestDays('talk_partner', 7)
+      .then((r) => {
+        if (!live || r.state !== 'ready') return;
+        setLine(coupleBestLine(parseBestDays(r.best_days)?.verdict));
+      })
+      .catch(() => { /* the line is optional; the card stands */ });
+    return () => { live = false; };
+  }, [enabled]);
+  return line;
+}
+
+function CoupleHomeCard({ card, onDeclared, partnerChip }: { card: CoupleCard; onDeclared: () => void; partnerChip: PurposeChip | null }) {
   const door = card.mode === 'door';
+  const bestLine = useCoupleBestLine(!door && partnerChip !== null);
   return (
     <View style={s.coupleCard}>
       <View style={s.coupleHead}>
@@ -405,6 +460,18 @@ function CoupleHomeCard({ card, onDeclared }: { card: CoupleCard; onDeclared: ()
       {card.lines.map((line) => (
         <Text key={line} style={s.bullet}>• {line}</Text>
       ))}
+      {bestLine && partnerChip ? (
+        <Pressable
+          onPress={() => {
+            track('home_couple_best_day');
+            router.push({ pathname: '/chat', params: { pending: partnerChip.cue } });
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`${bestLine} Ask when to talk`}
+        >
+          <Text style={s.coupleBest}>{bestLine} <Text style={s.coupleBestCta}>Ask when ›</Text></Text>
+        </Pressable>
+      ) : null}
       <Pressable
         style={door ? s.cta : s.coupleOpen}
         onPress={() => {
@@ -597,6 +664,15 @@ const s = StyleSheet.create({
   weekDotAbsent: { borderWidth: 1, borderColor: t.palette.ink.onCosmicMuted, backgroundColor: 'transparent' },
   weekDotToday: { borderWidth: 2, borderColor: t.palette.accent.ceremonial },
   weekNote: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
+  purposeRow: { paddingHorizontal: t.space(4), gap: t.space(2), paddingTop: t.space(2) },
+  purposeChip: {
+    paddingHorizontal: t.space(3), paddingVertical: t.space(1.5),
+    borderRadius: t.radius.button, borderWidth: 1, borderColor: t.palette.cosmic.line,
+    backgroundColor: t.palette.cosmic.card,
+  },
+  purposeChipText: { ...t.type.scale.label, color: t.palette.ink.onCosmic },
+  coupleBest: { ...t.type.scale.sub, color: t.palette.ink.secondary, marginTop: t.space(1) },
+  coupleBestCta: { color: t.palette.accent.interactive, fontWeight: '700' },
   weekNoteCta: { color: t.palette.accent.ceremonial, fontWeight: '600' },
   whyRow: { flexDirection: 'row', alignItems: 'center', gap: t.space(1) },
   whyText: { ...t.type.scale.sub, color: t.palette.accent.ceremonial, fontWeight: '600' },

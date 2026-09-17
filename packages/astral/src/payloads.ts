@@ -250,6 +250,50 @@ export interface MuhurtaResultsPayload {
   windows: MuhurtaWindow[];
 }
 
+// ── best_days (docs/64 W-3) ────────────────────────────────────────────────
+
+export interface BestDayWindow {
+  start: string;
+  end: string;
+}
+
+export interface BestDayPerson {
+  band: string | null;
+  score: number | null;
+  absent: string | null;
+}
+
+export interface BestDay {
+  date: string;
+  weekday: string;
+  days_from_today: number | null;
+  rank: number | null;
+  band: string | null;
+  purpose_band: string | null;
+  purpose_score: number | null;
+  day_score: number | null;
+  caps: string[];
+  reasons: string[];
+  purpose_reasons: string[];
+  golden: BestDayWindow[];
+  rahu_kaal: BestDayWindow | null;
+  per_person: Record<string, BestDayPerson>;
+}
+
+export interface BestDaysPayload {
+  type: 'best_days';
+  purpose: string;
+  label: string | null;
+  needs_partner: boolean;
+  as_of: string | null;
+  horizon: { start: string | null; end: string | null; days: number | null };
+  personalized: boolean;
+  people: Array<{ name: string; has_chart: boolean }>;
+  verdict: string | null;
+  ranked: BestDay[];
+  absent: Array<{ date: string; reason: string }>;
+}
+
 // ── palm_analysis ──────────────────────────────────────────────────────────
 //
 // Source: `graph.py` `widget_data` (~:5026) — `combine_hand_analyses(...)`
@@ -677,6 +721,89 @@ export function parseMuhurtaResults(value: unknown): MuhurtaResultsPayload | nul
     date_range: str(value.date_range),
     total_evaluated: num(value.total_evaluated),
     windows,
+  };
+}
+
+
+function parseBestDayWindow(v: unknown): BestDayWindow | null {
+  if (!isObj(v)) return null;
+  const start = str(v.start);
+  const end = str(v.end);
+  return start && end ? { start, end } : null;
+}
+
+function parseBestDay(v: unknown): BestDay | null {
+  if (!isObj(v)) return null;
+  const date = str(v.date);
+  const weekday = str(v.weekday);
+  if (!date || !weekday) return null;
+  const windows = isObj(v.windows) ? v.windows : {};
+  const perPerson: Record<string, BestDayPerson> = {};
+  if (isObj(v.per_person)) {
+    for (const [name, raw] of Object.entries(v.per_person)) {
+      if (!isObj(raw)) continue;
+      perPerson[name] = { band: str(raw.band), score: num(raw.score), absent: str(raw.absent) };
+    }
+  }
+  return {
+    date,
+    weekday,
+    days_from_today: num(v.days_from_today),
+    rank: num(v.rank),
+    band: str(v.band),
+    purpose_band: str(v.purpose_band),
+    purpose_score: num(v.purpose_score),
+    day_score: num(v.day_score),
+    caps: strList(v.caps),
+    reasons: strList(v.reasons),
+    purpose_reasons: strList(v.purpose_reasons),
+    golden: (Array.isArray(windows.golden) ? windows.golden : [])
+      .map(parseBestDayWindow)
+      .filter((w): w is BestDayWindow => w !== null),
+    rahu_kaal: parseBestDayWindow(v.rahu_kaal),
+    per_person: perPerson,
+  };
+}
+
+/** The engine's ranked days. Nothing is re-ranked, re-scored or re-banded
+ *  here: `purpose_band` and the order are the engine's (the client derives
+ *  nothing). A payload with no ranked day AND no absence is not a result. */
+export function parseBestDays(value: unknown): BestDaysPayload | null {
+  if (!isObj(value)) return null;
+  // the graph emits the timing node's result verbatim; `type` is set by
+  // the fence, so accept either spelling of the marker.
+  if (value.type !== undefined && value.type !== 'best_days') return null;
+  const ranked = (Array.isArray(value.ranked) ? value.ranked : [])
+    .map(parseBestDay)
+    .filter((d): d is BestDay => d !== null);
+  const absent = (Array.isArray(value.absent) ? value.absent : [])
+    .map((a): { date: string; reason: string } | null => {
+      if (!isObj(a)) return null;
+      const date = str(a.date);
+      const reason = str(a.reason);
+      return date && reason ? { date, reason } : null;
+    })
+    .filter((a): a is { date: string; reason: string } => a !== null);
+  if (ranked.length === 0 && absent.length === 0) return null;
+  const horizon = isObj(value.horizon) ? value.horizon : {};
+  return {
+    type: 'best_days',
+    purpose: str(value.purpose) ?? 'generic',
+    label: str(value.label),
+    needs_partner: bool(value.needs_partner) ?? false,
+    as_of: str(value.as_of),
+    horizon: { start: str(horizon.start), end: str(horizon.end), days: num(horizon.days) },
+    personalized: bool(value.personalized) ?? false,
+    people: (Array.isArray(value.people) ? value.people : [])
+      .map((q): { name: string; has_chart: boolean } | null => {
+        if (!isObj(q)) return null;
+        const name = str(q.name);
+        return name ? { name, has_chart: bool(q.has_chart) ?? false } : null;
+      })
+      .filter((q): q is { name: string; has_chart: boolean } => q !== null),
+    verdict: str(value.verdict),
+    ranked,
+    absent,
   };
 }
 

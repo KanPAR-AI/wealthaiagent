@@ -104,6 +104,13 @@ export interface AstralHost {
   fieldHints?: Record<string, string>;
 
   /**
+   * docs/64 W-3: open a day's card (`/day?date=`) from a ranked-days
+   * block. OPTIONAL: a host without a day page renders the rows without
+   * the door — never a tap that does nothing.
+   */
+  openDay?: (isoDate: string) => void;
+
+  /**
    * A glyph per field KIND, drawn by the host (the board's frame 2 puts a
    * calendar, a clock and a pin on its three rows).
    *
