@@ -33,5 +33,11 @@ export type { MuhurtaWindowsProps } from './components/muhurta-windows';
 export { PalmReadingView } from './components/palm-reading';
 export type { PalmReadingProps } from './components/palm-reading';
 
-export { InputRequestView, inputFieldRegistry } from './components/input-request';
+export {
+  InputRequestView,
+  inputFieldRegistry,
+  PlaceSuggestField,
+  PLACE_SUGGEST_DEBOUNCE_MS,
+  PLACE_SUGGEST_MIN,
+} from './components/input-request';
 export type { InputRequestViewProps } from './components/input-request';
