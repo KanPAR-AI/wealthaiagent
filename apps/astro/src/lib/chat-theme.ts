@@ -4,9 +4,18 @@
 // Every value is READ from `@/theme` — the brand token module — so the second
 // brand swaps a values file rather than rewriting a screen, and so the
 // ASTRAL-97 greps that forbid a colour, a size or a radius in an app file
-// keep meaning something. Nothing here follows the phone's colour scheme:
-// AMB-22(a) ruled the split is by ROLE, and a chat is a WORKING surface, so
-// it is the paper ground in both system appearances (ASTRAL-124).
+// keep meaning something. Nothing here follows the phone's colour scheme
+// (AMB-22(a): the split is by ROLE, never by the OS; ASTRAL-124).
+//
+// Owner 2026-09-17 ("This page is also too bright as well the bottom
+// navigation", after Insights moved onto the night field): the chat now sits
+// on the COSMIC ground — the same tokens Insights and the day page use, no
+// new colour. The reply card is the raised cosmic card, the ink is the
+// on-cosmic pair, and the send disc / submit / chips take the ceremonial
+// gold, which is the CTA colour on that ground everywhere else in the app.
+// The user's own bubble keeps the board's violet. The astral BLOCKS inside a
+// reply (the birth-details form, the wheel, the scorecard) stay light
+// working cards by ASTRAL-124's own rule — a card on the field, as on Home.
 
 import type { ChatTheme } from '@wealthai/chat-native';
 
@@ -14,27 +23,27 @@ import { tokens as t } from '@/theme';
 
 export const astroChatTheme: ChatTheme = {
   colors: {
-    background: t.palette.paper.base,
-    surface: t.palette.paper.card,
-    // MEASURED on the simulator: mapping this to `paper.base` made the
-    // disabled "Send report" button the same colour as the sheet behind it,
-    // so it read as white text floating on nothing. The rule line is the
-    // brand's next step away from the ground and is visible against both.
-    surfaceStrong: t.palette.paper.line,
-    line: t.palette.paper.line,
-    text: t.palette.ink.primary,
-    textMuted: t.palette.ink.muted,
-    link: t.palette.accent.interactive,
+    background: t.palette.cosmic.deep,
+    surface: t.palette.cosmic.card,
+    // A disabled ground must stay visible against the sheet behind it
+    // (MEASURED once on paper: a ground equal to the page read as white
+    // text floating on nothing). The cosmic hairline is the next step up
+    // from the card and is visible against both.
+    surfaceStrong: t.palette.cosmic.line,
+    line: t.palette.cosmic.line,
+    text: t.palette.ink.onCosmic,
+    textMuted: t.palette.ink.onCosmicMuted,
+    link: t.palette.accent.ceremonial,
     danger: t.palette.danger,
     // The board's violet bubble, and white words inside it.
     userBubble: t.palette.accent.interactive,
     userBubbleText: t.palette.accent.interactiveInk,
-    primary: t.palette.accent.interactive,
-    onPrimary: t.palette.accent.interactiveInk,
-    // The disc keeps its violet and fades, rather than turning grey — the
+    primary: t.palette.accent.ceremonial,
+    onPrimary: t.palette.accent.ceremonialInk,
+    // The disc keeps its gold and fades, rather than turning grey — the
     // board draws one send disc, not two.
-    sendDisabled: t.palette.accent.interactive,
-    accent: t.palette.accent.interactive,
+    sendDisabled: t.palette.accent.ceremonial,
+    accent: t.palette.accent.ceremonial,
   },
   type: {
     title: { ...t.type.scale.title },

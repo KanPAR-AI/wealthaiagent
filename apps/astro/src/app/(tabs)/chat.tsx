@@ -90,7 +90,7 @@ export default function Chat() {
   // declarative `<StatusBar style=…>` leaves whichever screen mounted last in
   // charge — measured: Home → Timeline → Home left the clock dark on the
   // night sky, where it cannot be read.
-  useFocusEffect(useCallback(() => setStatusBarStyle('dark'), []));
+  useFocusEffect(useCallback(() => setStatusBarStyle('light'), []));
 
   // Screen 2 (docs/49 ASTRAL-104) opens the chat, renders the engine's
   // `input_request` full-screen, and hands the composed answer here rather
@@ -328,7 +328,7 @@ export default function Chat() {
 
   return (
     <View style={s.fill}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
         <View style={s.header} onLayout={(e) => setWashWidth(e.nativeEvent.layout.width)}>
           {/* The cosmic wash the board bleeds out of the top-right corner:
@@ -355,7 +355,7 @@ export default function Chat() {
                 accessibilityLabel="Back"
                 hitSlop={10}
               >
-                <ChevronLeft size={tokens.size.icon} color={tokens.palette.ink.primary} />
+                <ChevronLeft size={tokens.size.icon} color={tokens.palette.ink.onCosmic} />
               </Pressable>
             ) : null}
           </View>
@@ -372,7 +372,7 @@ export default function Chat() {
             accessibilityLabel="Menu"
             hitSlop={10}
           >
-            <DotGrid size={tokens.size.icon} color={tokens.palette.ink.primary} />
+            <DotGrid size={tokens.size.icon} color={tokens.palette.ink.onCosmic} />
           </Pressable>
         </View>
 
@@ -389,15 +389,28 @@ export default function Chat() {
           belowTranscript={
             // docs/60 S3: composer-adjacent — in thumb reach, visible on
             // every message. State made visible, not a new write path.
-            <Pressable
-              style={s.subjectChip}
-              onPress={openSubjectSheet}
-              disabled={readingGated}
-              accessibilityRole="button"
-              accessibilityLabel={`${chipLabel(subject)}. Change who this reading is for`}
-            >
-              <Text style={s.subjectChipText}>{chipLabel(subject)} ▾</Text>
-            </Pressable>
+            <View style={s.chipRow}>
+              <Pressable
+                style={s.subjectChip}
+                onPress={openSubjectSheet}
+                disabled={readingGated}
+                accessibilityRole="button"
+                accessibilityLabel={`${chipLabel(subject)}. Change who this reading is for`}
+              >
+                <Text style={s.subjectChipText}>{chipLabel(subject)} ▾</Text>
+              </Pressable>
+              {/* Owner 2026-09-17: "beside reading for you add a option to
+                  do new reading" — the menu's own action, one tap nearer.
+                  Same confirm, same lifecycle; the old reading stays saved. */}
+              <Pressable
+                style={s.newChip}
+                onPress={startFresh}
+                accessibilityRole="button"
+                accessibilityLabel="Start a new reading"
+              >
+                <Text style={s.newChipText}>+ New reading</Text>
+              </Pressable>
+            </View>
           }
           fallbackSuggestions={FALLBACK_SUGGESTIONS}
           placeholder={`Message ${tokens.wordmark}...`}
@@ -422,7 +435,8 @@ const t = tokens;
 
 const s = StyleSheet.create({
   fill: { flex: 1 },
-  safe: { flex: 1, backgroundColor: t.palette.paper.base },
+  // Owner 2026-09-17: the chat sits on the night field, like Insights.
+  safe: { flex: 1, backgroundColor: t.palette.cosmic.deep },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -439,17 +453,25 @@ const s = StyleSheet.create({
   headerTitle: {
     ...t.type.scale.title,
     ...t.type.display,
-    color: t.palette.ink.primary,
+    color: t.palette.ink.onCosmic,
   },
-  headerSub: { ...t.type.scale.caption, color: t.palette.ink.muted },
+  headerSub: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
   emptyBody: { flex: 1, padding: t.space(4) },
-  hint: { ...t.type.scale.sub, color: t.palette.ink.muted, marginTop: t.space(2) },
-  subjectChip: {
-    alignSelf: 'flex-start',
+  hint: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted, marginTop: t.space(2) },
+  chipRow: {
+    flexDirection: 'row', alignItems: 'center', gap: t.space(2),
     marginHorizontal: t.space(4), marginBottom: t.space(1.5),
+  },
+  subjectChip: {
     paddingHorizontal: t.space(3), paddingVertical: t.space(1.5),
     borderRadius: t.radius.button,
     backgroundColor: t.palette.accent.interactive,
   },
   subjectChipText: { ...t.type.scale.label, color: t.palette.accent.interactiveInk },
+  newChip: {
+    paddingHorizontal: t.space(3), paddingVertical: t.space(1.5),
+    borderRadius: t.radius.button,
+    borderWidth: 1, borderColor: t.palette.cosmic.line,
+  },
+  newChipText: { ...t.type.scale.label, color: t.palette.ink.onCosmic },
 });

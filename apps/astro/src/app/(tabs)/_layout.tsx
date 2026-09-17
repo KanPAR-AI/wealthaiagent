@@ -45,11 +45,15 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: tokens.palette.accent.interactive,
-        tabBarInactiveTintColor: tokens.palette.ink.muted,
+        // Owner 2026-09-17 ("…as well the bottom navigation"): the bar sits
+        // on the night field with the screens that do — cosmic ground, the
+        // on-cosmic inks, gold for the active tab (the CTA colour on that
+        // ground everywhere else).
+        tabBarActiveTintColor: tokens.palette.accent.ceremonial,
+        tabBarInactiveTintColor: tokens.palette.ink.onCosmicMuted,
         tabBarStyle: {
-          backgroundColor: tokens.palette.paper.card,
-          borderTopColor: tokens.palette.paper.line,
+          backgroundColor: tokens.palette.cosmic.base,
+          borderTopColor: tokens.palette.cosmic.line,
         },
         tabBarLabelStyle: { ...tokens.type.scale.caption, fontWeight: '600' },
         // Android draws the bar OVER the composer when the keyboard opens;
