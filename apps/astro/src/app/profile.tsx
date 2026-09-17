@@ -58,7 +58,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChevronLeft, ChevronRight, SymbolIcon } from '@/components/glyphs';
 import { track } from '@/lib/analytics';
-import { ADD_PARTNER_TURN } from '@/lib/daily-view';
+import { openPartnerSheet } from '@/components/partner-sheet';
 import { turnForPerson } from '@/lib/subject-view';
 import { editRoute } from '@/lib/edit-fact';
 import { useEditOutcome } from '@/lib/edit-outcome';
@@ -68,7 +68,6 @@ import {
   fetchPeople,
   fetchPriorities,
   fetchSelf,
-  setPartner,
   type EditImpact,
   type PersonView,
   type PrioritiesResponse,
@@ -111,8 +110,6 @@ const ESTABLISH_TURN = "I'd like my birth chart.";
  *  structured carrier — no form here writes a fact (F24) — computes the
  *  match, and keeps their chart. */
 // facet v3: single-sourced with the Couple tab's door (lib/daily-view's
-// ADD_PARTNER_TURN) — one ask, one wording, one destination.
-const PARTNER_DETAILS_TURN = ADD_PARTNER_TURN;
 
 export default function Profile() {
   const [load, setLoad] = useState<Load>({ phase: 'loading' });
@@ -387,12 +384,6 @@ function Established({
       .catch(() => setPartnerName(person.partner ? 'Your partner' : null));
   }, [person.partner?.person_id, person.partner]);
 
-  const declare = useCallback((p: PersonView) => {
-    track('relationship_set', { partner: 1 });
-    setPartner(p.id)
-      .then(onReload)
-      .catch((e: any) => console.warn('[partner]', String(e?.message ?? e)));
-  }, [onReload]);
 
   const onRelationship = useCallback(() => {
     if (person.partner) {
@@ -426,55 +417,13 @@ function Established({
       ]);
       return;
     }
-    // "Someone new…" opens the SAME flow every birth fact rides (F24):
-    // the engine's partner-only ask, full-screen over screen 2's
-    // mechanism — DOB, time, place through the structured carrier into
-    // reconcile, the match computed (which now also keeps their chart),
-    // and the new person then appears in this sheet to declare.
-    const addNew = () =>
-      router.push({
-        pathname: '/birth-details',
-        params: { opening: PARTNER_DETAILS_TURN },
-      });
-    if (!people.length) {
-      if (Platform.OS === 'ios') {
-        ActionSheetIOS.showActionSheetWithOptions(
-          { options: ['Cancel', 'Add their details…'], cancelButtonIndex: 0,
-            title: 'Who is your partner?' },
-          (i) => {
-            if (i === 1) addNew();
-          },
-        );
-        return;
-      }
-      Alert.alert('Who is your partner?', undefined, [
-        { text: 'Add their details…', onPress: addNew },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
-      return;
-    }
-    const names = people.map((p) => p.display_name || 'Unnamed');
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Cancel', ...names, 'Someone new…'],
-          cancelButtonIndex: 0,
-          title: 'Who is your partner?' },
-        (i) => {
-          if (i > 0 && i <= names.length) declare(people[i - 1]);
-          if (i === names.length + 1) addNew();
-        },
-      );
-      return;
-    }
-    Alert.alert('Who is your partner?', undefined, [
-      ...people.slice(0, 5).map((p) => ({
-        text: p.display_name || 'Unnamed',
-        onPress: () => declare(p),
-      })),
-      { text: 'Someone new…', onPress: addNew },
-      { text: 'Cancel', style: 'cancel' as const },
-    ]);
-  }, [person.partner, people, partnerName, declare, onReload]);
+    // Owner 2026-09-17: the ONE partner sheet, shared with Home's Couple
+    // card and the Couple tab's door (components/partner-sheet). People on
+    // file to declare with a tap, or "Someone new…" into the details flow
+    // — where the engine now saves them AS the partner and declares the
+    // link itself.
+    void openPartnerSheet({ source: 'profile', onDeclared: onReload });
+  }, [person.partner, partnerName, onReload]);
   // The bearer the file endpoint requires — palm.tsx's own measured
   // pattern; without it an <Image> renders a broken tile.
   const [photoToken, setPhotoToken] = useState<string | null>(null);

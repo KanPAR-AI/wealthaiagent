@@ -469,3 +469,48 @@ export function dayView(card: DailyCard): DayView | null {
     place: d.place?.name?.trim() || null,
   };
 }
+
+// ── Home's Couple card (owner, 2026-09-17: "it seems buried") ─────────────
+//
+// The Couple lens lived only as the fifth Insights tab, and adding a partner
+// only as a row on Profile. Home now carries ONE card for it: the door when
+// there is no partner, and both people's day when there is. Every line is
+// the Couple tab's own items (facet v3/v4) — this function selects, it
+// computes nothing, and it never reads the partner link itself: the tab's
+// door item (`unlocked_by: "partner"`) IS the engine saying "no partner".
+
+export interface CoupleCard {
+  mode: 'door' | 'couple';
+  title: string;
+  body: string;
+  /** the couple items' meaning lines, in the engine's order (mode couple) */
+  lines: string[];
+  cta: string;
+}
+
+export function coupleCard(res: DailyReady): CoupleCard | null {
+  const tab = tabById(res, 'couple');
+  if (!tab) return null;
+  const door = tab.items.find(isPartnerDoor);
+  if (door) {
+    return {
+      mode: 'door',
+      title: 'Read your day as a couple',
+      // Home's own sentence: the engine's door says "this tab", which is
+      // true on Insights and not here. Same promise, said from Home.
+      body: 'One partner, their birth details, and Insights gets a Couple tab — the phase you are in together, and where your shared momentum is.',
+      lines: [],
+      cta: 'Add your partner',
+    };
+  }
+  const day = tab.items.find((i) => i.id === 'couple:day');
+  const rest = tab.items.filter((i) => i.id !== 'couple:day' && i.kind !== 'absent_layer');
+  const lines = rest.map((i) => (i.meaning ?? '').trim()).filter(Boolean).slice(0, 2);
+  return {
+    mode: 'couple',
+    title: day ? day.title : 'Your day as a couple',
+    body: day ? (day.meaning ?? '') : (rest[0]?.title ?? ''),
+    lines,
+    cta: 'Open your Couple reading',
+  };
+}

@@ -32,6 +32,7 @@ import {
   isPartnerDoor,
   dayView,
   BAND_LABEL,
+  coupleCard,
 } from '../daily-view';
 import { absentView as timelineAbsentView } from '../timeline-view';
 import type { DailyReady, DailyResponse } from '../people-shapes';
@@ -546,5 +547,41 @@ describe('the day strip (docs/62 A-1/A-2, ASTRAL-267..271)', () => {
     expect(guidance.items[0].kind).toBe('day_score');
     expect(guidance.items[0].title).toBe('Today: Green day');
     expect((guidance.items[0].meaning ?? '').startsWith('a green day')).toBe(true);
+  });
+});
+
+
+describe("Home's Couple card (owner 2026-09-17: the door was buried)", () => {
+  it('is the door when the Couple tab carries the add-partner item', () => {
+    const card = coupleCard(READY)!;
+    expect(card.mode).toBe('door');
+    expect(card.cta).toBe('Add your partner');
+    // The door item is the engine's; the sentence is Home's own (the
+    // engine's says "this tab", which is only true on Insights).
+    expect(tabById(READY, 'couple')!.items.some((i) => i.unlocked_by === 'partner')).toBe(true);
+    expect(card.body).toMatch(/Insights gets a Couple tab/);
+    expect(card.body).not.toMatch(/this tab/);
+  });
+
+  it('is both people’s day once the tab carries couple items', () => {
+    const res = JSON.parse(JSON.stringify(READY)) as DailyReady;
+    const couple = res.facets.tabs.find((t) => t.id === 'couple')!;
+    couple.items = [
+      { id: 'couple:anchor', kind: 'couple_day', title: 'You and Meera: 26/36', detail: '', domains: ['couple'], basis: 'stored match', meaning: '' },
+      { id: 'couple:day', kind: 'couple_day', title: 'Your day: Green · Meera’s day: Amber', detail: 'Meera: Vipat tara…', domains: ['couple'], basis: 'today’s panchang', meaning: 'an amber day — steady over bold.' },
+      { id: 'couple:phase', kind: 'couple_day', title: 'A tough phase, together', detail: '', domains: ['couple'], basis: 'Saturn from both Moons', meaning: 'go gentle with each other this season.' },
+    ];
+    const card = coupleCard(res)!;
+    expect(card.mode).toBe('couple');
+    expect(card.title).toBe('Your day: Green · Meera’s day: Amber');
+    expect(card.body).toBe('an amber day — steady over bold.');
+    expect(card.lines).toEqual(['go gentle with each other this season.']);
+    expect(card.cta).toBe('Open your Couple reading');
+  });
+
+  it('is nothing when there is no Couple tab (an older backend)', () => {
+    const res = JSON.parse(JSON.stringify(READY)) as DailyReady;
+    res.facets.tabs = res.facets.tabs.filter((t) => t.id !== 'couple');
+    expect(coupleCard(res)).toBeNull();
   });
 });

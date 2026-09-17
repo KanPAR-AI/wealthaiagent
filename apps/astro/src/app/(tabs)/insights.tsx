@@ -23,7 +23,7 @@
 // Nothing this screen writes is fear-shaped: the narration is the engine's
 // one grounded paragraph and every other line is a computed fact.
 
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -39,7 +39,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { track } from '@/lib/analytics';
 import {
-  ADD_PARTNER_TURN,
   absentView,
   basisAddsAnything,
   cardDate,
@@ -50,6 +49,7 @@ import {
 } from '@/lib/daily-view';
 import { fetchDaily } from '@/lib/people';
 import type { DailyResponse, FacetItem } from '@/lib/people-shapes';
+import { openPartnerSheet } from '@/components/partner-sheet';
 import { SignInGateCard } from '@/components/sign-in-gate';
 import { useReadingBlocked } from '@/lib/use-account';
 import { tokens } from '@/theme';
@@ -68,7 +68,11 @@ export default function Insights() {
 
   const { blocked, resolved } = useReadingBlocked();
   const [load, setLoad] = useState<Load>({ phase: 'loading' });
-  const [tab, setTab] = useState('guidance');
+  // Home's Couple card lands on the Couple tab (`?tab=couple`); a tab that
+  // does not exist in the response falls back to the first, as before.
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState(params.tab || 'guidance');
+  useEffect(() => { if (params.tab) setTab(params.tab); }, [params.tab]);
   const [refreshing, setRefreshing] = useState(false);
   const asked = useRef(false);
 
@@ -203,7 +207,7 @@ export default function Insights() {
                   <Text style={s.cardBody}>{active.empty_reason}</Text>
                 </View>
               ) : (
-                active.items.map((item) => <Item key={item.id} item={item} />)
+                active.items.map((item) => <Item key={item.id} item={item} onDeclared={() => void read(true)} />)
               )}
 
               {active.domains.length ? (
@@ -221,7 +225,7 @@ export default function Insights() {
 
 /** One faceted item, with the basis it was filed by. An item whose basis a
  *  reader cannot see is a claim; with it, it is a reading. */
-function Item({ item }: { item: FacetItem }) {
+function Item({ item, onDeclared }: { item: FacetItem; onDeclared: () => void }) {
   const honest = item.kind === 'absent_layer' || item.kind === 'undetermined';
   const range = itemRange(item);
   return (
@@ -247,11 +251,9 @@ function Item({ item }: { item: FacetItem }) {
         // the structured carrier into reconcile.
         <Pressable
           style={s.doorCta}
-          onPress={() =>
-            router.push({
-              pathname: '/birth-details',
-              params: { opening: ADD_PARTNER_TURN },
-            })}
+          // Owner 2026-09-17: the ONE partner sheet — people on file to
+          // declare with a tap, or "Someone new…" into the details flow.
+          onPress={() => void openPartnerSheet({ source: 'insights', onDeclared: onDeclared })}
           accessibilityRole="button"
           accessibilityLabel="Add your partner"
         >

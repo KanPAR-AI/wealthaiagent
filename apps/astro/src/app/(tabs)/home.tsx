@@ -46,11 +46,13 @@ import { ChevronRight, SymbolIcon } from '@/components/glyphs';
 import { SkyDefs, SkyField, Stars } from '@/components/sky';
 import { track } from '@/lib/analytics';
 import { CAPABILITIES } from '@/lib/capabilities';
+import { openPartnerSheet } from '@/components/partner-sheet';
 import { subscribeToAccount, type Account } from '@/lib/auth';
 import {
   absences,
   absentView,
   cardDate,
+  coupleCard,
   dashaLines,
   dayView,
   greeting,
@@ -61,7 +63,7 @@ import {
   transitLines,
 } from '@/lib/daily-view';
 import { adoptAccountNameIfUnnamed, fetchDaily, fetchSelf } from '@/lib/people';
-import type { DayView } from '@/lib/daily-view';
+import type { CoupleCard, DayView } from '@/lib/daily-view';
 import type { DailyResponse } from '@/lib/people-shapes';
 import { visibleTiles } from '@/lib/tabs';
 import { SignInGateCard } from '@/components/sign-in-gate';
@@ -286,6 +288,14 @@ export default function Home() {
 
           {res && isReady(res) ? (
             <View style={s.paper}>
+              {/* Owner 2026-09-17: "Add a partner … seems buried." The Couple
+                  lens gets its own card on Home — the door when there is no
+                  partner, both people's day when there is. Every word is the
+                  Couple tab's own items; the door opens the ONE partner sheet. */}
+              {coupleCard(res) ? (
+                <CoupleHomeCard card={coupleCard(res)!} onDeclared={() => read(true)} />
+              ) : null}
+
               <View style={s.tiles}>
                 {tiles.map((tile) => (
                   <Pressable
@@ -353,6 +363,35 @@ export default function Home() {
           ) : null}
         </ScrollView>
       </SafeAreaView>
+    </View>
+  );
+}
+
+function CoupleHomeCard({ card, onDeclared }: { card: CoupleCard; onDeclared: () => void }) {
+  const door = card.mode === 'door';
+  return (
+    <View style={s.coupleCard}>
+      <View style={s.coupleHead}>
+        <SymbolIcon name="heart" color={t.palette.accent.interactive} />
+        <Text style={s.cardTitle}>{card.title}</Text>
+      </View>
+      {card.body ? <Text style={s.cardBody}>{card.body}</Text> : null}
+      {card.lines.map((line) => (
+        <Text key={line} style={s.bullet}>• {line}</Text>
+      ))}
+      <Pressable
+        style={door ? s.cta : s.coupleOpen}
+        onPress={() => {
+          track(door ? 'home_couple_door' : 'home_couple_open');
+          if (door) void openPartnerSheet({ source: 'home', onDeclared });
+          else router.push({ pathname: '/insights', params: { tab: 'couple' } });
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={card.cta}
+      >
+        <Text style={door ? s.ctaText : s.coupleOpenText}>{card.cta}</Text>
+        {door ? null : <ChevronRight size={16} color={t.palette.accent.interactive} />}
+      </Pressable>
     </View>
   );
 }
@@ -520,6 +559,17 @@ const s = StyleSheet.create({
   more: { flexDirection: 'row', alignItems: 'center', gap: t.space(1), marginTop: t.space(2) },
   moreText: { ...t.type.scale.sub, color: t.palette.accent.ceremonial, fontWeight: '600' },
 
+  coupleCard: {
+    backgroundColor: t.palette.paper.card,
+    borderRadius: t.radius.card,
+    padding: t.space(4),
+    gap: t.space(2),
+    borderWidth: 1,
+    borderColor: t.palette.accent.interactive,
+  },
+  coupleHead: { flexDirection: 'row', alignItems: 'center', gap: t.space(2) },
+  coupleOpen: { flexDirection: 'row', alignItems: 'center', gap: t.space(1), alignSelf: 'flex-start' },
+  coupleOpenText: { ...t.type.scale.sub, color: t.palette.accent.interactive, fontWeight: '700' },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space(3) },
   tile: {
     flexGrow: 1,
