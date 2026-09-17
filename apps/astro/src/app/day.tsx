@@ -30,7 +30,7 @@ type Load =
   | { phase: 'done'; res: DailyResponse };
 
 export default function Day() {
-  useFocusEffect(useCallback(() => setStatusBarStyle('dark'), []));
+  useFocusEffect(useCallback(() => setStatusBarStyle('light'), []));
   useEffect(() => { if (!routeIsLive('/day')) router.replace('/home'); }, []);
   const { date } = useLocalSearchParams<{ date?: string }>();
   const [load, setLoad] = useState<Load>({ phase: 'loading' });
@@ -50,11 +50,11 @@ export default function Day() {
 
   return (
     <View style={s.fill}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <SafeAreaView style={s.fill} edges={['top']}>
         <View style={s.navRow}>
           <Pressable style={s.back} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Back">
-            <ChevronLeft size={tokens.size.icon} color={tokens.palette.ink.primary} />
+            <ChevronLeft size={tokens.size.icon} color={tokens.palette.ink.onCosmic} />
           </Pressable>
           <Text style={s.navTitle}>{res && isReady(res) ? cardDate(res.card) : 'That day'}</Text>
         </View>
@@ -138,27 +138,27 @@ export default function Day() {
 
 const t = tokens;
 const s = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: t.palette.paper.base },
+  fill: { flex: 1, backgroundColor: t.palette.cosmic.deep },
   navRow: { flexDirection: 'row', alignItems: 'center', gap: t.space(2), paddingRight: t.space(4) },
   back: { paddingHorizontal: t.space(4), paddingVertical: t.space(2) },
-  navTitle: { ...t.type.scale.title, ...t.type.display, color: t.palette.ink.primary },
+  navTitle: { ...t.type.scale.title, ...t.type.display, color: t.palette.ink.onCosmic },
   body: { padding: t.space(4), paddingBottom: t.space(10), gap: t.space(3) },
   card: {
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     padding: t.space(4),
     gap: t.space(2),
     borderWidth: 1,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
   },
-  cardTitle: { ...t.type.scale.lead, color: t.palette.ink.primary, fontWeight: '700' },
-  cardBody: { ...t.type.scale.sub, color: t.palette.ink.secondary },
-  caption: { ...t.type.scale.caption, color: t.palette.ink.muted },
-  bullet: { ...t.type.scale.sub, color: t.palette.ink.secondary },
-  lead: { fontWeight: '700', color: t.palette.ink.primary },
+  cardTitle: { ...t.type.scale.lead, color: t.palette.ink.onCosmic, fontWeight: '700' },
+  cardBody: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
+  caption: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
+  bullet: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
+  lead: { fontWeight: '700', color: t.palette.ink.onCosmic },
   bandRow: { flexDirection: 'row', alignItems: 'center', gap: t.space(2) },
   bandPill: { borderRadius: t.radius.pill, paddingVertical: t.space(1), paddingHorizontal: t.space(2.5) },
   bandPillText: { ...t.type.scale.caption, fontWeight: '700' },
-  absence: { borderRadius: t.radius.card, padding: t.space(3.5), gap: t.space(1), borderWidth: 1, borderColor: t.palette.paper.line },
-  absenceTitle: { ...t.type.scale.label, color: t.palette.ink.secondary, fontWeight: '700' },
+  absence: { borderRadius: t.radius.card, padding: t.space(3.5), gap: t.space(1), borderWidth: 1, borderColor: t.palette.cosmic.line },
+  absenceTitle: { ...t.type.scale.label, color: t.palette.ink.onCosmicMuted, fontWeight: '700' },
 });

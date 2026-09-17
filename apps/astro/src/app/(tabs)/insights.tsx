@@ -64,7 +64,7 @@ export default function Insights() {
   // declarative `<StatusBar style=…>` leaves whichever screen mounted last in
   // charge — measured: Home → Timeline → Home left the clock dark on the
   // night sky, where it cannot be read.
-  useFocusEffect(useCallback(() => setStatusBarStyle('dark'), []));
+  useFocusEffect(useCallback(() => setStatusBarStyle('light'), []));
 
   const { blocked, resolved } = useReadingBlocked();
   const [load, setLoad] = useState<Load>({ phase: 'loading' });
@@ -113,7 +113,7 @@ export default function Insights() {
 
   return (
     <View style={s.fill}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <SafeAreaView style={s.safe} edges={['top']}>
         <View style={s.head}>
           <Text style={s.title}>Today’s Guidance</Text>
@@ -270,11 +270,16 @@ function Item({ item, onDeclared }: { item: FacetItem; onDeclared: () => void })
 
 const t = tokens;
 const s = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: t.palette.paper.base },
+  // Owner 2026-09-17: "background on insights page is too bright and is
+  // eye piercing — take inspiration from moonly." The whole screen sits
+  // on the cosmic field Home's sky already uses: deep ground, translucent
+  // cards, muted ink, gold where a line is advice. Same tokens, no new
+  // colour.
+  fill: { flex: 1, backgroundColor: t.palette.cosmic.deep },
   safe: { flex: 1 },
   head: { paddingHorizontal: t.space(4), paddingTop: t.space(2), alignItems: 'center', gap: 2 },
-  title: { ...t.type.scale.title, ...t.type.display, color: t.palette.ink.primary },
-  date: { ...t.type.scale.caption, color: t.palette.ink.muted },
+  title: { ...t.type.scale.title, ...t.type.display, color: t.palette.ink.onCosmic },
+  date: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
 
   tabs: {
     flexDirection: 'row',
@@ -283,31 +288,33 @@ const s = StyleSheet.create({
     gap: t.space(2),
   },
   tab: { flex: 1, paddingVertical: t.space(2), alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabOn: { borderBottomColor: t.palette.accent.interactive },
-  tabText: { ...t.type.scale.sub, color: t.palette.ink.muted },
-  tabTextOn: { color: t.palette.ink.primary, fontWeight: '700' },
+  tabOn: { borderBottomColor: t.palette.accent.ceremonial },
+  tabText: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
+  tabTextOn: { color: t.palette.ink.onCosmic, fontWeight: '700' },
 
   body: { padding: t.space(4), paddingBottom: t.space(10), gap: t.space(3) },
   prose: {
     backgroundColor: t.palette.cosmic.base,
     borderRadius: t.radius.card,
     padding: t.space(4),
+    borderWidth: 1,
+    borderColor: t.palette.cosmic.glow,
   },
   proseText: { ...t.type.scale.body, color: t.palette.ink.onCosmic },
 
   item: {
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     padding: t.space(3.5),
     gap: t.space(1),
     borderWidth: 1,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
   },
   itemHonest: { backgroundColor: 'transparent' },
-  itemTitle: { ...t.type.scale.label, color: t.palette.ink.primary, fontWeight: '700' },
-  itemTitleHonest: { color: t.palette.ink.secondary },
-  itemDetail: { ...t.type.scale.sub, color: t.palette.ink.secondary },
-  itemBasis: { ...t.type.scale.caption, color: t.palette.ink.muted },
+  itemTitle: { ...t.type.scale.label, color: t.palette.ink.onCosmic, fontWeight: '700' },
+  itemTitleHonest: { color: t.palette.ink.onCosmicMuted },
+  itemDetail: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
+  itemBasis: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
   doorCta: {
     backgroundColor: t.palette.accent.ceremonial,
     borderRadius: t.radius.button,
@@ -317,27 +324,27 @@ const s = StyleSheet.create({
   doorCtaText: { ...t.type.scale.label, color: t.palette.accent.ceremonialInk },
   itemMeaning: {
     ...t.type.scale.sub,
-    color: t.palette.accent.interactive,
+    color: t.palette.accent.ceremonial,
     marginTop: t.space(1),
   },
-  footnote: { ...t.type.scale.caption, color: t.palette.ink.muted, textAlign: 'center' },
+  footnote: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted, textAlign: 'center' },
 
   card: {
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     padding: t.space(4),
     gap: t.space(2),
     borderWidth: 1,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
   },
-  cardTitle: { ...t.type.scale.lead, color: t.palette.ink.primary, fontWeight: '700' },
-  cardBody: { ...t.type.scale.sub, color: t.palette.ink.secondary },
+  cardTitle: { ...t.type.scale.lead, color: t.palette.ink.onCosmic, fontWeight: '700' },
+  cardBody: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
   cta: {
     alignSelf: 'flex-start',
-    backgroundColor: t.palette.accent.interactive,
+    backgroundColor: t.palette.accent.ceremonial,
     borderRadius: t.radius.button,
     paddingVertical: t.space(2.5),
     paddingHorizontal: t.space(5),
   },
-  ctaText: { ...t.type.scale.sub, color: t.palette.accent.interactiveInk, fontWeight: '700' },
+  ctaText: { ...t.type.scale.sub, color: t.palette.accent.ceremonialInk, fontWeight: '700' },
 });
