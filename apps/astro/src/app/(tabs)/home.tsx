@@ -433,7 +433,16 @@ function WeekCard({ view, open, onToggle, selfPlace, onChangePlace }: { view: Da
       <Text style={s.weekTitle}>Your week</Text>
       <View style={s.weekRow}>
         {view.strip.map((d) => (
-          <View key={d.date} style={s.weekDay} accessibilityLabel={`${d.weekday}: ${d.band ?? 'not scored'}`}>
+          <Pressable
+            key={d.date}
+            style={s.weekDay}
+            accessibilityRole="button"
+            accessibilityLabel={`${d.weekday}: ${d.band ?? 'not scored'} — open that day`}
+            onPress={() => {
+              track('home_day_open', { offset: view.strip.indexOf(d) });
+              router.push({ pathname: '/day', params: { date: d.date } });
+            }}
+          >
             <Text style={[s.weekLabel, d.isToday && s.weekLabelToday]}>{d.weekday}</Text>
             <View
               style={[
@@ -442,7 +451,7 @@ function WeekCard({ view, open, onToggle, selfPlace, onChangePlace }: { view: Da
                 d.isToday && s.weekDotToday,
               ]}
             />
-          </View>
+          </Pressable>
         ))}
       </View>
       {view.strip.some((d) => d.absent) ? (

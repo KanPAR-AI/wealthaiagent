@@ -89,8 +89,12 @@ export function fetchMatches(): Promise<MatchesResponse> {
  * no request, which is a property of this signature rather than of a
  * screen's good behaviour.
  */
-export function fetchDaily(): Promise<DailyResponse> {
-  return call<DailyResponse>('people/self/daily');
+export function fetchDaily(date?: string): Promise<DailyResponse> {
+  // docs/64 W-1: one other day inside the server's bounded window. The
+  // date is the STRIP's own ISO date, never composed on the client.
+  return call<DailyResponse>(
+    date ? `people/self/daily?date=${encodeURIComponent(date)}` : 'people/self/daily',
+  );
 }
 
 /**

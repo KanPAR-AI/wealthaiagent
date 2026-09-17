@@ -229,6 +229,9 @@ export interface PushedRoute {
 
 const PUSHED: PushedRoute[] = [
   { path: '/chart', needs: 'chart' },
+  // docs/64 W-1: a strip dot opens that day's card — the same read with
+  // a date; removed with the strip.
+  { path: '/day', needs: 'dayStrip' },
   { path: '/palm', needs: 'palm' },
   { path: '/muhurta', needs: 'muhurta' },
   { path: '/matches', needs: 'matches' },

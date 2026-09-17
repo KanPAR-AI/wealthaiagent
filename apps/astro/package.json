@@ -10,6 +10,7 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@expo/ui": "57.0.9",
     "@firebase/auth": "1.13.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-firebase/analytics": "^25.1.0",
@@ -63,12 +64,5 @@
   "devDependencies": {
     "@types/react": "~19.2.2",
     "typescript": "~6.0.3"
-  },
-  "expo": {
-    "autolinking": {
-      "exclude": [
-        "@expo/ui"
-      ]
-    }
   }
 }

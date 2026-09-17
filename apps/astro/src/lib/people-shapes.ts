@@ -509,6 +509,10 @@ export interface FacetTab {
 export interface DailyReady {
   state: 'ready';
   date: string;
+  /** docs/64 W-1: which day this card is relative to the person's own
+   *  today. Optional: an older backend serves today only. */
+  is_today?: boolean;
+  today?: string;
   card: DailyCard;
   facets: { version: number; tabs: FacetTab[]; item_count: number; artifact_key?: string; date?: string };
   narration: { text: string; generated_this_request: boolean; available: boolean };
