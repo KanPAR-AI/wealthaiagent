@@ -5,6 +5,8 @@
 // stable so the funnels stay legible.
 
 import { fetch as expoFetch } from 'expo/fetch';
+import { Platform } from 'react-native';
+import * as Updates from 'expo-updates';
 
 import { getToken } from './auth';
 import { apiUrl } from './core-adapter';
@@ -15,7 +17,12 @@ export type KneeEvent =
   | 'coach_open'
   | 'phase_open'
   | 'find_phase_result'
-  | 'session_start';
+  | 'session_start'
+  | 'session_complete'
+  | 'session_saved_partial'
+  | 'session_discarded'
+  | 'nudge_link_shown'
+  | 'nudge_link_tapped';
 
 export function track(event: KneeEvent, meta: Record<string, unknown> = {}): void {
   void (async () => {
@@ -24,7 +31,21 @@ export function track(event: KneeEvent, meta: Record<string, unknown> = {}): voi
       await expoFetch(apiUrl('/knee/event'), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event, meta }),
+        // Platform + runtime version ride every event (owner ask 2026-09-17:
+        // events carried no platform/app-version, so funnels couldn't be split
+        // by build). Caller meta wins on a key collision. Updates.runtimeVersion
+        // is what the installed binary truly runs — expo-updates is this app's
+        // live update mechanism (_layout.tsx), so its constant is the version
+        // OTA targeting actually uses; it is null only in dev, named honestly.
+        //
+        // ⚠ CAP: the server keeps only the FIRST 10 meta keys
+        // (knee_program.py: `items()[:10]`, values truncated to 120 chars).
+        // platform/rt sit in slots 1–2, so a caller gets 8 keys — pass more
+        // and the tail is silently dropped. Current callers max at 6.
+        body: JSON.stringify({
+          event,
+          meta: { platform: Platform.OS, rt: Updates.runtimeVersion ?? 'dev', ...meta },
+        }),
       });
     } catch {
       // best-effort — telemetry must never surface to the user

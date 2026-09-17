@@ -121,6 +121,15 @@ const STRINGS: Record<string, { en: string; hi: string }> = {
   'session.painQ': { en: 'How much pain right now?', hi: 'अभी दर्द कितना है?' },
   'session.doneBtn': { en: 'Done', hi: 'हो गया' },
   'session.streak': { en: 'day streak', hi: 'दिन की स्ट्रीक' },
+  'session.recording': { en: 'Recording today…', hi: 'आज का सत्र दर्ज हो रहा है…' },
+  'session.saveFailed': { en: 'Couldn’t save just now — try again.', hi: 'अभी सहेज नहीं सके — फिर से कोशिश करें।' },
+  // the early-exit confirm card ({done}/{total} filled in by the screen)
+  'session.partialQ': { en: 'You did {done} of {total} — save this session?', hi: 'आपने {total} में से {done} किए — यह सत्र सहेजें?' },
+  'session.saveExit': { en: 'Save & exit', hi: 'सहेजकर बाहर जाएँ' },
+  'session.discard': { en: 'Discard', hi: 'छोड़ दें' },
+  // the anonymous save-progress nudge on the completion screen
+  'session.nudgeBody': { en: 'Streak saved on this phone only — connect your email so it’s never lost.', hi: 'स्ट्रीक सिर्फ़ इसी फ़ोन पर सहेजी गई है — ईमेल जोड़ें ताकि यह कभी न खोए।' },
+  'session.nudgeBtn': { en: 'Connect account', hi: 'खाता जोड़ें' },
   // progress
   'progress.title': { en: 'Your recovery', hi: 'आपकी रिकवरी' },
   'progress.gate': { en: 'Towards the next phase', hi: 'अगले फ़ेज़ की ओर' },

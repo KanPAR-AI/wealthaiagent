@@ -10,13 +10,21 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Speech from 'expo-speech';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { VideoView, useVideoPlayer } from 'expo-video';
 
 import { fetchPhase, recordSession } from '@/lib/api';
+import { subscribeToAccount, type Account } from '@/lib/auth';
 import { setPendingCoachPrompt } from '@/lib/chat-session';
+import {
+  completionAction,
+  exercisesDone,
+  isAnonymous,
+  promptNext,
+  type PromptPhase,
+} from '@/lib/completion-view';
 import { getLang, speechLocale, t, type Lang } from '@/lib/i18n';
 import { track } from '@/lib/telemetry';
 import {
@@ -54,8 +62,21 @@ export default function Session() {
   const [count, setCount] = useState<string | null>(null);
   const [phaseOfSet, setPhaseOfSet] = useState<'announce' | 'counting' | 'rest'>('announce');
   const [finished, setFinished] = useState(false);
-  const [pain, setPain] = useState<number | null>(null);
-  const [saved, setSaved] = useState(false);
+  // ── session-completion capture (completion-view decides; this executes) ──
+  const [recordPhase, setRecordPhase] =
+    useState<'idle' | 'recording' | 'saved' | 'failed'>('idle');
+  const [painSent, setPainSent] = useState(false);
+  const [streak, setStreak] = useState<number | null>(null);
+  const [exitPhase, setExitPhase] = useState<PromptPhase | null>(null);
+  const [exitError, setExitError] = useState(false);
+  const [account, setAccount] = useState<Account | null>(null);
+  useEffect(() => subscribeToAccount(setAccount), []);
+  /** what a successful recordSession actually wrote — the pain check-in
+   *  re-posts THIS list, and its presence is the client double-record guard */
+  const recordedMeta = useRef<{ names: string[]; done: number } | null>(null);
+  const autoAttempted = useRef(false);
+  const completeFired = useRef(false);
+  const nudgeFired = useRef(false);
   const startedAt = useRef(Date.now());
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const [paused, setPaused] = useState(false);
@@ -114,13 +135,11 @@ export default function Session() {
   // gestureEnabled:false must never mean trapped (owner-reported).
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      clearTimers();
-      Speech.stop();
-      router.back();
+      requestExitRef.current();
       return true;
     });
     return () => sub.remove();
-     
+
   }, []);
 
   /** Schedule (or re-schedule from `offsetMs`) one set's cues. */
@@ -219,21 +238,79 @@ export default function Session() {
     }
   }, [plan, announce]);
 
-  const finish = async (painValue: number | null) => {
-    if (!plan || saved) return;
-    setPain(painValue);
+  /** The one writer — every record path lands here. Server-side the day doc
+   *  merges (knee_program.py `set(merge=True)`, measured), so the pain
+   *  check-in can re-post the same list with pain filled and UPDATE the day
+   *  rather than double-count it. */
+  const recordNow = async (names: string[], done: number, painValue: number | null) => {
+    const res = await recordSession({
+      date: localDate(),
+      phase,
+      recipe,
+      exercises_done: names,
+      duration_s: Math.round((Date.now() - startedAt.current) / 1000),
+      pain_0_10: painValue,
+    });
+    recordedMeta.current = { names, done };
+    setStreak(res.streak_days);
+    return res;
+  };
+
+  const fireComplete = (done: number, total: number) => {
+    if (completeFired.current) return;
+    completeFired.current = true;
+    track('session_complete', { done, total, phase, recipe });
+  };
+
+  // Completing the final exercise records the session ITSELF — they did the
+  // work; honesty is recording it (owner-approved 2026-09-17: 13 session
+  // starts, 0 recorded completions). completion-view's gate holds the
+  // double-record guard; pain rides later via the optional check-in.
+  useEffect(() => {
+    if (!finished || !plan) return;
+    const total = plan.exercises.length;
+    const already = autoAttempted.current || recordedMeta.current !== null;
+    if (completionAction(total, total, already) !== 'auto_record') return;
+    autoAttempted.current = true;
+    setRecordPhase('recording');
+    void (async () => {
+      try {
+        await recordNow(exercisesDone(plan, total), total, null);
+        setRecordPhase('saved');
+        fireComplete(total, total);
+      } catch {
+        // the pain buttons stay up and double as the retry — nothing silently lost
+        setRecordPhase('failed');
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished, plan]);
+
+  // The anonymous save-progress nudge: shown-telemetry once per completion.
+  useEffect(() => {
+    if (!finished || streak === null || !isAnonymous(account) || nudgeFired.current) return;
+    nudgeFired.current = true;
+    track('nudge_link_shown', {
+      done: recordedMeta.current?.done, total: plan?.exercises.length, phase, recipe,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished, streak, account]);
+
+  /** The optional pain check-in — an UPDATE of the recorded day (or, when the
+   *  auto record failed, the retry that becomes the first record). */
+  const painCheckIn = async (painValue: number) => {
+    if (!plan || recordPhase === 'recording' || painSent) return;
+    const firstRecord = recordedMeta.current === null;
+    const names = recordedMeta.current?.names ?? exercisesDone(plan, plan.exercises.length);
+    const done = recordedMeta.current?.done ?? plan.exercises.length;
+    setRecordPhase('recording');
     try {
-      await recordSession({
-        date: localDate(),
-        phase,
-        recipe,
-        exercises_done: plan.exercises.slice(0, index + 1).map((x) => x.name),
-        duration_s: Math.round((Date.now() - startedAt.current) / 1000),
-        pain_0_10: painValue,
-      });
-      setSaved(true);
+      await recordNow(names, done, painValue);
+      setPainSent(true);
+      setRecordPhase('saved');
+      if (firstRecord) fireComplete(done, plan.exercises.length);
     } catch {
-      // leave the buttons up — the user can retry; nothing is silently lost
+      setRecordPhase(recordedMeta.current ? 'saved' : 'failed');
     }
   };
 
@@ -241,6 +318,55 @@ export default function Session() {
     clearTimers();
     Speech.stop();
     router.back();
+  };
+
+  // Exit/back asks completion-view what this moment is worth. `index` counts
+  // the exercises fully COMPLETED — the one on screen is still in progress.
+  const requestExit = () => {
+    // The summary always exits — checked BEFORE exitPhase, because a partial
+    // save lands on the summary with the machine parked at 'saved'; the old
+    // order left hardware back dead there. `finished` flips only on save_ok,
+    // so back while the card is up (open/saving) still falls through to the
+    // machine-owns-it guard below and stays a no-op.
+    if (finished || !plan) { closeAll(); return; }
+    if (exitPhase !== null) return;   // card already up — the machine owns it
+    const action = completionAction(index, plan.exercises.length,
+      recordedMeta.current !== null);
+    if (action !== 'prompt') { closeAll(); return; }
+    pause();                 // halt cues, voice and video under the card
+    setExitError(false);
+    setExitPhase('open');
+  };
+  const requestExitRef = useRef(requestExit);
+  requestExitRef.current = requestExit;
+
+  const saveAndExit = async () => {
+    if (!plan || !exitPhase) return;
+    const next = promptNext(exitPhase, 'save_tap');
+    if (next === null) return;          // double-tap guard — promptNext refused
+    setExitError(false);                // a retry hides the stale "couldn't save"
+    setExitPhase(next);
+    const done = index;
+    const total = plan.exercises.length;
+    try {
+      await recordNow(exercisesDone(plan, done), done, null);
+      track('session_saved_partial', { done, total, phase, recipe });
+      setExitPhase(promptNext(next, 'save_ok'));
+      setRecordPhase('saved');
+      setFinished(true);      // land on the summary: streak + (if guest) nudge
+    } catch {
+      setExitError(true);
+      setExitPhase(promptNext(next, 'save_fail'));  // back to open — retry or discard
+    }
+  };
+
+  const discardAndExit = () => {
+    if (!plan || !exitPhase) return;
+    const next = promptNext(exitPhase, 'discard_tap');
+    if (next === null) return;          // a Discard mid-save is refused
+    setExitPhase(next);
+    track('session_discarded', { done: index, total: plan.exercises.length, phase, recipe });
+    closeAll();
   };
 
   if (finished) {
@@ -257,24 +383,46 @@ export default function Session() {
             </View>
             <Text style={s.completeTitle}>{t('session.complete', lang)}</Text>
             <Text style={s.completeSub}>
-              {plan ? `${Math.min(index + 1, plan.exercises.length)} · ` : ''}
-              {t('session.recorded', lang)}
+              {recordPhase === 'failed'
+                ? t('session.saveFailed', lang)
+                : recordPhase === 'saved' && recordedMeta.current && plan
+                  ? `${recordedMeta.current.done} / ${plan.exercises.length} · ${t('session.recorded', lang)}`
+                  : t('session.recording', lang)}
             </Text>
-            {!saved ? (
+            {streak !== null ? (
+              <View style={s.streakRow}>
+                <Text style={s.streakNum}>{streak}</Text>
+                <Text style={s.streakLabel}>{t('session.streak', lang)}</Text>
+              </View>
+            ) : null}
+            {(recordPhase === 'saved' || recordPhase === 'failed') && !painSent ? (
               <View style={s.painBlock}>
                 <Text style={s.painQ}>{t('session.painQ', lang)}</Text>
                 <View style={s.painRow}>
                   {[1, 4, 7].map((v, i) => (
-                    <Pressable key={v} onPress={() => void finish(v)}
+                    <Pressable key={v} onPress={() => void painCheckIn(v)}
                       accessibilityRole="button" style={s.painBtn}>
                       <Text style={s.painText}>{['0–2', '3–5', '6+'][i]}</Text>
                     </Pressable>
                   ))}
                 </View>
               </View>
-            ) : (
+            ) : painSent ? (
               <Text style={s.savedText}>✓</Text>
-            )}
+            ) : null}
+            {streak !== null && isAnonymous(account) ? (
+              <View style={s.nudgeCard}>
+                <Text style={s.nudgeText}>{t('session.nudgeBody', lang)}</Text>
+                <Pressable
+                  onPress={() => {
+                    track('nudge_link_tapped', { phase, recipe });
+                    router.push('/settings' as never);   // the Profile tab
+                  }}
+                  accessibilityRole="button" style={s.nudgeBtn}>
+                  <Text style={s.nudgeBtnText}>{t('session.nudgeBtn', lang)}</Text>
+                </Pressable>
+              </View>
+            ) : null}
             <Pressable onPress={closeAll} accessibilityRole="button" style={s.doneBtn}>
               <Text style={s.doneBtnText}>{t('session.doneBtn', lang)}</Text>
             </Pressable>
@@ -293,7 +441,7 @@ export default function Session() {
               session (owner: "back button is still not shown in iOS, make it
               easy ux"). Previous-exercise moved DOWN beside Next, into thumb
               reach. */}
-          <Pressable onPress={closeAll} accessibilityRole="button"
+          <Pressable onPress={requestExit} accessibilityRole="button"
             accessibilityLabel="Leave session" style={s.backBtn}>
             <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
               <Path d="M12.5 4 6.5 10l6 6" stroke="#F7F5F0" strokeWidth={2.2}
@@ -422,6 +570,32 @@ export default function Session() {
           </Pressable>
         </View>
       </SafeAreaView>
+
+      {/* the early-exit confirm card — "You did N of M — save this session?" */}
+      {exitPhase !== null && plan ? (
+        <View style={s.scrim} pointerEvents="auto">
+          <View style={s.promptCard}>
+            <Text style={s.promptTitle}>
+              {t('session.partialQ', lang)
+                .replace('{done}', String(index))
+                .replace('{total}', String(plan.exercises.length))}
+            </Text>
+            {exitError ? (
+              <Text style={s.promptErr}>{t('session.saveFailed', lang)}</Text>
+            ) : null}
+            <Pressable onPress={() => void saveAndExit()} accessibilityRole="button"
+              style={s.promptPrimary}>
+              {exitPhase === 'saving'
+                ? <ActivityIndicator color={tk.palette.accent.interactiveInk} />
+                : <Text style={s.promptPrimaryText}>{t('session.saveExit', lang)}</Text>}
+            </Pressable>
+            <Pressable onPress={discardAndExit} accessibilityRole="button"
+              style={s.promptQuiet} hitSlop={8}>
+              <Text style={s.promptQuietText}>{t('session.discard', lang)}</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -521,4 +695,47 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginTop: tk.space(4),
   },
   doneBtnText: { ...tk.type.scale.label, fontSize: 18, color: tk.palette.accent.interactiveInk },
+  // the early-exit confirm card — Terra card over a scrim (update-popup kin)
+  scrim: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(16,22,15,0.72)',
+    alignItems: 'center', justifyContent: 'center', padding: tk.space(6),
+    zIndex: 1000,
+  },
+  promptCard: {
+    width: '100%', maxWidth: 360,
+    backgroundColor: tk.palette.paper.card,
+    borderRadius: 20, padding: tk.space(6), gap: tk.space(3),
+  },
+  promptTitle: { ...tk.type.scale.heading, ...tk.type.display, color: tk.palette.ink.primary },
+  promptErr: { ...tk.type.scale.sub, color: tk.palette.danger },
+  promptPrimary: {
+    marginTop: tk.space(2), minHeight: 52, borderRadius: 14,
+    backgroundColor: tk.palette.accent.interactive,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  promptPrimaryText: { ...tk.type.scale.label, color: tk.palette.accent.interactiveInk },
+  promptQuiet: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
+  promptQuietText: { ...tk.type.scale.sub, color: tk.palette.ink.muted, fontWeight: '700' },
+  // streak — the number the whole mechanic exists for, shown big
+  streakRow: { flexDirection: 'row', alignItems: 'baseline', gap: tk.space(2) },
+  streakNum: {
+    fontSize: 56, lineHeight: 60, fontWeight: '700',
+    color: tk.palette.accent.interactive, fontVariant: ['tabular-nums'],
+  },
+  streakLabel: { ...tk.type.scale.label, color: tk.palette.ink.muted },
+  // the anonymous save-progress nudge
+  nudgeCard: {
+    alignSelf: 'stretch',
+    backgroundColor: tk.palette.paper.card,
+    borderWidth: 1, borderColor: tk.palette.paper.line,
+    borderRadius: tk.radius.card, padding: tk.space(4), gap: tk.space(3),
+  },
+  nudgeText: { ...tk.type.scale.sub, color: tk.palette.ink.secondary },
+  nudgeBtn: {
+    minHeight: 44, borderRadius: tk.radius.button,
+    borderWidth: 1, borderColor: tk.palette.accent.interactive,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  nudgeBtnText: { ...tk.type.scale.label, color: tk.palette.accent.interactive },
 });
