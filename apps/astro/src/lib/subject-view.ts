@@ -54,13 +54,17 @@ export function chipLabel(s: ReadingSubject | null): string {
  *  reading. Returns the option labels and the sentence each one sends. */
 export function subjectSheet(
   people: ReadonlyArray<{ id: string; display_name: string }>,
-): Array<{ label: string; turn: string }> {
+): Array<{ label: string; turn: string; fresh: boolean }> {
   return [
-    { label: 'You', turn: TURN_SELF },
+    { label: 'You', turn: TURN_SELF, fresh: false },
     ...people
       .filter((p) => p.id !== 'self' && (p.display_name || '').trim())
-      .map((p) => ({ label: p.display_name.trim(), turn: turnForPerson(p.display_name.trim()) })),
-    { label: 'Someone new / just this reading', turn: TURN_ADHOC },
+      .map((p) => ({ label: p.display_name.trim(), turn: turnForPerson(p.display_name.trim()), fresh: false })),
+    // Owner 2026-09-17: "Someone new should start a new chat, not continue
+    // in the old chat." A just-this-reading conversation must inherit no
+    // history — the row carries `fresh` and the screen starts a new chat
+    // with the cue as its first turn (the Matches handoff's own mechanism).
+    { label: 'Someone new / just this reading', turn: TURN_ADHOC, fresh: true },
   ];
 }
 

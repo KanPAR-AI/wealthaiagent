@@ -158,6 +158,12 @@ export default function Chat() {
       const row = rows[i];
       if (!row) return;
       track('subject_switch', { mode: i === 0 ? 'self' : i === rows.length - 1 ? 'adhoc' : 'person' });
+      if (row.fresh) {
+        // A clean slate: the adhoc cue opens a NEW conversation through the
+        // same handoff the Matches screen uses (owner, 2026-09-17).
+        router.push({ pathname: '/chat', params: { pending: row.turn, fresh: '1', handoffKey: String(Date.now()) } });
+        return;
+      }
       send(row.turn, []);
     };
     if (Platform.OS === 'ios') {

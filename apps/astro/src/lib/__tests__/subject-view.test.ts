@@ -61,3 +61,12 @@ describe('the store', () => {
     expect(subjectStore.get()).toEqual(SELF_SUBJECT);
   });
 });
+
+
+describe('the sheet: "Someone new" starts a fresh chat (owner 2026-09-17)', () => {
+  it('flags only the adhoc row as fresh', () => {
+    const rows = subjectSheet([{ id: 'p1', display_name: 'Meera' }]);
+    expect(rows.map((r) => r.fresh)).toEqual([false, false, true]);
+    expect(rows[rows.length - 1].turn).toBe('Just this reading.');
+  });
+});
