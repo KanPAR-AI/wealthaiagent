@@ -10,6 +10,13 @@
         "buildType": "apk"
       },
       "node": "24.10.0"
+    },
+    "testflight": {
+      "extends": "production",
+      "distribution": "store",
+      "ios": {
+        "resourceClass": "m-medium"
+      }
     }
   }
 }
