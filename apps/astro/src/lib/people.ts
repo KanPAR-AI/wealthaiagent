@@ -37,6 +37,7 @@ import type {
   PrioritiesResponse,
   SelfResponse,
   TimelineResponse,
+  PlaceSuggestion,
 } from './people-shapes';
 import { getToken } from './auth';
 import { apiUrl } from './core-adapter';
@@ -170,6 +171,31 @@ export function setPartner(personId: string):
     method: 'PATCH',
     body: JSON.stringify({ partner_person_id: personId }),
   });
+}
+
+/** docs/49 AMB-25: where the person is today. `device` sends the phone's
+ *  coordinates (the server names the city and resolves the zone); `manual`
+ *  sends a typed city (the server geocodes it). Self-only; not a fact. */
+export function setCurrentPlace(place: {
+  source: 'device' | 'manual'; name?: string; latitude?: number; longitude?: number;
+}): Promise<{ person: PersonView; invalidated: string[] }> {
+  return call('people/self', {
+    method: 'PATCH',
+    body: JSON.stringify({ current_place: place }),
+  });
+}
+
+export function clearCurrentPlace():
+    Promise<{ person: PersonView; invalidated: string[] }> {
+  return call('people/self', {
+    method: 'PATCH',
+    body: JSON.stringify({ current_place_clear: true }),
+  });
+}
+
+/** The city sheet's suggestions — a read of the server's offline gazetteer. */
+export function suggestPlaces(q: string): Promise<{ query: string; places: PlaceSuggestion[] }> {
+  return call(`people/self/places?q=${encodeURIComponent(q)}`);
 }
 
 export function clearPartner():

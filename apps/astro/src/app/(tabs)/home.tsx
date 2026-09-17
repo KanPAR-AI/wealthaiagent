@@ -47,6 +47,9 @@ import { SkyDefs, SkyField, Stars } from '@/components/sky';
 import { track } from '@/lib/analytics';
 import { CAPABILITIES } from '@/lib/capabilities';
 import { openPartnerSheet } from '@/components/partner-sheet';
+import { CitySheet } from '@/components/city-sheet';
+import { useCurrentPlace } from '@/components/use-current-place';
+import { placeLine, type KnownPlace } from '@/lib/location-view';
 import { subscribeToAccount, type Account } from '@/lib/auth';
 import {
   absences,
@@ -140,6 +143,23 @@ export default function Home() {
     // value; frozen at first-render true it starved every fetch
     // (owner-reported: 'home page is not loading', 2026-09-12).
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocked]);
+
+  // docs/49 AMB-25 (owner 2026-09-17): on open, the phone's location if
+  // permitted, else the city sheet — at most once a session / once a week.
+  // The person's current place travels on the self read.
+  const [selfPlace, setSelfPlace] = useState<KnownPlace | null>(null);
+  const [cityOpen, setCityOpen] = useState<null | 'no_place' | 'stale_place' | 'change'>(null);
+  const onPlaceChanged = useCallback(() => {
+    void fetchSelf().then((self) => setSelfPlace((self.person?.current_place ?? null) as KnownPlace | null)).catch(() => {});
+    void read(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const { askCity, closeCity } = useCurrentPlace(!blocked, onPlaceChanged);
+  useEffect(() => { if (askCity) setCityOpen(askCity); }, [askCity]);
+  useEffect(() => {
+    if (blocked) return;
+    void fetchSelf().then((self) => setSelfPlace((self.person?.current_place ?? null) as KnownPlace | null)).catch(() => {});
   }, [blocked]);
 
   // Re-read on focus, not only on mount: a user who adds their birth details
@@ -282,7 +302,7 @@ export default function Home() {
               <WeekCard view={dayView(res.card)!} open={whyOpen} onToggle={() => {
                 track('home_day_why', { open: !whyOpen, band: dayView(res.card)!.band });
                 setWhyOpen((v) => !v);
-              }} />
+              }} selfPlace={selfPlace} onChangePlace={() => { track('home_change_city'); setCityOpen('change'); }} />
             ) : null}
           </View>
 
@@ -363,6 +383,12 @@ export default function Home() {
           ) : null}
         </ScrollView>
       </SafeAreaView>
+      <CitySheet
+        visible={cityOpen !== null}
+        reason={cityOpen ?? 'change'}
+        onClose={() => { setCityOpen(null); closeCity(); }}
+        onSaved={() => { setCityOpen(null); closeCity(); onPlaceChanged(); }}
+      />
     </View>
   );
 }
@@ -401,7 +427,7 @@ function CoupleHomeCard({ card, onDeclared }: { card: CoupleCard; onDeclared: ()
  *  silence windows. Nothing here is computed: every word and every colour is
  *  the card's `day` layer; a day the engine could not score is a hollow dot
  *  with its reason, never a guess. */
-function WeekCard({ view, open, onToggle }: { view: DayView; open: boolean; onToggle: () => void }) {
+function WeekCard({ view, open, onToggle, selfPlace, onChangePlace }: { view: DayView; open: boolean; onToggle: () => void; selfPlace: KnownPlace | null; onChangePlace: () => void }) {
   return (
     <View style={s.weekCard} accessibilityLabel={`Your week: ${view.strip.map((d) => `${d.weekday} ${d.band ?? 'not scored'}`).join(', ')}`}>
       <Text style={s.weekTitle}>Your week</Text>
@@ -424,7 +450,17 @@ function WeekCard({ view, open, onToggle }: { view: DayView; open: boolean; onTo
           {view.strip.filter((d) => d.absent).map((d) => `${d.weekday}: ${d.absent}`).join(' · ')}
         </Text>
       ) : null}
-      {view.place ? <Text style={s.weekNote}>scored for {view.place}, from your Moon</Text> : null}
+      <Pressable
+        onPress={onChangePlace}
+        accessibilityRole="button"
+        accessibilityLabel={placeLine(selfPlace, view.place).cta}
+      >
+        <Text style={s.weekNote}>
+          {placeLine(selfPlace, view.place).text}
+          {' · '}
+          <Text style={s.weekNoteCta}>{placeLine(selfPlace, view.place).cta}</Text>
+        </Text>
+      </Pressable>
       {view.notYours ? <Text style={s.weekNote}>{view.notYours}.</Text> : null}
 
       <Pressable
@@ -552,6 +588,7 @@ const s = StyleSheet.create({
   weekDotAbsent: { borderWidth: 1, borderColor: t.palette.ink.onCosmicMuted, backgroundColor: 'transparent' },
   weekDotToday: { borderWidth: 2, borderColor: t.palette.accent.ceremonial },
   weekNote: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
+  weekNoteCta: { color: t.palette.accent.ceremonial, fontWeight: '600' },
   whyRow: { flexDirection: 'row', alignItems: 'center', gap: t.space(1) },
   whyText: { ...t.type.scale.sub, color: t.palette.accent.ceremonial, fontWeight: '600' },
   whyBody: { gap: t.space(1) },

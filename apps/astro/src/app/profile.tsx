@@ -59,6 +59,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, ChevronRight, SymbolIcon } from '@/components/glyphs';
 import { track } from '@/lib/analytics';
 import { openPartnerSheet } from '@/components/partner-sheet';
+import { CitySheet } from '@/components/city-sheet';
 import { turnForPerson } from '@/lib/subject-view';
 import { editRoute } from '@/lib/edit-fact';
 import { useEditOutcome } from '@/lib/edit-outcome';
@@ -368,6 +369,7 @@ function Established({
   // partner NAME is joined at read (ASTRAL-141: names come from the
   // person, never denormalised onto a link).
   const [partnerName, setPartnerName] = useState<string | null>(null);
+  const [cityOpen, setCityOpen] = useState(false);
   const [people, setPeople] = useState<PersonView[]>([]);
   useEffect(() => {
     fetchPeople()
@@ -610,6 +612,40 @@ function Established({
       {/* docs/60 SL-5 (owner, 2026-09-12): the relationship. Partnered
           takes the several-matches surfaces away and keeps the one person;
           the link is a PATCH on self and deletes nothing. */}
+      {/* docs/49 AMB-25 (owner 2026-09-17): where the person IS today — the
+          phone's fix or a typed city; the daily card is cast for it. Not a
+          fact: a PATCH on self beside the facts, never in them. */}
+      <Text style={s.section}>Where you are</Text>
+      <View style={s.card}>
+        <Pressable
+          style={s.row}
+          onPress={() => { track('profile_current_city'); setCityOpen(true); }}
+          accessibilityRole="button"
+          accessibilityLabel="Your current city"
+        >
+          <View style={s.rowText}>
+            <Text style={s.rowLabel}>Current city</Text>
+            <Text style={s.rowValue}>
+              {person.current_place?.name || 'Not set — your birth place is used'}
+            </Text>
+            <Text style={s.caption}>
+              {person.current_place
+                ? (person.current_place.source === 'device'
+                    ? 'From your phone. Today’s sunrise, Rahu Kaal and golden hours are cast here.'
+                    : 'Set by you. Today’s sunrise, Rahu Kaal and golden hours are cast here.')
+                : 'Set it and today’s sky is cast where you are.'}
+            </Text>
+          </View>
+          <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
+        </Pressable>
+      </View>
+      <CitySheet
+        visible={cityOpen}
+        reason="change"
+        onClose={() => setCityOpen(false)}
+        onSaved={() => { setCityOpen(false); onReload(); }}
+      />
+
       <Text style={s.section}>Relationship</Text>
       <View style={s.card}>
         <Pressable

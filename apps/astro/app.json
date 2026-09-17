@@ -18,7 +18,7 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "12"
+      "buildNumber": "13"
     },
     "android": {
       "package": "com.yourfinadvisor.astro",
@@ -88,7 +88,13 @@
       "@react-native-firebase/analytics",
       "expo-video",
       "expo-image",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Astral AI uses your location so today's sky \u2014 sunrise, Rahu Kaal, the golden hours \u2014 is cast for where you are, not where you were born."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

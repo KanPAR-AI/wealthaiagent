@@ -105,6 +105,10 @@ export interface PersonView {
    *  card gains their day. Optional: an older backend never sends it. */
   partner?: { status: string; person_id: string;
               declared_at: string } | null;
+  /** docs/49 AMB-25 (self only): where the person IS today — the phone's
+   *  fix or a typed city — or null (the card is then cast for the birth
+   *  place, labelled). Optional: an older backend never sends it. */
+  current_place?: CurrentPlaceView | null;
   /** docs/60 SL-2: the durable hands — REFERENCE shapes (file id, how the
    *  side was decided, when), never the reading body. Optional because a
    *  backend older than chatservice 5a2b6b8 does not serve the field: a
@@ -270,6 +274,25 @@ export interface MatchesResponse {
     interests: { key: string; label: string; unscored_sentence: string }[];
     notes: string[];
   };
+}
+
+export interface CurrentPlaceView {
+  name: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+  source: 'device' | 'manual' | string;
+  country?: string | null;
+  set_at: string;
+}
+
+export interface PlaceSuggestion {
+  name: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  timezone: string | null;
+  population: number;
 }
 
 export interface PeopleResponse {
