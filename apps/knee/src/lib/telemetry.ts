@@ -22,7 +22,8 @@ export type KneeEvent =
   | 'session_saved_partial'
   | 'session_discarded'
   | 'nudge_link_shown'
-  | 'nudge_link_tapped';
+  | 'nudge_link_tapped'
+  | 'video_error';
 
 export function track(event: KneeEvent, meta: Record<string, unknown> = {}): void {
   void (async () => {

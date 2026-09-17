@@ -17,6 +17,7 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import { getLang } from '@/lib/i18n';
 import { dubUrl, formatClock } from '@/lib/library-view';
 import { createPlayerGate, useCachingFor } from '@/lib/player-view';
+import { track } from '@/lib/telemetry';
 import { tokens as t } from '@/theme';
 
 export default function Player() {
@@ -65,7 +66,17 @@ export default function Player() {
   // The initial seek, applied when the player says it can honour it — once:
   // the language switch below restores its own position after replaceAsync,
   // and the second "readyToPlay" must not yank it back to the segment start.
-  useEventListener(player, 'statusChange', ({ status }) => {
+  useEventListener(player, 'statusChange', ({ status, error }) => {
+    // Surface a refused load via telemetry — iOS reports load failures HERE,
+    // not as promise rejections (owner iPhone 2026-09-17: crossed-out glyph
+    // with zero evidence anywhere). The msg is the actual AVFoundation reason.
+    if (status === 'error') {
+      track('video_error', {
+        where: 'player', lang: lang || 'en',
+        msg: String((error as any)?.message ?? error ?? 'unknown').slice(0, 110),
+      });
+      return;
+    }
     const to = gate.onStatus(status);
     if (to !== null) player.currentTime = to;
   });

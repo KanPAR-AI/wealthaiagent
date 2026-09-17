@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
+import { useEventListener } from 'expo';
 import { VideoView, useVideoPlayer } from 'expo-video';
 
 import { fetchPhase, recordSession } from '@/lib/api';
@@ -130,6 +131,25 @@ export default function Session() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source]);
+
+  // iOS reports a failed LOAD through statusChange('error'), not as a
+  // replaceAsync rejection — so the clip→full-video fallback above never
+  // fired there and the card showed the crossed-out glyph (owner iPhone,
+  // 2026-09-17, "knee extension video not loading" while the same URLs
+  // played on Android). Two duties here: fall back for real on iOS, and
+  // SURFACE the player's actual reason via telemetry so the next media bug
+  // is diagnosed from evidence, not guesses.
+  useEventListener(player, 'statusChange', ({ status, error }) => {
+    if (status !== 'error') return;
+    const isClip = Boolean(exercise?.clipUrl && source === exercise.clipUrl);
+    track('video_error', {
+      where: 'session', kind: isClip ? 'clip' : 'full',
+      msg: String((error as any)?.message ?? error ?? 'unknown').slice(0, 110),
+    });
+    if (isClip) {
+      setBrokenClips((prev) => new Set(prev).add(exercise!.clipUrl!));
+    }
+  });
 
   // The system back button leaves the session — fullScreenModal +
   // gestureEnabled:false must never mean trapped (owner-reported).
