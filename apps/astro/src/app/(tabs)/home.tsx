@@ -49,6 +49,8 @@ import { CAPABILITIES } from '@/lib/capabilities';
 import { DaySealCard } from '@/components/day-seal-card';
 import { daySeal, sealMessage } from '@/lib/share-card';
 import { shareView } from '@/lib/share-image';
+import { dismissOffer, enablePush, offerDismissedAt, pushPermission, pushSupported } from '@/lib/push';
+import { shouldOfferPush } from '@/lib/push-view';
 import { openPartnerSheet } from '@/components/partner-sheet';
 import { CitySheet } from '@/components/city-sheet';
 import { useCurrentPlace } from '@/components/use-current-place';
@@ -103,6 +105,16 @@ export default function Home() {
   // demand. A toggle, not a fetch: the reasons are on the card already.
   const [whyOpen, setWhyOpen] = useState(false);
   const sealRef = useRef<View | null>(null);
+  // docs/69 sprint 3: whether to offer the morning line (lib/push-view.ts
+  // decides; this only gathers the facts once per mount).
+  const [pushOffer, setPushOffer] = useState(false);
+  useEffect(() => {
+    if (!pushSupported()) return;
+    void Promise.all([pushPermission(), offerDismissedAt()]).then(([permission, dismissedAt]) =>
+      setPushOffer(shouldOfferPush({
+        supported: true, permission, hasDayCard: true, dismissedAt, now: Date.now(),
+      })));
+  }, []);
   const asked = useRef(false);
 
   // The greeting's second source. MEASURED on-sim: a `self` established
@@ -317,6 +329,38 @@ export default function Home() {
                   track('day_seal_shared', { outcome }));
               }} selfPlace={selfPlace} onChangePlace={() => { track('home_change_city'); setCityOpen('change'); }} />
             ) : null}
+            {/* docs/69 sprint 3: the ONE ask for the morning line — after a day
+                card exists, never on first launch, quiet for a fortnight after
+                "Not now", and gone for good once the OS has answered. */}
+            {CAPABILITIES.notifications && pushOffer && res && isReady(res)
+              && CAPABILITIES.dayStrip && dayView(res.card) ? (
+                <View style={s.pushCard}>
+                  <Text style={s.pushTitle}>Your day’s colour, at 7 am</Text>
+                  <Text style={s.pushBody}>
+                    One line each morning: the colour of your day and its best window. Nothing else.
+                  </Text>
+                  <View style={s.pushActions}>
+                    <Pressable
+                      style={s.pushYes}
+                      onPress={() => {
+                        track('push_offer', { answer: 'yes' });
+                        setPushOffer(false);
+                        void enablePush().then((p) => track('push_permission', { result: p }));
+                      }}
+                      accessibilityRole="button"
+                    >
+                      <Text style={s.pushYesText}>Turn on</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => { track('push_offer', { answer: 'later' }); dismissOffer(); setPushOffer(false); }}
+                      hitSlop={10}
+                      accessibilityRole="button"
+                    >
+                      <Text style={s.pushLater}>Not now</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : null}
             {res && isReady(res) && CAPABILITIES.dayStrip && purposeChips(res).length ? (
               <PurposeChips chips={purposeChips(res)} />
             ) : null}
@@ -678,6 +722,20 @@ const s = StyleSheet.create({
   bandPill: { borderRadius: t.radius.pill, paddingVertical: t.space(1), paddingHorizontal: t.space(2.5) },
   bandPillText: { ...t.type.scale.caption, fontWeight: '700' },
   bandLine: { ...t.type.scale.caption, color: t.palette.ink.onCosmic, flex: 1 },
+  pushCard: {
+    marginHorizontal: t.space(4), marginTop: t.space(3), padding: t.space(4), gap: t.space(2),
+    borderRadius: t.radius.card, borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.palette.accent.ceremonial, backgroundColor: t.palette.cosmic.card,
+  },
+  pushTitle: { ...t.type.scale.lead, color: t.palette.ink.onCosmic, fontWeight: '700' },
+  pushBody: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
+  pushActions: { flexDirection: 'row', alignItems: 'center', gap: t.space(5), marginTop: t.space(1) },
+  pushYes: {
+    backgroundColor: t.palette.accent.ceremonial, borderRadius: t.radius.button,
+    paddingVertical: t.space(2), paddingHorizontal: t.space(5),
+  },
+  pushYesText: { ...t.type.scale.sub, color: t.palette.accent.ceremonialInk, fontWeight: '700' },
+  pushLater: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
   weekFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   // Mounted so it can be photographed, parked where nobody sees it.
   sealStage: { position: 'absolute', left: -2000, top: 0 },

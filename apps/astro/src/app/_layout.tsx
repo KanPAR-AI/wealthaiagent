@@ -1,5 +1,5 @@
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Updates from 'expo-updates';
 import { useEffect } from 'react';
@@ -11,6 +11,8 @@ import { ensureAstralHostInstalled } from '@/lib/astral-host';
 import { BugReportProvider } from '@/lib/bug-report';
 import { ensureChatHostInstalled } from '@/lib/chat-host';
 import { ensureCoreInitialized } from '@/lib/core-adapter';
+import { installPushHandlers, refreshPushRegistration } from '@/lib/push';
+import { routeForPush } from '@/lib/push-view';
 
 // Install this app's PlatformAdapter into @wealthai/core before any screen
 // imports the shared chat client.
@@ -80,6 +82,13 @@ export default function RootLayout() {
   useEffect(() => {
     const t = setTimeout(() => void SplashScreen.hideAsync(), 3000);
     return () => clearTimeout(t);
+  }, []);
+  // docs/69 sprint 3: a tapped notification opens an ALLOWLISTED route, and a
+  // rotated token re-registers quietly. Both are no-ops on a binary without
+  // the native module.
+  useEffect(() => {
+    void refreshPushRegistration();
+    return installPushHandlers((url) => router.push(routeForPush(url) as never));
   }, []);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

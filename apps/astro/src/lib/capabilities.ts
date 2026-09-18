@@ -203,9 +203,13 @@ export interface Capabilities {
    */
   subscriptionBilling: boolean;
   /**
-   * FALSE: FR-019 has no transport to a phone — no push client in either app
-   * and no FCM/APNs/Expo-push path server-side — and "notable" is a diff
-   * between consecutive N1 artifacts, which is downstream of PH-8.
+   * TRUE since 2026-09-18 (docs/69 sprint 3, build 14): the transport exists —
+   * `expo-notifications` in the binary, `services/push` server-side (device
+   * store, Expo sender, the 07:00 morning line from the day layer). This
+   * flag says the PRODUCT has it; whether THIS binary does is asked at
+   * runtime (`pushSupported()`), because builds 12/13 share the runtime
+   * version and lack the module — their surfaces remove themselves.
+   * Still absent: the "notable change" diff push (FR-019's other half).
    */
   notifications: boolean;
 }
@@ -230,5 +234,5 @@ export const CAPABILITIES: Capabilities = {
   reportProblem: true,
   savedReadings: false,
   subscriptionBilling: false,
-  notifications: false,
+  notifications: true,
 };

@@ -26,6 +26,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -48,7 +49,10 @@ import {
   subscribeToAccount,
   type Account,
 } from '@/lib/auth';
+import { CAPABILITIES } from '@/lib/capabilities';
 import { fetchBalance } from '@/lib/credits';
+import { enablePush, morningPref, pushPermission, pushSupported, setMorningPref } from '@/lib/push';
+import { pushRow, type PushPermission } from '@/lib/push-view';
 import { useReportProblem } from '@/lib/bug-report';
 import { visibleRows, type SettingsRow } from '@/lib/settings-rows';
 import { tokens } from '@/theme';
@@ -76,6 +80,30 @@ export default function Settings() {
   const [openRow, setOpenRow] = useState<string | null>(null);
 
   useEffect(() => subscribeToAccount(setAccount), []);
+
+  // docs/69 sprint 3: the morning line's switch. `pushOk` is whether THIS
+  // binary has the native module; the permission is the OS's answer.
+  const [pushOk] = useState(() => pushSupported());
+  const [pushPerm, setPushPerm] = useState<PushPermission>('undetermined');
+  const [morningOn, setMorningOn] = useState(false);
+  useEffect(() => {
+    if (!pushOk || !account?.uid) return;
+    void pushPermission().then(setPushPerm);
+    void morningPref().then(setMorningOn).catch(() => setMorningOn(false));
+  }, [pushOk, account?.uid]);
+  const toggleMorning = useCallback(async (on: boolean) => {
+    try {
+      if (on) {
+        const p = await enablePush();
+        setPushPerm(p);
+        setMorningOn(p === 'granted');
+      } else {
+        setMorningOn(await setMorningPref(false));
+      }
+    } catch (e: unknown) {
+      console.warn('[push]', String((e as Error)?.message ?? e));
+    }
+  }, []);
 
   const refreshCredits = useCallback(() => {
     fetchBalance()
@@ -297,6 +325,34 @@ export default function Settings() {
             ))}
           </View>
 
+          {/* docs/69 sprint 3: the morning line. ABSENT on a binary without the
+              native module (builds 12/13) — capability rule: absent removes. */}
+          {CAPABILITIES.notifications && pushRow(pushOk, pushPerm) !== 'absent' ? (
+            <>
+              <Text style={s.section}>Notifications</Text>
+              <View style={s.card}>
+                <View style={s.pushRow}>
+                  <View style={s.pushText}>
+                    <Text style={s.creditsValue}>Your day’s colour at 7 am</Text>
+                    <Text style={s.creditsNote}>
+                      {pushRow(pushOk, pushPerm) === 'os_denied'
+                        ? 'Notifications are off for Astral AI in your phone’s Settings. Turn them on there first.'
+                        : 'One line each morning: the colour of your day and its best window. Nothing else.'}
+                    </Text>
+                  </View>
+                  {pushRow(pushOk, pushPerm) === 'switch' ? (
+                    <Switch
+                      value={pushPerm === 'granted' && morningOn}
+                      onValueChange={(on) => void toggleMorning(on)}
+                      trackColor={{ true: tokens.palette.accent.interactive, false: tokens.palette.paper.line }}
+                      accessibilityLabel="Your day’s colour at 7 am"
+                    />
+                  ) : null}
+                </View>
+              </View>
+            </>
+          ) : null}
+
           <Text style={s.section}>Credits</Text>
           <View style={s.card}>
             <View style={s.creditsBody}>
@@ -396,6 +452,8 @@ const s = StyleSheet.create({
     letterSpacing: 1, marginTop: t.space(3.5), textTransform: 'uppercase',
   },
   creditsBody: { padding: t.space(4), gap: t.space(2) },
+  pushRow: { flexDirection: 'row', alignItems: 'center', gap: t.space(3), padding: t.space(4) },
+  pushText: { flex: 1, gap: t.space(1) },
   creditsValue: { ...t.type.scale.lead, color: t.palette.ink.primary },
   creditsNote: { ...t.type.scale.sub, color: t.palette.ink.secondary },
   split: { flexDirection: 'row', gap: t.space(2.5) },

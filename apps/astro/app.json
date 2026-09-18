@@ -92,7 +92,20 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Astral AI uses your location so today's sky \u2014 sunrise, Rahu Kaal, the golden hours \u2014 is cast for where you are, not where you were born."
+          "locationWhenInUsePermission": "Astral AI uses your location so today's sky — sunrise, Rahu Kaal, the golden hours — is cast for where you are, not where you were born."
+        }
+      ],
+      "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "mode": "production"
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Astral AI adds your good days and golden windows to your calendar, only when you ask it to."
         }
       ]
     ],
