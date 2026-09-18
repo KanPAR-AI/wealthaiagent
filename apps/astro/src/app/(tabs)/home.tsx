@@ -46,6 +46,9 @@ import { ChevronRight, SymbolIcon } from '@/components/glyphs';
 import { SkyDefs, SkyField, Stars } from '@/components/sky';
 import { track } from '@/lib/analytics';
 import { CAPABILITIES } from '@/lib/capabilities';
+import { DaySealCard } from '@/components/day-seal-card';
+import { daySeal, sealMessage } from '@/lib/share-card';
+import { shareView } from '@/lib/share-image';
 import { openPartnerSheet } from '@/components/partner-sheet';
 import { CitySheet } from '@/components/city-sheet';
 import { useCurrentPlace } from '@/components/use-current-place';
@@ -99,6 +102,7 @@ export default function Home() {
   // docs/62 A-1: "Why is today red?" — the engine's cited reasons, shown on
   // demand. A toggle, not a fetch: the reasons are on the card already.
   const [whyOpen, setWhyOpen] = useState(false);
+  const sealRef = useRef<View | null>(null);
   const asked = useRef(false);
 
   // The greeting's second source. MEASURED on-sim: a `self` established
@@ -305,6 +309,12 @@ export default function Home() {
               <WeekCard view={dayView(res.card)!} open={whyOpen} onToggle={() => {
                 track('home_day_why', { open: !whyOpen, band: dayView(res.card)!.band });
                 setWhyOpen((v) => !v);
+              }} onShare={() => {
+                const seal = daySeal(dayView(res.card), cardDate(res.card));
+                if (!seal) return;
+                track('day_seal_share', { band: seal.band });
+                void shareView(sealRef, sealMessage(seal)).then((outcome) =>
+                  track('day_seal_shared', { outcome }));
               }} selfPlace={selfPlace} onChangePlace={() => { track('home_change_city'); setCityOpen('change'); }} />
             ) : null}
             {res && isReady(res) && CAPABILITIES.dayStrip && purposeChips(res).length ? (
@@ -392,6 +402,12 @@ export default function Home() {
             </View>
           ) : null}
         </ScrollView>
+        {res && isReady(res) && CAPABILITIES.dayStrip
+          && daySeal(dayView(res.card), cardDate(res.card)) ? (
+            <View style={s.sealStage} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <DaySealCard ref={sealRef} seal={daySeal(dayView(res.card), cardDate(res.card))!} />
+            </View>
+          ) : null}
       </SafeAreaView>
       <CitySheet
         visible={cityOpen !== null}
@@ -496,7 +512,7 @@ function CoupleHomeCard({ card, onDeclared, partnerChip }: { card: CoupleCard; o
  *  silence windows. Nothing here is computed: every word and every colour is
  *  the card's `day` layer; a day the engine could not score is a hollow dot
  *  with its reason, never a guess. */
-function WeekCard({ view, open, onToggle, selfPlace, onChangePlace }: { view: DayView; open: boolean; onToggle: () => void; selfPlace: KnownPlace | null; onChangePlace: () => void }) {
+function WeekCard({ view, open, onToggle, onShare, selfPlace, onChangePlace }: { view: DayView; open: boolean; onToggle: () => void; onShare: () => void; selfPlace: KnownPlace | null; onChangePlace: () => void }) {
   return (
     <View style={s.weekCard} accessibilityLabel={`Your week: ${view.strip.map((d) => `${d.weekday} ${d.band ?? 'not scored'}`).join(', ')}`}>
       <Text style={s.weekTitle}>Your week</Text>
@@ -541,15 +557,29 @@ function WeekCard({ view, open, onToggle, selfPlace, onChangePlace }: { view: Da
       </Pressable>
       {view.notYours ? <Text style={s.weekNote}>{view.notYours}.</Text> : null}
 
-      <Pressable
-        style={s.whyRow}
-        onPress={onToggle}
-        accessibilityRole="button"
-        accessibilityLabel={open ? 'Hide why today is this colour' : 'Why is today this colour?'}
-      >
-        <Text style={s.whyText}>{open ? 'Hide the why' : `Why a ${view.label.toLowerCase()}?`}</Text>
-        <ChevronRight size={14} color={t.palette.accent.ceremonial} />
-      </Pressable>
+      <View style={s.weekFoot}>
+        <Pressable
+          style={s.whyRow}
+          onPress={onToggle}
+          accessibilityRole="button"
+          accessibilityLabel={open ? 'Hide why today is this colour' : 'Why is today this colour?'}
+        >
+          <Text style={s.whyText}>{open ? 'Hide the why' : `Why a ${view.label.toLowerCase()}?`}</Text>
+          <ChevronRight size={14} color={t.palette.accent.ceremonial} />
+        </Pressable>
+        {/* docs/69 loop 2: the Day Seal. The card is the day's verdict and
+            nothing about the person (lib/share-card.ts). */}
+        <Pressable
+          style={s.whyRow}
+          hitSlop={10}
+          onPress={onShare}
+          accessibilityRole="button"
+          accessibilityLabel="Share today’s colour"
+        >
+          <SymbolIcon name="square.and.arrow.up" size={16} color={t.palette.accent.ceremonial} />
+          <Text style={s.whyText}>Share</Text>
+        </Pressable>
+      </View>
       {open ? (
         <View style={s.whyBody}>
           {view.reasons.map((r) => (
@@ -648,6 +678,9 @@ const s = StyleSheet.create({
   bandPill: { borderRadius: t.radius.pill, paddingVertical: t.space(1), paddingHorizontal: t.space(2.5) },
   bandPillText: { ...t.type.scale.caption, fontWeight: '700' },
   bandLine: { ...t.type.scale.caption, color: t.palette.ink.onCosmic, flex: 1 },
+  weekFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  // Mounted so it can be photographed, parked where nobody sees it.
+  sealStage: { position: 'absolute', left: -2000, top: 0 },
 
   weekCard: {
     backgroundColor: t.palette.cosmic.card,
