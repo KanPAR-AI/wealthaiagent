@@ -58,6 +58,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ChevronLeft, ChevronRight, SymbolIcon } from '@/components/glyphs';
 import { track } from '@/lib/analytics';
+import { CAPABILITIES } from '@/lib/capabilities';
 import { openPartnerSheet } from '@/components/partner-sheet';
 import { CitySheet } from '@/components/city-sheet';
 import { turnForPerson } from '@/lib/subject-view';
@@ -672,6 +673,31 @@ function Established({
           <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
         </Pressable>
       </View>
+
+      {/* docs/71 ASTRAL-288 — "Your family". Removed entirely when the
+          capability is false; never greyed, never "coming soon". */}
+      {CAPABILITIES.family ? (
+        <>
+          <Text style={s.section}>Family</Text>
+          <View style={s.card}>
+            <Pressable
+              style={s.row}
+              onPress={() => { track('profile_family'); router.push('/family'); }}
+              accessibilityRole="button"
+              accessibilityLabel="Your family"
+            >
+              <View style={s.rowText}>
+                <Text style={s.rowLabel}>Your family</Text>
+                <Text style={s.caption}>
+                  The people you actually ask about — their day sits beside
+                  yours on Home.
+                </Text>
+              </View>
+              <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
+            </Pressable>
+          </View>
+        </>
+      ) : null}
 
       {/* docs/60 SL-4 §C — "Friend insights are one tap". Every person on
           the list opens a chat BOUND to them (the engine's subject cue);

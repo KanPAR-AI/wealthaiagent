@@ -235,6 +235,9 @@ const PUSHED: PushedRoute[] = [
   { path: '/palm', needs: 'palm' },
   { path: '/muhurta', needs: 'muhurta' },
   { path: '/matches', needs: 'matches' },
+  // docs/71 ASTRAL-288/289: the Family screen — the circle, each member's
+  // chart state, Forget. Removed with the capability, never greyed.
+  { path: '/family', needs: 'family' },
   { path: '/profile', needs: 'profile' },
   { path: '/privacy', needs: 'privacyAndData' },
   { path: '/help', needs: 'helpAndSupport' },

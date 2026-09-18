@@ -1,0 +1,2891 @@
+{
+  "no_circle": {
+    "state": "ready",
+    "date": "2026-08-24",
+    "is_today": true,
+    "today": "2026-08-24",
+    "card": {
+      "type": "daily_card",
+      "date": "2026-08-24",
+      "market": "india",
+      "shape": "full",
+      "key": "2c147b42efe16cd4:2026-08-24",
+      "inputs_hash": "2c147b42efe16cd4591996847e40dda6f29b01e630feeb907eaa56518dde5ebd",
+      "layers": [
+        "transit",
+        "dasha",
+        "panchang",
+        "day"
+      ],
+      "absent_layers": [],
+      "omitted_by_shape": [],
+      "undetermined": [],
+      "time_known": true,
+      "calculation": {
+        "zodiac_mode": "sidereal",
+        "ayanamsa": "LAHIRI",
+        "house_system": "W",
+        "settings_digest": "d0a6e637fb302caa",
+        "fn_version": "daily_card/3+d0a6e637fb302caa"
+      },
+      "transit": {
+        "as_of": "2026-08-24",
+        "window": {
+          "start": "2026-08-24",
+          "end": "2026-08-24"
+        },
+        "transit_place": {
+          "name": "Jamshedpur, India",
+          "basis": "birth_place",
+          "latitude": 22.8046,
+          "longitude": 86.2029,
+          "timezone": "Asia/Kolkata"
+        },
+        "natal_anchors": {
+          "lagna_sign": "Capricorn",
+          "moon_sign": "Aries",
+          "saturn_sign": "Sagittarius",
+          "jupiter_sign": "Gemini",
+          "age": 36
+        },
+        "planets": {
+          "Sun": {
+            "sign": "Leo",
+            "degree": 126.9,
+            "retrograde": false,
+            "house_from_lagna": 8,
+            "house_from_moon": 5
+          },
+          "Moon": {
+            "sign": "Sagittarius",
+            "degree": 262.42,
+            "retrograde": false,
+            "house_from_lagna": 12,
+            "house_from_moon": 9
+          },
+          "Mars": {
+            "sign": "Gemini",
+            "degree": 74.22,
+            "retrograde": false,
+            "house_from_lagna": 6,
+            "house_from_moon": 3
+          },
+          "Mercury": {
+            "sign": "Leo",
+            "degree": 123.39,
+            "retrograde": false,
+            "house_from_lagna": 8,
+            "house_from_moon": 5
+          },
+          "Jupiter": {
+            "sign": "Cancer",
+            "degree": 107.83,
+            "retrograde": false,
+            "house_from_lagna": 7,
+            "house_from_moon": 4
+          },
+          "Venus": {
+            "sign": "Virgo",
+            "degree": 172.42,
+            "retrograde": false,
+            "house_from_lagna": 9,
+            "house_from_moon": 6
+          },
+          "Saturn": {
+            "sign": "Pisces",
+            "degree": 349.84,
+            "retrograde": true,
+            "house_from_lagna": 3,
+            "house_from_moon": 12
+          },
+          "Rahu": {
+            "sign": "Aquarius",
+            "degree": 305.48,
+            "retrograde": true,
+            "house_from_lagna": 2,
+            "house_from_moon": 11
+          },
+          "Ketu": {
+            "sign": "Leo",
+            "degree": 125.48,
+            "retrograde": true,
+            "house_from_lagna": 8,
+            "house_from_moon": 5
+          }
+        },
+        "bodies_expected": [
+          "Sun",
+          "Moon",
+          "Mars",
+          "Mercury",
+          "Jupiter",
+          "Venus",
+          "Saturn",
+          "Rahu",
+          "Ketu"
+        ],
+        "rules": {
+          "saturn_return": {
+            "active": false,
+            "cycle_n": null,
+            "description": ""
+          },
+          "jupiter_return": {
+            "active": false,
+            "cycle_n": 3,
+            "description": ""
+          },
+          "rahu_ketu_axis": {
+            "rahu_sign": "Aquarius",
+            "ketu_sign": "Leo",
+            "rahu_house_from_lagna": 2,
+            "ketu_house_from_lagna": 8,
+            "rahu_house_from_moon": 11,
+            "ketu_house_from_moon": 5,
+            "description": "Rahu/Ketu axis: Rahu in Aquarius, Ketu in Leo. From Lagna: H2/H8. From Moon: H11/H5."
+          },
+          "jupiter_aspect_to_lagna": {
+            "favourable": true,
+            "jupiter_house_from_lagna": 7,
+            "description": "Transit Jupiter in house 7 from Lagna \u2014 favourable (kendra/trikona)."
+          },
+          "sade_sati": {
+            "active": true,
+            "phase": "pre / Aroha",
+            "saturn_sign": "Pisces",
+            "natal_moon_sign": "Aries",
+            "saturn_house_from_moon": 12,
+            "description": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries).",
+            "span": {
+              "start": "2025-03-30",
+              "end": "2032-05-30"
+            },
+            "sub_phases": [
+              {
+                "phase": "pre / Aroha",
+                "saturn_sign": "Pisces",
+                "start": "2025-03-30",
+                "retrograde_re_entries": 1,
+                "current": true,
+                "end": "2027-06-02"
+              },
+              {
+                "phase": "peak / Madhya",
+                "saturn_sign": "Aries",
+                "start": "2027-06-03",
+                "retrograde_re_entries": 2,
+                "current": false,
+                "end": "2029-08-08"
+              },
+              {
+                "phase": "post / Avaroha",
+                "saturn_sign": "Taurus",
+                "start": "2029-08-09",
+                "retrograde_re_entries": 1,
+                "current": false,
+                "end": "2032-05-30"
+              }
+            ]
+          },
+          "kantaka_shani": {
+            "active": false,
+            "saturn_house_from_moon": 12
+          },
+          "ashtama_shani": {
+            "active": false
+          }
+        }
+      },
+      "dasha": {
+        "mahadasha": {
+          "planet": "Rahu",
+          "start_date": "2023-01-29",
+          "end_date": "2041-01-29"
+        },
+        "antardasha": {
+          "planet": "Jupiter",
+          "start_date": "2025-10-11",
+          "end_date": "2028-03-06"
+        },
+        "selected_by": "date_containment"
+      },
+      "panchang": {
+        "as_of": "2026-08-24",
+        "tithi": "Dwadashi",
+        "vara": "Somavar",
+        "nakshatra": "Purva Ashadha",
+        "nakshatra_pada": 3,
+        "moon_sign": "Sagittarius",
+        "yoga": "Ayushman",
+        "karana": "Bava",
+        "is_bhadra": false,
+        "overall_quality": "highly auspicious",
+        "overall_score": 0.8,
+        "notes": [],
+        "panchang_place": {
+          "name": "Jamshedpur, India",
+          "basis": "birth_place",
+          "latitude": 22.8046,
+          "longitude": 86.2029,
+          "timezone": "Asia/Kolkata",
+          "pending_decision": "AMB-25"
+        }
+      },
+      "day": {
+        "as_of": "2026-08-24",
+        "band": "green",
+        "score": 0.755,
+        "tara": "Janma",
+        "personalized": true,
+        "factors": [
+          {
+            "factor": "tithi",
+            "value": "Dwadashi",
+            "score": 0.8
+          },
+          {
+            "factor": "yoga",
+            "value": "Ayushman",
+            "score": 0.9
+          },
+          {
+            "factor": "karana",
+            "value": "Bava",
+            "score": 0.85
+          },
+          {
+            "factor": "nakshatra",
+            "value": "Purva Ashadha",
+            "score": 0.65
+          },
+          {
+            "factor": "tara",
+            "value": "Janma",
+            "score": 0.5,
+            "natal_nakshatra": "Bharani",
+            "day_nakshatra": "Purva Ashadha"
+          },
+          {
+            "factor": "moon_from_natal_moon",
+            "value": 9,
+            "transit_moon_sign": "Sagittarius",
+            "natal_moon_sign": "Aries"
+          }
+        ],
+        "caps": [],
+        "reasons": [
+          "Janma tara \u2014 today's Moon in Purva Ashadha, counted from your Moon in Bharani",
+          "Dwadashi tithi \u2014 a strong tithi"
+        ],
+        "line": "a green day \u2014 lean in: start the thing, make the ask, say yes to the meeting. Janma tara from your Moon \u2014 a self-facing day.",
+        "strip": [
+          {
+            "date": "2026-08-24",
+            "weekday": "Mon",
+            "band": "green",
+            "score": 0.755,
+            "tara": "Janma",
+            "personalized": true,
+            "tithi": "Dwadashi",
+            "nakshatra": "Purva Ashadha"
+          },
+          {
+            "date": "2026-08-25",
+            "weekday": "Tue",
+            "band": "green",
+            "score": 0.862,
+            "tara": "Sampat",
+            "personalized": true,
+            "tithi": "Trayodashi",
+            "nakshatra": "Uttara Ashadha"
+          },
+          {
+            "date": "2026-08-26",
+            "weekday": "Wed",
+            "band": "green",
+            "score": 0.632,
+            "tara": "Vipat",
+            "personalized": true,
+            "tithi": "Chaturdashi",
+            "nakshatra": "Shravana"
+          },
+          {
+            "date": "2026-08-27",
+            "weekday": "Thu",
+            "band": "red",
+            "score": 0.35,
+            "tara": "Kshema",
+            "personalized": true,
+            "tithi": "Purnima/Amavasya",
+            "nakshatra": "Dhanishtha"
+          },
+          {
+            "date": "2026-08-28",
+            "weekday": "Fri",
+            "band": "amber",
+            "score": 0.526,
+            "tara": "Pratyak",
+            "personalized": true,
+            "tithi": "Pratipada",
+            "nakshatra": "Shatabhisha"
+          },
+          {
+            "date": "2026-08-29",
+            "weekday": "Sat",
+            "band": "green",
+            "score": 0.681,
+            "tara": "Sadhana",
+            "personalized": true,
+            "tithi": "Dwitiya",
+            "nakshatra": "Purva Bhadrapada"
+          },
+          {
+            "date": "2026-08-30",
+            "weekday": "Sun",
+            "band": "red",
+            "score": 0.3,
+            "tara": "Naidhana",
+            "personalized": true,
+            "tithi": "Tritiya",
+            "nakshatra": "Uttara Bhadrapada"
+          }
+        ],
+        "thresholds": {
+          "green_at": 0.6,
+          "amber_at": 0.45
+        },
+        "place": {
+          "name": "Jamshedpur, India",
+          "basis": "birth_place",
+          "latitude": 22.8046,
+          "longitude": 86.2029,
+          "timezone": "Asia/Kolkata"
+        },
+        "rahu_kaal": {
+          "start": "07:00",
+          "end": "08:36",
+          "basis": "the 2nd of eight daylight parts, sunrise 05:24 to sunset 18:10"
+        },
+        "moments": {
+          "golden": [
+            {
+              "start": "05:24",
+              "end": "10:54",
+              "score": 0.733,
+              "slots": 11,
+              "all_day": false
+            },
+            {
+              "start": "12:24",
+              "end": "13:54",
+              "score": 0.708,
+              "slots": 3,
+              "all_day": false
+            }
+          ],
+          "silence": [
+            {
+              "start": "15:24",
+              "end": "16:54",
+              "score": 0.0,
+              "slots": 3,
+              "all_day": false
+            }
+          ],
+          "scanned": {
+            "start": "05:24",
+            "end": "18:10",
+            "slots": 25,
+            "step_minutes": 30,
+            "personalized": true,
+            "cap": null
+          }
+        }
+      }
+    },
+    "purposes": [
+      {
+        "key": "ask_manager",
+        "label": "Ask at work",
+        "cue": "When should I have that discussion with my manager?",
+        "needs_partner": false
+      },
+      {
+        "key": "start_venture",
+        "label": "Start something",
+        "cue": "When should I start something new?",
+        "needs_partner": false
+      },
+      {
+        "key": "travel",
+        "label": "Travel",
+        "cue": "When should I travel?",
+        "needs_partner": false
+      },
+      {
+        "key": "sign_papers",
+        "label": "Sign or pay",
+        "cue": "When should I sign the papers?",
+        "needs_partner": false
+      },
+      {
+        "key": "health_procedure",
+        "label": "A health procedure",
+        "cue": "When should I schedule a health procedure?",
+        "needs_partner": false
+      },
+      {
+        "key": "family_matter",
+        "label": "A family matter",
+        "cue": "When should I raise a family matter?",
+        "needs_partner": false
+      },
+      {
+        "key": "study_exam",
+        "label": "Study or an exam",
+        "cue": "When should I sit down to study for the exam?",
+        "needs_partner": false
+      },
+      {
+        "key": "generic",
+        "label": "Anything important",
+        "cue": "When is my best day in the next two weeks?",
+        "needs_partner": false
+      }
+    ],
+    "facets": {
+      "version": 5,
+      "tabs": [
+        {
+          "id": "guidance",
+          "label": "Guidance",
+          "domains": [],
+          "items": [
+            {
+              "id": "day",
+              "kind": "day_score",
+              "title": "Today: Green day",
+              "detail": "Janma tara \u2014 today's Moon in Purva Ashadha, counted from your Moon in Bharani; Dwadashi tithi \u2014 a strong tithi. Rahu Kaal 07:00\u201308:36",
+              "domains": [],
+              "basis": "day score from your Moon",
+              "band": "green",
+              "score": 0.755,
+              "personalized": true,
+              "meaning": "a green day \u2014 lean in: start the thing, make the ask, say yes to the meeting. Janma tara from your Moon \u2014 a self-facing day."
+            },
+            {
+              "id": "plan_ahead",
+              "kind": "plan_ahead",
+              "title": "Plan ahead",
+              "detail": "today's golden window is 05:24\u201310:54; the next green day is Tue 25; Thu 27 is red \u2014 hold the big move for another day",
+              "domains": [],
+              "basis": "the week's strip and today's moments",
+              "meaning": "Ask \"When should I\u2026?\" for a purpose \u2014 talk, ask, travel, sign \u2014 and the next two weeks are ranked for it, with the people involved.",
+              "cue": "When is my best day in the next two weeks?"
+            },
+            {
+              "id": "dasha:mahadasha",
+              "kind": "dasha_period",
+              "title": "Mahadasha: Rahu",
+              "detail": "",
+              "start_date": "2023-01-29",
+              "end_date": "2041-01-29",
+              "domains": [
+                "health",
+                "longevity"
+              ],
+              "basis": "Rahu occupies house 1",
+              "meaning": "the years you are in: seasons that reward bold, unconventional moves \u2014 with your feet kept on the ground."
+            },
+            {
+              "id": "dasha:antardasha",
+              "kind": "dasha_period",
+              "title": "Antardasha: Jupiter",
+              "detail": "",
+              "start_date": "2025-10-11",
+              "end_date": "2028-03-06",
+              "domains": [
+                "travel"
+              ],
+              "basis": "Jupiter rules houses 3, 12",
+              "meaning": "the current stretch within them: seasons that reward teaching, mentoring, generosity and the long view."
+            },
+            {
+              "id": "rule:jupiter_aspect_to_lagna",
+              "kind": "transit_rule",
+              "title": "Jupiter Aspect To Lagna",
+              "detail": "Transit Jupiter in house 7 from Lagna \u2014 favourable (kendra/trikona).",
+              "domains": [],
+              "basis": "classical transit rule",
+              "meaning": ""
+            },
+            {
+              "id": "rule:sade_sati",
+              "kind": "transit_rule",
+              "title": "Sade Sati",
+              "detail": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries).",
+              "domains": [],
+              "basis": "classical transit rule",
+              "meaning": "commit to fewer things and finish them \u2014 steady beats bold in this season, and it does end"
+            },
+            {
+              "id": "transit:Sun",
+              "kind": "transit_position",
+              "title": "Sun in Leo",
+              "detail": "house 8 from your Lagna",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Sun's themes \u2014 visibility and authority \u2014 pass through long-term wellbeing today: small disciplines today, not grand overhauls."
+            },
+            {
+              "id": "transit:Moon",
+              "kind": "transit_position",
+              "title": "Moon in Sagittarius",
+              "detail": "house 12 from your Lagna",
+              "domains": [
+                "travel"
+              ],
+              "basis": "read for travel",
+              "meaning": "Moon's themes \u2014 mood, home and instinct \u2014 pass through movement and journeys today: a good day to move, book, or begin the journey."
+            },
+            {
+              "id": "transit:Mars",
+              "kind": "transit_position",
+              "title": "Mars in Gemini",
+              "detail": "house 6 from your Lagna",
+              "domains": [
+                "health",
+                "litigation"
+              ],
+              "basis": "read for health, litigation",
+              "meaning": "Mars's themes \u2014 drive and impatience \u2014 pass through your body and energy today: pace yourself \u2014 rest is productive today."
+            },
+            {
+              "id": "transit:Mercury",
+              "kind": "transit_position",
+              "title": "Mercury in Leo",
+              "detail": "house 8 from your Lagna",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Mercury's themes \u2014 words, numbers and negotiation \u2014 pass through long-term wellbeing today: invest in the habit that pays off in years."
+            },
+            {
+              "id": "transit:Jupiter",
+              "kind": "transit_position",
+              "title": "Jupiter in Cancer",
+              "detail": "house 7 from your Lagna",
+              "domains": [
+                "marriage"
+              ],
+              "basis": "read for marriage",
+              "meaning": "Jupiter's themes \u2014 growth, advice and luck \u2014 pass through your closest relationship today: say the warm thing out loud today."
+            },
+            {
+              "id": "transit:Venus",
+              "kind": "transit_position",
+              "title": "Venus in Virgo",
+              "detail": "house 9 from your Lagna",
+              "domains": [
+                "education",
+                "travel"
+              ],
+              "basis": "read for education, travel",
+              "meaning": "Venus's themes \u2014 affection, taste and comfort \u2014 pass through learning and study today: study sticks today \u2014 take the harder chapter."
+            },
+            {
+              "id": "transit:Saturn",
+              "kind": "transit_position",
+              "title": "Saturn in Pisces",
+              "detail": "house 3 from your Lagna, retrograde",
+              "domains": [],
+              "basis": "",
+              "meaning": ""
+            },
+            {
+              "id": "transit:Rahu",
+              "kind": "transit_position",
+              "title": "Rahu in Aquarius",
+              "detail": "house 2 from your Lagna, retrograde",
+              "domains": [
+                "wealth"
+              ],
+              "basis": "read for wealth",
+              "meaning": "Rahu's themes \u2014 ambition and the unconventional \u2014 pass through money and savings today: hold the big purchase; double-check the numbers."
+            },
+            {
+              "id": "transit:Ketu",
+              "kind": "transit_position",
+              "title": "Ketu in Leo",
+              "detail": "house 8 from your Lagna, retrograde",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Ketu's themes \u2014 detachment and the inward turn \u2014 pass through long-term wellbeing today: small disciplines today, not grand overhauls."
+            },
+            {
+              "id": "panchang",
+              "kind": "panchang",
+              "title": "Dwadashi \u00b7 Somavar \u00b7 Purva Ashadha",
+              "detail": "Yoga Ayushman \u00b7 Karana Bava",
+              "domains": [],
+              "basis": "panchang for Jamshedpur, India",
+              "place": {
+                "name": "Jamshedpur, India",
+                "basis": "birth_place"
+              },
+              "meaning": "a good day to start things \u2014 conversations, purchases, first steps."
+            }
+          ],
+          "empty_reason": null
+        },
+        {
+          "id": "love",
+          "label": "Love",
+          "domains": [
+            "marriage",
+            "progeny"
+          ],
+          "items": [
+            {
+              "id": "transit:Jupiter",
+              "kind": "transit_position",
+              "title": "Jupiter in Cancer",
+              "detail": "house 7 from your Lagna",
+              "domains": [
+                "marriage"
+              ],
+              "basis": "read for marriage",
+              "meaning": "Jupiter's themes \u2014 growth, advice and luck \u2014 pass through your closest relationship today: say the warm thing out loud today."
+            }
+          ],
+          "empty_reason": null
+        },
+        {
+          "id": "career",
+          "label": "Career",
+          "domains": [
+            "career",
+            "wealth",
+            "litigation"
+          ],
+          "items": [
+            {
+              "id": "transit:Mars",
+              "kind": "transit_position",
+              "title": "Mars in Gemini",
+              "detail": "house 6 from your Lagna",
+              "domains": [
+                "health",
+                "litigation"
+              ],
+              "basis": "read for health, litigation",
+              "meaning": "Mars's themes \u2014 drive and impatience \u2014 pass through your body and energy today: pace yourself \u2014 rest is productive today."
+            },
+            {
+              "id": "transit:Rahu",
+              "kind": "transit_position",
+              "title": "Rahu in Aquarius",
+              "detail": "house 2 from your Lagna, retrograde",
+              "domains": [
+                "wealth"
+              ],
+              "basis": "read for wealth",
+              "meaning": "Rahu's themes \u2014 ambition and the unconventional \u2014 pass through money and savings today: hold the big purchase; double-check the numbers."
+            }
+          ],
+          "empty_reason": null
+        },
+        {
+          "id": "self",
+          "label": "Self",
+          "domains": [
+            "health",
+            "longevity",
+            "education",
+            "travel"
+          ],
+          "items": [
+            {
+              "id": "dasha:mahadasha",
+              "kind": "dasha_period",
+              "title": "Mahadasha: Rahu",
+              "detail": "",
+              "start_date": "2023-01-29",
+              "end_date": "2041-01-29",
+              "domains": [
+                "health",
+                "longevity"
+              ],
+              "basis": "Rahu occupies house 1",
+              "meaning": "the years you are in: seasons that reward bold, unconventional moves \u2014 with your feet kept on the ground."
+            },
+            {
+              "id": "dasha:antardasha",
+              "kind": "dasha_period",
+              "title": "Antardasha: Jupiter",
+              "detail": "",
+              "start_date": "2025-10-11",
+              "end_date": "2028-03-06",
+              "domains": [
+                "travel"
+              ],
+              "basis": "Jupiter rules houses 3, 12",
+              "meaning": "the current stretch within them: seasons that reward teaching, mentoring, generosity and the long view."
+            },
+            {
+              "id": "transit:Sun",
+              "kind": "transit_position",
+              "title": "Sun in Leo",
+              "detail": "house 8 from your Lagna",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Sun's themes \u2014 visibility and authority \u2014 pass through long-term wellbeing today: small disciplines today, not grand overhauls."
+            },
+            {
+              "id": "transit:Moon",
+              "kind": "transit_position",
+              "title": "Moon in Sagittarius",
+              "detail": "house 12 from your Lagna",
+              "domains": [
+                "travel"
+              ],
+              "basis": "read for travel",
+              "meaning": "Moon's themes \u2014 mood, home and instinct \u2014 pass through movement and journeys today: a good day to move, book, or begin the journey."
+            },
+            {
+              "id": "transit:Mars",
+              "kind": "transit_position",
+              "title": "Mars in Gemini",
+              "detail": "house 6 from your Lagna",
+              "domains": [
+                "health",
+                "litigation"
+              ],
+              "basis": "read for health, litigation",
+              "meaning": "Mars's themes \u2014 drive and impatience \u2014 pass through your body and energy today: pace yourself \u2014 rest is productive today."
+            },
+            {
+              "id": "transit:Mercury",
+              "kind": "transit_position",
+              "title": "Mercury in Leo",
+              "detail": "house 8 from your Lagna",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Mercury's themes \u2014 words, numbers and negotiation \u2014 pass through long-term wellbeing today: invest in the habit that pays off in years."
+            },
+            {
+              "id": "transit:Venus",
+              "kind": "transit_position",
+              "title": "Venus in Virgo",
+              "detail": "house 9 from your Lagna",
+              "domains": [
+                "education",
+                "travel"
+              ],
+              "basis": "read for education, travel",
+              "meaning": "Venus's themes \u2014 affection, taste and comfort \u2014 pass through learning and study today: study sticks today \u2014 take the harder chapter."
+            },
+            {
+              "id": "transit:Ketu",
+              "kind": "transit_position",
+              "title": "Ketu in Leo",
+              "detail": "house 8 from your Lagna, retrograde",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Ketu's themes \u2014 detachment and the inward turn \u2014 pass through long-term wellbeing today: small disciplines today, not grand overhauls."
+            }
+          ],
+          "empty_reason": null
+        },
+        {
+          "id": "couple",
+          "label": "Couple",
+          "domains": [
+            "couple"
+          ],
+          "items": [
+            {
+              "id": "couple:add_partner",
+              "kind": "couple_day",
+              "title": "Add your partner",
+              "detail": "One partner, their birth details, and this tab becomes your reading as a couple \u2014 the phase you are in together, and where your shared momentum is.",
+              "domains": [
+                "couple"
+              ],
+              "basis": "stated absence",
+              "unlocked_by": "partner"
+            }
+          ],
+          "empty_reason": null
+        }
+      ],
+      "item_count": 17,
+      "artifact_key": "2c147b42efe16cd4:2026-08-24",
+      "date": "2026-08-24"
+    },
+    "narration": {
+      "text": "",
+      "deck": [],
+      "generated_this_request": false,
+      "available": false
+    },
+    "chart": {
+      "status": "fresh",
+      "computed_at": "2026-09-18T18:30:00.164757+00:00"
+    },
+    "person": {
+      "id": "self",
+      "display_name": "Ravi"
+    },
+    "served_from_store": false
+  },
+  "partner_only": {
+    "state": "ready",
+    "date": "2026-08-24",
+    "is_today": true,
+    "today": "2026-08-24",
+    "card": {
+      "type": "daily_card",
+      "date": "2026-08-24",
+      "market": "india",
+      "shape": "full",
+      "key": "2c147b42efe16cd4:2026-08-24",
+      "inputs_hash": "2c147b42efe16cd4591996847e40dda6f29b01e630feeb907eaa56518dde5ebd",
+      "layers": [
+        "transit",
+        "dasha",
+        "panchang",
+        "day"
+      ],
+      "absent_layers": [],
+      "omitted_by_shape": [],
+      "undetermined": [],
+      "time_known": true,
+      "calculation": {
+        "zodiac_mode": "sidereal",
+        "ayanamsa": "LAHIRI",
+        "house_system": "W",
+        "settings_digest": "d0a6e637fb302caa",
+        "fn_version": "daily_card/3+d0a6e637fb302caa"
+      },
+      "transit": {
+        "as_of": "2026-08-24",
+        "window": {
+          "start": "2026-08-24",
+          "end": "2026-08-24"
+        },
+        "transit_place": {
+          "name": "Jamshedpur, India",
+          "basis": "birth_place",
+          "latitude": 22.8046,
+          "longitude": 86.2029,
+          "timezone": "Asia/Kolkata"
+        },
+        "natal_anchors": {
+          "lagna_sign": "Capricorn",
+          "moon_sign": "Aries",
+          "saturn_sign": "Sagittarius",
+          "jupiter_sign": "Gemini",
+          "age": 36
+        },
+        "planets": {
+          "Sun": {
+            "sign": "Leo",
+            "degree": 126.9,
+            "retrograde": false,
+            "house_from_lagna": 8,
+            "house_from_moon": 5
+          },
+          "Moon": {
+            "sign": "Sagittarius",
+            "degree": 262.42,
+            "retrograde": false,
+            "house_from_lagna": 12,
+            "house_from_moon": 9
+          },
+          "Mars": {
+            "sign": "Gemini",
+            "degree": 74.22,
+            "retrograde": false,
+            "house_from_lagna": 6,
+            "house_from_moon": 3
+          },
+          "Mercury": {
+            "sign": "Leo",
+            "degree": 123.39,
+            "retrograde": false,
+            "house_from_lagna": 8,
+            "house_from_moon": 5
+          },
+          "Jupiter": {
+            "sign": "Cancer",
+            "degree": 107.83,
+            "retrograde": false,
+            "house_from_lagna": 7,
+            "house_from_moon": 4
+          },
+          "Venus": {
+            "sign": "Virgo",
+            "degree": 172.42,
+            "retrograde": false,
+            "house_from_lagna": 9,
+            "house_from_moon": 6
+          },
+          "Saturn": {
+            "sign": "Pisces",
+            "degree": 349.84,
+            "retrograde": true,
+            "house_from_lagna": 3,
+            "house_from_moon": 12
+          },
+          "Rahu": {
+            "sign": "Aquarius",
+            "degree": 305.48,
+            "retrograde": true,
+            "house_from_lagna": 2,
+            "house_from_moon": 11
+          },
+          "Ketu": {
+            "sign": "Leo",
+            "degree": 125.48,
+            "retrograde": true,
+            "house_from_lagna": 8,
+            "house_from_moon": 5
+          }
+        },
+        "bodies_expected": [
+          "Sun",
+          "Moon",
+          "Mars",
+          "Mercury",
+          "Jupiter",
+          "Venus",
+          "Saturn",
+          "Rahu",
+          "Ketu"
+        ],
+        "rules": {
+          "saturn_return": {
+            "active": false,
+            "cycle_n": null,
+            "description": ""
+          },
+          "jupiter_return": {
+            "active": false,
+            "cycle_n": 3,
+            "description": ""
+          },
+          "rahu_ketu_axis": {
+            "rahu_sign": "Aquarius",
+            "ketu_sign": "Leo",
+            "rahu_house_from_lagna": 2,
+            "ketu_house_from_lagna": 8,
+            "rahu_house_from_moon": 11,
+            "ketu_house_from_moon": 5,
+            "description": "Rahu/Ketu axis: Rahu in Aquarius, Ketu in Leo. From Lagna: H2/H8. From Moon: H11/H5."
+          },
+          "jupiter_aspect_to_lagna": {
+            "favourable": true,
+            "jupiter_house_from_lagna": 7,
+            "description": "Transit Jupiter in house 7 from Lagna \u2014 favourable (kendra/trikona)."
+          },
+          "sade_sati": {
+            "active": true,
+            "phase": "pre / Aroha",
+            "saturn_sign": "Pisces",
+            "natal_moon_sign": "Aries",
+            "saturn_house_from_moon": 12,
+            "description": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries).",
+            "span": {
+              "start": "2025-03-30",
+              "end": "2032-05-30"
+            },
+            "sub_phases": [
+              {
+                "phase": "pre / Aroha",
+                "saturn_sign": "Pisces",
+                "start": "2025-03-30",
+                "retrograde_re_entries": 1,
+                "current": true,
+                "end": "2027-06-02"
+              },
+              {
+                "phase": "peak / Madhya",
+                "saturn_sign": "Aries",
+                "start": "2027-06-03",
+                "retrograde_re_entries": 2,
+                "current": false,
+                "end": "2029-08-08"
+              },
+              {
+                "phase": "post / Avaroha",
+                "saturn_sign": "Taurus",
+                "start": "2029-08-09",
+                "retrograde_re_entries": 1,
+                "current": false,
+                "end": "2032-05-30"
+              }
+            ]
+          },
+          "kantaka_shani": {
+            "active": false,
+            "saturn_house_from_moon": 12
+          },
+          "ashtama_shani": {
+            "active": false
+          }
+        }
+      },
+      "dasha": {
+        "mahadasha": {
+          "planet": "Rahu",
+          "start_date": "2023-01-29",
+          "end_date": "2041-01-29"
+        },
+        "antardasha": {
+          "planet": "Jupiter",
+          "start_date": "2025-10-11",
+          "end_date": "2028-03-06"
+        },
+        "selected_by": "date_containment"
+      },
+      "panchang": {
+        "as_of": "2026-08-24",
+        "tithi": "Dwadashi",
+        "vara": "Somavar",
+        "nakshatra": "Purva Ashadha",
+        "nakshatra_pada": 3,
+        "moon_sign": "Sagittarius",
+        "yoga": "Ayushman",
+        "karana": "Bava",
+        "is_bhadra": false,
+        "overall_quality": "highly auspicious",
+        "overall_score": 0.8,
+        "notes": [],
+        "panchang_place": {
+          "name": "Jamshedpur, India",
+          "basis": "birth_place",
+          "latitude": 22.8046,
+          "longitude": 86.2029,
+          "timezone": "Asia/Kolkata",
+          "pending_decision": "AMB-25"
+        }
+      },
+      "day": {
+        "as_of": "2026-08-24",
+        "band": "green",
+        "score": 0.755,
+        "tara": "Janma",
+        "personalized": true,
+        "factors": [
+          {
+            "factor": "tithi",
+            "value": "Dwadashi",
+            "score": 0.8
+          },
+          {
+            "factor": "yoga",
+            "value": "Ayushman",
+            "score": 0.9
+          },
+          {
+            "factor": "karana",
+            "value": "Bava",
+            "score": 0.85
+          },
+          {
+            "factor": "nakshatra",
+            "value": "Purva Ashadha",
+            "score": 0.65
+          },
+          {
+            "factor": "tara",
+            "value": "Janma",
+            "score": 0.5,
+            "natal_nakshatra": "Bharani",
+            "day_nakshatra": "Purva Ashadha"
+          },
+          {
+            "factor": "moon_from_natal_moon",
+            "value": 9,
+            "transit_moon_sign": "Sagittarius",
+            "natal_moon_sign": "Aries"
+          }
+        ],
+        "caps": [],
+        "reasons": [
+          "Janma tara \u2014 today's Moon in Purva Ashadha, counted from your Moon in Bharani",
+          "Dwadashi tithi \u2014 a strong tithi"
+        ],
+        "line": "a green day \u2014 lean in: start the thing, make the ask, say yes to the meeting. Janma tara from your Moon \u2014 a self-facing day.",
+        "strip": [
+          {
+            "date": "2026-08-24",
+            "weekday": "Mon",
+            "band": "green",
+            "score": 0.755,
+            "tara": "Janma",
+            "personalized": true,
+            "tithi": "Dwadashi",
+            "nakshatra": "Purva Ashadha"
+          },
+          {
+            "date": "2026-08-25",
+            "weekday": "Tue",
+            "band": "green",
+            "score": 0.862,
+            "tara": "Sampat",
+            "personalized": true,
+            "tithi": "Trayodashi",
+            "nakshatra": "Uttara Ashadha"
+          },
+          {
+            "date": "2026-08-26",
+            "weekday": "Wed",
+            "band": "green",
+            "score": 0.632,
+            "tara": "Vipat",
+            "personalized": true,
+            "tithi": "Chaturdashi",
+            "nakshatra": "Shravana"
+          },
+          {
+            "date": "2026-08-27",
+            "weekday": "Thu",
+            "band": "red",
+            "score": 0.35,
+            "tara": "Kshema",
+            "personalized": true,
+            "tithi": "Purnima/Amavasya",
+            "nakshatra": "Dhanishtha"
+          },
+          {
+            "date": "2026-08-28",
+            "weekday": "Fri",
+            "band": "amber",
+            "score": 0.526,
+            "tara": "Pratyak",
+            "personalized": true,
+            "tithi": "Pratipada",
+            "nakshatra": "Shatabhisha"
+          },
+          {
+            "date": "2026-08-29",
+            "weekday": "Sat",
+            "band": "green",
+            "score": 0.681,
+            "tara": "Sadhana",
+            "personalized": true,
+            "tithi": "Dwitiya",
+            "nakshatra": "Purva Bhadrapada"
+          },
+          {
+            "date": "2026-08-30",
+            "weekday": "Sun",
+            "band": "red",
+            "score": 0.3,
+            "tara": "Naidhana",
+            "personalized": true,
+            "tithi": "Tritiya",
+            "nakshatra": "Uttara Bhadrapada"
+          }
+        ],
+        "thresholds": {
+          "green_at": 0.6,
+          "amber_at": 0.45
+        },
+        "place": {
+          "name": "Jamshedpur, India",
+          "basis": "birth_place",
+          "latitude": 22.8046,
+          "longitude": 86.2029,
+          "timezone": "Asia/Kolkata"
+        },
+        "rahu_kaal": {
+          "start": "07:00",
+          "end": "08:36",
+          "basis": "the 2nd of eight daylight parts, sunrise 05:24 to sunset 18:10"
+        },
+        "moments": {
+          "golden": [
+            {
+              "start": "05:24",
+              "end": "10:54",
+              "score": 0.733,
+              "slots": 11,
+              "all_day": false
+            },
+            {
+              "start": "12:24",
+              "end": "13:54",
+              "score": 0.708,
+              "slots": 3,
+              "all_day": false
+            }
+          ],
+          "silence": [
+            {
+              "start": "15:24",
+              "end": "16:54",
+              "score": 0.0,
+              "slots": 3,
+              "all_day": false
+            }
+          ],
+          "scanned": {
+            "start": "05:24",
+            "end": "18:10",
+            "slots": 25,
+            "step_minutes": 30,
+            "personalized": true,
+            "cap": null
+          }
+        }
+      }
+    },
+    "purposes": [
+      {
+        "key": "talk_partner",
+        "label": "Talk with Meera",
+        "cue": "When should I talk something sensitive over with Meera?",
+        "needs_partner": true
+      },
+      {
+        "key": "ask_manager",
+        "label": "Ask at work",
+        "cue": "When should I have that discussion with my manager?",
+        "needs_partner": false
+      },
+      {
+        "key": "start_venture",
+        "label": "Start something",
+        "cue": "When should I start something new?",
+        "needs_partner": false
+      },
+      {
+        "key": "travel",
+        "label": "Travel",
+        "cue": "When should I travel?",
+        "needs_partner": false
+      },
+      {
+        "key": "sign_papers",
+        "label": "Sign or pay",
+        "cue": "When should I sign the papers?",
+        "needs_partner": false
+      },
+      {
+        "key": "health_procedure",
+        "label": "A health procedure",
+        "cue": "When should I schedule a health procedure?",
+        "needs_partner": false
+      },
+      {
+        "key": "family_matter",
+        "label": "A family matter",
+        "cue": "When should I raise a family matter?",
+        "needs_partner": false
+      },
+      {
+        "key": "study_exam",
+        "label": "Study or an exam",
+        "cue": "When should I sit down to study for the exam?",
+        "needs_partner": false
+      },
+      {
+        "key": "generic",
+        "label": "Anything important",
+        "cue": "When is my best day in the next two weeks?",
+        "needs_partner": false
+      }
+    ],
+    "facets": {
+      "version": 5,
+      "tabs": [
+        {
+          "id": "guidance",
+          "label": "Guidance",
+          "domains": [],
+          "items": [
+            {
+              "id": "day",
+              "kind": "day_score",
+              "title": "Today: Green day",
+              "detail": "Janma tara \u2014 today's Moon in Purva Ashadha, counted from your Moon in Bharani; Dwadashi tithi \u2014 a strong tithi. Rahu Kaal 07:00\u201308:36",
+              "domains": [],
+              "basis": "day score from your Moon",
+              "band": "green",
+              "score": 0.755,
+              "personalized": true,
+              "meaning": "a green day \u2014 lean in: start the thing, make the ask, say yes to the meeting. Janma tara from your Moon \u2014 a self-facing day."
+            },
+            {
+              "id": "plan_ahead",
+              "kind": "plan_ahead",
+              "title": "Plan ahead",
+              "detail": "today's golden window is 05:24\u201310:54; the next green day is Tue 25; Thu 27 is red \u2014 hold the big move for another day",
+              "domains": [],
+              "basis": "the week's strip and today's moments",
+              "meaning": "Ask \"When should I\u2026?\" for a purpose \u2014 talk, ask, travel, sign \u2014 and the next two weeks are ranked for it, with the people involved.",
+              "cue": "When is my best day in the next two weeks?"
+            },
+            {
+              "id": "dasha:mahadasha",
+              "kind": "dasha_period",
+              "title": "Mahadasha: Rahu",
+              "detail": "",
+              "start_date": "2023-01-29",
+              "end_date": "2041-01-29",
+              "domains": [
+                "health",
+                "longevity"
+              ],
+              "basis": "Rahu occupies house 1",
+              "meaning": "the years you are in: seasons that reward bold, unconventional moves \u2014 with your feet kept on the ground."
+            },
+            {
+              "id": "dasha:antardasha",
+              "kind": "dasha_period",
+              "title": "Antardasha: Jupiter",
+              "detail": "",
+              "start_date": "2025-10-11",
+              "end_date": "2028-03-06",
+              "domains": [
+                "travel"
+              ],
+              "basis": "Jupiter rules houses 3, 12",
+              "meaning": "the current stretch within them: seasons that reward teaching, mentoring, generosity and the long view."
+            },
+            {
+              "id": "rule:jupiter_aspect_to_lagna",
+              "kind": "transit_rule",
+              "title": "Jupiter Aspect To Lagna",
+              "detail": "Transit Jupiter in house 7 from Lagna \u2014 favourable (kendra/trikona).",
+              "domains": [],
+              "basis": "classical transit rule",
+              "meaning": ""
+            },
+            {
+              "id": "rule:sade_sati",
+              "kind": "transit_rule",
+              "title": "Sade Sati",
+              "detail": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries).",
+              "domains": [],
+              "basis": "classical transit rule",
+              "meaning": "commit to fewer things and finish them \u2014 steady beats bold in this season, and it does end"
+            },
+            {
+              "id": "transit:Sun",
+              "kind": "transit_position",
+              "title": "Sun in Leo",
+              "detail": "house 8 from your Lagna",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Sun's themes \u2014 visibility and authority \u2014 pass through long-term wellbeing today: small disciplines today, not grand overhauls."
+            },
+            {
+              "id": "transit:Moon",
+              "kind": "transit_position",
+              "title": "Moon in Sagittarius",
+              "detail": "house 12 from your Lagna",
+              "domains": [
+                "travel"
+              ],
+              "basis": "read for travel",
+              "meaning": "Moon's themes \u2014 mood, home and instinct \u2014 pass through movement and journeys today: a good day to move, book, or begin the journey."
+            },
+            {
+              "id": "transit:Mars",
+              "kind": "transit_position",
+              "title": "Mars in Gemini",
+              "detail": "house 6 from your Lagna",
+              "domains": [
+                "health",
+                "litigation"
+              ],
+              "basis": "read for health, litigation",
+              "meaning": "Mars's themes \u2014 drive and impatience \u2014 pass through your body and energy today: pace yourself \u2014 rest is productive today."
+            },
+            {
+              "id": "transit:Mercury",
+              "kind": "transit_position",
+              "title": "Mercury in Leo",
+              "detail": "house 8 from your Lagna",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Mercury's themes \u2014 words, numbers and negotiation \u2014 pass through long-term wellbeing today: invest in the habit that pays off in years."
+            },
+            {
+              "id": "transit:Jupiter",
+              "kind": "transit_position",
+              "title": "Jupiter in Cancer",
+              "detail": "house 7 from your Lagna",
+              "domains": [
+                "marriage"
+              ],
+              "basis": "read for marriage",
+              "meaning": "Jupiter's themes \u2014 growth, advice and luck \u2014 pass through your closest relationship today: say the warm thing out loud today."
+            },
+            {
+              "id": "transit:Venus",
+              "kind": "transit_position",
+              "title": "Venus in Virgo",
+              "detail": "house 9 from your Lagna",
+              "domains": [
+                "education",
+                "travel"
+              ],
+              "basis": "read for education, travel",
+              "meaning": "Venus's themes \u2014 affection, taste and comfort \u2014 pass through learning and study today: study sticks today \u2014 take the harder chapter."
+            },
+            {
+              "id": "transit:Saturn",
+              "kind": "transit_position",
+              "title": "Saturn in Pisces",
+              "detail": "house 3 from your Lagna, retrograde",
+              "domains": [],
+              "basis": "",
+              "meaning": ""
+            },
+            {
+              "id": "transit:Rahu",
+              "kind": "transit_position",
+              "title": "Rahu in Aquarius",
+              "detail": "house 2 from your Lagna, retrograde",
+              "domains": [
+                "wealth"
+              ],
+              "basis": "read for wealth",
+              "meaning": "Rahu's themes \u2014 ambition and the unconventional \u2014 pass through money and savings today: hold the big purchase; double-check the numbers."
+            },
+            {
+              "id": "transit:Ketu",
+              "kind": "transit_position",
+              "title": "Ketu in Leo",
+              "detail": "house 8 from your Lagna, retrograde",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Ketu's themes \u2014 detachment and the inward turn \u2014 pass through long-term wellbeing today: small disciplines today, not grand overhauls."
+            },
+            {
+              "id": "partner:absent",
+              "kind": "absent_layer",
+              "title": "Meera's day isn't readable yet",
+              "detail": "A fresh Kundli Milan with Meera is what lights this up \u2014 ask about your match in chat.",
+              "domains": [
+                "marriage"
+              ],
+              "basis": "stated absence"
+            },
+            {
+              "id": "panchang",
+              "kind": "panchang",
+              "title": "Dwadashi \u00b7 Somavar \u00b7 Purva Ashadha",
+              "detail": "Yoga Ayushman \u00b7 Karana Bava",
+              "domains": [],
+              "basis": "panchang for Jamshedpur, India",
+              "place": {
+                "name": "Jamshedpur, India",
+                "basis": "birth_place"
+              },
+              "meaning": "a good day to start things \u2014 conversations, purchases, first steps."
+            }
+          ],
+          "empty_reason": null
+        },
+        {
+          "id": "love",
+          "label": "Love",
+          "domains": [
+            "marriage",
+            "progeny"
+          ],
+          "items": [
+            {
+              "id": "transit:Jupiter",
+              "kind": "transit_position",
+              "title": "Jupiter in Cancer",
+              "detail": "house 7 from your Lagna",
+              "domains": [
+                "marriage"
+              ],
+              "basis": "read for marriage",
+              "meaning": "Jupiter's themes \u2014 growth, advice and luck \u2014 pass through your closest relationship today: say the warm thing out loud today."
+            },
+            {
+              "id": "partner:absent",
+              "kind": "absent_layer",
+              "title": "Meera's day isn't readable yet",
+              "detail": "A fresh Kundli Milan with Meera is what lights this up \u2014 ask about your match in chat.",
+              "domains": [
+                "marriage"
+              ],
+              "basis": "stated absence"
+            }
+          ],
+          "empty_reason": null
+        },
+        {
+          "id": "career",
+          "label": "Career",
+          "domains": [
+            "career",
+            "wealth",
+            "litigation"
+          ],
+          "items": [
+            {
+              "id": "transit:Mars",
+              "kind": "transit_position",
+              "title": "Mars in Gemini",
+              "detail": "house 6 from your Lagna",
+              "domains": [
+                "health",
+                "litigation"
+              ],
+              "basis": "read for health, litigation",
+              "meaning": "Mars's themes \u2014 drive and impatience \u2014 pass through your body and energy today: pace yourself \u2014 rest is productive today."
+            },
+            {
+              "id": "transit:Rahu",
+              "kind": "transit_position",
+              "title": "Rahu in Aquarius",
+              "detail": "house 2 from your Lagna, retrograde",
+              "domains": [
+                "wealth"
+              ],
+              "basis": "read for wealth",
+              "meaning": "Rahu's themes \u2014 ambition and the unconventional \u2014 pass through money and savings today: hold the big purchase; double-check the numbers."
+            }
+          ],
+          "empty_reason": null
+        },
+        {
+          "id": "self",
+          "label": "Self",
+          "domains": [
+            "health",
+            "longevity",
+            "education",
+            "travel"
+          ],
+          "items": [
+            {
+              "id": "dasha:mahadasha",
+              "kind": "dasha_period",
+              "title": "Mahadasha: Rahu",
+              "detail": "",
+              "start_date": "2023-01-29",
+              "end_date": "2041-01-29",
+              "domains": [
+                "health",
+                "longevity"
+              ],
+              "basis": "Rahu occupies house 1",
+              "meaning": "the years you are in: seasons that reward bold, unconventional moves \u2014 with your feet kept on the ground."
+            },
+            {
+              "id": "dasha:antardasha",
+              "kind": "dasha_period",
+              "title": "Antardasha: Jupiter",
+              "detail": "",
+              "start_date": "2025-10-11",
+              "end_date": "2028-03-06",
+              "domains": [
+                "travel"
+              ],
+              "basis": "Jupiter rules houses 3, 12",
+              "meaning": "the current stretch within them: seasons that reward teaching, mentoring, generosity and the long view."
+            },
+            {
+              "id": "transit:Sun",
+              "kind": "transit_position",
+              "title": "Sun in Leo",
+              "detail": "house 8 from your Lagna",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Sun's themes \u2014 visibility and authority \u2014 pass through long-term wellbeing today: small disciplines today, not grand overhauls."
+            },
+            {
+              "id": "transit:Moon",
+              "kind": "transit_position",
+              "title": "Moon in Sagittarius",
+              "detail": "house 12 from your Lagna",
+              "domains": [
+                "travel"
+              ],
+              "basis": "read for travel",
+              "meaning": "Moon's themes \u2014 mood, home and instinct \u2014 pass through movement and journeys today: a good day to move, book, or begin the journey."
+            },
+            {
+              "id": "transit:Mars",
+              "kind": "transit_position",
+              "title": "Mars in Gemini",
+              "detail": "house 6 from your Lagna",
+              "domains": [
+                "health",
+                "litigation"
+              ],
+              "basis": "read for health, litigation",
+              "meaning": "Mars's themes \u2014 drive and impatience \u2014 pass through your body and energy today: pace yourself \u2014 rest is productive today."
+            },
+            {
+              "id": "transit:Mercury",
+              "kind": "transit_position",
+              "title": "Mercury in Leo",
+              "detail": "house 8 from your Lagna",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Mercury's themes \u2014 words, numbers and negotiation \u2014 pass through long-term wellbeing today: invest in the habit that pays off in years."
+            },
+            {
+              "id": "transit:Venus",
+              "kind": "transit_position",
+              "title": "Venus in Virgo",
+              "detail": "house 9 from your Lagna",
+              "domains": [
+                "education",
+                "travel"
+              ],
+              "basis": "read for education, travel",
+              "meaning": "Venus's themes \u2014 affection, taste and comfort \u2014 pass through learning and study today: study sticks today \u2014 take the harder chapter."
+            },
+            {
+              "id": "transit:Ketu",
+              "kind": "transit_position",
+              "title": "Ketu in Leo",
+              "detail": "house 8 from your Lagna, retrograde",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Ketu's themes \u2014 detachment and the inward turn \u2014 pass through long-term wellbeing today: small disciplines today, not grand overhauls."
+            }
+          ],
+          "empty_reason": null
+        },
+        {
+          "id": "couple",
+          "label": "Couple",
+          "domains": [
+            "couple"
+          ],
+          "items": [
+            {
+              "id": "couple:moon_absent",
+              "kind": "couple_day",
+              "title": "Meera's side isn't readable yet",
+              "detail": "A fresh Kundli Milan with Meera gives this tab their Moon \u2014 ask about your match in chat.",
+              "domains": [
+                "couple"
+              ],
+              "basis": "stated absence"
+            }
+          ],
+          "empty_reason": null
+        }
+      ],
+      "item_count": 18,
+      "artifact_key": "2c147b42efe16cd4:2026-08-24",
+      "date": "2026-08-24"
+    },
+    "narration": {
+      "text": "",
+      "deck": [],
+      "generated_this_request": false,
+      "available": false
+    },
+    "chart": {
+      "status": "fresh",
+      "computed_at": "2026-09-18T18:30:00.164757+00:00"
+    },
+    "person": {
+      "id": "self",
+      "display_name": "Ravi"
+    },
+    "served_from_store": true
+  },
+  "family": {
+    "state": "ready",
+    "family": {
+      "kind": "family_day",
+      "as_of": "2026-08-24",
+      "place": {
+        "name": "Jamshedpur, India",
+        "basis": "birth_place",
+        "latitude": 22.8046,
+        "longitude": 86.2029,
+        "timezone": "Asia/Kolkata"
+      },
+      "you": {
+        "band": "green",
+        "score": 0.755,
+        "line": "a green day \u2014 lean in: start the thing, make the ask, say yes to the meeting. Janma tara from your Moon \u2014 a self-facing day."
+      },
+      "rows": [
+        {
+          "person_id": "p_26ea0e1bf690",
+          "name": "Meera",
+          "kinship": "partner",
+          "chart_status": "fresh",
+          "band": "green",
+          "score": 0.83,
+          "tara": "Kshema",
+          "personalized": true,
+          "reasons": [
+            "Kshema tara \u2014 today's Moon in Purva Ashadha, counted from your Moon in Uttara Bhadrapada",
+            "Dwadashi tithi \u2014 a strong tithi",
+            "the Moon in Sagittarius sits 10th from your natal Moon \u2014 a supportive transit position"
+          ],
+          "line": "a green day \u2014 lean in: start the thing, make the ask, say yes to the meeting. Kshema tara from your Moon \u2014 a protective, settled day.",
+          "moon_nakshatra": "Uttara Bhadrapada",
+          "moon_rashi": "Pisces"
+        },
+        {
+          "person_id": "p_06a3c62a5396",
+          "name": "Aarav",
+          "kinship": "son",
+          "chart_status": "fresh",
+          "band": "red",
+          "score": 0.42,
+          "tara": "Mitra",
+          "personalized": true,
+          "reasons": [
+            "Mitra tara \u2014 today's Moon in Purva Ashadha, counted from your Moon in Rohini",
+            "Dwadashi tithi \u2014 a strong tithi",
+            "chandrashtama \u2014 the Moon in Sagittarius is 8th from your natal Moon in Taurus, the 2\u00bd days of low tide each month"
+          ],
+          "line": "a red day \u2014 go gentle: protect your energy, hold the big move for a better day, and let frictions pass unremarked. Mitra tara from your Moon \u2014 people are on your side.",
+          "moon_nakshatra": "Rohini",
+          "moon_rashi": "Taurus"
+        },
+        {
+          "person_id": "p_265e7b98f476",
+          "name": "Anjali",
+          "kinship": "daughter",
+          "chart_status": "absent",
+          "absent": "their chart hasn't been cast yet \u2014 one reading casts it",
+          "unlocked_by": "chart"
+        }
+      ],
+      "carries": "Meera carries the day \u2014 today reads green from their Moon.",
+      "basis": "today's panchang at the place your card names, counted from each person's own Moon"
+    },
+    "date": "2026-08-24",
+    "is_today": true,
+    "today": "2026-08-24",
+    "card": {
+      "type": "daily_card",
+      "date": "2026-08-24",
+      "market": "india",
+      "shape": "full",
+      "key": "2c147b42efe16cd4:2026-08-24",
+      "inputs_hash": "2c147b42efe16cd4591996847e40dda6f29b01e630feeb907eaa56518dde5ebd",
+      "layers": [
+        "transit",
+        "dasha",
+        "panchang",
+        "day"
+      ],
+      "absent_layers": [],
+      "omitted_by_shape": [],
+      "undetermined": [],
+      "time_known": true,
+      "calculation": {
+        "zodiac_mode": "sidereal",
+        "ayanamsa": "LAHIRI",
+        "house_system": "W",
+        "settings_digest": "d0a6e637fb302caa",
+        "fn_version": "daily_card/3+d0a6e637fb302caa"
+      },
+      "transit": {
+        "as_of": "2026-08-24",
+        "window": {
+          "start": "2026-08-24",
+          "end": "2026-08-24"
+        },
+        "transit_place": {
+          "name": "Jamshedpur, India",
+          "basis": "birth_place",
+          "latitude": 22.8046,
+          "longitude": 86.2029,
+          "timezone": "Asia/Kolkata"
+        },
+        "natal_anchors": {
+          "lagna_sign": "Capricorn",
+          "moon_sign": "Aries",
+          "saturn_sign": "Sagittarius",
+          "jupiter_sign": "Gemini",
+          "age": 36
+        },
+        "planets": {
+          "Sun": {
+            "sign": "Leo",
+            "degree": 126.9,
+            "retrograde": false,
+            "house_from_lagna": 8,
+            "house_from_moon": 5
+          },
+          "Moon": {
+            "sign": "Sagittarius",
+            "degree": 262.42,
+            "retrograde": false,
+            "house_from_lagna": 12,
+            "house_from_moon": 9
+          },
+          "Mars": {
+            "sign": "Gemini",
+            "degree": 74.22,
+            "retrograde": false,
+            "house_from_lagna": 6,
+            "house_from_moon": 3
+          },
+          "Mercury": {
+            "sign": "Leo",
+            "degree": 123.39,
+            "retrograde": false,
+            "house_from_lagna": 8,
+            "house_from_moon": 5
+          },
+          "Jupiter": {
+            "sign": "Cancer",
+            "degree": 107.83,
+            "retrograde": false,
+            "house_from_lagna": 7,
+            "house_from_moon": 4
+          },
+          "Venus": {
+            "sign": "Virgo",
+            "degree": 172.42,
+            "retrograde": false,
+            "house_from_lagna": 9,
+            "house_from_moon": 6
+          },
+          "Saturn": {
+            "sign": "Pisces",
+            "degree": 349.84,
+            "retrograde": true,
+            "house_from_lagna": 3,
+            "house_from_moon": 12
+          },
+          "Rahu": {
+            "sign": "Aquarius",
+            "degree": 305.48,
+            "retrograde": true,
+            "house_from_lagna": 2,
+            "house_from_moon": 11
+          },
+          "Ketu": {
+            "sign": "Leo",
+            "degree": 125.48,
+            "retrograde": true,
+            "house_from_lagna": 8,
+            "house_from_moon": 5
+          }
+        },
+        "bodies_expected": [
+          "Sun",
+          "Moon",
+          "Mars",
+          "Mercury",
+          "Jupiter",
+          "Venus",
+          "Saturn",
+          "Rahu",
+          "Ketu"
+        ],
+        "rules": {
+          "saturn_return": {
+            "active": false,
+            "cycle_n": null,
+            "description": ""
+          },
+          "jupiter_return": {
+            "active": false,
+            "cycle_n": 3,
+            "description": ""
+          },
+          "rahu_ketu_axis": {
+            "rahu_sign": "Aquarius",
+            "ketu_sign": "Leo",
+            "rahu_house_from_lagna": 2,
+            "ketu_house_from_lagna": 8,
+            "rahu_house_from_moon": 11,
+            "ketu_house_from_moon": 5,
+            "description": "Rahu/Ketu axis: Rahu in Aquarius, Ketu in Leo. From Lagna: H2/H8. From Moon: H11/H5."
+          },
+          "jupiter_aspect_to_lagna": {
+            "favourable": true,
+            "jupiter_house_from_lagna": 7,
+            "description": "Transit Jupiter in house 7 from Lagna \u2014 favourable (kendra/trikona)."
+          },
+          "sade_sati": {
+            "active": true,
+            "phase": "pre / Aroha",
+            "saturn_sign": "Pisces",
+            "natal_moon_sign": "Aries",
+            "saturn_house_from_moon": 12,
+            "description": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries).",
+            "span": {
+              "start": "2025-03-30",
+              "end": "2032-05-30"
+            },
+            "sub_phases": [
+              {
+                "phase": "pre / Aroha",
+                "saturn_sign": "Pisces",
+                "start": "2025-03-30",
+                "retrograde_re_entries": 1,
+                "current": true,
+                "end": "2027-06-02"
+              },
+              {
+                "phase": "peak / Madhya",
+                "saturn_sign": "Aries",
+                "start": "2027-06-03",
+                "retrograde_re_entries": 2,
+                "current": false,
+                "end": "2029-08-08"
+              },
+              {
+                "phase": "post / Avaroha",
+                "saturn_sign": "Taurus",
+                "start": "2029-08-09",
+                "retrograde_re_entries": 1,
+                "current": false,
+                "end": "2032-05-30"
+              }
+            ]
+          },
+          "kantaka_shani": {
+            "active": false,
+            "saturn_house_from_moon": 12
+          },
+          "ashtama_shani": {
+            "active": false
+          }
+        }
+      },
+      "dasha": {
+        "mahadasha": {
+          "planet": "Rahu",
+          "start_date": "2023-01-29",
+          "end_date": "2041-01-29"
+        },
+        "antardasha": {
+          "planet": "Jupiter",
+          "start_date": "2025-10-11",
+          "end_date": "2028-03-06"
+        },
+        "selected_by": "date_containment"
+      },
+      "panchang": {
+        "as_of": "2026-08-24",
+        "tithi": "Dwadashi",
+        "vara": "Somavar",
+        "nakshatra": "Purva Ashadha",
+        "nakshatra_pada": 3,
+        "moon_sign": "Sagittarius",
+        "yoga": "Ayushman",
+        "karana": "Bava",
+        "is_bhadra": false,
+        "overall_quality": "highly auspicious",
+        "overall_score": 0.8,
+        "notes": [],
+        "panchang_place": {
+          "name": "Jamshedpur, India",
+          "basis": "birth_place",
+          "latitude": 22.8046,
+          "longitude": 86.2029,
+          "timezone": "Asia/Kolkata",
+          "pending_decision": "AMB-25"
+        }
+      },
+      "day": {
+        "as_of": "2026-08-24",
+        "band": "green",
+        "score": 0.755,
+        "tara": "Janma",
+        "personalized": true,
+        "factors": [
+          {
+            "factor": "tithi",
+            "value": "Dwadashi",
+            "score": 0.8
+          },
+          {
+            "factor": "yoga",
+            "value": "Ayushman",
+            "score": 0.9
+          },
+          {
+            "factor": "karana",
+            "value": "Bava",
+            "score": 0.85
+          },
+          {
+            "factor": "nakshatra",
+            "value": "Purva Ashadha",
+            "score": 0.65
+          },
+          {
+            "factor": "tara",
+            "value": "Janma",
+            "score": 0.5,
+            "natal_nakshatra": "Bharani",
+            "day_nakshatra": "Purva Ashadha"
+          },
+          {
+            "factor": "moon_from_natal_moon",
+            "value": 9,
+            "transit_moon_sign": "Sagittarius",
+            "natal_moon_sign": "Aries"
+          }
+        ],
+        "caps": [],
+        "reasons": [
+          "Janma tara \u2014 today's Moon in Purva Ashadha, counted from your Moon in Bharani",
+          "Dwadashi tithi \u2014 a strong tithi"
+        ],
+        "line": "a green day \u2014 lean in: start the thing, make the ask, say yes to the meeting. Janma tara from your Moon \u2014 a self-facing day.",
+        "strip": [
+          {
+            "date": "2026-08-24",
+            "weekday": "Mon",
+            "band": "green",
+            "score": 0.755,
+            "tara": "Janma",
+            "personalized": true,
+            "tithi": "Dwadashi",
+            "nakshatra": "Purva Ashadha"
+          },
+          {
+            "date": "2026-08-25",
+            "weekday": "Tue",
+            "band": "green",
+            "score": 0.862,
+            "tara": "Sampat",
+            "personalized": true,
+            "tithi": "Trayodashi",
+            "nakshatra": "Uttara Ashadha"
+          },
+          {
+            "date": "2026-08-26",
+            "weekday": "Wed",
+            "band": "green",
+            "score": 0.632,
+            "tara": "Vipat",
+            "personalized": true,
+            "tithi": "Chaturdashi",
+            "nakshatra": "Shravana"
+          },
+          {
+            "date": "2026-08-27",
+            "weekday": "Thu",
+            "band": "red",
+            "score": 0.35,
+            "tara": "Kshema",
+            "personalized": true,
+            "tithi": "Purnima/Amavasya",
+            "nakshatra": "Dhanishtha"
+          },
+          {
+            "date": "2026-08-28",
+            "weekday": "Fri",
+            "band": "amber",
+            "score": 0.526,
+            "tara": "Pratyak",
+            "personalized": true,
+            "tithi": "Pratipada",
+            "nakshatra": "Shatabhisha"
+          },
+          {
+            "date": "2026-08-29",
+            "weekday": "Sat",
+            "band": "green",
+            "score": 0.681,
+            "tara": "Sadhana",
+            "personalized": true,
+            "tithi": "Dwitiya",
+            "nakshatra": "Purva Bhadrapada"
+          },
+          {
+            "date": "2026-08-30",
+            "weekday": "Sun",
+            "band": "red",
+            "score": 0.3,
+            "tara": "Naidhana",
+            "personalized": true,
+            "tithi": "Tritiya",
+            "nakshatra": "Uttara Bhadrapada"
+          }
+        ],
+        "thresholds": {
+          "green_at": 0.6,
+          "amber_at": 0.45
+        },
+        "place": {
+          "name": "Jamshedpur, India",
+          "basis": "birth_place",
+          "latitude": 22.8046,
+          "longitude": 86.2029,
+          "timezone": "Asia/Kolkata"
+        },
+        "rahu_kaal": {
+          "start": "07:00",
+          "end": "08:36",
+          "basis": "the 2nd of eight daylight parts, sunrise 05:24 to sunset 18:10"
+        },
+        "moments": {
+          "golden": [
+            {
+              "start": "05:24",
+              "end": "10:54",
+              "score": 0.733,
+              "slots": 11,
+              "all_day": false
+            },
+            {
+              "start": "12:24",
+              "end": "13:54",
+              "score": 0.708,
+              "slots": 3,
+              "all_day": false
+            }
+          ],
+          "silence": [
+            {
+              "start": "15:24",
+              "end": "16:54",
+              "score": 0.0,
+              "slots": 3,
+              "all_day": false
+            }
+          ],
+          "scanned": {
+            "start": "05:24",
+            "end": "18:10",
+            "slots": 25,
+            "step_minutes": 30,
+            "personalized": true,
+            "cap": null
+          }
+        }
+      }
+    },
+    "purposes": [
+      {
+        "key": "talk_partner",
+        "label": "Talk with Meera",
+        "cue": "When should I talk something sensitive over with Meera?",
+        "needs_partner": true
+      },
+      {
+        "key": "ask_manager",
+        "label": "Ask at work",
+        "cue": "When should I have that discussion with my manager?",
+        "needs_partner": false
+      },
+      {
+        "key": "start_venture",
+        "label": "Start something",
+        "cue": "When should I start something new?",
+        "needs_partner": false
+      },
+      {
+        "key": "travel",
+        "label": "Travel",
+        "cue": "When should I travel?",
+        "needs_partner": false
+      },
+      {
+        "key": "sign_papers",
+        "label": "Sign or pay",
+        "cue": "When should I sign the papers?",
+        "needs_partner": false
+      },
+      {
+        "key": "health_procedure",
+        "label": "A health procedure",
+        "cue": "When should I schedule a health procedure?",
+        "needs_partner": false
+      },
+      {
+        "key": "family_matter",
+        "label": "A family matter",
+        "cue": "When should I raise a family matter?",
+        "needs_partner": false
+      },
+      {
+        "key": "study_exam",
+        "label": "Study or an exam",
+        "cue": "When should I sit down to study for the exam?",
+        "needs_partner": false
+      },
+      {
+        "key": "generic",
+        "label": "Anything important",
+        "cue": "When is my best day in the next two weeks?",
+        "needs_partner": false
+      }
+    ],
+    "facets": {
+      "version": 5,
+      "tabs": [
+        {
+          "id": "guidance",
+          "label": "Guidance",
+          "domains": [],
+          "items": [
+            {
+              "id": "day",
+              "kind": "day_score",
+              "title": "Today: Green day",
+              "detail": "Janma tara \u2014 today's Moon in Purva Ashadha, counted from your Moon in Bharani; Dwadashi tithi \u2014 a strong tithi. Rahu Kaal 07:00\u201308:36",
+              "domains": [],
+              "basis": "day score from your Moon",
+              "band": "green",
+              "score": 0.755,
+              "personalized": true,
+              "meaning": "a green day \u2014 lean in: start the thing, make the ask, say yes to the meeting. Janma tara from your Moon \u2014 a self-facing day."
+            },
+            {
+              "id": "plan_ahead",
+              "kind": "plan_ahead",
+              "title": "Plan ahead",
+              "detail": "today's golden window is 05:24\u201310:54; the next green day is Tue 25; Thu 27 is red \u2014 hold the big move for another day",
+              "domains": [],
+              "basis": "the week's strip and today's moments",
+              "meaning": "Ask \"When should I\u2026?\" for a purpose \u2014 talk, ask, travel, sign \u2014 and the next two weeks are ranked for it, with the people involved.",
+              "cue": "When is my best day in the next two weeks?"
+            },
+            {
+              "id": "dasha:mahadasha",
+              "kind": "dasha_period",
+              "title": "Mahadasha: Rahu",
+              "detail": "",
+              "start_date": "2023-01-29",
+              "end_date": "2041-01-29",
+              "domains": [
+                "health",
+                "longevity"
+              ],
+              "basis": "Rahu occupies house 1",
+              "meaning": "the years you are in: seasons that reward bold, unconventional moves \u2014 with your feet kept on the ground."
+            },
+            {
+              "id": "dasha:antardasha",
+              "kind": "dasha_period",
+              "title": "Antardasha: Jupiter",
+              "detail": "",
+              "start_date": "2025-10-11",
+              "end_date": "2028-03-06",
+              "domains": [
+                "travel"
+              ],
+              "basis": "Jupiter rules houses 3, 12",
+              "meaning": "the current stretch within them: seasons that reward teaching, mentoring, generosity and the long view."
+            },
+            {
+              "id": "rule:jupiter_aspect_to_lagna",
+              "kind": "transit_rule",
+              "title": "Jupiter Aspect To Lagna",
+              "detail": "Transit Jupiter in house 7 from Lagna \u2014 favourable (kendra/trikona).",
+              "domains": [],
+              "basis": "classical transit rule",
+              "meaning": ""
+            },
+            {
+              "id": "rule:sade_sati",
+              "kind": "transit_rule",
+              "title": "Sade Sati",
+              "detail": "Sade-Sati pre / Aroha: transit Saturn in Pisces (house 12 from natal Moon in Aries).",
+              "domains": [],
+              "basis": "classical transit rule",
+              "meaning": "commit to fewer things and finish them \u2014 steady beats bold in this season, and it does end"
+            },
+            {
+              "id": "transit:Sun",
+              "kind": "transit_position",
+              "title": "Sun in Leo",
+              "detail": "house 8 from your Lagna",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Sun's themes \u2014 visibility and authority \u2014 pass through long-term wellbeing today: small disciplines today, not grand overhauls."
+            },
+            {
+              "id": "transit:Moon",
+              "kind": "transit_position",
+              "title": "Moon in Sagittarius",
+              "detail": "house 12 from your Lagna",
+              "domains": [
+                "travel"
+              ],
+              "basis": "read for travel",
+              "meaning": "Moon's themes \u2014 mood, home and instinct \u2014 pass through movement and journeys today: a good day to move, book, or begin the journey."
+            },
+            {
+              "id": "transit:Mars",
+              "kind": "transit_position",
+              "title": "Mars in Gemini",
+              "detail": "house 6 from your Lagna",
+              "domains": [
+                "health",
+                "litigation"
+              ],
+              "basis": "read for health, litigation",
+              "meaning": "Mars's themes \u2014 drive and impatience \u2014 pass through your body and energy today: pace yourself \u2014 rest is productive today."
+            },
+            {
+              "id": "transit:Mercury",
+              "kind": "transit_position",
+              "title": "Mercury in Leo",
+              "detail": "house 8 from your Lagna",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Mercury's themes \u2014 words, numbers and negotiation \u2014 pass through long-term wellbeing today: invest in the habit that pays off in years."
+            },
+            {
+              "id": "transit:Jupiter",
+              "kind": "transit_position",
+              "title": "Jupiter in Cancer",
+              "detail": "house 7 from your Lagna",
+              "domains": [
+                "marriage"
+              ],
+              "basis": "read for marriage",
+              "meaning": "Jupiter's themes \u2014 growth, advice and luck \u2014 pass through your closest relationship today: say the warm thing out loud today."
+            },
+            {
+              "id": "transit:Venus",
+              "kind": "transit_position",
+              "title": "Venus in Virgo",
+              "detail": "house 9 from your Lagna",
+              "domains": [
+                "education",
+                "travel"
+              ],
+              "basis": "read for education, travel",
+              "meaning": "Venus's themes \u2014 affection, taste and comfort \u2014 pass through learning and study today: study sticks today \u2014 take the harder chapter."
+            },
+            {
+              "id": "transit:Saturn",
+              "kind": "transit_position",
+              "title": "Saturn in Pisces",
+              "detail": "house 3 from your Lagna, retrograde",
+              "domains": [],
+              "basis": "",
+              "meaning": ""
+            },
+            {
+              "id": "transit:Rahu",
+              "kind": "transit_position",
+              "title": "Rahu in Aquarius",
+              "detail": "house 2 from your Lagna, retrograde",
+              "domains": [
+                "wealth"
+              ],
+              "basis": "read for wealth",
+              "meaning": "Rahu's themes \u2014 ambition and the unconventional \u2014 pass through money and savings today: hold the big purchase; double-check the numbers."
+            },
+            {
+              "id": "transit:Ketu",
+              "kind": "transit_position",
+              "title": "Ketu in Leo",
+              "detail": "house 8 from your Lagna, retrograde",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Ketu's themes \u2014 detachment and the inward turn \u2014 pass through long-term wellbeing today: small disciplines today, not grand overhauls."
+            },
+            {
+              "id": "partner:absent",
+              "kind": "absent_layer",
+              "title": "Meera's day isn't readable yet",
+              "detail": "A fresh Kundli Milan with Meera is what lights this up \u2014 ask about your match in chat.",
+              "domains": [
+                "marriage"
+              ],
+              "basis": "stated absence"
+            },
+            {
+              "id": "panchang",
+              "kind": "panchang",
+              "title": "Dwadashi \u00b7 Somavar \u00b7 Purva Ashadha",
+              "detail": "Yoga Ayushman \u00b7 Karana Bava",
+              "domains": [],
+              "basis": "panchang for Jamshedpur, India",
+              "place": {
+                "name": "Jamshedpur, India",
+                "basis": "birth_place"
+              },
+              "meaning": "a good day to start things \u2014 conversations, purchases, first steps."
+            }
+          ],
+          "empty_reason": null
+        },
+        {
+          "id": "love",
+          "label": "Love",
+          "domains": [
+            "marriage",
+            "progeny"
+          ],
+          "items": [
+            {
+              "id": "transit:Jupiter",
+              "kind": "transit_position",
+              "title": "Jupiter in Cancer",
+              "detail": "house 7 from your Lagna",
+              "domains": [
+                "marriage"
+              ],
+              "basis": "read for marriage",
+              "meaning": "Jupiter's themes \u2014 growth, advice and luck \u2014 pass through your closest relationship today: say the warm thing out loud today."
+            },
+            {
+              "id": "partner:absent",
+              "kind": "absent_layer",
+              "title": "Meera's day isn't readable yet",
+              "detail": "A fresh Kundli Milan with Meera is what lights this up \u2014 ask about your match in chat.",
+              "domains": [
+                "marriage"
+              ],
+              "basis": "stated absence"
+            }
+          ],
+          "empty_reason": null
+        },
+        {
+          "id": "career",
+          "label": "Career",
+          "domains": [
+            "career",
+            "wealth",
+            "litigation"
+          ],
+          "items": [
+            {
+              "id": "transit:Mars",
+              "kind": "transit_position",
+              "title": "Mars in Gemini",
+              "detail": "house 6 from your Lagna",
+              "domains": [
+                "health",
+                "litigation"
+              ],
+              "basis": "read for health, litigation",
+              "meaning": "Mars's themes \u2014 drive and impatience \u2014 pass through your body and energy today: pace yourself \u2014 rest is productive today."
+            },
+            {
+              "id": "transit:Rahu",
+              "kind": "transit_position",
+              "title": "Rahu in Aquarius",
+              "detail": "house 2 from your Lagna, retrograde",
+              "domains": [
+                "wealth"
+              ],
+              "basis": "read for wealth",
+              "meaning": "Rahu's themes \u2014 ambition and the unconventional \u2014 pass through money and savings today: hold the big purchase; double-check the numbers."
+            }
+          ],
+          "empty_reason": null
+        },
+        {
+          "id": "self",
+          "label": "Self",
+          "domains": [
+            "health",
+            "longevity",
+            "education",
+            "travel"
+          ],
+          "items": [
+            {
+              "id": "dasha:mahadasha",
+              "kind": "dasha_period",
+              "title": "Mahadasha: Rahu",
+              "detail": "",
+              "start_date": "2023-01-29",
+              "end_date": "2041-01-29",
+              "domains": [
+                "health",
+                "longevity"
+              ],
+              "basis": "Rahu occupies house 1",
+              "meaning": "the years you are in: seasons that reward bold, unconventional moves \u2014 with your feet kept on the ground."
+            },
+            {
+              "id": "dasha:antardasha",
+              "kind": "dasha_period",
+              "title": "Antardasha: Jupiter",
+              "detail": "",
+              "start_date": "2025-10-11",
+              "end_date": "2028-03-06",
+              "domains": [
+                "travel"
+              ],
+              "basis": "Jupiter rules houses 3, 12",
+              "meaning": "the current stretch within them: seasons that reward teaching, mentoring, generosity and the long view."
+            },
+            {
+              "id": "transit:Sun",
+              "kind": "transit_position",
+              "title": "Sun in Leo",
+              "detail": "house 8 from your Lagna",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Sun's themes \u2014 visibility and authority \u2014 pass through long-term wellbeing today: small disciplines today, not grand overhauls."
+            },
+            {
+              "id": "transit:Moon",
+              "kind": "transit_position",
+              "title": "Moon in Sagittarius",
+              "detail": "house 12 from your Lagna",
+              "domains": [
+                "travel"
+              ],
+              "basis": "read for travel",
+              "meaning": "Moon's themes \u2014 mood, home and instinct \u2014 pass through movement and journeys today: a good day to move, book, or begin the journey."
+            },
+            {
+              "id": "transit:Mars",
+              "kind": "transit_position",
+              "title": "Mars in Gemini",
+              "detail": "house 6 from your Lagna",
+              "domains": [
+                "health",
+                "litigation"
+              ],
+              "basis": "read for health, litigation",
+              "meaning": "Mars's themes \u2014 drive and impatience \u2014 pass through your body and energy today: pace yourself \u2014 rest is productive today."
+            },
+            {
+              "id": "transit:Mercury",
+              "kind": "transit_position",
+              "title": "Mercury in Leo",
+              "detail": "house 8 from your Lagna",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Mercury's themes \u2014 words, numbers and negotiation \u2014 pass through long-term wellbeing today: invest in the habit that pays off in years."
+            },
+            {
+              "id": "transit:Venus",
+              "kind": "transit_position",
+              "title": "Venus in Virgo",
+              "detail": "house 9 from your Lagna",
+              "domains": [
+                "education",
+                "travel"
+              ],
+              "basis": "read for education, travel",
+              "meaning": "Venus's themes \u2014 affection, taste and comfort \u2014 pass through learning and study today: study sticks today \u2014 take the harder chapter."
+            },
+            {
+              "id": "transit:Ketu",
+              "kind": "transit_position",
+              "title": "Ketu in Leo",
+              "detail": "house 8 from your Lagna, retrograde",
+              "domains": [
+                "longevity"
+              ],
+              "basis": "read for longevity",
+              "meaning": "Ketu's themes \u2014 detachment and the inward turn \u2014 pass through long-term wellbeing today: small disciplines today, not grand overhauls."
+            }
+          ],
+          "empty_reason": null
+        },
+        {
+          "id": "couple",
+          "label": "Couple",
+          "domains": [
+            "couple"
+          ],
+          "items": [
+            {
+              "id": "couple:moon_absent",
+              "kind": "couple_day",
+              "title": "Meera's side isn't readable yet",
+              "detail": "A fresh Kundli Milan with Meera gives this tab their Moon \u2014 ask about your match in chat.",
+              "domains": [
+                "couple"
+              ],
+              "basis": "stated absence"
+            }
+          ],
+          "empty_reason": null
+        }
+      ],
+      "item_count": 18,
+      "artifact_key": "2c147b42efe16cd4:2026-08-24",
+      "date": "2026-08-24"
+    },
+    "narration": {
+      "text": "",
+      "deck": [],
+      "generated_this_request": false,
+      "available": false
+    },
+    "chart": {
+      "status": "fresh",
+      "computed_at": "2026-09-18T18:30:00.164757+00:00"
+    },
+    "person": {
+      "id": "self",
+      "display_name": "Ravi"
+    },
+    "served_from_store": true
+  },
+  "people": {
+    "people": [
+      {
+        "id": "self",
+        "relation": "self",
+        "kinship": null,
+        "kinship_source": null,
+        "in_circle": false,
+        "display_name": "Ravi",
+        "source_label": "chat",
+        "favourite": false,
+        "notes": "",
+        "tob_known": true,
+        "birth_facts": {
+          "date_of_birth": {
+            "value": "1989-12-10",
+            "provenance": "stated_by_user",
+            "recorded_at": "2026-09-18T18:30:00.085696+00:00"
+          },
+          "place_of_birth": {
+            "value": "Jamshedpur, India",
+            "provenance": "stated_by_user",
+            "recorded_at": "2026-09-18T18:30:00.085701+00:00"
+          },
+          "time_of_birth": {
+            "value": "10:30",
+            "provenance": "stated_by_user",
+            "recorded_at": "2026-09-18T18:30:00.085699+00:00"
+          }
+        },
+        "coordinates": {
+          "latitude": {
+            "value": 22.8046,
+            "provenance": "geocoded",
+            "recorded_at": "2026-09-18T18:30:00.085705+00:00"
+          },
+          "longitude": {
+            "value": 86.2029,
+            "provenance": "geocoded",
+            "recorded_at": "2026-09-18T18:30:00.085707+00:00"
+          },
+          "timezone": {
+            "value": "Asia/Kolkata",
+            "provenance": "geocoded",
+            "recorded_at": "2026-09-18T18:30:00.085708+00:00"
+          },
+          "geocoded_place": {
+            "value": "Jamshedpur, India",
+            "provenance": "geocoded",
+            "recorded_at": "2026-09-18T18:30:00.085710+00:00"
+          }
+        },
+        "created_at": "2026-09-18T18:30:00.085686+00:00",
+        "updated_at": "2026-09-18T18:30:00.354646+00:00",
+        "priorities": {
+          "version": 1,
+          "mapping_version": 1,
+          "ranked": [],
+          "interests": [],
+          "removed": [],
+          "history": [],
+          "updated_at": null
+        },
+        "partner": {
+          "status": "partnered",
+          "person_id": "p_26ea0e1bf690",
+          "declared_at": "2026-09-18T18:30:00.354640+00:00"
+        },
+        "current_place": null,
+        "chart": {
+          "status": "fresh",
+          "computed_at": "2026-09-18T18:30:00.164757+00:00",
+          "time_known": true,
+          "zodiac_mode": "sidereal",
+          "ayanamsa": "LAHIRI",
+          "house_system": "W",
+          "moon_rashi": "Aries",
+          "sun_rashi": "Scorpio",
+          "nakshatra": "Bharani",
+          "nakshatra_pada": 2,
+          "lagna": "Capricorn",
+          "houses": 12,
+          "undetermined": [],
+          "mahadasha": {
+            "planet": "Rahu",
+            "start_date": "2023-01-29",
+            "end_date": "2041-01-29"
+          },
+          "antardasha": {
+            "planet": "Jupiter",
+            "start_date": "2025-10-11",
+            "end_date": "2028-03-06"
+          }
+        },
+        "palms": {}
+      },
+      {
+        "id": "p_06a3c62a5396",
+        "relation": "friend",
+        "kinship": "son",
+        "kinship_source": "stored",
+        "in_circle": true,
+        "display_name": "Aarav",
+        "source_label": "chat",
+        "favourite": false,
+        "notes": "",
+        "tob_known": false,
+        "birth_facts": {
+          "date_of_birth": {
+            "value": "2009-03-04",
+            "provenance": "stated_by_user",
+            "recorded_at": "2026-09-18T18:30:00.354969+00:00"
+          }
+        },
+        "coordinates": null,
+        "created_at": "2026-09-18T18:30:00.354966+00:00",
+        "updated_at": "2026-09-18T18:30:00.356398+00:00",
+        "chart": {
+          "status": "fresh",
+          "computed_at": "2026-09-18T18:30:00.356396+00:00",
+          "time_known": true,
+          "zodiac_mode": "sidereal",
+          "ayanamsa": "LAHIRI",
+          "house_system": "W",
+          "moon_rashi": "Taurus",
+          "sun_rashi": "Aquarius",
+          "nakshatra": "Rohini",
+          "nakshatra_pada": 3,
+          "lagna": "Taurus",
+          "houses": 12,
+          "undetermined": [],
+          "mahadasha": {
+            "planet": "Rahu",
+            "start_date": "2019-12-23",
+            "end_date": "2037-12-23"
+          },
+          "antardasha": {
+            "planet": "Saturn",
+            "start_date": "2025-01-28",
+            "end_date": "2027-12-05"
+          }
+        },
+        "palms": {}
+      },
+      {
+        "id": "p_265e7b98f476",
+        "relation": "friend",
+        "kinship": "daughter",
+        "kinship_source": "stored",
+        "in_circle": true,
+        "display_name": "Anjali",
+        "source_label": "chat",
+        "favourite": false,
+        "notes": "",
+        "tob_known": false,
+        "birth_facts": {
+          "date_of_birth": {
+            "value": "2009-03-04",
+            "provenance": "stated_by_user",
+            "recorded_at": "2026-09-18T18:30:00.356437+00:00"
+          }
+        },
+        "coordinates": null,
+        "created_at": "2026-09-18T18:30:00.356433+00:00",
+        "updated_at": "2026-09-18T18:30:00.356492+00:00",
+        "chart": {
+          "status": "absent",
+          "reason": "no chart has been computed for this person yet"
+        },
+        "palms": {}
+      },
+      {
+        "id": "p_26ea0e1bf690",
+        "relation": "friend",
+        "kinship": "partner",
+        "kinship_source": "stored",
+        "in_circle": true,
+        "display_name": "Meera",
+        "source_label": "chat",
+        "favourite": false,
+        "notes": "",
+        "tob_known": false,
+        "birth_facts": {
+          "date_of_birth": {
+            "value": "1991-07-04",
+            "provenance": "stated_by_user",
+            "recorded_at": "2026-09-18T18:30:00.353041+00:00"
+          }
+        },
+        "coordinates": null,
+        "created_at": "2026-09-18T18:30:00.353034+00:00",
+        "updated_at": "2026-09-18T18:30:00.354585+00:00",
+        "chart": {
+          "status": "fresh",
+          "computed_at": "2026-09-18T18:30:00.354582+00:00",
+          "time_known": true,
+          "zodiac_mode": "sidereal",
+          "ayanamsa": "LAHIRI",
+          "house_system": "W",
+          "moon_rashi": "Pisces",
+          "sun_rashi": "Gemini",
+          "nakshatra": "Uttara Bhadrapada",
+          "nakshatra_pada": 2,
+          "lagna": "Leo",
+          "houses": 12,
+          "undetermined": [],
+          "mahadasha": {
+            "planet": "Ketu",
+            "start_date": "2022-03-28",
+            "end_date": "2029-03-28"
+          },
+          "antardasha": {
+            "planet": "Jupiter",
+            "start_date": "2026-03-16",
+            "end_date": "2027-02-20"
+          }
+        },
+        "palms": {}
+      }
+    ],
+    "self_established": true
+  }
+}

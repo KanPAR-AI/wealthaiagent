@@ -87,6 +87,17 @@ export interface ChartSummary {
 export interface PersonView {
   id: string;
   relation: string;
+  /** docs/71 ASTRAL-280/282: WHO this person is to the owner — a closed
+   *  vocabulary beside `relation`, never instead of it. Optional: a
+   *  backend older than PH-33 never sends it, and a missing key means
+   *  "not in the circle", not a broken row. */
+  kinship?: string | null;
+  /** "stored" (the owner said so) or "link" (derived at read from the
+   *  declared partner link — ASTRAL-283; nothing was written by the GET). */
+  kinship_source?: string | null;
+  /** the same fact said as the screen needs it, so no client works out
+   *  that a kinship means family */
+  in_circle?: boolean;
   display_name: string;
   source_label: string;
   favourite: boolean;
@@ -541,6 +552,11 @@ export interface DeckCard {
 
 export interface DailyReady {
   state: 'ready';
+  /** docs/71 ASTRAL-284: the circle's bands, BESIDE the artifact and never
+   *  inside it (the card's identity hashes the user's own inputs). Absent
+   *  when the circle is empty or holds the partner alone — which is the
+   *  ENGINE choosing which block Home's slot renders (F114). */
+  family?: FamilyBlockWire;
   date: string;
   /** docs/64 W-4: the purpose chips under the week strip. Optional: an
    *  older backend serves the card without them, and the row is absent. */
@@ -762,4 +778,30 @@ export function nameToAdopt(
   const name = (accountName || '').trim();
   if (!name || name.includes('@')) return null;
   return name;
+}
+
+
+/** docs/71 ASTRAL-284: the family day, on the wire. The display shapes and
+ *  the rules live in `lib/family-view.ts`; this is the payload. */
+export interface FamilyBlockWire {
+  kind: string;
+  as_of: string;
+  place: { name?: string | null; basis?: string } | null;
+  you: { band?: string | null; score?: number | null; line?: string | null };
+  rows: Array<{
+    person_id: string;
+    name: string;
+    kinship: string | null;
+    chart_status: string;
+    band?: 'green' | 'amber' | 'red';
+    score?: number;
+    line?: string;
+    reasons?: string[];
+    moon_nakshatra?: string;
+    moon_rashi?: string | null;
+    absent?: string;
+    unlocked_by?: string;
+  }>;
+  carries: string | null;
+  basis: string;
 }

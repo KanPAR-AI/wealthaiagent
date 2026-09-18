@@ -75,6 +75,13 @@ import {
 import { adoptAccountNameIfUnnamed, fetchBestDays, fetchDaily, fetchSelf } from '@/lib/people';
 import { parseBestDays } from '@wealthai/astral';
 import type { CoupleCard, DayView } from '@/lib/daily-view';
+import {
+  familyRows,
+  familyView,
+  familyPlaceLine,
+  yourRow,
+  type FamilyBlock,
+} from '@/lib/family-view';
 import type { DailyResponse, PurposeChip } from '@/lib/people-shapes';
 import { visibleTiles } from '@/lib/tabs';
 import { SignInGateCard } from '@/components/sign-in-gate';
@@ -372,7 +379,14 @@ export default function Home() {
                   lens gets its own card on Home — the door when there is no
                   partner, both people's day when there is. Every word is the
                   Couple tab's own items; the door opens the ONE partner sheet. */}
-              {coupleCard(res) ? (
+              {/* docs/71 ASTRAL-288: ONE slot, three states, and the
+                  ENGINE picks which (F114). A `family` block arrived →
+                  the family day; otherwise the shipped couple card,
+                  byte-for-byte what it was before this phase. The client
+                  chooses nothing and computes no band. */}
+              {CAPABILITIES.family && familyView(res)?.mode === 'family' ? (
+                <FamilyHomeCard block={(familyView(res) as { block: FamilyBlock }).block} />
+              ) : coupleCard(res) ? (
                 <CoupleHomeCard
                   card={coupleCard(res)!}
                   onDeclared={() => read(true)}
@@ -508,6 +522,59 @@ function useCoupleBestLine(enabled: boolean): string | null {
   }, [enabled]);
   return line;
 }
+
+/**
+ * docs/71 ASTRAL-284/288 — the family's day, rendered.
+ *
+ * Every value here arrived on the response: the band, its word, the
+ * meaning line, the absence sentence, the place and the carries-the-day
+ * sentence. This component computes no band, reads no clock and never
+ * shows a colour without its word.
+ *
+ * The "Family weather" door is ABSENT, not greyed: PH-35 has not shipped,
+ * and a tile that spins is the dead affordance doctrine 8 forbids.
+ */
+function FamilyHomeCard({ block }: { block: FamilyBlock }) {
+  const rows = [yourRow(block), ...familyRows(block)];
+  return (
+    <View style={s.coupleCard}>
+      <View style={s.coupleHead}>
+        <Text style={s.cardTitle}>Your family today</Text>
+      </View>
+      {rows.map((row) => (
+        <View key={row.personId} style={s.familyRow}>
+          {row.bandWord && row.band ? (
+            <View style={[s.familyDot, { backgroundColor: t.palette.day[row.band as 'green' | 'amber' | 'red'] }]} />
+          ) : (
+            <View style={[s.familyDot, s.familyDotAbsent]} />
+          )}
+          <Text style={s.familyName} numberOfLines={1}>
+            {row.name}
+            {row.kinshipLabel && row.kinshipLabel !== 'You'
+              ? ` · ${row.kinshipLabel}`
+              : ''}
+          </Text>
+          {/* the WORD, always — never the colour alone */}
+          <Text style={s.familyBand}>{row.bandWord ?? 'Not yet'}</Text>
+        </View>
+      ))}
+      {block.carries ? <Text style={s.coupleBest}>{block.carries}</Text> : null}
+      {familyPlaceLine(block) ? <Text style={s.familyPlace}>{familyPlaceLine(block)}</Text> : null}
+      <Pressable
+        style={s.coupleOpen}
+        onPress={() => {
+          track('home_family_open');
+          router.push('/family' as never);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Open your family"
+      >
+        <Text style={s.coupleOpenText}>Open your family</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 
 function CoupleHomeCard({ card, onDeclared, partnerChip }: { card: CoupleCard; onDeclared: () => void; partnerChip: PurposeChip | null }) {
   const door = card.mode === 'door';
@@ -783,6 +850,12 @@ const s = StyleSheet.create({
     borderColor: t.palette.accent.ceremonial,
   },
   coupleHead: { flexDirection: 'row', alignItems: 'center', gap: t.space(2) },
+  familyRow: { flexDirection: 'row', alignItems: 'center', gap: t.space(2), marginTop: t.space(1.5) },
+  familyDot: { width: t.space(2.5), height: t.space(2.5), borderRadius: t.radius.pill },
+  familyDotAbsent: { backgroundColor: 'transparent', borderWidth: 1, borderColor: t.palette.cosmic.line },
+  familyName: { ...t.type.scale.sub, color: t.palette.ink.onCosmic, flex: 1 },
+  familyBand: { ...t.type.scale.label, color: t.palette.ink.onCosmicMuted },
+  familyPlace: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted, marginTop: t.space(1) },
   coupleOpen: { flexDirection: 'row', alignItems: 'center', gap: t.space(1), alignSelf: 'flex-start' },
   coupleOpenText: { ...t.type.scale.sub, color: t.palette.accent.ceremonial, fontWeight: '700' },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space(3) },

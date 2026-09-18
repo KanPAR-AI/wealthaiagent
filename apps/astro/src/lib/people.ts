@@ -178,6 +178,27 @@ export function patchLabels(
   });
 }
 
+/** docs/71 ASTRAL-281: WHO this person is to the owner. A LABEL on the
+ *  SHIPPED label PATCH — no new route, and none is coming: a kinship
+ *  names no date, no time and no place, so it is in no derived hash and
+ *  `invalidated` comes back empty (F110). The server refuses a kinship on
+ *  `self`, an unknown term and a fifth member with 422. */
+export function setKinship(personId: string, kinship: string):
+    Promise<{ person: PersonView; invalidated: string[] }> {
+  return call(`people/${encodeURIComponent(personId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ kinship }),
+  });
+}
+
+export function clearKinship(personId: string):
+    Promise<{ person: PersonView; invalidated: string[] }> {
+  return call(`people/${encodeURIComponent(personId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ kinship_clear: true }),
+  });
+}
+
 /** docs/60 SL-5: declare / clear the partner. A LINK on `self` — the
  *  server validates the person exists and is not self; nothing is deleted
  *  in either direction, the surfaces just change what they read. */
@@ -227,6 +248,10 @@ export function deletePerson(personId: string): Promise<{
   person_id: string;
   matches_deleted: string[];
   chart_deleted: boolean;
+  /** docs/71 ASTRAL-287: what the cascade does NOT cover, in the engine's
+   *  own words (palm images — F7/ASTRAL-43). A screen that reported only
+   *  what was removed would be promising a deletion that did not happen. */
+  not_covered?: string;
 }> {
   return call(`people/${encodeURIComponent(personId)}`, { method: 'DELETE' });
 }

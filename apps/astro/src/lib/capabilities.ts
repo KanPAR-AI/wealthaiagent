@@ -212,6 +212,31 @@ export interface Capabilities {
    * Still absent: the "notable change" diff push (FR-019's other half).
    */
   notifications: boolean;
+
+  /**
+   * The Circle — your family inside Astral (docs/71 PH-33, ASTRAL-280..289).
+   *
+   * TRUE since chatservice grew `kinship` on the person, `in_circle` on
+   * `GET /people` and the `family` block on `GET /people/self/daily`. The
+   * capability IS those three: before them a Family screen would have had
+   * to work out who was family from `relation` — which cannot say it
+   * (a mother, a son and an uncle are all `family`, and a person the chat
+   * minted is `friend`; F98/F115) — and would have had to score each
+   * member's day on the device, which is the derivation doctrine 9
+   * forbids.
+   *
+   * Flipping it to FALSE removes the Home slot's family state (the couple
+   * card still ships and is untouched), the Profile row, the `/family`
+   * route and its screen. Not greyed, not "coming soon", not a tile that
+   * spins.
+   *
+   * ⚠ It must not be true on a build whose backend revision lacks the
+   * block: the OTA ships AFTER the revision takes traffic (docs/51 §4).
+   * A client ahead of the server reads no `family` key and renders the
+   * couple card, so the failure is quiet rather than broken — but the
+   * Family screen's `kinship` PATCH would 422 on an older revision.
+   */
+  family: boolean;
 }
 
 export const CAPABILITIES: Capabilities = {
@@ -235,4 +260,5 @@ export const CAPABILITIES: Capabilities = {
   savedReadings: false,
   subscriptionBilling: false,
   notifications: true,
+  family: true,
 };

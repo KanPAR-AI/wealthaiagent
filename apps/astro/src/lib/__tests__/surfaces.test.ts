@@ -101,6 +101,9 @@ describe('the native surfaces make no turn', () => {
     'app/(tabs)/home.tsx',
     'app/(tabs)/insights.tsx',
     'app/(tabs)/timeline.tsx',
+    // docs/71 ASTRAL-288: the Family screen. ONE read (`GET /people`), no
+    // chat turn on open, and every /chat push behind a user action.
+    'app/family.tsx',
   ];
 
   it.each(SURFACES)('%s sends no message on open', (file) => {
@@ -195,7 +198,9 @@ describe('withdrawing a birth time from Profile', () => {
 
 describe('the three enforced rules', () => {
   const NEW_VIEWS = ['lib/chart-view.ts', 'lib/staleness.ts', 'lib/spans.ts',
-                     'lib/match-detail-view.ts'];
+                     'lib/match-detail-view.ts',
+                     // docs/71 ASTRAL-288
+                     'lib/family-view.ts'];
 
   it.each(NEW_VIEWS)('%s is React-free', (file) => {
     const code = codeOf(file);
@@ -223,5 +228,57 @@ describe('the three enforced rules', () => {
     const preamble = caps.slice(Math.max(0, declaration - 1400), declaration);
     expect(preamble).toContain('ASTRAL-229');
     expect(preamble).toContain('GET /people/{id}/chart');
+  });
+});
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// docs/71 ASTRAL-289 — the Circle's capability REMOVES its surfaces
+// ══════════════════════════════════════════════════════════════════════════
+
+describe('the family surface is gated by one capability', () => {
+  it('flipping `family` to false removes the route', () => {
+    const caps = off('family');
+    expect(visiblePushedRoutes(caps).map((r) => r.path)).not.toContain('/family');
+    expect(routeIsLive('/family', caps)).toBe(false);
+    expect(visiblePushedRoutes(caps)).toHaveLength(
+      visiblePushedRoutes(CAPABILITIES).length - 1,
+    );
+  });
+
+  it('the family screen leaves when its capability is off', () => {
+    // expo-router builds its table from the file system, so a deep link
+    // would otherwise reach a screen this build cannot serve.
+    const code = codeOf('app/family.tsx');
+    expect(code).toContain("routeIsLive('/family')");
+    expect(code).toMatch(/router\.replace\('\/home'\)/);
+  });
+
+  it('the Profile row is REMOVED, not greyed', () => {
+    const code = codeOf('app/profile.tsx');
+    expect(code).toMatch(/CAPABILITIES\.family \?/);
+    expect(code).not.toMatch(/Coming soon/i);
+    expect(code).not.toMatch(/disabled=\{!CAPABILITIES\.family\}/);
+  });
+
+  it('Home’s family state is behind the capability, and the couple card is not', () => {
+    const code = codeOf('app/(tabs)/home.tsx');
+    expect(code).toMatch(/CAPABILITIES\.family && familyView\(res\)/);
+    // The couple card ships regardless — ASTRAL-289 removes the family
+    // STATE of the slot, never the couple card beside it.
+    expect(code).toMatch(/coupleCard\(res\) \?/);
+  });
+
+  it('the bar is still five — the Circle added no tab', () => {
+    const tabs = codeOf('lib/tabs.ts');
+    const ids = tabs.match(/id: '(home|insights|chat|timeline|profile)'/g) ?? [];
+    expect(new Set(ids).size).toBe(5);
+    expect(tabs).not.toMatch(/id: 'family'/);
+  });
+
+  it('the Family screen writes no birth fact', () => {
+    const code = codeOf('app/family.tsx');
+    expect(code).not.toMatch(/(date_of_birth|time_of_birth|place_of_birth)/);
+    expect(code).not.toMatch(/method:\s*'POST'/);
   });
 });
