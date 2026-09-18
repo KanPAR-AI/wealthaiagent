@@ -64,3 +64,22 @@ export function handoffAction(
   }
   return { kind: 'send', key };
 }
+
+
+/** Bug bcadc9f2 (owner 2026-09-18: "start a new chat also so context is not
+ *  contaminated for the new person"): the engine's `reading_handoff` block —
+ *  the sentence to re-send in a FRESH chat, and who it is for. Pure. */
+export interface ReadingHandoff {
+  turn: string;
+  who: string;
+}
+
+export function parseReadingHandoff(value: unknown): ReadingHandoff | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  if (v.type !== undefined && v.type !== 'reading_handoff') return null;
+  const turn = typeof v.turn === 'string' ? v.turn.trim() : '';
+  if (!turn) return null;
+  const who = typeof v.who === 'string' && v.who.trim() ? v.who.trim() : 'them';
+  return { turn, who };
+}

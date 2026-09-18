@@ -1,7 +1,7 @@
 // Owner ruling 2026-09-11: "when ask about my match always start a new
 // chat." The decision table for a handed-off turn, pinned.
 
-import { handoffAction } from '../chat-handoff';
+import { handoffAction, parseReadingHandoff } from '../chat-handoff';
 
 describe('handoffAction', () => {
   it('no pending turn is no action', () => {
@@ -50,5 +50,19 @@ describe('handoffAction', () => {
       { kind: 'send', key: 'How is today looking?' });
     expect(handoffAction(params, 'running-chat',
                          'How is today looking?').kind).toBe('none');
+  });
+});
+
+
+describe('parseReadingHandoff (bug bcadc9f2)', () => {
+  it('takes the engine block and defaults an unnamed subject', () => {
+    expect(parseReadingHandoff({ type: 'reading_handoff', turn: 'create kundali for him', who: 'that person', fresh: true }))
+      .toEqual({ turn: 'create kundali for him', who: 'that person' });
+    expect(parseReadingHandoff({ turn: 'x' })).toEqual({ turn: 'x', who: 'them' });
+  });
+  it('refuses a foreign type or an empty turn', () => {
+    expect(parseReadingHandoff({ type: 'reading_subject', turn: 'x' })).toBeNull();
+    expect(parseReadingHandoff({ type: 'reading_handoff', turn: '  ' })).toBeNull();
+    expect(parseReadingHandoff(null)).toBeNull();
   });
 });
