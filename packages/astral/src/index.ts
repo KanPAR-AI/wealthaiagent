@@ -36,7 +36,6 @@ export type { PalmReadingProps } from './components/palm-reading';
 export {
   InputRequestView,
   inputFieldRegistry,
-  PlaceSuggestField,
   PLACE_SUGGEST_DEBOUNCE_MS,
   PLACE_SUGGEST_MIN,
 } from './components/input-request';
