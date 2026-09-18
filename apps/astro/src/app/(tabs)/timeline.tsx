@@ -69,7 +69,7 @@ export default function Timeline() {
   // declarative `<StatusBar style=…>` leaves whichever screen mounted last in
   // charge — measured: Home → Timeline → Home left the clock dark on the
   // night sky, where it cannot be read.
-  useFocusEffect(useCallback(() => setStatusBarStyle('dark'), []));
+  useFocusEffect(useCallback(() => setStatusBarStyle('light'), []));
 
   const [load, setLoad] = useState<Load>({ phase: 'loading' });
   const [year, setYear] = useState<number | null>(null);
@@ -130,7 +130,7 @@ export default function Timeline() {
 
   return (
     <View style={s.fill}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <SafeAreaView style={s.safe} edges={['top']}>
         <View style={s.head}>
           <Text style={s.title}>Your Timeline</Text>
@@ -165,7 +165,7 @@ export default function Timeline() {
         >
           {resolved && blocked ? <SignInGateCard /> : null}
           {!blocked && load.phase === 'loading' ? (
-            <ActivityIndicator color={tokens.palette.accent.interactive} />
+            <ActivityIndicator color={tokens.palette.accent.ceremonial} />
           ) : null}
 
           {load.phase === 'error' ? (
@@ -437,12 +437,16 @@ function Row({ row }: { row: TimelineRow }) {
 }
 
 const t = tokens;
+// Owner 2026-09-18: "Timeline screen is still white" — the screen sits on
+// the night field with Insights, the day page and the chat: cosmic ground,
+// translucent cards, on-cosmic inks, gold where a thing is current or a
+// tap. Same tokens, no new colour.
 const s = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: t.palette.paper.base },
+  fill: { flex: 1, backgroundColor: t.palette.cosmic.deep },
   safe: { flex: 1 },
   head: { paddingHorizontal: t.space(4), paddingTop: t.space(2), alignItems: 'center', gap: 2 },
-  title: { ...t.type.scale.title, ...t.type.display, color: t.palette.ink.primary },
-  sub: { ...t.type.scale.caption, color: t.palette.ink.muted },
+  title: { ...t.type.scale.title, ...t.type.display, color: t.palette.ink.onCosmic },
+  sub: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
 
   pills: {
     flexDirection: 'row',
@@ -456,67 +460,67 @@ const s = StyleSheet.create({
     paddingVertical: t.space(1.5),
     paddingHorizontal: t.space(4),
     borderRadius: t.radius.pill,
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderWidth: 1,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
   },
-  pillOn: { backgroundColor: t.palette.cosmic.base, borderColor: t.palette.cosmic.base },
-  pillText: { ...t.type.scale.sub, color: t.palette.ink.secondary },
-  pillTextOn: { color: t.palette.ink.onCosmic, fontWeight: '700' },
+  pillOn: { backgroundColor: t.palette.accent.ceremonial, borderColor: t.palette.accent.ceremonial },
+  pillText: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
+  pillTextOn: { color: t.palette.accent.ceremonialInk, fontWeight: '700' },
 
   body: { padding: t.space(4), paddingBottom: t.space(10), gap: t.space(3) },
   row: {
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     padding: t.space(3.5),
     gap: t.space(1),
     borderWidth: 1,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
   },
-  rowNow: { borderColor: t.palette.accent.interactive, borderWidth: 2 },
+  rowNow: { borderColor: t.palette.accent.ceremonial, borderWidth: 2 },
   rowAbsent: { backgroundColor: 'transparent' },
   rowHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space(2) },
-  rowTitle: { ...t.type.scale.label, color: t.palette.ink.primary, fontWeight: '700', flexShrink: 1 },
-  rowTitleAbsent: { color: t.palette.ink.secondary },
+  rowTitle: { ...t.type.scale.label, color: t.palette.ink.onCosmic, fontWeight: '700', flexShrink: 1 },
+  rowTitleAbsent: { color: t.palette.ink.onCosmicMuted },
   now: {
     ...t.type.scale.caption,
-    color: t.palette.accent.interactiveInk,
-    backgroundColor: t.palette.accent.interactive,
+    color: t.palette.accent.ceremonialInk,
+    backgroundColor: t.palette.accent.ceremonial,
     borderRadius: t.radius.pill,
     paddingHorizontal: t.space(2),
     paddingVertical: 2,
     overflow: 'hidden',
     fontWeight: '700',
   },
-  rowRange: { ...t.type.scale.caption, color: t.palette.ink.muted },
-  rowSub: { ...t.type.scale.sub, color: t.palette.ink.secondary },
-  rowKind: { ...t.type.scale.caption, color: t.palette.ink.muted },
+  rowRange: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
+  rowSub: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
+  rowKind: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
 
   card: {
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     padding: t.space(4),
     gap: t.space(2),
     borderWidth: 1,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
   },
 
   barHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space(2) },
   bar: {
     height: t.space(4),
     borderRadius: t.radius.pill,
-    backgroundColor: t.palette.paper.base,
+    backgroundColor: t.palette.cosmic.base,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
     overflow: 'hidden',
   },
   barNested: {
     height: t.space(2.5),
     marginTop: t.space(1),
     borderRadius: t.radius.pill,
-    backgroundColor: t.palette.paper.base,
+    backgroundColor: t.palette.cosmic.base,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
     overflow: 'hidden',
   },
   barSeg: {
@@ -525,7 +529,7 @@ const s = StyleSheet.create({
     bottom: 0,
     backgroundColor: t.palette.cosmic.glow,
     borderRightWidth: StyleSheet.hairlineWidth,
-    borderRightColor: t.palette.paper.card,
+    borderRightColor: t.palette.cosmic.line,
   },
   barSegNested: {
     position: 'absolute',
@@ -533,9 +537,9 @@ const s = StyleSheet.create({
     bottom: 0,
     backgroundColor: t.palette.cosmic.glow,
     borderRightWidth: StyleSheet.hairlineWidth,
-    borderRightColor: t.palette.paper.card,
+    borderRightColor: t.palette.cosmic.line,
   },
-  barSegNow: { backgroundColor: t.palette.accent.interactive },
+  barSegNow: { backgroundColor: t.palette.accent.ceremonial },
   barSegOpen: { backgroundColor: t.palette.cosmic.deep },
   legRow: { flexDirection: 'row', alignItems: 'flex-start', gap: t.space(2.5), paddingTop: t.space(1) },
   legDot: {
@@ -545,18 +549,18 @@ const s = StyleSheet.create({
     marginTop: t.space(1),
     backgroundColor: t.palette.cosmic.glow,
   },
-  legDotNow: { backgroundColor: t.palette.accent.interactive },
+  legDotNow: { backgroundColor: t.palette.accent.ceremonial },
   legText: { flex: 1, gap: 1 },
-  legTitle: { ...t.type.scale.sub, color: t.palette.ink.primary, fontWeight: '600' },
-  legTitleNow: { color: t.palette.accent.interactive },
-  cardTitle: { ...t.type.scale.lead, color: t.palette.ink.primary, fontWeight: '700' },
-  cardBody: { ...t.type.scale.sub, color: t.palette.ink.secondary },
+  legTitle: { ...t.type.scale.sub, color: t.palette.ink.onCosmic, fontWeight: '600' },
+  legTitleNow: { color: t.palette.accent.ceremonial },
+  cardTitle: { ...t.type.scale.lead, color: t.palette.ink.onCosmic, fontWeight: '700' },
+  cardBody: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
   cta: {
     alignSelf: 'flex-start',
-    backgroundColor: t.palette.accent.interactive,
+    backgroundColor: t.palette.accent.ceremonial,
     borderRadius: t.radius.button,
     paddingVertical: t.space(2.5),
     paddingHorizontal: t.space(5),
   },
-  ctaText: { ...t.type.scale.sub, color: t.palette.accent.interactiveInk, fontWeight: '700' },
+  ctaText: { ...t.type.scale.sub, color: t.palette.accent.ceremonialInk, fontWeight: '700' },
 });
