@@ -1,0 +1,697 @@
+{
+ "version": 1,
+ "purpose": "generic",
+ "label": "Anything important",
+ "domains": [],
+ "needs_partner": false,
+ "as_of": "2026-09-18",
+ "horizon": {
+  "start": "2026-09-18",
+  "end": "2026-10-01",
+  "days": 14
+ },
+ "personalized": true,
+ "people": [],
+ "ranked": [
+  {
+   "date": "2026-09-23",
+   "weekday": "Wed",
+   "days_from_today": 5,
+   "band": "green",
+   "day_score": 0.851,
+   "purpose_score": 0.851,
+   "purpose_band": "green",
+   "tara": "Kshema",
+   "caps": [],
+   "reasons": [
+    "Kshema tara \u2014 today's Moon in Dhanishtha, counted from your Moon in Purva Ashadha",
+    "Dwadashi tithi \u2014 a strong tithi"
+   ],
+   "purpose_reasons": [],
+   "windows": {
+    "golden": [
+     {
+      "start": "09:12",
+      "end": "10:42"
+     },
+     {
+      "start": "13:42",
+      "end": "17:42"
+     }
+    ],
+    "silence": [
+     {
+      "start": "12:12",
+      "end": "13:42"
+     }
+    ]
+   },
+   "rahu_kaal": {
+    "start": "11:46",
+    "end": "13:17",
+    "basis": "the 5th of eight daylight parts, sunrise 05:42 to sunset 17:49"
+   },
+   "per_person": {
+    "you": {
+     "band": "green",
+     "score": 0.851
+    }
+   },
+   "rank": 1
+  },
+  {
+   "date": "2026-09-18",
+   "weekday": "Fri",
+   "days_from_today": 0,
+   "band": "green",
+   "day_score": 0.777,
+   "purpose_score": 0.777,
+   "purpose_band": "green",
+   "tara": "Mitra",
+   "caps": [],
+   "reasons": [
+    "Mitra tara \u2014 today's Moon in Jyeshtha, counted from your Moon in Purva Ashadha",
+    "Saptami tithi \u2014 a strong tithi"
+   ],
+   "purpose_reasons": [],
+   "windows": {
+    "golden": [
+     {
+      "start": "05:40",
+      "end": "07:40"
+     },
+     {
+      "start": "09:10",
+      "end": "10:40"
+     }
+    ],
+    "silence": [
+     {
+      "start": "10:40",
+      "end": "12:10"
+     }
+    ]
+   },
+   "rahu_kaal": {
+    "start": "10:16",
+    "end": "11:48",
+    "basis": "the 4th of eight daylight parts, sunrise 05:40 to sunset 17:55"
+   },
+   "per_person": {
+    "you": {
+     "band": "green",
+     "score": 0.777
+    }
+   },
+   "rank": 2
+  },
+  {
+   "date": "2026-09-21",
+   "weekday": "Mon",
+   "days_from_today": 3,
+   "band": "green",
+   "day_score": 0.777,
+   "purpose_score": 0.777,
+   "purpose_band": "green",
+   "tara": "Sampat",
+   "caps": [],
+   "reasons": [
+    "Sampat tara \u2014 today's Moon in Uttara Ashadha, counted from your Moon in Purva Ashadha",
+    "Dashami tithi \u2014 a strong tithi"
+   ],
+   "purpose_reasons": [],
+   "windows": {
+    "golden": [
+     {
+      "start": "05:41",
+      "end": "10:41"
+     },
+     {
+      "start": "12:11",
+      "end": "13:41"
+     }
+    ],
+    "silence": [
+     {
+      "start": "15:11",
+      "end": "16:41"
+     }
+    ]
+   },
+   "rahu_kaal": {
+    "start": "07:13",
+    "end": "08:44",
+    "basis": "the 2nd of eight daylight parts, sunrise 05:41 to sunset 17:52"
+   },
+   "per_person": {
+    "you": {
+     "band": "green",
+     "score": 0.777
+    }
+   },
+   "rank": 3
+  },
+  {
+   "date": "2026-09-28",
+   "weekday": "Mon",
+   "days_from_today": 10,
+   "band": "green",
+   "day_score": 0.756,
+   "purpose_score": 0.756,
+   "purpose_band": "green",
+   "tara": "Param Mitra",
+   "caps": [],
+   "reasons": [
+    "Param Mitra tara \u2014 today's Moon in Ashwini, counted from your Moon in Purva Ashadha",
+    "Dwitiya tithi \u2014 a strong tithi"
+   ],
+   "purpose_reasons": [],
+   "windows": {
+    "golden": [
+     {
+      "start": "05:44",
+      "end": "10:44"
+     },
+     {
+      "start": "16:44",
+      "end": "17:14"
+     }
+    ],
+    "silence": [
+     {
+      "start": "15:14",
+      "end": "16:44"
+     }
+    ]
+   },
+   "rahu_kaal": {
+    "start": "07:14",
+    "end": "08:44",
+    "basis": "the 2nd of eight daylight parts, sunrise 05:44 to sunset 17:44"
+   },
+   "per_person": {
+    "you": {
+     "band": "green",
+     "score": 0.756
+    }
+   },
+   "rank": 4
+  },
+  {
+   "date": "2026-09-27",
+   "weekday": "Sun",
+   "days_from_today": 9,
+   "band": "green",
+   "day_score": 0.692,
+   "purpose_score": 0.692,
+   "purpose_band": "green",
+   "tara": "Mitra",
+   "caps": [],
+   "reasons": [
+    "Mitra tara \u2014 today's Moon in Revati, counted from your Moon in Purva Ashadha",
+    "Pratipada tithi"
+   ],
+   "purpose_reasons": [],
+   "windows": {
+    "golden": [
+     {
+      "start": "11:14",
+      "end": "12:14"
+     },
+     {
+      "start": "13:44",
+      "end": "15:14"
+     }
+    ],
+    "silence": [
+     {
+      "start": "05:44",
+      "end": "11:14"
+     },
+     {
+      "start": "16:44",
+      "end": "17:44"
+     }
+    ]
+   },
+   "rahu_kaal": {
+    "start": "16:15",
+    "end": "17:45",
+    "basis": "the 8th of eight daylight parts, sunrise 05:44 to sunset 17:45"
+   },
+   "per_person": {
+    "you": {
+     "band": "green",
+     "score": 0.692
+    }
+   },
+   "rank": 5
+  },
+  {
+   "date": "2026-09-29",
+   "weekday": "Tue",
+   "days_from_today": 11,
+   "band": "green",
+   "day_score": 0.691,
+   "purpose_score": 0.691,
+   "purpose_band": "green",
+   "tara": "Janma",
+   "caps": [],
+   "reasons": [
+    "Janma tara \u2014 today's Moon in Bharani, counted from your Moon in Purva Ashadha",
+    "Tritiya tithi \u2014 a strong tithi"
+   ],
+   "purpose_reasons": [],
+   "windows": {
+    "golden": [
+     {
+      "start": "05:45",
+      "end": "09:15"
+     },
+     {
+      "start": "15:15",
+      "end": "17:15"
+     }
+    ],
+    "silence": [
+     {
+      "start": "13:45",
+      "end": "15:15"
+     }
+    ]
+   },
+   "rahu_kaal": {
+    "start": "14:43",
+    "end": "16:13",
+    "basis": "the 7th of eight daylight parts, sunrise 05:45 to sunset 17:43"
+   },
+   "per_person": {
+    "you": {
+     "band": "green",
+     "score": 0.691
+    }
+   },
+   "rank": 6
+  },
+  {
+   "date": "2026-09-24",
+   "weekday": "Thu",
+   "days_from_today": 6,
+   "band": "green",
+   "day_score": 0.664,
+   "purpose_score": 0.664,
+   "purpose_band": "green",
+   "tara": "Pratyak",
+   "caps": [],
+   "reasons": [
+    "Pratyak tara \u2014 today's Moon in Shatabhisha, counted from your Moon in Purva Ashadha",
+    "Trayodashi tithi \u2014 a strong tithi",
+    "the Moon in Aquarius sits 3rd from your natal Moon \u2014 a supportive transit position"
+   ],
+   "purpose_reasons": [],
+   "windows": {
+    "golden": [
+     {
+      "start": "05:43",
+      "end": "06:13"
+     },
+     {
+      "start": "07:43",
+      "end": "09:13"
+     }
+    ],
+    "silence": [
+     {
+      "start": "13:43",
+      "end": "15:13"
+     }
+    ]
+   },
+   "rahu_kaal": {
+    "start": "13:16",
+    "end": "14:47",
+    "basis": "the 6th of eight daylight parts, sunrise 05:43 to sunset 17:48"
+   },
+   "per_person": {
+    "you": {
+     "band": "green",
+     "score": 0.664
+    }
+   },
+   "rank": 7
+  },
+  {
+   "date": "2026-09-19",
+   "weekday": "Sat",
+   "days_from_today": 1,
+   "band": "green",
+   "day_score": 0.617,
+   "purpose_score": 0.617,
+   "purpose_band": "green",
+   "tara": "Param Mitra",
+   "caps": [],
+   "reasons": [
+    "Param Mitra tara \u2014 today's Moon in Mula, counted from your Moon in Purva Ashadha",
+    "Ashtami tithi \u2014 a rikta / closing tithi",
+    "the Moon in Sagittarius sits 1st from your natal Moon \u2014 a supportive transit position"
+   ],
+   "purpose_reasons": [],
+   "windows": {
+    "golden": [
+     {
+      "start": "07:40",
+      "end": "09:10"
+     },
+     {
+      "start": "15:10",
+      "end": "17:40"
+     }
+    ],
+    "silence": [
+     {
+      "start": "09:10",
+      "end": "10:40"
+     }
+    ]
+   },
+   "rahu_kaal": {
+    "start": "08:44",
+    "end": "10:16",
+    "basis": "the 3rd of eight daylight parts, sunrise 05:40 to sunset 17:54"
+   },
+   "per_person": {
+    "you": {
+     "band": "green",
+     "score": 0.617
+    }
+   },
+   "rank": 8
+  },
+  {
+   "date": "2026-09-30",
+   "weekday": "Wed",
+   "days_from_today": 12,
+   "band": "amber",
+   "day_score": 0.575,
+   "purpose_score": 0.575,
+   "purpose_band": "amber",
+   "tara": "Sampat",
+   "caps": [],
+   "reasons": [
+    "Sampat tara \u2014 today's Moon in Krittika, counted from your Moon in Purva Ashadha",
+    "Chaturthi tithi \u2014 a rikta / closing tithi"
+   ],
+   "purpose_reasons": [],
+   "windows": {
+    "golden": [
+     {
+      "start": "09:15",
+      "end": "10:45"
+     },
+     {
+      "start": "13:45",
+      "end": "17:15"
+     }
+    ],
+    "silence": [
+     {
+      "start": "12:15",
+      "end": "13:45"
+     }
+    ]
+   },
+   "rahu_kaal": {
+    "start": "11:43",
+    "end": "13:13",
+    "basis": "the 5th of eight daylight parts, sunrise 05:45 to sunset 17:42"
+   },
+   "per_person": {
+    "you": {
+     "band": "amber",
+     "score": 0.575
+    }
+   },
+   "rank": 9
+  },
+  {
+   "date": "2026-09-22",
+   "weekday": "Tue",
+   "days_from_today": 4,
+   "band": "amber",
+   "day_score": 0.547,
+   "purpose_score": 0.547,
+   "purpose_band": "amber",
+   "tara": "Vipat",
+   "caps": [],
+   "reasons": [
+    "Vipat tara \u2014 today's Moon in Shravana, counted from your Moon in Purva Ashadha",
+    "Ekadashi tithi"
+   ],
+   "purpose_reasons": [],
+   "windows": {
+    "golden": [
+     {
+      "start": "05:42",
+      "end": "07:12"
+     },
+     {
+      "start": "16:12",
+      "end": "17:42"
+     }
+    ],
+    "silence": [
+     {
+      "start": "13:42",
+      "end": "15:12"
+     }
+    ]
+   },
+   "rahu_kaal": {
+    "start": "14:48",
+    "end": "16:20",
+    "basis": "the 7th of eight daylight parts, sunrise 05:42 to sunset 17:51"
+   },
+   "per_person": {
+    "you": {
+     "band": "amber",
+     "score": 0.547
+    }
+   },
+   "rank": 10
+  },
+  {
+   "date": "2026-09-25",
+   "weekday": "Fri",
+   "days_from_today": 7,
+   "band": "amber",
+   "day_score": 0.511,
+   "purpose_score": 0.511,
+   "purpose_band": "amber",
+   "tara": "Sadhana",
+   "caps": [],
+   "reasons": [
+    "Sadhana tara \u2014 today's Moon in Purva Bhadrapada, counted from your Moon in Purva Ashadha",
+    "Chaturdashi tithi \u2014 a rikta / closing tithi",
+    "the Moon in Aquarius sits 3rd from your natal Moon \u2014 a supportive transit position"
+   ],
+   "purpose_reasons": [],
+   "windows": {
+    "golden": [
+     {
+      "start": "12:13",
+      "end": "15:13"
+     },
+     {
+      "start": "16:43",
+      "end": "17:43"
+     }
+    ],
+    "silence": [
+     {
+      "start": "10:43",
+      "end": "12:13"
+     }
+    ]
+   },
+   "rahu_kaal": {
+    "start": "10:15",
+    "end": "11:45",
+    "basis": "the 4th of eight daylight parts, sunrise 05:43 to sunset 17:47"
+   },
+   "per_person": {
+    "you": {
+     "band": "amber",
+     "score": 0.511
+    }
+   },
+   "rank": 11
+  },
+  {
+   "date": "2026-09-20",
+   "weekday": "Sun",
+   "days_from_today": 2,
+   "band": "red",
+   "day_score": 0.35,
+   "purpose_score": 0.35,
+   "purpose_band": "red",
+   "tara": "Janma",
+   "caps": [
+    "vishti"
+   ],
+   "reasons": [
+    "Janma tara \u2014 today's Moon in Purva Ashadha, counted from your Moon in Purva Ashadha",
+    "Navami tithi \u2014 a rikta / closing tithi",
+    "Vishti (Bhadra) karana is active \u2014 a classical hard-avoid for beginnings, so it caps the day",
+    "the Moon in Sagittarius sits 1st from your natal Moon \u2014 a supportive transit position"
+   ],
+   "purpose_reasons": [],
+   "windows": {
+    "golden": [],
+    "silence": [
+     {
+      "all_day": true
+     }
+    ]
+   },
+   "rahu_kaal": {
+    "start": "16:21",
+    "end": "17:53",
+    "basis": "the 8th of eight daylight parts, sunrise 05:41 to sunset 17:53"
+   },
+   "per_person": {
+    "you": {
+     "band": "red",
+     "score": 0.35
+    }
+   },
+   "rank": 12
+  },
+  {
+   "date": "2026-10-01",
+   "weekday": "Thu",
+   "days_from_today": 13,
+   "band": "red",
+   "day_score": 0.35,
+   "purpose_score": 0.35,
+   "purpose_band": "red",
+   "tara": "Vipat",
+   "caps": [
+    "vishti"
+   ],
+   "reasons": [
+    "Vipat tara \u2014 today's Moon in Rohini, counted from your Moon in Purva Ashadha",
+    "Panchami tithi \u2014 a strong tithi",
+    "Vishti (Bhadra) karana is active \u2014 a classical hard-avoid for beginnings, so it caps the day",
+    "the Moon in Taurus sits 6th from your natal Moon \u2014 a supportive transit position"
+   ],
+   "purpose_reasons": [],
+   "windows": {
+    "golden": [],
+    "silence": [
+     {
+      "all_day": true
+     }
+    ]
+   },
+   "rahu_kaal": {
+    "start": "13:12",
+    "end": "14:42",
+    "basis": "the 6th of eight daylight parts, sunrise 05:46 to sunset 17:40"
+   },
+   "per_person": {
+    "you": {
+     "band": "red",
+     "score": 0.35
+    }
+   },
+   "rank": 13
+  },
+  {
+   "date": "2026-09-26",
+   "weekday": "Sat",
+   "days_from_today": 8,
+   "band": "red",
+   "day_score": 0.3,
+   "purpose_score": 0.3,
+   "purpose_band": "red",
+   "tara": "Naidhana",
+   "caps": [
+    "naidhana"
+   ],
+   "reasons": [
+    "Naidhana tara \u2014 today's Moon in Uttara Bhadrapada, counted from your Moon in Purva Ashadha",
+    "Naidhana is the one tara the classical texts hold as a personal avoid \u2014 it caps the day",
+    "Purnima/Amavasya tithi"
+   ],
+   "purpose_reasons": [],
+   "windows": {
+    "golden": [],
+    "silence": [
+     {
+      "all_day": true
+     }
+    ]
+   },
+   "rahu_kaal": {
+    "start": "08:44",
+    "end": "10:14",
+    "basis": "the 3rd of eight daylight parts, sunrise 05:44 to sunset 17:46"
+   },
+   "per_person": {
+    "you": {
+     "band": "red",
+     "score": 0.3
+    }
+   },
+   "rank": 14
+  }
+ ],
+ "absent": [],
+ "best": {
+  "date": "2026-09-23",
+  "weekday": "Wed",
+  "days_from_today": 5,
+  "band": "green",
+  "day_score": 0.851,
+  "purpose_score": 0.851,
+  "purpose_band": "green",
+  "tara": "Kshema",
+  "caps": [],
+  "reasons": [
+   "Kshema tara \u2014 today's Moon in Dhanishtha, counted from your Moon in Purva Ashadha",
+   "Dwadashi tithi \u2014 a strong tithi"
+  ],
+  "purpose_reasons": [],
+  "windows": {
+   "golden": [
+    {
+     "start": "09:12",
+     "end": "10:42"
+    },
+    {
+     "start": "13:42",
+     "end": "17:42"
+    }
+   ],
+   "silence": [
+    {
+     "start": "12:12",
+     "end": "13:42"
+    }
+   ]
+  },
+  "rahu_kaal": {
+   "start": "11:46",
+   "end": "13:17",
+   "basis": "the 5th of eight daylight parts, sunrise 05:42 to sunset 17:49"
+  },
+  "per_person": {
+   "you": {
+    "band": "green",
+    "score": 0.851
+   }
+  },
+  "rank": 1
+ },
+ "verdict": "best day: Wed 23 Sep, 09:12\u201310:42 \u2014 a green day for anything important"
+}

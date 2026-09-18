@@ -72,3 +72,19 @@ describe('bestDayRows', () => {
     expect(bestDaysSubtitle({ ...p, personalized: false })).toMatch(/not yet yours/);
   });
 });
+
+describe('the production payload (bug e3b2ab21, 2026-09-18)', () => {
+  // Captured from the engine's own ```best_days``` fence on prod — the
+  // fence carries no `type`; the registry's language names it.
+  const prod = require('./fixtures/best-days.prod.json');
+  it('parses and yields rows in the engine order', () => {
+    const p = parseBestDays(prod)!;
+    expect(p).not.toBeNull();
+    expect(p.ranked.length).toBe(14);
+    const rows = bestDayRows(p);
+    expect(rows).toHaveLength(BEST_DAYS_SHOWN);
+    expect(rows[0].when).toMatch(/^Wed /);
+    expect(rows[0].bandLabel).toBe('Green');
+    expect(rows[0].window).toBe('09:12–10:42');
+  });
+});
