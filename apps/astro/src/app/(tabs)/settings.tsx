@@ -53,6 +53,7 @@ import { CAPABILITIES } from '@/lib/capabilities';
 import { fetchBalance } from '@/lib/credits';
 import { enablePush, morningPref, pushPermission, pushSupported, setMorningPref } from '@/lib/push';
 import { pushRow, type PushPermission } from '@/lib/push-view';
+import { fetchTierAdmin, looksLikePerson, setFreeReadingModel, setTier, type TierAdminView } from '@/lib/tiers';
 import { useReportProblem } from '@/lib/bug-report';
 import { visibleRows, type SettingsRow } from '@/lib/settings-rows';
 import { tokens } from '@/theme';
@@ -104,6 +105,37 @@ export default function Settings() {
       console.warn('[push]', String((e as Error)?.message ?? e));
     }
   }, []);
+
+  // AMB-57: the tester controls (admin only).
+  const [tierAdmin, setTierAdmin] = useState<TierAdminView | null>(null);
+  const [testerWho, setTesterWho] = useState('');
+  const [testerBusy, setTesterBusy] = useState(false);
+  const [testerSaid, setTesterSaid] = useState('');
+  const readTiers = useCallback(() => {
+    fetchTierAdmin().then(setTierAdmin).catch(() => setTierAdmin(null));
+  }, []);
+  useEffect(() => { if (unlimited) readTiers(); }, [unlimited, readTiers]);
+  const applyTier = useCallback(async (tier: 'free' | 'pro') => {
+    setTesterBusy(true);
+    try {
+      const row = await setTier(testerWho, tier);
+      setTesterSaid(`${row.email ?? testerWho.trim()} is now ${tier === 'pro' ? 'Pro' : 'Free'}.`);
+      setTesterWho('');
+      readTiers();
+    } catch (e: unknown) {
+      setTesterSaid(String((e as Error)?.message ?? e));
+    } finally {
+      setTesterBusy(false);
+    }
+  }, [testerWho, readTiers]);
+  const applyFreeModel = useCallback(async (on: boolean) => {
+    try {
+      await setFreeReadingModel(on ? 'flash' : 'pro');
+      readTiers();
+    } catch (e: unknown) {
+      setTesterSaid(String((e as Error)?.message ?? e));
+    }
+  }, [readTiers]);
 
   const refreshCredits = useCallback(() => {
     fetchBalance()
@@ -353,6 +385,70 @@ export default function Settings() {
             </>
           ) : null}
 
+          {/* AMB-57: the owner's tester controls. Shown only to an admin (the
+              credits read marks one as unlimited); refused server-side for
+              anyone else. */}
+          {unlimited ? (
+            <>
+              <Text style={s.section}>Testers</Text>
+              <View style={s.card}>
+                <View style={s.testerBody}>
+                  <Text style={s.creditsNote}>
+                    Set a friend’s tier by the email they signed in with. Free reads 5 friend readings a month, Pro 100.
+                  </Text>
+                  <TextInput
+                    style={s.testerInput}
+                    value={testerWho}
+                    onChangeText={setTesterWho}
+                    placeholder="friend@example.com"
+                    placeholderTextColor={tokens.palette.ink.muted}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="email-address"
+                    accessibilityLabel="Tester email"
+                  />
+                  <View style={s.testerActions}>
+                    {(['free', 'pro'] as const).map((tier) => (
+                      <Pressable
+                        key={tier}
+                        style={[s.testerBtn, !looksLikePerson(testerWho) && s.testerBtnOff]}
+                        disabled={!looksLikePerson(testerWho) || testerBusy}
+                        onPress={() => void applyTier(tier)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Set ${tier}`}
+                      >
+                        <Text style={s.testerBtnText}>{tier === 'pro' ? 'Make Pro' : 'Make Free'}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  {testerSaid ? <Text style={s.creditsNote}>{testerSaid}</Text> : null}
+                  {(tierAdmin?.tiers ?? []).map((row) => (
+                    <View key={row.uid} style={s.testerRow}>
+                      <Text style={s.testerWho} numberOfLines={1}>{row.email ?? row.uid}</Text>
+                      <Text style={s.testerTier}>{row.tier === 'pro' ? 'Pro' : 'Free'}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+              <View style={s.card}>
+                <View style={s.pushRow}>
+                  <View style={s.pushText}>
+                    <Text style={s.creditsValue}>Free tier reads on Flash</Text>
+                    <Text style={s.creditsNote}>
+                      Off: everyone’s readings use the Pro model. On: Free accounts get the cheaper model, Pro and you keep Pro. For comparing quality with friends on each tier.
+                    </Text>
+                  </View>
+                  <Switch
+                    value={tierAdmin?.config.free_reading_model === 'flash'}
+                    onValueChange={(on) => void applyFreeModel(on)}
+                    trackColor={{ true: tokens.palette.accent.interactive, false: tokens.palette.paper.line }}
+                    accessibilityLabel="Free tier reads on Flash"
+                  />
+                </View>
+              </View>
+            </>
+          ) : null}
+
           <Text style={s.section}>Credits</Text>
           <View style={s.card}>
             <View style={s.creditsBody}>
@@ -452,6 +548,22 @@ const s = StyleSheet.create({
     letterSpacing: 1, marginTop: t.space(3.5), textTransform: 'uppercase',
   },
   creditsBody: { padding: t.space(4), gap: t.space(2) },
+  testerBody: { padding: t.space(4), gap: t.space(3) },
+  testerInput: {
+    ...t.type.scale.sub, color: t.palette.ink.primary, borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.palette.paper.line, borderRadius: t.radius.input,
+    paddingVertical: t.space(2.5), paddingHorizontal: t.space(4),
+  },
+  testerActions: { flexDirection: 'row', gap: t.space(3) },
+  testerBtn: {
+    backgroundColor: t.palette.accent.interactive, borderRadius: t.radius.button,
+    paddingVertical: t.space(2), paddingHorizontal: t.space(5),
+  },
+  testerBtnOff: { opacity: 0.4 },
+  testerBtnText: { ...t.type.scale.sub, color: t.palette.accent.interactiveInk, fontWeight: '700' },
+  testerRow: { flexDirection: 'row', justifyContent: 'space-between', gap: t.space(3) },
+  testerWho: { ...t.type.scale.sub, color: t.palette.ink.primary, flex: 1 },
+  testerTier: { ...t.type.scale.sub, color: t.palette.accent.interactive, fontWeight: '700' },
   pushRow: { flexDirection: 'row', alignItems: 'center', gap: t.space(3), padding: t.space(4) },
   pushText: { flex: 1, gap: t.space(1) },
   creditsValue: { ...t.type.scale.lead, color: t.palette.ink.primary },
