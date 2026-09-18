@@ -131,6 +131,14 @@ export default function Muhurta() {
     void (async () => {
       const id = await adoptOwnChat(loadChatIntoStore);
       if (id) {
+        // Proving the chat exists LOADS its history, and this screen reads
+        // "the latest bot message it has not consumed" as its reply. Without
+        // this, Muhurta rendered the adopted chat's pending palm-upload ask
+        // under its own heading (simulator, 2026-09-18). What was said before
+        // this screen opened is history, not an answer to it.
+        for (const m of useChatStore.getState().chats[id]?.messages ?? []) {
+          consumed.current.add(m.id);
+        }
         chatIdRef.current = id;
         setChatId(id);
       }
