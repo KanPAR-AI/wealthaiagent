@@ -46,9 +46,11 @@ import {
   isReady,
   itemRange,
   tabs,
+  deckCards,
 } from '@/lib/daily-view';
 import { fetchDaily } from '@/lib/people';
 import type { DailyResponse, FacetItem } from '@/lib/people-shapes';
+import { GuidanceDeck } from '@/components/guidance-deck';
 import { openPartnerSheet } from '@/components/partner-sheet';
 import { SignInGateCard } from '@/components/sign-in-gate';
 import { useReadingBlocked } from '@/lib/use-account';
@@ -193,9 +195,17 @@ export default function Insights() {
                   on the artifact — switching to Love and back costs nothing
                   and shows the same words. */}
               {active.id === 'guidance' && res.narration.available ? (
-                <View style={s.prose}>
-                  <Text style={s.proseText}>{res.narration.text}</Text>
-                </View>
+                // docs/66 G-2: the deck when the engine served one (hook
+                // first, swipeable, the paragraph collapsed under it); the
+                // paragraph alone otherwise — an older artifact, or a
+                // model answer that did not fit the shape. Never a blank.
+                deckCards(res).length ? (
+                  <GuidanceDeck cards={deckCards(res)} paragraph={res.narration.text} />
+                ) : (
+                  <View style={s.prose}>
+                    <Text style={s.proseText}>{res.narration.text}</Text>
+                  </View>
+                )
               ) : null}
 
               {active.items.length === 0 ? (

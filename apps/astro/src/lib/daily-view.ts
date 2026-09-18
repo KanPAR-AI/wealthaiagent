@@ -40,6 +40,7 @@ import type {
   FacetItem,
   FacetTab,
   PurposeChip,
+  DeckCard,
 } from './people-shapes';
 
 export function isReady(res: DailyResponse | null): res is DailyReady {
@@ -530,3 +531,27 @@ export function coupleBestLine(verdict: string | null | undefined): string | nul
   const v = (verdict ?? '').trim();
   return v ? v.charAt(0).toUpperCase() + v.slice(1) + '.' : null;
 }
+
+
+/** docs/66 G-2: the deck as served — hook first, or nothing. Pure. */
+export function deckCards(res: DailyReady): DeckCard[] {
+  const d = Array.isArray(res.narration?.deck) ? res.narration.deck : [];
+  return d.length && d[0]?.kind === 'hook' ? d : [];
+}
+
+/** The door a card opens (docs/66 G4). Null = no door on this card. */
+export function deckDoor(kind: string): { label: string; pathname: string; params?: Record<string, string> } | null {
+  switch (kind) {
+    case 'timing': return { label: 'Open the day', pathname: '/day' };
+    case 'work': return { label: 'When should I ask?', pathname: '/chat', params: { pending: 'When should I have that discussion with my manager?' } };
+    case 'money': return { label: 'When should I sign?', pathname: '/chat', params: { pending: 'When should I sign the papers?' } };
+    case 'love': return { label: 'When should we talk?', pathname: '/chat', params: { pending: 'When should I talk something sensitive over with my partner?' } };
+    case 'period': return { label: 'Your periods', pathname: '/timeline' };
+    default: return null;
+  }
+}
+
+export const DECK_KIND_LABEL: Record<string, string> = {
+  hook: 'Today', work: 'Work', money: 'Money', love: 'Love & home',
+  energy: 'Energy', timing: 'Timing', period: 'The longer arc',
+};

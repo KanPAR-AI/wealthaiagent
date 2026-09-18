@@ -530,6 +530,15 @@ export interface BestDaysReady {
 }
 export type BestDaysResponse = BestDaysReady | ReadAbsent;
 
+/** docs/66 G-1: one card of Today's Guidance. `basis` carries the
+ *  astrology; the headline and body are plain life. */
+export interface DeckCard {
+  kind: string;
+  headline: string;
+  body: string;
+  basis: string;
+}
+
 export interface DailyReady {
   state: 'ready';
   date: string;
@@ -542,7 +551,9 @@ export interface DailyReady {
   today?: string;
   card: DailyCard;
   facets: { version: number; tabs: FacetTab[]; item_count: number; artifact_key?: string; date?: string };
-  narration: { text: string; generated_this_request: boolean; available: boolean };
+  /** docs/66: the day's deck rides the one narration; `deck` is [] or
+   *  absent when the engine served the paragraph only. */
+  narration: { text: string; generated_this_request: boolean; available: boolean; deck?: DeckCard[] };
   chart: { status: string; computed_at?: string | null };
   person: { id: string; display_name: string };
   served_from_store: boolean;
