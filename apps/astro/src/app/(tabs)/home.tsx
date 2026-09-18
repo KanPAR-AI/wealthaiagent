@@ -231,7 +231,7 @@ export default function Home() {
 
             {!blocked && load.phase === 'loading' ? (
               <View style={s.card}>
-                <ActivityIndicator color={tokens.palette.accent.interactive} />
+                <ActivityIndicator color={tokens.palette.accent.ceremonial} />
               </View>
             ) : null}
 
@@ -338,7 +338,7 @@ export default function Home() {
                     accessibilityRole="button"
                     accessibilityLabel={tile.title}
                   >
-                    <SymbolIcon name={tile.icon} color={tokens.palette.accent.interactive} />
+                    <SymbolIcon name={tile.icon} color={tokens.palette.accent.ceremonial} />
                     <Text style={s.tileTitle}>{tile.title}</Text>
                     <Text style={s.tileSub}>{tile.subtitle}</Text>
                   </Pressable>
@@ -455,7 +455,7 @@ function CoupleHomeCard({ card, onDeclared, partnerChip }: { card: CoupleCard; o
   return (
     <View style={s.coupleCard}>
       <View style={s.coupleHead}>
-        <SymbolIcon name="heart" color={t.palette.accent.interactive} />
+        <SymbolIcon name="heart" color={t.palette.accent.ceremonial} />
         <Text style={s.cardTitle}>{card.title}</Text>
       </View>
       {card.body ? <Text style={s.cardBody}>{card.body}</Text> : null}
@@ -485,7 +485,7 @@ function CoupleHomeCard({ card, onDeclared, partnerChip }: { card: CoupleCard; o
         accessibilityLabel={card.cta}
       >
         <Text style={door ? s.ctaText : s.coupleOpenText}>{card.cta}</Text>
-        {door ? null : <ChevronRight size={16} color={t.palette.accent.interactive} />}
+        {door ? null : <ChevronRight size={16} color={t.palette.accent.ceremonial} />}
       </Pressable>
     </View>
   );
@@ -614,7 +614,7 @@ const t = tokens;
 const s = StyleSheet.create({
   fill: { flex: 1, backgroundColor: t.palette.cosmic.deep },
   safe: { flex: 1 },
-  scroll: { flex: 1, backgroundColor: t.palette.paper.base },
+  scroll: { flex: 1, backgroundColor: t.palette.cosmic.deep },
   body: { paddingBottom: t.space(10) },
   paper: { padding: t.space(4), gap: t.space(3) },
   // The ceremonial block: night sky behind the greeting and the day's card,
@@ -673,8 +673,8 @@ const s = StyleSheet.create({
     backgroundColor: t.palette.cosmic.card,
   },
   purposeChipText: { ...t.type.scale.label, color: t.palette.ink.onCosmic },
-  coupleBest: { ...t.type.scale.sub, color: t.palette.ink.secondary, marginTop: t.space(1) },
-  coupleBestCta: { color: t.palette.accent.interactive, fontWeight: '700' },
+  coupleBest: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted, marginTop: t.space(1) },
+  coupleBestCta: { color: t.palette.accent.ceremonial, fontWeight: '700' },
   weekNoteCta: { color: t.palette.accent.ceremonial, fontWeight: '600' },
   whyRow: { flexDirection: 'row', alignItems: 'center', gap: t.space(1) },
   whyText: { ...t.type.scale.sub, color: t.palette.accent.ceremonial, fontWeight: '600' },
@@ -684,63 +684,63 @@ const s = StyleSheet.create({
   moreText: { ...t.type.scale.sub, color: t.palette.accent.ceremonial, fontWeight: '600' },
 
   coupleCard: {
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     padding: t.space(4),
     gap: t.space(2),
     borderWidth: 1,
-    borderColor: t.palette.accent.interactive,
+    borderColor: t.palette.accent.ceremonial,
   },
   coupleHead: { flexDirection: 'row', alignItems: 'center', gap: t.space(2) },
   coupleOpen: { flexDirection: 'row', alignItems: 'center', gap: t.space(1), alignSelf: 'flex-start' },
-  coupleOpenText: { ...t.type.scale.sub, color: t.palette.accent.interactive, fontWeight: '700' },
+  coupleOpenText: { ...t.type.scale.sub, color: t.palette.accent.ceremonial, fontWeight: '700' },
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space(3) },
   tile: {
     flexGrow: 1,
     flexBasis: '46%',
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     padding: t.space(3.5),
     gap: t.space(1),
     borderWidth: 1,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
   },
-  tileTitle: { ...t.type.scale.label, color: t.palette.ink.primary, fontWeight: '700' },
-  tileSub: { ...t.type.scale.caption, color: t.palette.ink.muted },
+  tileTitle: { ...t.type.scale.label, color: t.palette.ink.onCosmic, fontWeight: '700' },
+  tileSub: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
 
   card: {
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     padding: t.space(4),
     gap: t.space(2),
     borderWidth: 1,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
   },
-  cardTitle: { ...t.type.scale.lead, color: t.palette.ink.primary, fontWeight: '700' },
-  cardBody: { ...t.type.scale.sub, color: t.palette.ink.secondary },
-  caption: { ...t.type.scale.caption, color: t.palette.ink.muted },
-  bullet: { ...t.type.scale.sub, color: t.palette.ink.secondary },
+  cardTitle: { ...t.type.scale.lead, color: t.palette.ink.onCosmic, fontWeight: '700' },
+  cardBody: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
+  caption: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
+  bullet: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
   row: { flexDirection: 'row', justifyContent: 'space-between', gap: t.space(3) },
-  rowLabel: { ...t.type.scale.sub, color: t.palette.ink.muted },
-  rowValue: { ...t.type.scale.sub, color: t.palette.ink.primary, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
+  rowLabel: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
+  rowValue: { ...t.type.scale.sub, color: t.palette.ink.onCosmic, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
 
   absence: {
     borderRadius: t.radius.card,
     padding: t.space(3.5),
     gap: t.space(1),
     borderWidth: 1,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
     backgroundColor: 'transparent',
   },
-  absenceTitle: { ...t.type.scale.label, color: t.palette.ink.secondary, fontWeight: '700' },
-  absenceBody: { ...t.type.scale.caption, color: t.palette.ink.muted },
+  absenceTitle: { ...t.type.scale.label, color: t.palette.ink.onCosmicMuted, fontWeight: '700' },
+  absenceBody: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
 
   cta: {
     alignSelf: 'flex-start',
-    backgroundColor: t.palette.accent.interactive,
+    backgroundColor: t.palette.accent.ceremonial,
     borderRadius: t.radius.button,
     paddingVertical: t.space(2.5),
     paddingHorizontal: t.space(5),
   },
-  ctaText: { ...t.type.scale.sub, color: t.palette.accent.interactiveInk, fontWeight: '700' },
+  ctaText: { ...t.type.scale.sub, color: t.palette.accent.ceremonialInk, fontWeight: '700' },
 });
