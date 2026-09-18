@@ -30,3 +30,20 @@ export const astroChartTheme: AstralTheme = {
   warn: t.palette.danger,
   border: t.palette.paper.line,
 };
+
+/** The same diagram on the night field (the Birth Chart screen, owner
+ *  2026-09-18). Gold lines on the cosmic card: the diamond reads as a drawn
+ *  keepsake, and the twelve cells stay twelve cells at phone size. The paper
+ *  theme above stays for the match screen until that moves too. */
+export const astroChartThemeNight: AstralTheme = {
+  text: t.palette.ink.onCosmic,
+  textMuted: t.palette.ink.onCosmicMuted,
+  textPending: t.palette.ink.onCosmicMuted,
+  line: t.palette.accent.ceremonial,
+  surface: 'transparent',
+  surfaceAlt: t.palette.cosmic.deep,
+  accent: t.palette.accent.ceremonial,
+  ceremonial: t.palette.accent.ceremonial,
+  warn: t.palette.cosmic.horizon,
+  border: t.palette.cosmic.line,
+};

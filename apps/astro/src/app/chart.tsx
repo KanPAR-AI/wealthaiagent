@@ -47,7 +47,7 @@ import { rnPrimitives } from '@wealthai/astral-native';
 import { ChevronLeft, SymbolIcon } from '@/components/glyphs';
 import { SkyDefs, SkyField, Stars } from '@/components/sky';
 import { track } from '@/lib/analytics';
-import { astroChartTheme } from '@/lib/chart-theme';
+import { astroChartThemeNight } from '@/lib/chart-theme';
 import {
   absentModels,
   birthLines,
@@ -206,7 +206,7 @@ export default function Chart() {
 
         {load.phase === 'loading' ? (
           <View style={s.card}>
-            <ActivityIndicator color={tokens.palette.accent.interactive} />
+            <ActivityIndicator color={tokens.palette.accent.ceremonial} />
           </View>
         ) : null}
 
@@ -346,7 +346,7 @@ function ChartsTab({
           <Text style={s.caption}>Lagna: {model.ascendant}</Text>
           <ChartDiamond
             ui={rnPrimitives}
-            theme={astroChartTheme}
+            theme={astroChartThemeNight}
             width={width - tokens.space(8)}
             cells={model.cells}
             testID={`chart-diamond-${model.key}`}
@@ -480,9 +480,13 @@ function RegisterSection({ chart }: { chart: ChartResponse['chart'] | undefined 
 }
 
 const t = tokens;
+// Owner 2026-09-18 ("why is this screen background white, keep this UI also
+// sexy"): the chart is a READING surface, so it lives on the night field like
+// Insights, Day and Timeline — translucent cards, on-cosmic ink, gold for the
+// live markers and the diamond's lines. Paper stays for forms and settings.
 const s = StyleSheet.create({
   fill: { flex: 1, backgroundColor: t.palette.cosmic.base },
-  scroll: { flex: 1, backgroundColor: t.palette.paper.base },
+  scroll: { flex: 1, backgroundColor: t.palette.cosmic.deep },
   body: { paddingBottom: t.space(10), gap: t.space(3) },
 
   skyBlock: { backgroundColor: t.palette.cosmic.base, marginBottom: t.space(3) },
@@ -511,10 +515,10 @@ const s = StyleSheet.create({
   segment: {
     flexDirection: 'row',
     marginHorizontal: t.space(4),
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.pill,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
     padding: t.space(0.5),
   },
   segmentItem: {
@@ -523,16 +527,16 @@ const s = StyleSheet.create({
     paddingVertical: t.space(2),
     borderRadius: t.radius.pill,
   },
-  segmentOn: { backgroundColor: t.palette.cosmic.base },
-  segmentText: { ...t.type.scale.sub, color: t.palette.ink.secondary },
-  segmentTextOn: { color: t.palette.ink.onCosmic, fontWeight: '700' },
+  segmentOn: { backgroundColor: t.palette.accent.ceremonial },
+  segmentText: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
+  segmentTextOn: { color: t.palette.accent.ceremonialInk, fontWeight: '700' },
 
   card: {
     marginHorizontal: t.space(4),
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
     padding: t.space(4),
     gap: t.space(2),
   },
@@ -540,27 +544,27 @@ const s = StyleSheet.create({
     marginHorizontal: t.space(4),
     borderRadius: t.radius.card,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
     padding: t.space(4),
     gap: t.space(1),
   },
-  cardTitle: { ...t.type.scale.lead, color: t.palette.ink.primary, fontWeight: '700' },
-  cardBody: { ...t.type.scale.sub, color: t.palette.ink.secondary },
-  caption: { ...t.type.scale.caption, color: t.palette.ink.muted },
+  cardTitle: { ...t.type.scale.lead, color: t.palette.ink.onCosmic, fontWeight: '700' },
+  cardBody: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
+  caption: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
 
   kv: { flexDirection: 'row', alignItems: 'baseline', gap: t.space(3) },
-  kvLabel: { ...t.type.scale.caption, color: t.palette.ink.muted, width: t.space(14) },
-  kvValue: { ...t.type.scale.sub, color: t.palette.ink.primary, flex: 1 },
+  kvLabel: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted, width: t.space(14) },
+  kvValue: { ...t.type.scale.sub, color: t.palette.ink.onCosmic, flex: 1 },
 
   tableHead: {
     flexDirection: 'row',
     paddingBottom: t.space(1.5),
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: t.palette.paper.line,
+    borderBottomColor: t.palette.cosmic.line,
   },
   th: {
     ...t.type.scale.caption,
-    color: t.palette.ink.muted,
+    color: t.palette.ink.onCosmicMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
@@ -568,15 +572,15 @@ const s = StyleSheet.create({
     paddingTop: t.space(2),
     paddingBottom: t.space(2),
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: t.palette.paper.line,
+    borderBottomColor: t.palette.cosmic.line,
     gap: 2,
   },
   tr: { flexDirection: 'row', alignItems: 'baseline' },
   trSub: { flexDirection: 'row', gap: t.space(3), flexWrap: 'wrap' },
-  td: { ...t.type.scale.sub, color: t.palette.ink.primary },
-  tdStrong: { ...t.type.scale.sub, color: t.palette.ink.primary, fontWeight: '700' },
-  retro: { ...t.type.scale.caption, color: t.palette.danger, fontWeight: '700' },
-  dignity: { ...t.type.scale.caption, color: t.palette.accent.interactive },
+  td: { ...t.type.scale.sub, color: t.palette.ink.onCosmic },
+  tdStrong: { ...t.type.scale.sub, color: t.palette.ink.onCosmic, fontWeight: '700' },
+  retro: { ...t.type.scale.caption, color: t.palette.cosmic.horizon, fontWeight: '700' },
+  dignity: { ...t.type.scale.caption, color: t.palette.accent.ceremonial },
   colPlanet: { flex: 1.2 },
   colSign: { flex: 1.2 },
   colDeg: { flex: 1, textAlign: 'right' },
@@ -588,16 +592,16 @@ const s = StyleSheet.create({
     gap: t.space(3),
     paddingVertical: t.space(2),
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: t.palette.paper.line,
+    borderBottomColor: t.palette.cosmic.line,
   },
-  dashaNow: { borderBottomColor: t.palette.accent.interactive },
-  dashaPlanet: { ...t.type.scale.sub, color: t.palette.ink.primary, width: t.space(20) },
-  dashaPlanetNow: { fontWeight: '700', color: t.palette.accent.interactive },
-  dashaRange: { ...t.type.scale.caption, color: t.palette.ink.muted, flex: 1 },
+  dashaNow: { borderBottomColor: t.palette.accent.ceremonial },
+  dashaPlanet: { ...t.type.scale.sub, color: t.palette.ink.onCosmic, width: t.space(20) },
+  dashaPlanetNow: { fontWeight: '700', color: t.palette.accent.ceremonial },
+  dashaRange: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted, flex: 1 },
   now: {
     ...t.type.scale.caption,
-    color: t.palette.accent.interactiveInk,
-    backgroundColor: t.palette.accent.interactive,
+    color: t.palette.accent.ceremonialInk,
+    backgroundColor: t.palette.accent.ceremonial,
     borderRadius: t.radius.pill,
     paddingHorizontal: t.space(2),
     paddingVertical: 2,
@@ -611,23 +615,23 @@ const s = StyleSheet.create({
     paddingLeft: t.space(3),
     paddingVertical: t.space(1),
   },
-  yogaText: { ...t.type.scale.sub, color: t.palette.ink.primary },
+  yogaText: { ...t.type.scale.sub, color: t.palette.ink.onCosmic },
 
   note: { gap: 2, paddingBottom: t.space(1) },
-  noteTitle: { ...t.type.scale.label, color: t.palette.ink.primary, fontWeight: '600' },
+  noteTitle: { ...t.type.scale.label, color: t.palette.ink.onCosmic, fontWeight: '600' },
 
   notice: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: t.space(3),
     marginHorizontal: t.space(4),
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     borderLeftWidth: 3,
     borderLeftColor: t.palette.danger,
     padding: t.space(4),
   },
-  noticeText: { ...t.type.scale.sub, color: t.palette.ink.primary, flex: 1 },
+  noticeText: { ...t.type.scale.sub, color: t.palette.ink.onCosmic, flex: 1 },
 
   cta: {
     alignSelf: 'flex-start',
