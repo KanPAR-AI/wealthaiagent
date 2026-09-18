@@ -555,3 +555,36 @@ export const DECK_KIND_LABEL: Record<string, string> = {
   hook: 'Today', work: 'Work', money: 'Money', love: 'Love & home',
   energy: 'Energy', timing: 'Timing', period: 'The longer arc',
 };
+
+// ── docs/69 polish: one card with a chip row, instead of a wall of cards ──
+//
+// Owner, on the artifact: "how exactly these 12 cards become one, how will one
+// transition from one card to another". A lens with more than a few items is
+// shown ONE item at a time under a row of chips (the engine's own titles); the
+// list is one tap away. Nothing is removed and nothing is computed here: the
+// order is the engine's ranking, and "worth opening first" is simply the first
+// item the engine gave an advice line to.
+
+/** Lenses this short stay a plain list — a chip row over two cards is noise. */
+export const FOCUS_MIN_ITEMS = 4;
+
+export function hasAdvice(item: Pick<FacetItem, 'meaning'>): boolean {
+  return Boolean((item.meaning ?? '').trim());
+}
+
+export function focusApplies(items: readonly FacetItem[]): boolean {
+  return items.length >= FOCUS_MIN_ITEMS;
+}
+
+/** Where the focused card opens: the first item with something to act on. */
+export function focusStart(items: readonly Pick<FacetItem, 'meaning'>[]): number {
+  const i = items.findIndex(hasAdvice);
+  return i < 0 ? 0 : i;
+}
+
+/** Wrap-around stepping for the arrows and the swipe. */
+export function focusStep(index: number, delta: number, count: number): number {
+  if (count <= 0) return 0;
+  return ((index + delta) % count + count) % count;
+}
+

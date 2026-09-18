@@ -25,9 +25,11 @@
 
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
+  PanResponder,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -47,9 +49,14 @@ import {
   itemRange,
   tabs,
   deckCards,
+  focusApplies,
+  focusStart,
+  focusStep,
+  hasAdvice,
 } from '@/lib/daily-view';
 import { fetchDaily } from '@/lib/people';
 import type { DailyResponse, FacetItem } from '@/lib/people-shapes';
+import { ChevronLeft, ChevronRight } from '@/components/glyphs';
 import { GuidanceDeck } from '@/components/guidance-deck';
 import { openPartnerSheet } from '@/components/partner-sheet';
 import { SignInGateCard } from '@/components/sign-in-gate';
@@ -217,7 +224,11 @@ export default function Insights() {
                   <Text style={s.cardBody}>{active.empty_reason}</Text>
                 </View>
               ) : (
-                active.items.map((item) => <Item key={item.id} item={item} onDeclared={() => void read(true)} />)
+                focusApplies(active.items) ? (
+                  <ItemFocus key={active.id} items={active.items} onDeclared={() => void read(true)} />
+                ) : (
+                  active.items.map((item) => <Item key={item.id} item={item} onDeclared={() => void read(true)} />)
+                )
               )}
 
               {active.domains.length ? (
@@ -235,6 +246,91 @@ export default function Insights() {
 
 /** One faceted item, with the basis it was filed by. An item whose basis a
  *  reader cannot see is a claim; with it, it is a reading. */
+/** docs/69 polish — one card under a chip row instead of a wall of cards.
+ *  Tap a chip, use the arrows or swipe: the words crossfade inside a fixed
+ *  frame and the page never jumps. "See all" is the old list, one tap away.
+ *  Every word is an engine item rendered by the SAME `Item`; this component
+ *  only chooses which one is on screen. */
+function ItemFocus({ items, onDeclared }: { items: FacetItem[]; onDeclared: () => void }) {
+  const [index, setIndex] = useState(() => focusStart(items));
+  const [all, setAll] = useState(false);
+  const fade = useRef(new Animated.Value(1)).current;
+  const chips = useRef<ScrollView | null>(null);
+  const chipX = useRef<Record<number, number>>({});
+
+  const go = useCallback((next: number) => {
+    const to = focusStep(next, 0, items.length);
+    if (to === index) return;
+    track('insights_focus', { to });
+    Animated.timing(fade, { toValue: 0, duration: 110, useNativeDriver: true }).start(() => {
+      setIndex(to);
+      Animated.timing(fade, { toValue: 1, duration: 160, useNativeDriver: true }).start();
+    });
+    chips.current?.scrollTo({ x: Math.max(0, (chipX.current[to] ?? 0) - 60), animated: true });
+  }, [fade, index, items.length]);
+
+  const pan = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 24 && Math.abs(g.dx) > 2 * Math.abs(g.dy),
+    onPanResponderRelease: (_e, g) => {
+      if (Math.abs(g.dx) > 40) go(focusStep(index, g.dx < 0 ? 1 : -1, items.length));
+    },
+  }), [go, index, items.length]);
+
+  if (all) {
+    return (
+      <>
+        <Pressable style={s.focusAll} onPress={() => setAll(false)} accessibilityRole="button">
+          <Text style={s.focusAllText}>One at a time</Text>
+        </Pressable>
+        {items.map((item) => <Item key={item.id} item={item} onDeclared={onDeclared} />)}
+      </>
+    );
+  }
+  const current = items[Math.min(index, items.length - 1)];
+  return (
+    <View style={s.focus}>
+      <ScrollView
+        ref={chips}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={s.focusChips}
+      >
+        {items.map((item, i) => (
+          <Pressable
+            key={item.id}
+            onLayout={(e) => { chipX.current[i] = e.nativeEvent.layout.x; }}
+            onPress={() => go(i)}
+            style={[s.focusChip, i === index && s.focusChipOn]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: i === index }}
+            accessibilityLabel={item.title}
+          >
+            {hasAdvice(item) && i !== index ? <View style={s.focusDot} /> : null}
+            <Text style={[s.focusChipText, i === index && s.focusChipTextOn]} numberOfLines={1}>
+              {item.title}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+      <Animated.View style={[s.focusFrame, { opacity: fade }]} {...pan.panHandlers}>
+        <Item item={current} onDeclared={onDeclared} />
+      </Animated.View>
+      <View style={s.focusNav}>
+        <Pressable onPress={() => go(focusStep(index, -1, items.length))} hitSlop={10} accessibilityRole="button" accessibilityLabel="Previous">
+          <ChevronLeft size={18} color={t.palette.accent.ceremonial} />
+        </Pressable>
+        <Text style={s.focusCount}>{index + 1} of {items.length}</Text>
+        <Pressable onPress={() => go(focusStep(index, 1, items.length))} hitSlop={10} accessibilityRole="button" accessibilityLabel="Next">
+          <ChevronRight size={18} color={t.palette.accent.ceremonial} />
+        </Pressable>
+      </View>
+      <Pressable style={s.focusAll} onPress={() => { track('insights_see_all'); setAll(true); }} accessibilityRole="button">
+        <Text style={s.focusAllText}>See all {items.length}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function Item({ item, onDeclared }: { item: FacetItem; onDeclared: () => void }) {
   const honest = item.kind === 'absent_layer' || item.kind === 'undetermined';
   const range = itemRange(item);
@@ -292,6 +388,26 @@ function Item({ item, onDeclared }: { item: FacetItem; onDeclared: () => void })
 
 const t = tokens;
 const s = StyleSheet.create({
+  // docs/69 polish: the focused card
+  focus: { gap: t.space(3) },
+  focusChips: { gap: t.space(2), paddingRight: t.space(4) },
+  focusChip: {
+    flexDirection: 'row', alignItems: 'center', gap: t.space(1.5),
+    borderRadius: t.radius.pill, borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.palette.cosmic.line,
+    paddingVertical: t.space(1.5), paddingHorizontal: t.space(3),
+    maxWidth: t.space(56),
+  },
+  focusChipOn: { backgroundColor: t.palette.accent.interactive, borderColor: t.palette.accent.interactive },
+  focusChipText: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted, fontWeight: '600' },
+  focusChipTextOn: { color: t.palette.accent.interactiveInk },
+  focusDot: { width: t.space(1.5), height: t.space(1.5), borderRadius: t.radius.pill, backgroundColor: t.palette.accent.ceremonial },
+  focusFrame: { minHeight: t.space(44) },
+  focusNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: t.space(2) },
+  focusCount: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
+  focusAll: { alignSelf: 'center', paddingVertical: t.space(1) },
+  focusAllText: { ...t.type.scale.sub, color: t.palette.accent.ceremonial, fontWeight: '600' },
+
   // Owner 2026-09-17: "background on insights page is too bright and is
   // eye piercing — take inspiration from moonly." The whole screen sits
   // on the cosmic field Home's sky already uses: deep ground, translucent
