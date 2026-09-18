@@ -572,6 +572,37 @@ export function hasAdvice(item: Pick<FacetItem, 'meaning'>): boolean {
   return Boolean((item.meaning ?? '').trim());
 }
 
+/**
+ * "Ask AI about this" — the Guidance card's door into chat (owner,
+ * 2026-09-18: "add a link… which opens the AI chat with the right context so
+ * the user can chat more").
+ *
+ * The turn QUOTES what the engine already put on the card (title, the short
+ * detail) — it derives nothing. Honest items (an absent layer, an
+ * undetermined fact), stated absences and items that already carry their own
+ * door (a cue, an unlock) get no link: one door per card.
+ */
+export const ASK_ITEM_LABEL = 'Ask AI about this';
+const ASK_DETAIL_MAX = 80;
+
+export function canAskAbout(
+  item: Pick<FacetItem, 'kind' | 'title' | 'basis' | 'cue' | 'unlocked_by'>,
+): boolean {
+  if (!(item.title ?? '').trim()) return false;
+  if (item.kind === 'absent_layer' || item.kind === 'undetermined') return false;
+  if (item.basis === 'stated absence') return false;
+  return !item.cue && !item.unlocked_by;
+}
+
+export function askItemTurn(item: Pick<FacetItem, 'title' | 'detail'>): string {
+  const title = item.title.trim();
+  // the card speaks TO the user ("from your Lagna"); the turn is the user
+  // speaking, so the possessive turns round. Wording only — no fact changes.
+  const detail = (item.detail ?? '').trim().replace(/\byour\b/g, 'my').replace(/\bYour\b/g, 'My');
+  const where = detail && detail.length <= ASK_DETAIL_MAX ? ` (${detail})` : '';
+  return `In today's guidance I see "${title}"${where}. Tell me more — what does it mean for me, and what should I do about it?`;
+}
+
 export function focusApplies(items: readonly FacetItem[]): boolean {
   return items.length >= FOCUS_MIN_ITEMS;
 }

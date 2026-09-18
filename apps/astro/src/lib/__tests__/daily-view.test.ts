@@ -585,3 +585,51 @@ describe("Home's Couple card (owner 2026-09-17: the door was buried)", () => {
     expect(coupleCard(res)).toBeNull();
   });
 });
+
+
+describe('Ask AI about this — the Guidance card\'s door into chat', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { askItemTurn, canAskAbout } = require('../daily-view');
+  const transit = { id: 'transit:Jupiter', kind: 'transit_position', title: 'Jupiter in Cancer',
+    detail: 'house 7 from your Lagna', basis: 'read for marriage', domains: [], cue: null, unlocked_by: null };
+
+  it('quotes the card: the title and the short detail, nothing derived', () => {
+    const turn = askItemTurn(transit);
+    expect(turn).toContain('"Jupiter in Cancer"');
+    // the card says "your"; the user's own sentence says "my"
+    expect(turn).toContain('(house 7 from my Lagna)');
+    expect(turn).toMatch(/what should I do about it\?$/);
+  });
+
+  it('a long detail (the day score\'s reasons) is left out, not truncated mid-sentence', () => {
+    const turn = askItemTurn({ title: 'Today: Green day', detail: 'x'.repeat(81) });
+    expect(turn).toContain('"Today: Green day".');
+    expect(turn).not.toContain('xxx');
+  });
+
+  it('every real fixture item that is askable produces a non-empty turn', () => {
+    const view = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'daily.json'), 'utf8'));
+    const items: any[] = [];
+    const walk = (o: any) => {
+      if (Array.isArray(o)) o.forEach(walk);
+      else if (o && typeof o === 'object') {
+        if (Array.isArray(o.items) && o.items[0]?.title) items.push(...o.items);
+        Object.values(o).forEach(walk);
+      }
+    };
+    walk(view);
+    const askable = items.filter(canAskAbout);
+    expect(askable.length).toBeGreaterThan(3);
+    askable.forEach((it) => expect(askItemTurn(it).length).toBeGreaterThan(40));
+  });
+
+  it('one door per card: honest items, stated absences, cues and unlocks get no link', () => {
+    expect(canAskAbout(transit)).toBe(true);
+    expect(canAskAbout({ ...transit, kind: 'absent_layer' })).toBe(false);
+    expect(canAskAbout({ ...transit, kind: 'undetermined' })).toBe(false);
+    expect(canAskAbout({ ...transit, basis: 'stated absence' })).toBe(false);
+    expect(canAskAbout({ ...transit, cue: 'When is a good day to…' })).toBe(false);
+    expect(canAskAbout({ ...transit, unlocked_by: 'birth_time' })).toBe(false);
+    expect(canAskAbout({ ...transit, title: '  ' })).toBe(false);
+  });
+});

@@ -53,6 +53,9 @@ import {
   focusStart,
   focusStep,
   hasAdvice,
+  ASK_ITEM_LABEL,
+  askItemTurn,
+  canAskAbout,
 } from '@/lib/daily-view';
 import { fetchDaily } from '@/lib/people';
 import type { DailyResponse, FacetItem } from '@/lib/people-shapes';
@@ -351,6 +354,24 @@ function Item({ item, onDeclared }: { item: FacetItem; onDeclared: () => void })
       {!honest && !isPartnerDoor(item) && basisAddsAnything(item) ? (
         <Text style={s.itemBasis}>{item.basis}</Text>
       ) : null}
+      {canAskAbout(item) ? (
+        // Owner 2026-09-18: the card's door into chat. A FRESH chat, so the
+        // question is read for the user and never lands in a friend's sealed
+        // reading or a long mixed conversation.
+        <Pressable
+          style={s.askLink}
+          hitSlop={8}
+          onPress={() => {
+            track('insights_ask_ai', { id: item.id });
+            router.push({ pathname: '/chat', params: { pending: askItemTurn(item), fresh: '1', handoffKey: String(Date.now()) } });
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`${ASK_ITEM_LABEL}: ${item.title}`}
+        >
+          <Text style={s.askLinkText}>{ASK_ITEM_LABEL}</Text>
+          <ChevronRight size={14} color={t.palette.accent.ceremonial} />
+        </Pressable>
+      ) : null}
       {item.kind === 'plan_ahead' && item.cue ? (
         // docs/64 W-4: the Guidance door to the ranked days — the engine's
         // own cue sentence, sent to chat as is.
@@ -460,6 +481,8 @@ const s = StyleSheet.create({
     marginTop: t.space(2),
   },
   doorCtaText: { ...t.type.scale.label, color: t.palette.accent.ceremonialInk },
+  askLink: { flexDirection: 'row', alignItems: 'center', gap: t.space(1), alignSelf: 'flex-start', marginTop: t.space(2) },
+  askLinkText: { ...t.type.scale.label, color: t.palette.accent.ceremonial },
   itemMeaning: {
     ...t.type.scale.sub,
     color: t.palette.accent.ceremonial,
