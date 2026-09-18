@@ -45,7 +45,7 @@ import { rnPrimitives } from '@wealthai/astral-native';
 
 import { ChevronLeft } from '@/components/glyphs';
 import { track } from '@/lib/analytics';
-import { astroChartTheme } from '@/lib/chart-theme';
+import { astroChartThemeNight } from '@/lib/chart-theme';
 import {
   ASK_AI_LABEL,
   askTurn,
@@ -109,7 +109,7 @@ export default function Match() {
 
   return (
     <View style={s.fill}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
         <View style={s.headerRow}>
           <Pressable
@@ -165,7 +165,7 @@ export default function Match() {
               {card ? (
                 <MatchScorecard
                   ui={rnPrimitives}
-                  theme={astroChartTheme}
+                  theme={astroChartThemeNight}
                   width={width - gutter}
                   report={card}
                   title="Kundli Milan"
@@ -190,13 +190,15 @@ export default function Match() {
 
 const t = tokens;
 const tokensIconSize = t.size.icon;
-const inkPrimary = t.palette.ink.primary;
-const accent = t.palette.accent.interactive;
+const inkPrimary = t.palette.ink.onCosmic;
+const accent = t.palette.accent.ceremonial;
 const gutter = t.space(10);
 
+// Owner 2026-09-18 ("why background is white in this screen, fix"): this is a
+// reading surface, so it lives on the night field with the rest of the app.
 const s = StyleSheet.create({
   fill: { flex: 1 },
-  safe: { flex: 1, backgroundColor: t.palette.paper.base },
+  safe: { flex: 1, backgroundColor: t.palette.cosmic.deep },
   headerRow: { flexDirection: 'row', alignItems: 'center' },
   back: { paddingHorizontal: t.space(4), paddingVertical: t.space(2) },
   body: {
@@ -206,43 +208,43 @@ const s = StyleSheet.create({
     gap: t.space(2),
   },
   gap: { gap: t.space(3) },
-  title: { ...t.type.scale.hero, ...t.type.display, color: t.palette.ink.primary },
-  caption: { ...t.type.scale.caption, color: t.palette.ink.muted },
-  sentence: { ...t.type.scale.sub, color: t.palette.ink.secondary },
+  title: { ...t.type.scale.hero, ...t.type.display, color: t.palette.ink.onCosmic },
+  caption: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
+  sentence: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
   card: {
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
     padding: t.space(4),
     gap: t.space(2),
     marginTop: t.space(2),
   },
-  cardTitle: { ...t.type.scale.lead, color: t.palette.ink.primary, fontWeight: '700' },
+  cardTitle: { ...t.type.scale.lead, color: t.palette.ink.onCosmic, fontWeight: '700' },
   notice: {
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     borderLeftWidth: 3,
     borderLeftColor: t.palette.accent.ceremonial,
     padding: t.space(4),
     marginTop: t.space(2),
   },
-  noticeText: { ...t.type.scale.sub, color: t.palette.ink.primary },
+  noticeText: { ...t.type.scale.sub, color: t.palette.ink.onCosmic },
   cta: {
     alignSelf: 'flex-start',
-    backgroundColor: t.palette.accent.interactive,
+    backgroundColor: t.palette.accent.ceremonial,
     borderRadius: t.radius.button,
     paddingVertical: t.space(2.5),
     paddingHorizontal: t.space(5),
   },
-  ctaText: { ...t.type.scale.sub, color: t.palette.accent.interactiveInk, fontWeight: '700' },
+  ctaText: { ...t.type.scale.sub, color: t.palette.accent.ceremonialInk, fontWeight: '700' },
   ghost: {
     marginTop: t.space(3),
     borderRadius: t.radius.button,
     paddingVertical: t.space(3.5),
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
   },
-  ghostText: { ...t.type.scale.label, color: t.palette.ink.primary },
+  ghostText: { ...t.type.scale.label, color: t.palette.ink.onCosmic },
 });

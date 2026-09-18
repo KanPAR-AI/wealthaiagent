@@ -156,7 +156,7 @@ export default function Matches() {
 
   return (
     <View style={s.fill}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
         <View style={s.header}>
           <Pressable
@@ -166,7 +166,7 @@ export default function Matches() {
             accessibilityLabel="Back"
             hitSlop={10}
           >
-            <ChevronLeft size={tokens.size.icon} color={tokens.palette.ink.primary} />
+            <ChevronLeft size={tokens.size.icon} color={tokens.palette.ink.onCosmic} />
           </Pressable>
         </View>
 
@@ -179,7 +179,7 @@ export default function Matches() {
           {resolved && blocked ? <SignInGateCard /> : null}
 
           {blocked ? null : busy && !data ? (
-            <ActivityIndicator color={tokens.palette.accent.interactive} />
+            <ActivityIndicator color={tokens.palette.accent.ceremonial} />
           ) : error ? (
             <View style={s.gap}>
               <Text style={s.sentence}>I could not read your matches just now. {error}</Text>
@@ -318,11 +318,11 @@ function Row({
             accessibilityLabel={row.favourite ? `Unstar ${row.name}` : `Star ${row.name}`}
           >
             {starBusy ? (
-              <ActivityIndicator color={tokens.palette.ink.muted} />
+              <ActivityIndicator color={tokens.palette.ink.onCosmicMuted} />
             ) : (
               <SymbolIcon
                 name={row.favourite ? 'star.fill' : 'star'}
-                color={row.favourite ? tokens.palette.accent.ceremonial : tokens.palette.ink.muted}
+                color={row.favourite ? tokens.palette.accent.ceremonial : tokens.palette.ink.onCosmicMuted}
               />
             )}
           </Pressable>
@@ -406,28 +406,30 @@ function Row({
 
 const t = tokens;
 
+// Owner 2026-09-18 ("why background is white in this screen, fix"): this is a
+// reading surface, so it lives on the night field with the rest of the app.
 const s = StyleSheet.create({
   fill: { flex: 1 },
-  safe: { flex: 1, backgroundColor: t.palette.paper.base },
+  safe: { flex: 1, backgroundColor: t.palette.cosmic.deep },
   header: { flexDirection: 'row', alignItems: 'center' },
   back: { paddingHorizontal: t.space(4), paddingVertical: t.space(2) },
   body: { paddingHorizontal: t.space(5), paddingTop: t.space(2), paddingBottom: t.space(10), gap: t.space(3) },
   gap: { gap: t.space(2.5) },
-  title: { ...t.type.scale.hero, ...t.type.display, color: t.palette.ink.primary },
-  sectionTitle: { ...t.type.scale.title, color: t.palette.ink.primary },
-  rule: { ...t.type.scale.caption, color: t.palette.ink.secondary },
+  title: { ...t.type.scale.hero, ...t.type.display, color: t.palette.ink.onCosmic },
+  sectionTitle: { ...t.type.scale.title, color: t.palette.ink.onCosmic },
+  rule: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
   section: {
     ...t.type.scale.caption,
-    color: t.palette.ink.muted,
+    color: t.palette.ink.onCosmicMuted,
     letterSpacing: 1,
     marginTop: t.space(3),
     textTransform: 'uppercase',
   },
   card: {
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
   },
   /** the board tints the starred row rather than moving it */
   cardStarred: { borderColor: t.palette.accent.ceremonial },
@@ -443,45 +445,45 @@ const s = StyleSheet.create({
   },
   discInitial: { ...t.type.scale.lead, color: t.palette.accent.interactiveInk },
   rowName: { flex: 1, gap: t.space(0.5) },
-  name: { ...t.type.scale.lead, color: t.palette.ink.primary },
+  name: { ...t.type.scale.lead, color: t.palette.ink.onCosmic },
   pill: {
     borderRadius: t.radius.pill,
     borderWidth: 1,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
     paddingHorizontal: t.space(3),
     paddingVertical: t.space(1),
   },
-  pillText: { ...t.type.scale.label, color: t.palette.ink.primary },
+  pillText: { ...t.type.scale.label, color: t.palette.ink.onCosmic },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space(2) },
   chip: {
     borderRadius: t.radius.chip,
-    backgroundColor: t.palette.paper.base,
+    backgroundColor: t.palette.cosmic.deep,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
     paddingHorizontal: t.space(2.5),
     paddingVertical: t.space(1),
   },
-  chipText: { ...t.type.scale.caption, color: t.palette.ink.secondary },
+  chipText: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
   /** the prioritised kootas read as the ordering's own evidence */
-  chipLead: { borderColor: t.palette.accent.interactive },
-  chipWarn: { borderColor: t.palette.danger },
-  chipWarnText: { ...t.type.scale.caption, color: t.palette.danger },
-  sentence: { ...t.type.scale.sub, color: t.palette.ink.secondary },
-  caption: { ...t.type.scale.caption, color: t.palette.ink.muted },
+  chipLead: { borderColor: t.palette.accent.ceremonial },
+  chipWarn: { borderColor: t.palette.cosmic.horizon },
+  chipWarnText: { ...t.type.scale.caption, color: t.palette.cosmic.horizon },
+  sentence: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
+  caption: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
   cta: {
-    backgroundColor: t.palette.accent.interactive,
+    backgroundColor: t.palette.accent.ceremonial,
     borderRadius: t.radius.button,
     paddingVertical: t.space(3.5),
     alignItems: 'center',
   },
-  ctaText: { ...t.type.scale.label, color: t.palette.accent.interactiveInk, fontWeight: '600' },
+  ctaText: { ...t.type.scale.label, color: t.palette.accent.ceremonialInk, fontWeight: '700' },
   ghost: {
     borderRadius: t.radius.button,
     paddingVertical: t.space(3),
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: t.palette.accent.interactive,
+    borderColor: t.palette.accent.ceremonial,
     marginTop: t.space(1),
   },
-  ghostText: { ...t.type.scale.label, color: t.palette.accent.interactive },
+  ghostText: { ...t.type.scale.label, color: t.palette.accent.ceremonial },
 });

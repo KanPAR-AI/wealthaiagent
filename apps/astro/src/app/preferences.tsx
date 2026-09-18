@@ -42,7 +42,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   InputRequestView,
-  LIGHT_THEME,
   parseInputRequest,
   splitDataBlocks,
   type InputRequestPayload,
@@ -68,6 +67,7 @@ import {
   updatedLine,
 } from '@/lib/priorities-view';
 import { tokens } from '@/theme';
+import { astroChartThemeNight } from '@/lib/chart-theme';
 
 /** The fallback turn, used only if the read failed. The server sends its own
  *  (`edit_turn`) — a SENTENCE, never a value. */
@@ -174,7 +174,7 @@ export default function Preferences() {
 
   return (
     <View style={s.fill}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
         <View style={s.header}>
           <Pressable
@@ -184,7 +184,7 @@ export default function Preferences() {
             accessibilityLabel="Back"
             hitSlop={10}
           >
-            <ChevronLeft size={tokens.size.icon} color={tokens.palette.ink.primary} />
+            <ChevronLeft size={tokens.size.icon} color={tokens.palette.ink.onCosmic} />
           </Pressable>
         </View>
 
@@ -314,7 +314,7 @@ export default function Preferences() {
               {prose ? <Text style={s.sentence}>{plainText(prose)}</Text> : null}
               <InputRequestView
                 ui={rnPrimitives}
-                theme={LIGHT_THEME}
+                theme={astroChartThemeNight}
                 width={width - tokens.space(12)}
                 request={request}
                 layout="page"
@@ -339,7 +339,7 @@ export default function Preferences() {
                   </Pressable>
                 </>
               ) : (
-                <ActivityIndicator color={tokens.palette.accent.interactive} />
+                <ActivityIndicator color={tokens.palette.accent.ceremonial} />
               )}
             </View>
           ) : (
@@ -364,9 +364,11 @@ export default function Preferences() {
 
 const t = tokens;
 
+// Owner 2026-09-18 ("why background is white in this screen, fix"): this is a
+// reading surface, so it lives on the night field with the rest of the app.
 const s = StyleSheet.create({
   fill: { flex: 1 },
-  safe: { flex: 1, backgroundColor: t.palette.paper.base },
+  safe: { flex: 1, backgroundColor: t.palette.cosmic.deep },
   header: { flexDirection: 'row', alignItems: 'center' },
   back: { paddingHorizontal: t.space(4), paddingVertical: t.space(2) },
   body: {
@@ -377,24 +379,24 @@ const s = StyleSheet.create({
   },
   gap: { gap: t.space(3) },
   gapTight: { gap: t.space(1) },
-  title: { ...t.type.scale.hero, ...t.type.display, color: t.palette.ink.primary },
-  sectionTitle: { ...t.type.scale.title, color: t.palette.ink.primary },
+  title: { ...t.type.scale.hero, ...t.type.display, color: t.palette.ink.onCosmic },
+  sectionTitle: { ...t.type.scale.title, color: t.palette.ink.onCosmic },
   section: {
     ...t.type.scale.caption,
-    color: t.palette.ink.muted,
+    color: t.palette.ink.onCosmicMuted,
     letterSpacing: 1,
     marginTop: t.space(2),
     textTransform: 'uppercase',
   },
   card: {
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
     overflow: 'hidden',
   },
   /** the second tier reads as a quieter surface — it does nothing to order */
-  cardMuted: { backgroundColor: t.palette.paper.base },
+  cardMuted: { backgroundColor: t.palette.cosmic.deep },
   /** …and a suggestion is visibly a suggestion, never a stored pick */
   cardProposed: { borderColor: t.palette.accent.ceremonial },
   cardBody: { padding: t.space(4), gap: t.space(2.5) },
@@ -416,29 +418,29 @@ const s = StyleSheet.create({
   rankChart: { backgroundColor: t.palette.accent.ceremonial },
   rankText: { ...t.type.scale.label, color: t.palette.accent.interactiveInk, fontWeight: '700' },
   rowText: { flex: 1, gap: t.space(0.5) },
-  rowValue: { ...t.type.scale.lead, color: t.palette.ink.primary },
+  rowValue: { ...t.type.scale.lead, color: t.palette.ink.onCosmic },
   /** the user's own words, quoted and italic — visibly not a picked option */
-  rowNote: { ...t.type.scale.lead, color: t.palette.ink.secondary, fontStyle: 'italic' },
+  rowNote: { ...t.type.scale.lead, color: t.palette.ink.onCosmicMuted, fontStyle: 'italic' },
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: t.palette.paper.line,
+    backgroundColor: t.palette.cosmic.line,
     marginLeft: t.space(4),
   },
-  sentence: { ...t.type.scale.sub, color: t.palette.ink.secondary },
-  caption: { ...t.type.scale.caption, color: t.palette.ink.muted },
+  sentence: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
+  caption: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
   cta: {
-    backgroundColor: t.palette.accent.interactive,
+    backgroundColor: t.palette.accent.ceremonial,
     borderRadius: t.radius.button,
     paddingVertical: t.space(3.5),
     alignItems: 'center',
   },
-  ctaText: { ...t.type.scale.label, color: t.palette.accent.interactiveInk, fontWeight: '600' },
+  ctaText: { ...t.type.scale.label, color: t.palette.accent.ceremonialInk, fontWeight: '700' },
   ghost: {
     borderRadius: t.radius.button,
     paddingVertical: t.space(3.5),
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
   },
-  ghostText: { ...t.type.scale.label, color: t.palette.ink.primary },
+  ghostText: { ...t.type.scale.label, color: t.palette.ink.onCosmic },
 });
