@@ -72,14 +72,14 @@ import {
   type InputRequestPayload,
 } from '@wealthai/astral';
 import { rnPrimitives } from '@wealthai/astral-native';
-import { useSendMessage } from '@wealthai/chat-native';
+import { loadChatIntoStore, useSendMessage } from '@wealthai/chat-native';
 import { useChatStore, type Message } from '@wealthai/core';
 
 import { FIELD_ICONS } from '@/components/field-icons';
 import { ChevronLeft, SymbolIcon } from '@/components/glyphs';
 import { CornerWash } from '@/components/sky';
 import { track } from '@/lib/analytics';
-import { lastChatId, rememberChat } from '@/lib/chat-session';
+import { adoptOwnChat, rememberChat } from '@/lib/chat-session';
 import { fetchBalance } from '@/lib/credits';
 import { editFailure, isReturningEdit, outcomeLine } from '@/lib/edit-fact';
 import { useEditOutcome } from '@/lib/edit-outcome';
@@ -196,7 +196,7 @@ export default function BirthDetails() {
   useEffect(() => {
     if (adopted) return;
     void (async () => {
-      const id = await lastChatId();
+      const id = await adoptOwnChat(loadChatIntoStore);
       if (id) {
         chatIdRef.current = id;
         setChatId(id);

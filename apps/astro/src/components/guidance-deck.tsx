@@ -131,7 +131,7 @@ const s = StyleSheet.create({
   doorText: { ...t.type.scale.sub, color: t.palette.accent.ceremonial, fontWeight: '700' },
   swipeHint: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted, marginTop: 'auto' },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: t.palette.cosmic.line },
+  dot: { width: 6, height: 6, borderRadius: t.radius.pill, backgroundColor: t.palette.cosmic.line },
   dotOn: { backgroundColor: t.palette.accent.ceremonial, width: 16 },
   proseWrap: { marginHorizontal: t.space(4), gap: t.space(2) },
   proseToggle: { flexDirection: 'row', alignItems: 'center', gap: 4 },

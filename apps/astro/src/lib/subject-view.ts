@@ -77,12 +77,17 @@ export function subjectSheet(
 
 type Listener = (s: ReadingSubject) => void;
 let current: ReadingSubject = SELF_SUBJECT;
+let engineSaid = false;
 const listeners = new Set<Listener>();
 
 export const subjectStore = {
   get(): ReadingSubject { return current; },
-  set(s: ReadingSubject | null): void {
+  /** True once the ENGINE's `reading_subject` block has spoken for the chat
+   *  on screen — a reset's "You" is a default, not a statement. */
+  engineSaid(): boolean { return engineSaid; },
+  set(s: ReadingSubject | null, fromEngine = false): void {
     current = s ?? SELF_SUBJECT;
+    engineSaid = fromEngine && s !== null;
     listeners.forEach((l) => l(current));
   },
   reset(): void { subjectStore.set(SELF_SUBJECT); },

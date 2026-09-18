@@ -663,6 +663,7 @@ function ImagePicker({
   label,
   accessibilityLabel,
   testID,
+  color,
 }: AstralImagePickerProps) {
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -749,6 +750,7 @@ function ImagePicker({
         borderRadius: 12,
         borderWidth: 1,
         borderStyle: value ? 'solid' : 'dashed',
+        ...(color ? { borderColor: color } : null),
         alignItems: 'center',
         opacity: busy ? 0.5 : 1,
       }}>
@@ -763,7 +765,7 @@ function ImagePicker({
           accessibilityLabel={label ? `${label} preview` : 'Selected photo'}
         />
       ) : null}
-      <RNText style={{ fontSize: 15, fontWeight: '600' }}>
+      <RNText style={{ fontSize: 15, fontWeight: '600', ...(color ? { color } : null) }}>
         {busy ? 'Uploading…' : value ? 'Replace photo' : 'Add photo'}
       </RNText>
     </RNPressable>

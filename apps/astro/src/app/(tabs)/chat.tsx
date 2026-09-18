@@ -54,7 +54,7 @@ import { CornerWash } from '@/components/sky';
 import { useReportProblem } from '@/lib/bug-report';
 import { handoffAction } from '@/lib/chat-handoff';
 import { useReadingBlocked } from '@/lib/use-account';
-import { forgetChat, lastChatId, rememberChat } from '@/lib/chat-session';
+import { disownChat, forgetChat, isOwnChat, lastChatId, rememberChat, rememberOwnChat } from '@/lib/chat-session';
 import { astroChatTheme } from '@/lib/chat-theme';
 import { ASTRO_DATA_LANGUAGES, AstroWidget } from '@/lib/chat-widgets';
 import { track } from '@/lib/analytics';
@@ -142,6 +142,13 @@ export default function Chat() {
   const [subject, setSubject] = useState<ReadingSubject>(subjectStore.get());
   useEffect(() => subjectStore.subscribe(setSubject), []);
   useEffect(() => { subjectStore.reset(); }, [chatId]);
+  // The native surfaces (Palm, Muhurta) adopt the user's OWN chat — never a
+  // friend's sealed reading. Only the engine's word decides which this is.
+  useEffect(() => {
+    if (!chatId || !subjectStore.engineSaid()) return;
+    if (isOwnChat(subject.mode, true, handoff.standalone === '1')) rememberOwnChat(chatId);
+    else void disownChat(chatId);
+  }, [chatId, subject, handoff.standalone]);
   const [people, setPeople] = useState<PersonView[]>([]);
   useEffect(() => {
     if (readingGated) return;

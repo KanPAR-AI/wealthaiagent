@@ -572,6 +572,7 @@ function ImageField({ ui, theme, field, value, onChange, hint }: FieldRenderCont
         label={field.label}
         accessibilityLabel={field.label}
         testID={`input-field-${field.key}`}
+        color={theme.text}
       />
       <Text style={{ fontSize: 12, color: attached ? theme.accent : theme.textMuted }}>
         {attached ? '✓ photo attached' : (hint ?? 'Palm facing the camera, fingers spread.')}

@@ -67,7 +67,7 @@ import {
   updatedLine,
 } from '@/lib/priorities-view';
 import { tokens } from '@/theme';
-import { astroChartThemeNight } from '@/lib/chart-theme';
+import { astroFormThemeNight } from '@/lib/chart-theme';
 
 /** The fallback turn, used only if the read failed. The server sends its own
  *  (`edit_turn`) — a SENTENCE, never a value. */
@@ -314,7 +314,7 @@ export default function Preferences() {
               {prose ? <Text style={s.sentence}>{plainText(prose)}</Text> : null}
               <InputRequestView
                 ui={rnPrimitives}
-                theme={astroChartThemeNight}
+                theme={astroFormThemeNight}
                 width={width - tokens.space(12)}
                 request={request}
                 layout="page"

@@ -48,7 +48,7 @@ const astralHandlers: Record<string, ChatWidgetHandler> = Object.fromEntries(
 function SubjectSink({ data }: { data: unknown }) {
   useEffect(() => {
     const s = parseSubjectBlock(data);
-    if (s) subjectStore.set(s);
+    if (s) subjectStore.set(s, true);
   }, [data]);
   return null;
 }

@@ -70,7 +70,7 @@ export function Item({ children }: { children: ReactNode }) {
 
 const t = tokens;
 const s = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: t.palette.paper.base },
+  fill: { flex: 1, backgroundColor: t.palette.cosmic.deep },
   strip: {
     position: 'absolute', top: 0, left: 0, right: 0, height: STRIP,
     backgroundColor: t.palette.cosmic.deep,
@@ -80,24 +80,24 @@ const s = StyleSheet.create({
   sheet: {
     flex: 1,
     marginTop: t.space(3),
-    backgroundColor: t.palette.paper.base,
+    backgroundColor: t.palette.cosmic.deep,
     borderTopLeftRadius: t.radius.card,
     borderTopRightRadius: t.radius.card,
   },
   body: { padding: t.space(5), paddingBottom: t.space(12), gap: t.space(3) },
-  title: { ...t.type.scale.title, ...t.type.display, color: t.palette.ink.primary },
+  title: { ...t.type.scale.title, ...t.type.display, color: t.palette.ink.onCosmic },
   head: {
     ...t.type.scale.caption,
-    color: t.palette.ink.muted,
+    color: t.palette.ink.onCosmicMuted,
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginTop: t.space(2),
   },
-  para: { ...t.type.scale.sub, color: t.palette.ink.secondary },
+  para: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
   item: { flexDirection: 'row', gap: t.space(2.5), alignItems: 'flex-start' },
   bullet: {
     width: t.space(1.5), height: t.space(1.5), borderRadius: t.radius.pill,
-    backgroundColor: t.palette.accent.interactive, marginTop: t.space(2),
+    backgroundColor: t.palette.accent.ceremonial, marginTop: t.space(2),
   },
-  itemText: { ...t.type.scale.sub, color: t.palette.ink.secondary, flex: 1 },
+  itemText: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted, flex: 1 },
 });

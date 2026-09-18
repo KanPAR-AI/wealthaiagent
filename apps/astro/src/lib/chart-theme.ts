@@ -47,3 +47,14 @@ export const astroChartThemeNight: AstralTheme = {
   warn: t.palette.cosmic.horizon,
   border: t.palette.cosmic.line,
 };
+
+/** Forms and asks on the night field (Palm, Muhurta, What matters to you).
+ *  `surface` is SOLID here: the shared input widget writes the label of its
+ *  emphasised button in `surface`, so a transparent surface is invisible text
+ *  on a gold button. */
+export const astroFormThemeNight: AstralTheme = {
+  ...astroChartThemeNight,
+  surface: t.palette.cosmic.raised,
+  line: t.palette.cosmic.line,
+};
+

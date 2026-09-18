@@ -48,7 +48,6 @@ import Svg from 'react-native-svg';
 
 import {
   InputRequestView,
-  LIGHT_THEME,
   MuhurtaWindowsView,
   parseInputRequest,
   parseMuhurtaResults,
@@ -58,14 +57,14 @@ import {
   type MuhurtaResultsPayload,
 } from '@wealthai/astral';
 import { rnPrimitives } from '@wealthai/astral-native';
-import { chatMarkdownStyles, useSendMessage } from '@wealthai/chat-native';
+import { chatMarkdownStyles, loadChatIntoStore, useSendMessage } from '@wealthai/chat-native';
 import { useChatStore, type Message } from '@wealthai/core';
 
 import { ChevronLeft, SymbolIcon } from '@/components/glyphs';
 import { SkyDefs, SkyField, Stars } from '@/components/sky';
 import { track } from '@/lib/analytics';
 import { astroChatTheme } from '@/lib/chat-theme';
-import { lastChatId, rememberChat } from '@/lib/chat-session';
+import { adoptOwnChat, rememberChat, rememberOwnChat } from '@/lib/chat-session';
 import { fetchBalance } from '@/lib/credits';
 import {
   MUHURTA_COMPOSE_PROMPT,
@@ -80,6 +79,7 @@ import {
 import { routeIsLive } from '@/lib/tabs';
 import { useReadingBlocked } from '@/lib/use-account';
 import { tokens } from '@/theme';
+import { astroFormThemeNight } from '@/lib/chart-theme';
 
 const MUHURTA_LANGUAGES = ['input_request', 'muhurta_results'];
 const HEADER_HEIGHT = 148;
@@ -112,6 +112,8 @@ export default function Muhurta() {
     chatIdRef.current = id;
     setChatId(id);
     rememberChat(id);
+    // a chat this screen starts is the user's own by construction
+    rememberOwnChat(id);
   });
 
   const consumed = useRef<Set<string>>(new Set());
@@ -127,7 +129,7 @@ export default function Muhurta() {
   const [adopted, setAdopted] = useState(false);
   useEffect(() => {
     void (async () => {
-      const id = await lastChatId();
+      const id = await adoptOwnChat(loadChatIntoStore);
       if (id) {
         chatIdRef.current = id;
         setChatId(id);
@@ -273,7 +275,7 @@ export default function Muhurta() {
 
           {phase === 'computing' ? (
             <View style={st.card}>
-              <ActivityIndicator color={tokens.palette.accent.interactive} />
+              <ActivityIndicator color={tokens.palette.accent.ceremonial} />
               <Text style={st.cardBody}>{MUHURTA_OPENING_LINE}</Text>
             </View>
           ) : null}
@@ -294,7 +296,7 @@ export default function Muhurta() {
                 value={draft}
                 onChangeText={setDraft}
                 placeholder={MUHURTA_REPLY_HINT}
-                placeholderTextColor={tokens.palette.ink.muted}
+                placeholderTextColor={tokens.palette.ink.onCosmicMuted}
                 multiline
                 autoCapitalize="sentences"
                 accessibilityLabel="Your answer"
@@ -318,8 +320,8 @@ export default function Muhurta() {
             <View style={st.card}>
               <InputRequestView
                 ui={rnPrimitives}
-                theme={LIGHT_THEME}
-                width={width - tokens.space(12)}
+                theme={astroFormThemeNight}
+                width={width - tokens.space(18)}
                 request={request}
                 layout="page"
                 submitLabel="Find windows"
@@ -334,7 +336,7 @@ export default function Muhurta() {
                   the narration below them is commentary on them. */}
               <MuhurtaWindowsView
                 ui={rnPrimitives}
-                theme={LIGHT_THEME}
+                theme={astroFormThemeNight}
                 width={width - tokens.space(8)}
                 results={results}
               />
@@ -382,7 +384,7 @@ export default function Muhurta() {
 const t = tokens;
 
 const st = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: t.palette.paper.base },
+  fill: { flex: 1, backgroundColor: t.palette.cosmic.deep },
   scroll: { flex: 1 },
   body: { paddingBottom: t.space(12) },
 
@@ -397,19 +399,19 @@ const st = StyleSheet.create({
   card: {
     marginHorizontal: t.space(4),
     marginTop: t.space(4),
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     padding: t.space(5),
     gap: t.space(3),
   },
-  cardBody: { ...t.type.scale.sub, color: t.palette.ink.secondary },
+  cardBody: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
 
   input: {
     ...t.type.scale.sub,
-    color: t.palette.ink.primary,
+    color: t.palette.ink.onCosmic,
     minHeight: 88,
     borderWidth: 1,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
     borderRadius: t.radius.input,
     padding: t.space(3),
     textAlignVertical: 'top',
@@ -417,7 +419,7 @@ const st = StyleSheet.create({
 
   windowsWrap: { paddingHorizontal: t.space(4), paddingTop: t.space(4), gap: t.space(3) },
   narration: {
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     paddingHorizontal: t.space(4),
     paddingVertical: t.space(2),
@@ -429,30 +431,30 @@ const st = StyleSheet.create({
     gap: t.space(3),
     marginHorizontal: t.space(4),
     marginTop: t.space(4),
-    backgroundColor: t.palette.paper.card,
+    backgroundColor: t.palette.cosmic.card,
     borderRadius: t.radius.card,
     borderLeftWidth: 3,
     borderLeftColor: t.palette.danger,
     padding: t.space(4),
   },
-  noticeText: { ...t.type.scale.sub, color: t.palette.ink.primary, flex: 1 },
+  noticeText: { ...t.type.scale.sub, color: t.palette.ink.onCosmic, flex: 1 },
 
   cta: {
     alignSelf: 'flex-start',
-    backgroundColor: t.palette.accent.interactive,
+    backgroundColor: t.palette.accent.ceremonial,
     borderRadius: t.radius.button,
     paddingVertical: t.space(2.5),
     paddingHorizontal: t.space(5),
   },
   ctaOff: { opacity: 0.45 },
-  ctaText: { ...t.type.scale.sub, color: t.palette.accent.interactiveInk, fontWeight: '700' },
+  ctaText: { ...t.type.scale.sub, color: t.palette.accent.ceremonialInk, fontWeight: '700' },
   ctaGhost: {
     alignSelf: 'flex-start',
     borderRadius: t.radius.button,
     borderWidth: 1,
-    borderColor: t.palette.paper.line,
+    borderColor: t.palette.cosmic.line,
     paddingVertical: t.space(2.5),
     paddingHorizontal: t.space(5),
   },
-  ctaGhostText: { ...t.type.scale.sub, color: t.palette.ink.primary, fontWeight: '600' },
+  ctaGhostText: { ...t.type.scale.sub, color: t.palette.ink.onCosmic, fontWeight: '600' },
 });

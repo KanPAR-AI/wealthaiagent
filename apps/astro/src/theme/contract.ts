@@ -74,6 +74,9 @@ export interface BrandTokens {
     /** `card`/`line`: a raised surface ON the cosmic ground (the Home gate
      *  card) — declared here so no screen invents its own white-alpha. */
     cosmic: { base: string; deep: string; glow: string; horizon: string;
+              /** a SOLID raised surface — for controls that write text in the
+               *  surface colour, where the translucent `card` cannot be used */
+              raised: string;
               card: string; line: string };
     /** Working ground — light card surfaces with dark ink (screens 2, 4, 5, 7, 8). */
     paper: { base: string; card: string; line: string };

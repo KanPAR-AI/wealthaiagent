@@ -70,3 +70,29 @@ describe('the sheet: "Someone new" starts a fresh chat (owner 2026-09-17)', () =
     expect(rows[rows.length - 1].turn).toBe('Just this reading.');
   });
 });
+
+describe('only the engine\'s word makes a chat the user\'s own (docs/67 follow-up)', () => {
+  // Palm and Muhurta adopt the user's OWN chat. They used to adopt the last
+  // chat, which after a friend's sealed reading is the friend's — and the
+  // engine answered with that chat's pending ask.
+  const { isOwnChat } = require('../chat-session');
+  it('a reset is a default, not a statement', () => {
+    subjectStore.reset();
+    expect(subjectStore.engineSaid()).toBe(false);
+  });
+  it('a reading_subject block is the engine speaking', () => {
+    subjectStore.set({ mode: 'self', person_id: null, name: null, label: 'You' }, true);
+    expect(subjectStore.engineSaid()).toBe(true);
+    subjectStore.reset();
+  });
+  it('self, said by the engine, unsealed — own', () => {
+    expect(isOwnChat('self', true, false)).toBe(true);
+  });
+  it.each([
+    ['adhoc', true, false], ['person', true, false],
+    ['self', false, false], ['self', true, true],
+  ])('%s / engineSaid=%s / sealed=%s — never own', (mode, said, sealed) => {
+    expect(isOwnChat(mode as string, said as boolean, sealed as boolean)).toBe(false);
+  });
+});
+

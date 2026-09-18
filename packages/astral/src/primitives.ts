@@ -274,6 +274,11 @@ export interface AstralImagePickerProps {
   label?: string;
   accessibilityLabel?: string;
   testID?: string;
+  /** Ink for the control's own label and outline. The slot used to draw in
+   *  the platform default (black), which is invisible on a night surface —
+   *  the palm screen's "Add photo" on 2026-09-18. Optional: a host that
+   *  ignores it keeps its own look. */
+  color?: string;
 }
 
 export interface AstralPrimitives {

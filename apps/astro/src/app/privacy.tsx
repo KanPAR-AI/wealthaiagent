@@ -69,7 +69,7 @@ export default function Privacy() {
 const s = StyleSheet.create({
   link: {
     ...tokens.type.scale.sub,
-    color: tokens.palette.accent.interactive,
+    color: tokens.palette.accent.ceremonial,
     fontWeight: '600',
   },
 });
