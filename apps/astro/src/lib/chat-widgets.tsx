@@ -72,7 +72,7 @@ function ReadingHandoffCard({ data }: { data: unknown }) {
         accessibilityLabel={`Start a new chat for ${h.who}`}
         onPress={() => {
           track('chat_reading_handoff', { who: h.who === 'that person' ? 'unnamed' : 'named' });
-          router.push({ pathname: '/chat', params: { pending: h.turn, fresh: '1', handoffKey: String(Date.now()) } });
+          router.push({ pathname: '/chat', params: { pending: h.turn, fresh: '1', handoffKey: String(Date.now()), ...(h.standalone ? { standalone: '1' } : {}) } });
         }}
       >
         <Text style={hs.ctaText}>Start their reading</Text>

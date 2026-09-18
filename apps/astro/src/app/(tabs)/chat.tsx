@@ -101,6 +101,8 @@ export default function Chat() {
   // in a NEW chat, where the ask it answers never happened.
   const handoff = useLocalSearchParams<{
     chatId?: string; pending?: string; fresh?: string; handoffKey?: string;
+    /** docs/67 H-2: '1' seals the fresh chat from the profile */
+    standalone?: string;
   }>();
   const [chatId, setChatId] = useState<string | null>(null);
   const [washWidth, setWashWidth] = useState(0);
@@ -300,9 +302,16 @@ export default function Chat() {
       return;
     }
     lastHandoffKey.current = action.key;
-    void send(handoff.pending as string, []);
+    // docs/67 H-2: a hand-off for somebody NOT on the list opens a chat
+    // sealed from the profile (the store's standalone flag is read when
+    // the session is created); the flag is cleared once the send settles
+    // so the next ordinary chat is the user's own again.
+    const sealed = handoff.standalone === '1';
+    if (sealed) useChatStore.getState().setStandaloneMode(true);
+    Promise.resolve(send(handoff.pending as string, []))
+      .finally(() => { if (sealed) useChatStore.getState().setStandaloneMode(false); });
   }, [handoff.pending, handoff.chatId, handoff.fresh, handoff.handoffKey,
-      chatId, send, readingGated]);
+      handoff.standalone, chatId, send, readingGated]);
 
   // A widget answer — a chip, a picker, the input widget's typed
   // `input_response` carrier — arrives on the ONE channel the shared surface

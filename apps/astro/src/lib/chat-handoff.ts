@@ -72,6 +72,9 @@ export function handoffAction(
 export interface ReadingHandoff {
   turn: string;
   who: string;
+  /** docs/67 H-2: the fresh chat is SEALED from the profile (nothing
+   *  seeded, nothing written) — a stranger's reading, by construction. */
+  standalone: boolean;
 }
 
 export function parseReadingHandoff(value: unknown): ReadingHandoff | null {
@@ -81,5 +84,5 @@ export function parseReadingHandoff(value: unknown): ReadingHandoff | null {
   const turn = typeof v.turn === 'string' ? v.turn.trim() : '';
   if (!turn) return null;
   const who = typeof v.who === 'string' && v.who.trim() ? v.who.trim() : 'them';
-  return { turn, who };
+  return { turn, who, standalone: v.standalone === true };
 }

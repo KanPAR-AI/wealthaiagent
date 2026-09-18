@@ -57,8 +57,9 @@ describe('handoffAction', () => {
 describe('parseReadingHandoff (bug bcadc9f2)', () => {
   it('takes the engine block and defaults an unnamed subject', () => {
     expect(parseReadingHandoff({ type: 'reading_handoff', turn: 'create kundali for him', who: 'that person', fresh: true }))
-      .toEqual({ turn: 'create kundali for him', who: 'that person' });
-    expect(parseReadingHandoff({ turn: 'x' })).toEqual({ turn: 'x', who: 'them' });
+      .toEqual({ turn: 'create kundali for him', who: 'that person', standalone: false });
+    expect(parseReadingHandoff({ turn: 'x' })).toEqual({ turn: 'x', who: 'them', standalone: false });
+    expect(parseReadingHandoff({ turn: 'x', standalone: true })?.standalone).toBe(true);
   });
   it('refuses a foreign type or an empty turn', () => {
     expect(parseReadingHandoff({ type: 'reading_subject', turn: 'x' })).toBeNull();
