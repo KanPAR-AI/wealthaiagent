@@ -8,6 +8,8 @@
 // cited reasons (they name the user's natal Moon), the place the day was
 // scored for, the tara, the score — none of them are on the type.
 //
+// The brand is the caller's wordmark token (F35: never a string here).
+//
 // Selection, not computation: every word is the engine's own (`label`,
 // `line`, a window's clock text, the strip's weekday labels and bands).
 import type { DayBand, DayView } from './daily-view';
@@ -41,7 +43,9 @@ export function sealStance(line: string): string {
   return (line ?? '').trim();
 }
 
-export function daySeal(view: DayView | null, dateLabel: string): DaySeal | null {
+export function daySeal(
+  view: DayView | null, dateLabel: string, brand: string,
+): DaySeal | null {
   if (!view) return null;
   let windowLabel: string | null = null;
   let window: string | null = null;
@@ -67,7 +71,7 @@ export function daySeal(view: DayView | null, dateLabel: string): DaySeal | null
     dots: view.strip.map((d) => d.band),
     todayIndex: view.strip.findIndex((d) => d.isToday),
     hook: 'What colour is your day?',
-    brand: 'Astral AI',
+    brand,
   };
 }
 

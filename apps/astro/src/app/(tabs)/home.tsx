@@ -310,7 +310,7 @@ export default function Home() {
                 track('home_day_why', { open: !whyOpen, band: dayView(res.card)!.band });
                 setWhyOpen((v) => !v);
               }} onShare={() => {
-                const seal = daySeal(dayView(res.card), cardDate(res.card));
+                const seal = daySeal(dayView(res.card), cardDate(res.card), tokens.wordmark);
                 if (!seal) return;
                 track('day_seal_share', { band: seal.band });
                 void shareView(sealRef, sealMessage(seal)).then((outcome) =>
@@ -403,9 +403,9 @@ export default function Home() {
           ) : null}
         </ScrollView>
         {res && isReady(res) && CAPABILITIES.dayStrip
-          && daySeal(dayView(res.card), cardDate(res.card)) ? (
+          && daySeal(dayView(res.card), cardDate(res.card), tokens.wordmark) ? (
             <View style={s.sealStage} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-              <DaySealCard ref={sealRef} seal={daySeal(dayView(res.card), cardDate(res.card))!} />
+              <DaySealCard ref={sealRef} seal={daySeal(dayView(res.card), cardDate(res.card), tokens.wordmark)!} />
             </View>
           ) : null}
       </SafeAreaView>

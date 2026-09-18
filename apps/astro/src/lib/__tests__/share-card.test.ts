@@ -21,12 +21,12 @@ const VIEW: DayView = {
 
 describe('the Day Seal carries the verdict and nothing about the person (ASTRAL-63)', () => {
   it('has exactly the allowlisted keys', () => {
-    const seal = daySeal(VIEW, '21 Sep 2026')!;
+    const seal = daySeal(VIEW, '21 Sep 2026', 'Brand')!;
     expect(Object.keys(seal).sort()).toEqual([...SEAL_KEYS].sort());
   });
 
   it('never carries the cited reasons, the natal Moon, the place or the clock of Rahu Kaal', () => {
-    const seal = daySeal(VIEW, '21 Sep 2026')!;
+    const seal = daySeal(VIEW, '21 Sep 2026', 'Brand')!;
     const wire = JSON.stringify(seal) + sealMessage(seal);
     for (const leak of ['Bharani', 'Bengaluru', 'tara', 'Uttara Ashadha', '07:39', 'your Moon']) {
       expect(wire).not.toContain(leak);
@@ -34,7 +34,7 @@ describe('the Day Seal carries the verdict and nothing about the person (ASTRAL-
   });
 
   it('every word is the engine’s: the band word, the stance inside its line, its window', () => {
-    const seal = daySeal(VIEW, '21 Sep 2026')!;
+    const seal = daySeal(VIEW, '21 Sep 2026', 'Brand')!;
     expect(seal.label).toBe('Green day');
     expect(seal.stance).toBe('lean in');
     expect([seal.windowLabel, seal.window]).toEqual(['Golden window', '06:08–10:38']);
@@ -44,15 +44,15 @@ describe('the Day Seal carries the verdict and nothing about the person (ASTRAL-
 
   it('a red day points at the next green one instead of a window', () => {
     const seal = daySeal({ ...VIEW, band: 'red', label: 'Red day',
-      line: 'a red day — go gentle: protect your energy.' }, '21 Sep 2026')!;
+      line: 'a red day — go gentle: protect your energy.' }, '21 Sep 2026', 'Brand')!;
     expect(seal.stance).toBe('go gentle');
     expect([seal.windowLabel, seal.window]).toEqual(['Next green day', 'Thu']);
   });
 
   it('no golden window and no green day ahead is simply absent, not invented', () => {
-    const seal = daySeal({ ...VIEW, golden: [], strip: VIEW.strip.slice(0, 2) }, 'x')!;
+    const seal = daySeal({ ...VIEW, golden: [], strip: VIEW.strip.slice(0, 2) }, 'x', 'Brand')!;
     expect([seal.windowLabel, seal.window]).toEqual([null, null]);
-    expect(sealMessage(seal)).toBe('Green day — lean in. What colour is your day? Astral AI');
+    expect(sealMessage(seal)).toBe('Green day — lean in. What colour is your day? Brand');
   });
 
   it('a line without the shape is kept whole, never paraphrased', () => {
@@ -60,6 +60,6 @@ describe('the Day Seal carries the verdict and nothing about the person (ASTRAL-
   });
 
   it('no day layer, no seal', () => {
-    expect(daySeal(null, 'x')).toBeNull();
+    expect(daySeal(null, 'x', 'Brand')).toBeNull();
   });
 });
