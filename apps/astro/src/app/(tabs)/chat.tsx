@@ -35,7 +35,7 @@
 
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { ActionSheetIOS, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -63,6 +63,8 @@ import type { PersonView } from '@/lib/people-shapes';
 import { chipLabel, subjectSheet, subjectStore, type ReadingSubject } from '@/lib/subject-view';
 import { fetchBalance } from '@/lib/credits';
 import { tokens } from '@/theme';
+import { fetchChatMessageCount } from '@/lib/chat-meta';
+import { chatNudge } from '@/lib/chat-nudge';
 
 /**
  * The board's three chips.
@@ -149,6 +151,28 @@ export default function Chat() {
     if (isOwnChat(subject.mode, true, handoff.standalone === '1')) rememberOwnChat(chatId);
     else void disownChat(chatId);
   }, [chatId, subject, handoff.standalone]);
+  // The long-chat nudge. Reads the bubbles on screen; the dismissal is per
+  // chat and resets when the chat changes.
+  const chatMessages = useChatStore((st) => (chatId ? st.chats[chatId]?.messages : undefined));
+  const [nudgeDismissedAt, setNudgeDismissedAt] = useState<number | null>(null);
+  useEffect(() => { setNudgeDismissedAt(null); }, [chatId]);
+  // The server's total at load + whatever this session added since.
+  const [countBase, setCountBase] = useState<{ total: number; loaded: number } | null>(null);
+  useEffect(() => {
+    setCountBase(null);
+    if (!chatId) return;
+    let live = true;
+    void fetchChatMessageCount(chatId).then((total) => {
+      if (!live || total === null) return;
+      setCountBase({ total, loaded: useChatStore.getState().chats[chatId]?.messages?.length ?? 0 });
+    });
+    return () => { live = false; };
+  }, [chatId]);
+  const nudge = useMemo(() => {
+    const inHand = chatMessages?.length ?? 0;
+    const total = countBase ? countBase.total + Math.max(0, inHand - countBase.loaded) : null;
+    return chatNudge(chatMessages ?? [], nudgeDismissedAt, total);
+  }, [chatMessages, nudgeDismissedAt, countBase]);
   const [people, setPeople] = useState<PersonView[]>([]);
   useEffect(() => {
     if (readingGated) return;
@@ -205,12 +229,15 @@ export default function Chat() {
   // lifecycle that made the first one. The old reading is not deleted — it
   // stays on the server (and in the account's history) — so the confirm
   // says "stays saved", never "will be lost".
+  // The fresh start itself, without a confirm — for the long-chat nudge, whose
+  // card has already said what happens ("this one stays saved").
+  const beginFresh = useCallback(() => {
+    if (busy) cancel();
+    forgetChat();
+    setChatId(null);
+  }, [busy, cancel]);
   const startFresh = useCallback(() => {
-    const begin = () => {
-      if (busy) cancel();
-      forgetChat();
-      setChatId(null);
-    };
+    const begin = beginFresh;
     Alert.alert(
       'Start a new reading?',
       'Your current reading stays saved. A fresh conversation begins.',
@@ -219,7 +246,7 @@ export default function Chat() {
         { text: 'Start new', onPress: begin },
       ],
     );
-  }, [busy, cancel]);
+  }, [beginFresh]);
 
   const openMenu = useCallback(() => {
     const settings = () => router.push('/settings');
@@ -405,8 +432,35 @@ export default function Chat() {
           )}
           dataLanguages={ASTRO_DATA_LANGUAGES}
           belowTranscript={
-            // docs/60 S3: composer-adjacent — in thumb reach, visible on
-            // every message. State made visible, not a new write path.
+            <>
+            {/* Owner 2026-09-18: past thirty messages — and said plainly when
+                the chat has mixed several topics — suggest a fresh reading.
+                One card, two honest buttons; "Keep going" buys twenty quiet
+                messages (lib/chat-nudge.ts decides, tested at the root). */}
+            {nudge && !busy ? (
+              <View style={s.nudge}>
+                <Text style={s.nudgeTitle}>{nudge.title}</Text>
+                <Text style={s.nudgeBody}>{nudge.body}</Text>
+                <View style={s.nudgeActions}>
+                  <Pressable
+                    style={s.nudgeYes}
+                    onPress={() => { track('chat_nudge', { answer: 'new', reason: nudge.reason, count: nudge.count }); beginFresh(); }}
+                    accessibilityRole="button"
+                  >
+                    <Text style={s.nudgeYesText}>Start a new reading</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => { track('chat_nudge', { answer: 'keep', reason: nudge.reason, count: nudge.count }); setNudgeDismissedAt(nudge.count); }}
+                    hitSlop={10}
+                    accessibilityRole="button"
+                  >
+                    <Text style={s.nudgeLater}>Keep going</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+            {/* docs/60 S3: composer-adjacent — in thumb reach, visible on
+                every message. State made visible, not a new write path. */}
             <View style={s.chipRow}>
               <Pressable
                 style={s.subjectChip}
@@ -429,6 +483,7 @@ export default function Chat() {
                 <Text style={s.newChipText}>+ New reading</Text>
               </Pressable>
             </View>
+            </>
           }
           fallbackSuggestions={FALLBACK_SUGGESTIONS}
           placeholder={`Message ${tokens.wordmark}...`}
@@ -476,6 +531,22 @@ const s = StyleSheet.create({
   headerSub: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted },
   emptyBody: { flex: 1, padding: t.space(4) },
   hint: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted, marginTop: t.space(2) },
+  nudge: {
+    marginHorizontal: t.space(4), marginBottom: t.space(2), padding: t.space(4), gap: t.space(2),
+    borderRadius: t.radius.card, borderWidth: StyleSheet.hairlineWidth,
+    // SOLID: it sits over the end of the transcript, and the translucent card
+    // colour let the last lines of the reading show through it.
+    borderColor: t.palette.accent.ceremonial, backgroundColor: t.palette.cosmic.raised,
+  },
+  nudgeTitle: { ...t.type.scale.label, color: t.palette.ink.onCosmic, fontWeight: '700' },
+  nudgeBody: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
+  nudgeActions: { flexDirection: 'row', alignItems: 'center', gap: t.space(5), marginTop: t.space(1) },
+  nudgeYes: {
+    backgroundColor: t.palette.accent.ceremonial, borderRadius: t.radius.button,
+    paddingVertical: t.space(2), paddingHorizontal: t.space(4),
+  },
+  nudgeYesText: { ...t.type.scale.sub, color: t.palette.accent.ceremonialInk, fontWeight: '700' },
+  nudgeLater: { ...t.type.scale.sub, color: t.palette.ink.onCosmicMuted },
   chipRow: {
     flexDirection: 'row', alignItems: 'center', gap: t.space(2),
     marginHorizontal: t.space(4), marginBottom: t.space(1.5),
