@@ -74,7 +74,7 @@ const PAGES = {
     <!-- A PHOTOGRAPH-LIKE TEXTURE, painted procedurally (value noise + soft
          blobs + a gradient). NOT a face, NOT a downloaded image, NOT a real
          person — and dense in edges, which is the property that makes it a
-         photograph to the segmentation (F310). The flat grey placeholder it
+         photograph to the segmentation (F314). The flat grey placeholder it
          replaces is why the photo case went unexercised for a whole phase. -->
     <canvas id="portrait" width="200" height="240" style="border:1px solid #333"></canvas>
     <table style="border-collapse:collapse;font-size:17px">
@@ -599,7 +599,7 @@ try {
     ((await cam.textContent('[data-testid="crop-clipping"]')) ?? '').trim() === '',
     'the default box does not cut through text, and the guard is silent',
   );
-  // F310 — the page now carries a PROCEDURAL photograph, and the default box
+  // F314 — the page now carries a PROCEDURAL photograph, and the default box
   // must be clear of it. The panel's own warning is the check: it fires for
   // any dense block inside the box, wherever the box is.
   const photoWarning = ((await cam.textContent('[data-testid="crop-photo-warning"]')) ?? '').trim();

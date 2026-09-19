@@ -76,7 +76,7 @@ export const CLIPPING_WARNING =
   'Text touches the edge of your box — widen it so nothing is cut off.';
 
 /**
- * The photo warning (F310).
+ * The photo warning (F314).
  *
  * "There MAY be" rather than "there is": what has been measured is that a
  * dense block sits inside the box, which a photograph always is and a dense
@@ -101,7 +101,7 @@ function profileOf(ctx: CanvasRenderingContext2D, width: number, height: number)
 }
 
 /**
- * The two-dimensional measurement (F310).
+ * The two-dimensional measurement (F314).
  *
  * One byte per pixel, built once when the capture opens and dropped with it.
  * It is what lets the box be measured INSIDE a rectangle — which is what
@@ -152,7 +152,7 @@ export function CropScreen({
    */
   const [profile, setProfile] = useState<InkProfile | null>(null);
   /**
-   * The edge mask and what the segmentation made of it (F310).
+   * The edge mask and what the segmentation made of it (F314).
    *
    * Counts, never pixels — it cannot reconstruct the capture — and it dies
    * with the component exactly like the bitmap does. `blocks` is what the
@@ -258,7 +258,7 @@ export function CropScreen({
   }, [mask, profile, rect]);
 
   /**
-   * IS THERE A PHOTOGRAPH IN THE BOX RIGHT NOW? (F310)
+   * IS THERE A PHOTOGRAPH IN THE BOX RIGHT NOW? (F314)
    *
    * Derived from `rect` on every change, exactly like the clipping guard, and
    * for the same reason: the default box is clear of the photograph, and the
@@ -385,7 +385,7 @@ export function CropScreen({
         </span>
       ) : null}
       <p style={prose}>
-        {/* TRUE FOR EVERY BOX POSITION (F310). The sentence this replaces
+        {/* TRUE FOR EVERY BOX POSITION (F314). The sentence this replaces
             promised that the photo and the contact details stay behind —
             which was false the moment the default box included them, and
             false again the moment the user drags the box anywhere. What is

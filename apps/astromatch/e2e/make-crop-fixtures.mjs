@@ -42,7 +42,7 @@ const FILES = [
 const EDGE_THRESHOLD = 60;
 
 /**
- * THREE SYNTHETIC LAYOUTS WITH A PHOTO-LIKE TEXTURE (F310).
+ * THREE SYNTHETIC LAYOUTS WITH A PHOTO-LIKE TEXTURE (F314).
  *
  * The seven layouts above use a FLAT GREY placeholder where a real page has a
  * photograph, which is why nothing exercised the case the whole two-

@@ -74,7 +74,7 @@ function installCanvas() {
     strokeStyle: '',
     lineWidth: 0,
     // A synthetic bitmap that looks like TEXT and not like a photograph
-    // (F310): four rows of sparse vertical strokes with line gaps between
+    // (F314): four rows of sparse vertical strokes with line gaps between
     // them. Density lands around 0.25 — comfortably below `SOLID_DENSITY`,
     // which is what makes the segmentation classify it `text` and open the
     // default box on it.
@@ -692,7 +692,7 @@ describe('"Adjust the region" goes back to the CAPTURE, not to the crop', () => 
   });
 });
 
-// ── F310 · the photograph warning, and copy that is true of every box ─────
+// ── F314 · the photograph warning, and copy that is true of every box ─────
 
 describe('the panel does not claim the photo stays out — it warns when it is in', () => {
   it('says what is actually true, for every box position', async () => {
@@ -775,7 +775,7 @@ describe('the photo warning fires on a box the user drags over the dense block',
   });
 });
 
-describe('the clipping guard is EXACT, not page-wide (F310)', () => {
+describe('the clipping guard is EXACT, not page-wide (F314)', () => {
   it('does not cry "text touches the edge" about ink somewhere else on the row', async () => {
     // The box sits between two text rows (y 194-219 is blank inside it), and
     // the dense block far to the right has ink on those same rows. The

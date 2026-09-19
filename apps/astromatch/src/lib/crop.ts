@@ -138,7 +138,7 @@ export function inkProfileFrom(
   return { width, height, rows, cols };
 }
 
-// ── F310 · the measurement becomes two-dimensional ────────────────────────
+// ── F314 · the measurement becomes two-dimensional ────────────────────────
 //
 // WHY THE ONE-DIMENSIONAL PROFILES ARE NOT ENOUGH, measured on the walk's own
 // page (`e2e-artifacts/13-crop.png`, before this): the default box spanned the
@@ -584,7 +584,7 @@ export function defaultCrop(profile: InkProfile): Rect {
 }
 
 /**
- * WHERE THE BOX OPENS, measured in two dimensions (F310).
+ * WHERE THE BOX OPENS, measured in two dimensions (F314).
  *
  * ── the order of priority, when one rectangle cannot have everything ──────
  *
@@ -903,7 +903,7 @@ export function solidInsideOf(blocks: Block[], rect: Rect): Block | null {
 }
 
 /**
- * Does the box's own boundary carry ink, measured INSIDE the box (F310)?
+ * Does the box's own boundary carry ink, measured INSIDE the box (F314)?
  *
  * The 1-D version could say "touching" for ink on the same row somewhere
  * else on the page — a false alarm its own comment documented. With the mask

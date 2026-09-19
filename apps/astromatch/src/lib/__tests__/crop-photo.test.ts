@@ -1,5 +1,5 @@
 /**
- * F310 — the default crop keeps the PHOTOGRAPH out, measured in two
+ * F314 — the default crop keeps the PHOTOGRAPH out, measured in two
  * dimensions and asserted against GROUND TRUTH.
  *
  * The seven layouts in `ink-profiles.json` use a flat grey placeholder where
