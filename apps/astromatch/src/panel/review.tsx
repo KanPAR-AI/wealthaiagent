@@ -369,7 +369,7 @@ function ProvenanceOrState({
         data-testid={`field-${fieldKey}-state`}
         style={{ fontSize: '12px', color: stateInk(candidate) }}
       >
-        {stateSentence(candidate)}
+        {stateSentence(candidate, source)}
       </span>
     );
   }

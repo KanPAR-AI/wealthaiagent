@@ -319,6 +319,33 @@ describe('(a) Add to my matches — the shipped save path (ASTRAL-334)', () => {
     expect(screen.queryByTestId('saved')).toBeNull();
   });
 
+  it('a save whose turn came back EMPTY is neither saved nor "nothing saved" (F385)', async () => {
+    // Found in PH-41's walk, under a backend that reloads mid-turn (F307):
+    // the panel set `saved` on ANY outcome, so it printed "Added to your
+    // matches" on the strength of a stream that produced nothing — while the
+    // worker, which releases its delete promise only when the turn returns,
+    // swept the chat under a card saying the reading had been kept.
+    //
+    // The engine writes the save BEFORE it narrates, so the honest state is
+    // "I couldn't tell", and the repeat is safe: `save_match` is idempotent
+    // on the pair.
+    await reachTheReading();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-match'));
+    });
+    port!.emit({
+      type: 'outcome',
+      outcome: { kind: 'empty', reason: 'The reading came back empty — nothing to show yet.' },
+    });
+    const problem = await screen.findByTestId('save-problem');
+    expect(problem.textContent).toContain("I couldn't tell whether that saved");
+    expect(problem.textContent).toContain('Open your matches');
+    expect(problem.textContent).toContain('cannot save them twice');
+    // …and neither of the two claims it must not make
+    expect(problem.textContent).not.toContain('Nothing was saved');
+    expect(screen.queryByTestId('saved')).toBeNull();
+  });
+
   it('says a save is IN FLIGHT rather than looking untouched', async () => {
     await reachTheReading();
     await act(async () => {

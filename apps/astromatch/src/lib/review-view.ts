@@ -322,11 +322,18 @@ export function basisFor(candidate: Candidate): string | null {
  *  A `missing` field that carries the ENGINE's own `note` says that instead:
  *  "not there — please add it" about a value the user can see on their own
  *  screenshot reads as the panel not having looked (§4's widening). */
-export function stateSentence(candidate: Candidate): string {
+export function stateSentence(candidate: Candidate,
+                              source: CaptureSource = 'paste'): string {
   if (candidate.state === 'missing' && candidate.note) return candidate.note;
   switch (candidate.state) {
     case 'stated':
-      return 'read from what you gave me';
+      // PH-41, the selection path: the user did not GIVE this text, they
+      // highlighted it on somebody else's page. The distinction matters on
+      // exactly the screen where they are being asked whether a machine read
+      // it correctly. Everything else about the path is the paste path's.
+      return source === 'selection'
+        ? 'read from what you selected on the page'
+        : 'read from what you gave me';
     case 'inferred':
       return 'I worked this one out — check it';
     case 'missing':
@@ -434,8 +441,19 @@ export function provenanceLine(
   source: CaptureSource,
   candidate: Candidate,
 ): Provenance | null {
-  if (source !== 'snapshot' && source !== 'selection') return null;
-  const where = source === 'snapshot' ? 'your snapshot' : 'what you selected';
+  // THE IMAGE PATH ONLY, and PH-41 narrowed it (finding F380).
+  //
+  // This function was written for `snapshot` and `selection` together, before
+  // the selection path existed. It turns out they are not the same kind of
+  // path at all: a selection is TEXT, parsed locally by `parse-profile.ts`,
+  // which knows the exact LINE each value came from — and this sentence
+  // SUPPRESSES that line (`review.tsx` draws one or the other). So the
+  // selection path would have traded "read from: Date of Birth: 14 May 1994"
+  // — the evidence a page about a whole family makes a user want — for a
+  // confidence band over a constant the parser wrote. The selection path is
+  // the paste path's, and it says so through `stateSentence`.
+  if (source !== 'snapshot') return null;
+  const where = 'your snapshot';
   if (candidate.state === 'missing') {
     // `stateSentence` prefers the engine's own note when it sent one.
     return { text: stateSentence(candidate), tone: 'pending', confidence: null };

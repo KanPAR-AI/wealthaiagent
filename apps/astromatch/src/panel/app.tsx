@@ -36,14 +36,22 @@ import { RESETS_ON_HEADER } from '../lib/errors';
 import { DOOR_LABELS, readExtractResponse, type ExtractFailure } from '../lib/extract';
 import type { MatchEvent } from '../lib/messages';
 import { parseProfileText } from '../lib/parse-profile';
+import {
+  SELECTION_EMPTY_NOTE,
+  selectionInstructionFor,
+  type SelectionInstruction,
+} from '../lib/selection';
 import { TRUNCATED_NOTE, readTurn, type TurnOutcome } from '../lib/transport';
 import { needsDelete, retentionNotice, type DeleteOutcome } from '../lib/retention-view';
 import {
   authState,
+  collectPendingSelection,
   deleteReading,
   extractProfile,
   onCaptureDelivered,
+  onSelectionDelivered,
   requestCapture,
+  requestSelection,
   sendCode,
   signOut,
   startMatch,
@@ -51,7 +59,10 @@ import {
   verifyCode,
   type MatchRun,
 } from './bridge';
+import type { ComparePick } from '../lib/compare-view';
+import type { MatchChatBasis, MatchChatHandoff } from '../lib/match-chat';
 import { ChipRow, type ChipAnswerState } from './chips';
+import { Compare, MatchChat, Shortlist } from './matches';
 import { CropScreen } from './crop';
 import { Heading, ReviewScreen, ghostButton, primaryButton } from './review';
 
@@ -79,6 +90,46 @@ type Screen =
   | { name: 'capture-blocked'; instruction: Instruction }
   /** the extractor refused, capped, or could not be reached (ASTRAL-333) */
   | { name: 'capture-failed'; outcome: ExtractFailure }
+  /**
+   * Chrome would not let us read the selection (ASTRAL-338, F159's branch).
+   *
+   * The camera's twin state with the SELECTION gestures named — a shortcut
+   * that captures a picture is the wrong door to send somebody through when
+   * what they wanted was the three lines they highlighted.
+   */
+  | { name: 'selection-blocked'; instruction: SelectionInstruction }
+  /**
+   * The read worked and there was nothing selected (ASTRAL-338).
+   *
+   * A STATED state. Four blank rows on the review screen would look like the
+   * page had been read and found wanting, which is the opposite of what
+   * happened.
+   */
+  | { name: 'selection-empty' }
+  /**
+   * The saved matches, in the engine's three labelled groups (ASTRAL-339).
+   *
+   * A VIEW: the panel holds no copy of them, so leaving and coming back is a
+   * fresh read rather than a cache that quietly disagrees with the app.
+   */
+  | { name: 'shortlist' }
+  /** up to five stored reads, side by side, in the order they were picked */
+  | { name: 'compare'; picks: ComparePick[] }
+  /**
+   * The conversation about ONE saved match, carrying ids (ASTRAL-341).
+   *
+   * `basis` and `fresh` come from the ROW the user tapped: the chat may only
+   * promise "answers from the stored scorecard" where the engine's own
+   * rehydration precondition holds (FLAG-1). They are screen state, NOT part
+   * of the handoff — nothing extra crosses the worker's door.
+   */
+  | {
+      name: 'match-chat';
+      handoff: MatchChatHandoff;
+      who: string;
+      basis: MatchChatBasis;
+      fresh: boolean;
+    }
   | { name: 'review'; parsed: ParsedProfile; source: CaptureSource }
   | { name: 'running'; text: string }
   | { name: 'reading'; outcome: TurnOutcome }
@@ -167,6 +218,27 @@ export function App() {
         return;
       }
       if (sideRun.id === 'save') {
+        // F385 — "Added to your matches" is a claim about a turn that CAME
+        // BACK. An empty turn (the stream died; the local backend reloads
+        // under another agent's edits, and a phone loses its network) used to
+        // set it anyway, so the panel told the user their match was saved on
+        // the strength of nothing at all — and the worker, which keeps the
+        // delete promise until the turn returns, then swept the chat under a
+        // card saying it had been kept.
+        //
+        // The engine's save is idempotent on the pair, so the honest
+        // uncertain state costs at most one repeated tap.
+        if (event.outcome.kind === 'empty') {
+          setSide({
+            ...sideRun,
+            text: '',
+            streaming: false,
+            truncated: false,
+            uncertain: true,
+            error: event.outcome.reason,
+          });
+          return;
+        }
         setSaved(true);
         savedRef.current = true;
       }
@@ -325,6 +397,69 @@ export function App() {
         // Named. A capture the user made with a shortcut, lost silently, is
         // a keypress that did nothing.
         console.warn('[astromatch] could not collect a pending capture', e);
+      });
+  }, []);
+
+  // ── the selection read (docs/73 ASTRAL-338) ─────────────────────────────
+
+  /**
+   * Text the user highlighted, arriving from the worker.
+   *
+   * It goes through the SAME local parser the paste path uses and onto the
+   * same review screen. Nothing is sent: the text never leaves this panel,
+   * and the only thing that ever reaches the engine is the object the user
+   * confirms on the next screen.
+   */
+  const takeSelection = useCallback((text: string) => {
+    setInterrupted(
+      runRef.current && !savedRef.current
+        ? 'The reading you had open was not saved, so it has been closed and deleted.'
+        : '',
+    );
+    setCapture(null);
+    setScreen({ name: 'review', parsed: parseProfileText(text, 'selection'), source: 'selection' });
+  }, []);
+
+  const askForSelection = useCallback(async () => {
+    setSweepNotice('');
+    try {
+      const reply = await requestSelection();
+      if (reply.outcome.kind === 'selected') {
+        takeSelection(reply.outcome.text);
+        return;
+      }
+      if (reply.outcome.kind === 'empty') {
+        setScreen({ name: 'selection-empty' });
+        return;
+      }
+      if (reply.outcome.kind === 'needs-gesture') {
+        setScreen({
+          name: 'selection-blocked',
+          instruction: selectionInstructionFor(reply.shortcut),
+        });
+        return;
+      }
+      setScreen({ name: 'failed', error: reply.outcome.reason });
+    } catch (error) {
+      setScreen({
+        name: 'failed',
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }, [takeSelection]);
+
+  /** The two gesture doors, exactly as the camera has them. */
+  useEffect(() => onSelectionDelivered((event) => takeSelection(event.text)), [takeSelection]);
+
+  useEffect(() => {
+    void collectPendingSelection()
+      .then((pending) => {
+        if (pending?.text) takeSelection(pending.text);
+      })
+      .catch((e: unknown) => {
+        // Named. A selection the user made with a shortcut, lost silently, is
+        // a keypress that did nothing.
+        console.warn('[astromatch] could not collect a pending selection', e);
       });
   }, []);
 
@@ -502,6 +637,11 @@ export function App() {
               : sweptNotice || undefined
           }
           onSnapshot={() => void askForCapture()}
+          onSelection={() => void askForSelection()}
+          onShortlist={() => {
+            setSweepNotice('');
+            setScreen({ name: 'shortlist' });
+          }}
           onManual={() => {
             setSweepNotice('');
             setDeletion({ kind: 'pending' });
@@ -553,6 +693,44 @@ export function App() {
           </button>
         </Padded>
       ) : null}
+      {screen.name === 'selection-blocked' ? (
+        <Padded>
+          <Heading>{screen.instruction.headline}</Heading>
+          <p style={prose}>
+            Chrome only lets an extension read a page when you point at it — so
+            the button in here cannot reach your selection on its own.
+          </p>
+          <ul data-testid="selection-instruction" style={{ ...prose, paddingLeft: '18px' }}>
+            {screen.instruction.steps.map((step) => (
+              <li key={step} style={{ marginBottom: '6px' }}>
+                {step}
+              </li>
+            ))}
+          </ul>
+          <button type="button" style={ghostButton} onClick={() => setScreen({ name: 'choose' })}>
+            Back
+          </button>
+        </Padded>
+      ) : null}
+      {screen.name === 'selection-empty' ? (
+        <Padded>
+          <Heading>I couldn't see anything selected</Heading>
+          <p style={prose} data-testid="selection-empty">
+            {SELECTION_EMPTY_NOTE}
+          </p>
+          <button
+            type="button"
+            style={primaryButton}
+            data-testid="selection-retry"
+            onClick={() => void askForSelection()}
+          >
+            Read my selection
+          </button>
+          <button type="button" style={ghostButton} onClick={() => setScreen({ name: 'choose' })}>
+            Back
+          </button>
+        </Padded>
+      ) : null}
       {screen.name === 'capture-failed' ? (
         <Padded>
           <Heading>{CAPTURE_FAILURE_HEADINGS[screen.outcome.kind]}</Heading>
@@ -591,6 +769,42 @@ export function App() {
           source={screen.source}
           onConfirmed={begin}
           onBack={() => setScreen({ name: 'choose' })}
+        />
+      ) : null}
+      {screen.name === 'shortlist' && capabilities.shortlist ? (
+        <Shortlist
+          onBack={() => setScreen({ name: 'choose' })}
+          onCompare={(picks) => setScreen({ name: 'compare', picks })}
+          onAsk={(handoff, who, basis, fresh) =>
+            setScreen({ name: 'match-chat', handoff, who, basis, fresh })
+          }
+          onSignedOut={(note) => {
+            setAccount(null);
+            setScreen({ name: 'signed-out', notice: note });
+          }}
+        />
+      ) : null}
+      {screen.name === 'compare' && capabilities.compare ? (
+        <Compare
+          picks={screen.picks}
+          onBack={() => setScreen({ name: 'shortlist' })}
+          onSignedOut={(note) => {
+            setAccount(null);
+            setScreen({ name: 'signed-out', notice: note });
+          }}
+        />
+      ) : null}
+      {screen.name === 'match-chat' && capabilities.matchChat ? (
+        <MatchChat
+          handoff={screen.handoff}
+          name={screen.who}
+          basis={screen.basis}
+          wasFresh={screen.fresh}
+          onBack={() => setScreen({ name: 'shortlist' })}
+          onSignedOut={(note) => {
+            setAccount(null);
+            setScreen({ name: 'signed-out', notice: note });
+          }}
         />
       ) : null}
       {screen.name === 'running' ? <Running text={screen.text} /> : null}
@@ -745,11 +959,15 @@ function Choose({
   onManual,
   onPaste,
   onSnapshot,
+  onSelection,
+  onShortlist,
   notice,
 }: {
   onManual: () => void;
   onPaste: () => void;
   onSnapshot: () => void;
+  onSelection: () => void;
+  onShortlist: () => void;
   notice?: string;
 }) {
   return (
@@ -772,8 +990,19 @@ function Choose({
       {capabilities.snapshot ? (
         <p style={{ ...prose, fontSize: '12px' }}>
           I take a picture of what is on screen, you draw a box around the birth
-          details, and only that box is sent to be read. I never read the page
-          itself.
+          details, and only that box is sent to be read. The camera reads none of
+          the page's own text.
+        </p>
+      ) : null}
+      {capabilities.readSelection ? (
+        <button type="button" style={ghostButton} data-testid="selection" onClick={onSelection}>
+          Read what I've selected
+        </button>
+      ) : null}
+      {capabilities.readSelection ? (
+        <p style={{ ...prose, fontSize: '12px' }}>
+          Highlight their birth details on the page first. I read only the text
+          you highlighted, here in this panel — it is not sent anywhere.
         </p>
       ) : null}
       {capabilities.manualEntry ? (
@@ -786,9 +1015,14 @@ function Choose({
           Paste their biodata
         </button>
       ) : null}
-      {/* The SELECTION read, the shortlist and the compare view are ABSENT,
-          not disabled: a capability marked false removes its control
-          (doctrine 8). Nothing here promises them. */}
+      {capabilities.shortlist ? (
+        <button type="button" style={ghostButton} data-testid="shortlist-open" onClick={onShortlist}>
+          My matches
+        </button>
+      ) : null}
+      {/* Every control on this screen is behind its capability, and a
+          capability marked false REMOVES its control rather than greying it
+          (doctrine 8). Nothing here promises anything this build cannot do. */}
     </Padded>
   );
 }
@@ -1175,6 +1409,24 @@ function TwoOutcomes({
 
 /** The save is still running, or it failed. Either way it is on screen. */
 function SaveProblem({ note }: { note: ChipAnswerState }) {
+  /**
+   * THREE STATES, and the third one is F385.
+   *
+   * "Nothing was saved" is the FAILED sentence and it is a claim about the
+   * engine: the save is written before the turn narrates, so a turn that came
+   * back empty means the write may well have landed. Saying either "saved" or
+   * "nothing was saved" there would be a guess about somebody's data.
+   */
+  const heading = note.uncertain
+    ? "I couldn't tell whether that saved."
+    : note.error
+      ? "I couldn't add them to your matches."
+      : 'Adding them to your matches…';
+  const detail = note.uncertain
+    ? `${note.error ?? ''} Open your matches in the Astral app to check — or press it again, which cannot save them twice.`
+    : note.error
+      ? `${note.error} Nothing was saved. Try again, or read the match afresh.`
+      : '';
   return (
     <div
       data-testid="save-problem"
@@ -1188,11 +1440,11 @@ function SaveProblem({ note }: { note: ChipAnswerState }) {
       }}
     >
       <span style={{ fontSize: '13px', fontWeight: 600, color: note.error ? theme.warn : theme.text }}>
-        {note.error ? "I couldn't add them to your matches." : 'Adding them to your matches…'}
+        {heading}
       </span>
-      {note.error ? (
+      {detail ? (
         <span style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.45 }}>
-          {`${note.error} Nothing was saved. Try again, or read the match afresh.`}
+          {detail.trim()}
         </span>
       ) : null}
     </div>

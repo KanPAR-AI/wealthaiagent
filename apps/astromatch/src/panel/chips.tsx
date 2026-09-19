@@ -34,6 +34,15 @@ export interface ChipAnswerState {
   /** the stream died after bytes had arrived */
   truncated: boolean;
   error?: string;
+  /**
+   * F385 — the SAVE whose turn came back empty.
+   *
+   * Not a failure and not a success: the engine's save is written before it
+   * narrates, so an empty turn means "we cannot tell". The card must not say
+   * "Nothing was saved", which is the failed-save sentence and would be a
+   * claim about a write nobody observed.
+   */
+  uncertain?: boolean;
 }
 
 export function ChipRow({

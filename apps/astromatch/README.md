@@ -1,12 +1,16 @@
 # AstroMatch — the Chrome side panel (`apps/astromatch`)
 
 The MV3 extension from [`docs/73`](../../../docs/73-astromatch-extension-spec.md).
-**PH-39 (the shell) + PH-40 (the snapshot)**: sign in, **read the page with the
-camera** or type or paste the other person's details, review what was read,
-get the Kundli Milan scorecard the engine computed, and then either add the
-person to your matches or take the reading and keep nothing. The selection
-read, the shortlist and the compare view (PH-41) are **absent, not disabled**
-— see `src/lib/capabilities.ts`, where every `false` carries its reason.
+**PH-39 (the shell) + PH-40 (the snapshot) + PH-41 (selection, the shortlist,
+compare, one chat per match)**: sign in, **read the page with the camera**, read
+**what you have selected** on it, or type or paste the other person's details;
+review what was read; get the Kundli Milan scorecard the engine computed; then
+either add the person to your matches or take the reading and keep nothing. Your
+saved matches are here too — the engine's three labelled groups, up to five of
+them side by side, and one conversation per match.
+
+`src/lib/capabilities.ts` is still the law, and as of PH-41 it carries no
+`false` at all: every control on the screen does something.
 
 ## The camera, and what Chrome will and will not allow (F159)
 
@@ -90,6 +94,17 @@ downloaded image, not a real person) and records each layout's OWN rectangles,
 so the photo-exclusion assertions run against ground truth rather than against
 the algorithm.
 
+The PH-41 fixtures — `matches-groups.json` and `match-details.json` — are
+**what the real routes returned**: `GET /people/matches` and
+`GET /people/matches/{pair_key}` on the local engine, captured by
+`e2e/capture-matches.mjs`. Two of the five rows were minted by the extension
+itself (a timed reading and a time-less one, both deleted afterwards); the
+REFUSED row could not be — `graph._persist_saved_match` returns early with no
+scorecard on the envelope and says in its own comment that promoting one would
+mean inventing it — so it was seeded through the store's own writer
+(`e2e/seed-refused-match.py`, with the engine's own refusal text) and then
+served by the real route. Nothing in either file is hand-written.
+
 Fixtures under `src/lib/__tests__/fixtures/` are **captured from the running
 engine** — three SSE streams (including the time-less firm-only reading the
 camera actually produces), two `resolve-location` responses, and one live
@@ -113,6 +128,18 @@ src/lib/        the decisions — pure, no React, no chrome.*, tested at the roo
   parse-profile.ts the local biodata parser — offline, output never sent
   capture.ts      the camera's decisions: the three gestures, the refusal,
                   the instruction, the one-capture hand-off slot
+  selection.ts    "read my selection": the THREE-LINE function that is
+                  injected into the page, the states it can produce (including
+                  "nothing was selected"), its own gesture instruction and its
+                  own one-selection hand-off slot
+  shortlist-view.ts the three labelled groups, as the engine sent them — no
+                  sort, no ordinal, no second store
+  compare-view.ts up to five stored reads side by side: the picker's bound,
+                  the columns built from @wealthai/astral's own view models,
+                  the time-dependent marks, and NO rank of any kind
+  match-chat.ts   one chat per saved match: what the handoff may carry (ids
+                  and the opener, never a birth value — refused at the
+                  worker's door) and which chat a match's conversation is in
   crop.ts         the crop geometry — the edge mask, the block segmentation
                   (text / photograph / rule), where the box OPENS (never the
                   page, never the photo), the keyboard moves, the size bound,
@@ -130,6 +157,7 @@ src/sw.ts       the service worker — the ONLY thing with network (F154), and
 src/panel/      React. bridge.ts is the only file that touches chrome.*
   crop.tsx        the crop tool and the consent line
   chips.tsx       the chips and their answers
+  matches.tsx     the shortlist, the compare view and the per-match chat
 ```
 
 An **unsaved reading is deleted**, four ways: *Read another match*, sign out,
@@ -145,7 +173,7 @@ purge whose TTL is 24 hours — and the sentences may claim nothing beyond the
 chat. (The engine side of that contract is pinned by
 `chatservice/tests/test_chat_delete_contract.py`.)
 
-Six rules, enforced by tests rather than by convention:
+Eight rules, enforced by tests rather than by convention:
 
 1. **The client derives nothing.** No percentage, no band, no `/36` on a
    firm-only match, no ranking. The scorecard is `@wealthai/astral`'s,
@@ -168,7 +196,18 @@ Six rules, enforced by tests rather than by convention:
    bytes pass through, and `outcomes.test.tsx` scans the whole storage area
    for a fixture birth value rather than checking a list of keys. The
    UNCROPPED capture is never transmitted; only the rectangle the user drew.
-6. **Nothing durable is written unless the user says so.** "Instant reading"
+6. **The page is never read except where the user pointed.** There is no
+   `content_scripts` key. The only thing that ever runs in a page is
+   `readSelectionInPage` — three lines, on the user's gesture, returning
+   `window.getSelection().toString()` and keeping nothing. No hostname and no
+   CSS selector exists anywhere in the source OR in the built bundle;
+   `no-site-adapters.test.ts` greps both.
+7. **The shortlist and compare compute nothing.** The three groups arrive
+   labelled, with the sort rule the ENGINE applied, and are drawn in that
+   order. Five columns are five stored reads. There is no rank, no winner, no
+   composite and no percentage: a `/36` and a firm-only `/15` are not on one
+   scale, and the screen says so above the numbers.
+8. **Nothing durable is written unless the user says so.** "Instant reading"
    sends no message at all (F149), and the chat it created is deleted when
    the user leaves. "Add to my matches" answers the engine's own save offer
    on the one carrier, with `capture_source` so a fact accepted unchanged
@@ -183,19 +222,43 @@ backend. **It is run by hand and it creates real data** — read the ⚠ above.
 npm run build:dev && node e2e/walk.mjs     # HEADED=1 to watch it
 CAPTURE_BUDGET=4 node e2e/walk.mjs         # …including the four LIVE capture legs
 node e2e/save-walk.mjs                     # outcome (a), on the FREE path
+node e2e/ph41-walk.mjs                     # PH-41's legs ALONE — the same code
+node e2e/capture-matches.mjs               # re-capture the PH-41 match fixtures
 node e2e/spike-f159.mjs                    # the activeTab probe, no backend needed
 node e2e/measure-encoding.mjs              # PNG vs JPEG, live — SPENDS captures
 node e2e/capture-stream.mjs                # re-capture a match_report fixture
 node e2e/make-crop-fixtures.mjs            # re-measure the ink profiles
 ```
 
+`e2e/legs-ph41.mjs` holds the PH-41 legs and BOTH walks import it, so there is
+one implementation. Reach for `ph41-walk.mjs` when the local backend is
+reloading under another agent's edits (F307): the full walk spends two streamed
+readings before PH-41 is reached and a reload kills them.
+
 **The one substitution, stated.** Legs 14-24 inject a real screenshot of a
 locally-served SYNTHETIC page through the same `capture/delivered` broadcast a
 keyboard gesture uses, because `captureVisibleTab` cannot be reached from
-automation at all (see the table above). Everything downstream of it — the
-crop, the consent, the live extractor, the review, the scorecard, the chips,
-the save, the delete — is real. **No matrimonial site is ever visited,
+automation at all (see the table above). Legs 25-31 (PH-41) make the same
+substitution for the SELECTION read, for the same measured reason —
+`chrome.scripting.executeScript` needs the same `activeTab` grant — so leg 25
+probes the refusal for real and leg 26 delivers a selection read from the
+synthetic page through the `selection/delivered` broadcast. Everything
+downstream of both — the crop, the consent, the live extractor, the parser, the
+review, the scorecard, the chips, the save, the shortlist, compare, the
+per-match chat, the delete — is real. **No matrimonial site is ever visited,
 screenshotted or committed.**
+
+Legs 27-31 need saved matches. The walk mints (and deletes) a time-less one so
+the firm-only group has a row; a REFUSED row cannot be minted from the product
+at all — `_persist_saved_match` returns early with no scorecard on the envelope
+and says so in its own comment — so it is seeded through the store's own writer:
+
+```bash
+docker exec -i yourfinadvisor_api sh -c 'cd /app && python - seed' < e2e/seed-refused-match.py
+docker exec -i yourfinadvisor_api sh -c 'cd /app && python - delete' < e2e/seed-refused-match.py
+```
+
+Without it the refused checks SKIP and say why.
 
 The walk declares how many live captures it may spend — `CAPTURE_BUDGET`,
 **0 by default**. Legs beyond the budget skip and print why. Discovering the

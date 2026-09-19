@@ -13,6 +13,8 @@
 
 import type { PendingCapture } from '../lib/capture';
 import type { ConfirmedProfile } from '../lib/confirmed';
+import type { MatchChatHandoff } from '../lib/match-chat';
+import type { PendingSelection } from '../lib/selection';
 import {
   MATCH_PORT,
   requestMatch,
@@ -20,6 +22,8 @@ import {
   type CaptureReply,
   type MatchEvent,
   type PanelRequest,
+  type SelectionDelivered,
+  type SelectionReply,
 } from '../lib/messages';
 
 async function ask<T>(request: PanelRequest): Promise<T> {
@@ -116,12 +120,85 @@ export function onCaptureDelivered(handler: (event: CaptureDelivered) => void): 
   return () => chrome.runtime.onMessage.removeListener(listener);
 }
 
+// ── the selection read (docs/73 ASTRAL-338) ────────────────────────────────
+
+/**
+ * Ask the worker to read what the user has selected on the page.
+ *
+ * A STATE comes back, never text-or-throw: `needs-gesture` when Chrome has
+ * granted no page access, `empty` when nothing is selected. Both are
+ * sentences on screen; neither is a button that did nothing.
+ */
+export const requestSelection = () => ask<SelectionReply>({ type: 'selection/request' });
+
+/** Collect a selection a gesture produced while this panel was closed. */
+export const collectPendingSelection = () =>
+  ask<PendingSelection | null>({ type: 'selection/pending' });
+
+/** A selection the worker pushed here, from a keyboard or menu gesture. */
+export function onSelectionDelivered(handler: (event: SelectionDelivered) => void): () => void {
+  const listener = (
+    message: { type?: string; text?: string; gesture?: string },
+    sender: chrome.runtime.MessageSender,
+  ) => {
+    // Only ours — the same door check the capture listener makes, for the
+    // same reason: `chrome.runtime.onMessage` is reachable from any
+    // extension that knows this one's id.
+    if (sender.id !== chrome.runtime.id) return;
+    if (message?.type !== 'selection/delivered' || typeof message.text !== 'string') return;
+    handler(message as SelectionDelivered);
+  };
+  chrome.runtime.onMessage.addListener(listener);
+  return () => chrome.runtime.onMessage.removeListener(listener);
+}
+
+// ── the shortlist, the compare read, the star (ASTRAL-339/340) ─────────────
+
+/** `GET /people/matches` — the three labelled groups, as the engine sent them. */
+export const listMatches = () => ask<Reply>({ type: 'matches/list' });
+
+/** `GET /people/matches/{pair_key}` — one stored scorecard. A read. */
+export const matchDetail = (pairKey: string) => ask<Reply>({ type: 'matches/detail', pairKey });
+
+/** The shipped label patch. A favourite is a label; no birth fact travels. */
+export const starPerson = (personId: string, favourite: boolean) =>
+  ask<Reply>({ type: 'person/star', personId, favourite });
+
 /** What the user has agreed to, kept locally for them to read (ASTRAL-332). */
 export const consentLog = () =>
   ask<Array<{ version: number; text: string; at: string }>>({ type: 'consent/log' });
 
 export const suggestPlaces = (query: string) => ask<Reply>({ type: 'place/suggest', query });
 export const resolvePlace = (place: string) => ask<Reply>({ type: 'place/resolve', place });
+
+/**
+ * The conversation about ONE SAVED match (docs/73 ASTRAL-341).
+ *
+ * The handoff carries ids, the opener and the title — and the worker parses
+ * it again at its own door, refusing anything that is not in that shape. No
+ * birth value crosses this function: the facts are on the People store and
+ * the engine reads them there.
+ */
+export function askAboutMatch(
+  handoff: MatchChatHandoff,
+  onEvent: (event: MatchEvent) => void,
+): MatchRun {
+  const port = chrome.runtime.connect({ name: MATCH_PORT });
+  let chatId: string | null = null;
+  port.onMessage.addListener((event: MatchEvent | { type: 'chat'; chatId: string }) => {
+    if (event.type === 'chat') {
+      chatId = event.chatId;
+      return;
+    }
+    onEvent(event);
+  });
+  port.postMessage({ type: 'match/ask', handoff });
+  return {
+    chatId: () => chatId,
+    answer: (text: string) => port.postMessage({ type: 'match/say', chatId, text }),
+    close: () => port.disconnect(),
+  };
+}
 
 export interface MatchRun {
   /** the chat this run is happening in, once the worker has created it */

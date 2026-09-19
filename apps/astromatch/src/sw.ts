@@ -43,22 +43,53 @@ import {
   appendConsentLog,
   extractRequestBody,
 } from './lib/consent';
-import { CAPTURE_COMMAND } from './lib/manifest';
+import { CAPTURE_COMMAND, SELECTION_COMMAND } from './lib/manifest';
 import {
   MATCH_PORT,
   type CaptureReply,
   type MatchEvent,
   type PanelRequest,
+  type SelectionReply,
 } from './lib/messages';
 import {
+  SELECTION_MENU_ID,
+  SELECTION_MENU_TITLE,
+  classifySelection,
+  classifySelectionError,
+  readSelectionInPage,
+  takePendingSelection,
+  selectionIsFresh,
+  type PendingSelection,
+  type SelectionOutcome,
+} from './lib/selection';
+import {
+  HANDOFF_REFUSED_NOTE,
+  MATCH_CHATS_KEY,
+  forgetLink,
+  linkFor,
+  loadLinks,
+  parseMatchChatHandoff,
+  rememberLink,
+} from './lib/match-chat';
+import {
+  claimKept,
   clearPending,
   notePending,
+  owedNow,
+  readPending,
+  releaseKept,
   sweepNotice,
   sweepPending,
   type KeyValueStore,
 } from './lib/pending-deletes';
 import { BUILD_MODE } from './lib/runtime';
-import { answerAsk, openMatchChat, planAnswer, runTurn } from './lib/transport';
+import {
+  answerAsk,
+  openChatWith,
+  openMatchChat,
+  planAnswer,
+  runTurn,
+} from './lib/transport';
 
 // ── the session, in memory-backed session storage ──────────────────────────
 //
@@ -183,6 +214,13 @@ async function handle(message: PanelRequest): Promise<unknown> {
     }
     case 'auth/sign-out':
       await saveSession(null);
+      // FLAG-8 — the match-chat links go too, and for `saveSession(null)`'s
+      // own reason: they are this ACCOUNT's chat ids, and signing out on a
+      // shared machine must not leave the next person's panel holding a map
+      // into somebody else's conversations. (The pending DELETES stay: they
+      // are a promise about chats that still exist, and the next sign-in is
+      // what can keep it.)
+      await pendingStore.set({ [MATCH_CHATS_KEY]: [] });
       return { signedIn: false };
     case 'place/suggest':
       return get(`/people/self/places?q=${encodeURIComponent(message.query)}`);
@@ -220,6 +258,32 @@ async function handle(message: PanelRequest): Promise<unknown> {
       await recordConsent();
       return post('/astrology/extract-profile', extractRequestBody(message.image));
     }
+    case 'selection/request':
+      // The PANEL BUTTON, asking. Same shape as the camera's ask and for the
+      // same measured reason (F159): a worker holding an `activeTab` grant
+      // reads the selection; one that does not answers `needs-gesture` and
+      // the panel prints the two gestures that grant one.
+      return selectionReply(await readSelection('panel-button'));
+    case 'selection/pending': {
+      // Text a GESTURE produced before this panel existed. Handed over ONCE.
+      const { taken, slot } = takePendingSelection(pendingSelection, Date.now());
+      pendingSelection = slot;
+      return taken;
+    }
+    case 'matches/list':
+      // ASTRAL-339: the shortlist is a VIEW of the People store. Served as
+      // sent — three labelled groups with their own printed sort rules — and
+      // nothing is cached, ordered or re-grouped on the way through.
+      return get('/people/matches');
+    case 'matches/detail':
+      // ASTRAL-340: one stored scorecard, read. Reads recompute nothing.
+      return get(`/people/matches/${encodeURIComponent(message.pairKey)}`);
+    case 'person/star':
+      // ASTRAL-339: favourite rides the SHIPPED label patch. A label is not a
+      // birth fact and this route takes none (INV-1, `test_people_api.py`).
+      return patch(`/people/${encodeURIComponent(message.personId)}`, {
+        favourite: message.favourite,
+      });
     case 'consent/log':
       return (await pendingStore.get(CONSENT_LOG_KEY))[CONSENT_LOG_KEY] ?? [];
     case 'match/start':
@@ -295,15 +359,57 @@ async function removeChat(chatId: string): Promise<boolean> {
  */
 let lastSweepNotice = '';
 
+/**
+ * Did a match get stored on this account AFTER a claim was made?
+ *
+ * The question a stale `kept-claimed` record is resolved with (item 6, second
+ * residual). It is the shipped list read and nothing else — no new route, no
+ * new engine work — and it answers in three ways, which is why the return
+ * type has a `null`: a question that could not be asked is not a "no", and a
+ * chat is never deleted on one.
+ *
+ * `computed_at` is the engine's own stamp on the stored match. A save that
+ * landed writes one after the claim was made; a save that never happened
+ * leaves the newest stamp where it was.
+ */
+async function savedSince(noticedAt: number): Promise<boolean | null> {
+  try {
+    const reply = await get('/people/matches');
+    if (reply.status !== 200 || !reply.body || typeof reply.body !== 'object') return null;
+    const groups = (reply.body as { groups?: Array<{ rows?: Array<{ computed_at?: string }> }> })
+      .groups;
+    if (!Array.isArray(groups)) return null;
+    for (const group of groups) {
+      for (const row of group.rows ?? []) {
+        const at = Date.parse(String(row.computed_at ?? ''));
+        if (Number.isFinite(at) && at >= noticedAt) return true;
+      }
+    }
+    return false;
+  } catch (e: unknown) {
+    // NOT a "no". The claim is kept and the question asked again next time.
+    console.warn('[astromatch] could not ask whether a claimed save landed', e);
+    return null;
+  }
+}
+
 async function sweep(): Promise<void> {
   if (!(await currentToken())) return; // nothing to delete with; try again later
-  const result = await sweepPending(pendingStore, removeChat, openChats);
+  const result = await sweepPending(pendingStore, removeChat, {
+    inUse: openChats,
+    savedSince,
+  });
   const notice = sweepNotice(result);
   if (notice) lastSweepNotice = notice;
   if (result.remaining.length) {
     console.warn(
       `[astromatch] ${result.remaining.length} reading(s) still owed a delete — ` +
         'will try again on the next open',
+    );
+  }
+  if (result.kept.length) {
+    console.info(
+      `[astromatch] ${result.kept.length} save(s) still unresolved — kept for now`,
     );
   }
 }
@@ -320,6 +426,17 @@ async function del(endpoint: string): Promise<Reply> {
     headers: { Authorization: `Bearer ${token}` },
   });
   return { status: res.status, body: null, resetsOn: null };
+}
+
+async function patch(endpoint: string, body: unknown): Promise<Reply> {
+  const token = await authorized();
+  return reply(
+    await fetch(apiUrl(BUILD_MODE, endpoint), {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  );
 }
 
 async function post(endpoint: string, body: unknown): Promise<Reply> {
@@ -351,11 +468,12 @@ async function post(endpoint: string, body: unknown): Promise<Reply> {
 const runProfiles = new WeakMap<chrome.runtime.Port, ConfirmedProfile>();
 
 /**
- * The chat each open port created, and whether the user KEPT it.
+ * The chat each open port created.
  *
- * `saved` is always false in PH-39 — the save offer is never answered here —
- * but it is a field rather than a constant because PH-40 adds the save, and a
- * reading the user chose to keep must never be swept away by a panel close.
+ * Whether the user KEPT it is deliberately NOT here any more: that fact has
+ * to survive this worker being torn down, so it lives in
+ * `chrome.storage.local` as the pending record's `kept-claimed` state (item 6
+ * residue). This map is only "which chat does this port own".
  */
 const runChats = new WeakMap<chrome.runtime.Port, string>();
 /**
@@ -367,7 +485,6 @@ const runChats = new WeakMap<chrome.runtime.Port, string>();
  * with a live port is in use, not left over.
  */
 const openChats = new Set<string>();
-const savedRuns = new WeakSet<chrome.runtime.Port>();
 
 chrome.runtime.onConnect.addListener((port) => {
   dropStalePending();
@@ -383,12 +500,30 @@ chrome.runtime.onConnect.addListener((port) => {
   port.onMessage.addListener((message: { type: string; [k: string]: unknown }) => {
     if (message.type === 'match/start') {
       void runMatch(port, message.profile, String(message.title ?? 'Match'));
+    } else if (message.type === 'match/ask') {
+      // ASTRAL-341 — the conversation about a SAVED match. A different door
+      // from `match/start`: nothing is confirmed here and no birth value
+      // travels, because the facts are already on the People store.
+      void askAboutMatch(port, message.handoff);
+    } else if (message.type === 'match/say') {
+      void sayInMatchChat(port, String(message.chatId ?? ''), String(message.text ?? ''));
     } else if (message.type === 'widget/answer') {
       // PH-40's save answer travels on this carrier. A reading the user KEPT
       // must never be swept away by a panel close, so the run is marked here
       // rather than being discovered later by guessing.
-      if (/"save_match"\s*:\s*"save"/.test(String(message.text ?? ''))) savedRuns.add(port);
-      void sayAndRun(port, String(message.chatId ?? ''), String(message.text ?? ''));
+      const isSave = /"save_match"\s*:\s*"save"/.test(String(message.text ?? ''));
+      const chatId = String(message.chatId ?? '');
+      const text = String(message.text ?? '');
+      void (async () => {
+        // THE CLAIM IS WRITTEN BEFORE THE SAVE LEAVES (item 6 residue).
+        // `savedRuns` is a WeakSet keyed by the port and dies with the
+        // worker, which Chrome tears down whenever it likes — including
+        // between this POST and the turn returning. The durable claim is what
+        // the sweep reads, so it has to exist before the request that might
+        // outlive this worker.
+        if (isSave && chatId) await claimKept(pendingStore, chatId, Date.now());
+        await sayAndRun(port, chatId, text, isSave);
+      })();
     }
   });
   /**
@@ -403,17 +538,34 @@ chrome.runtime.onConnect.addListener((port) => {
    */
   port.onDisconnect.addListener(() => {
     const chatId = runChats.get(port);
-    const saved = savedRuns.has(port);
     runProfiles.delete(port);
     runChats.delete(port);
     // No longer in use by an open panel, whichever way this goes.
     if (chatId) openChats.delete(chatId);
-    if (!chatId || saved) return;
-    void removeChat(chatId)
-      .then((gone) => (gone ? clearPending(pendingStore, chatId) : undefined))
-      .catch((e: unknown) => {
-        console.warn('[astromatch] delete on panel close failed; still owed', e);
-      });
+    if (!chatId) return;
+    /**
+     * ONE SOURCE OF TRUTH for "the user asked to keep this" (item 6 residue).
+     *
+     * This used to read a `WeakSet` keyed by the port, set at the moment the
+     * save was CLICKED. Two things were wrong with it: it died with the
+     * worker, so a teardown mid-save lost the fact and the next sweep deleted
+     * a kept conversation; and it was never cleared when the save turn came
+     * back EMPTY, so closing the panel after a failed save left a stranger's
+     * details in a chat nothing deleted. The durable claim in
+     * `chrome.storage.local` answers both — written before the save leaves,
+     * released the moment the turn says it did not land.
+     */
+    void (async () => {
+      // The promise list is the authority: a chat we do not owe a delete for
+      // is not ours to delete. A saved reading's record was cleared when the
+      // save landed; a save in flight is `kept-claimed`; an unsaved reading
+      // is owed and goes now.
+      if (!owedNow(await readPending(pendingStore), chatId)) return;
+      const gone = await removeChat(chatId);
+      if (gone) await clearPending(pendingStore, chatId);
+    })().catch((e: unknown) => {
+      console.warn('[astromatch] delete on panel close failed; still owed', e);
+    });
   });
 });
 
@@ -478,7 +630,32 @@ async function runMatch(port: chrome.runtime.Port, raw: unknown, title: string):
  * machine's reading of somebody's page. The confirmed-profile door stays
  * narrow because that is the one a parse could slip through.
  */
-async function sayAndRun(port: chrome.runtime.Port, chatId: string, text: string): Promise<void> {
+async function sayAndRun(
+  port: chrome.runtime.Port,
+  chatId: string,
+  text: string,
+  /**
+   * This answer was "Add to my matches" (finding F383).
+   *
+   * The port's `onDisconnect` already honours `savedRuns`, so closing the
+   * panel did not delete a kept reading. THE SWEEP DID. `notePending` records
+   * the chat id the moment the chat is created and `clearPending` runs only
+   * after a successful delete — so a saved reading's id stayed in
+   * `chrome.storage.local` for ever, and the next panel open (which sweeps,
+   * by design, to finish what a closed browser interrupted) deleted the
+   * conversation the user had chosen to keep.
+   *
+   * Measured, not theorised: PH-41's walk saved a match, opened the shortlist
+   * in a new panel seconds later, and the saved chat was gone. PH-40's walk
+   * could not see it — leg 21 closes the panel, waits six seconds and never
+   * opens another one.
+   *
+   * The promise is released when the TURN COMES BACK, not when the click
+   * arrives: a save whose turn failed is still an unsaved reading, and its
+   * chat is still owed a delete.
+   */
+  saved = false,
+): Promise<void> {
   if (!chatId || !text) {
     send(port, { type: 'failed', error: 'Nothing to send.' });
     return;
@@ -516,9 +693,124 @@ async function sayAndRun(port: chrome.runtime.Port, chatId: string, text: string
         outcome = await runTurn(deps, chatId);
       }
     }
+    // F383: the reading is KEPT, so the promise to delete it is released —
+    // in the one store the sweep reads.
+    //
+    // AN EMPTY STREAM DOES NOT PROVE THE SAVE FAILED. The engine writes the
+    // match BEFORE it narrates, so a turn that produced no bytes may well
+    // have saved. What it proves is that WE cannot say it did — and between
+    // the two mistakes available here, we resolve toward deleting the
+    // CONVERSATION, because the match itself survives in the People store and
+    // the conversation is the copy of a third party's birth details. The
+    // panel says exactly that ("I couldn't tell whether that saved — open
+    // your matches to check"), and the sweep's own engine question resolves
+    // the same record honestly when a worker dies before this point.
+    if (saved) {
+      if (outcome.kind === 'signed-out' || outcome.kind === 'empty') {
+        await releaseKept(pendingStore, chatId);
+      } else {
+        await clearPending(pendingStore, chatId);
+      }
+    }
     send(port, { type: 'outcome', outcome });
   } catch (error) {
+    // A save that THREW did not land — release the claim, so the ordinary
+    // sweep still owns the chat. (A network error mid-POST is the one case
+    // where the engine may have written anyway; the panel says it cannot tell
+    // and the user can press it again, which is idempotent on the pair.)
+    if (saved) {
+      await releaseKept(pendingStore, chatId).catch((e: unknown) => {
+        console.warn('[astromatch] could not release the kept claim', e);
+      });
+    }
     send(port, { type: 'failed', error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+// ── one chat per saved match (docs/73 ASTRAL-341) ─────────────────────────
+
+/**
+ * Open — or REOPEN — the conversation about one stored match.
+ *
+ * Three properties, and each one is a line of code rather than a promise:
+ *
+ *   · the payload is parsed at this door and REFUSED if it carries anything
+ *     but the four declared keys, or a digit in its opener
+ *     (`parseMatchChatHandoff` — a restated birth value cannot get through);
+ *   · the chat id is REUSED, so a match has one conversation and the engine's
+ *     slot store and event log work unchanged;
+ *   · the chat is NOT noted for deletion. It belongs to a match the user
+ *     SAVED, and the sweep is for readings they did not — a per-match chat
+ *     swept on close would be the panel deleting the user's own history.
+ */
+async function askAboutMatch(port: chrome.runtime.Port, raw: unknown): Promise<void> {
+  const handoff = parseMatchChatHandoff(raw);
+  if (!handoff) {
+    console.warn('[astromatch] refused a match-chat handoff that was not in shape');
+    send(port, { type: 'failed', error: HANDOFF_REFUSED_NOTE });
+    return;
+  }
+  const deps = {
+    getToken: currentToken,
+    onDelta: (text: string) => send(port, { type: 'delta', text }),
+  };
+  try {
+    const existing = linkFor(await loadLinks(pendingStore), handoff.pairKey);
+    let chatId = existing;
+    if (chatId) {
+      const said = await trySay(chatId, handoff.opener);
+      if (!said) {
+        // The chat this match used is gone — deleted in the app, or expired
+        // with the account. Named and handled, never swallowed: the link is
+        // dropped and a fresh conversation is opened below.
+        console.warn('[astromatch] the stored chat for this match is gone; opening a new one');
+        await forgetLink(pendingStore, handoff.pairKey);
+        chatId = null;
+      }
+    }
+    if (!chatId) {
+      chatId = await openChatWith(deps, handoff.title, handoff.opener);
+      await rememberLink(pendingStore, { pairKey: handoff.pairKey, chatId });
+    }
+    port.postMessage({ type: 'chat', chatId });
+    send(port, { type: 'outcome', outcome: await runTurn(deps, chatId) });
+  } catch (error) {
+    send(port, { type: 'failed', error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+/** A follow-up the user typed, in the match's own chat. */
+async function sayInMatchChat(
+  port: chrome.runtime.Port,
+  chatId: string,
+  text: string,
+): Promise<void> {
+  if (!chatId || !text) {
+    send(port, { type: 'failed', error: 'Nothing to ask.' });
+    return;
+  }
+  const deps = {
+    getToken: currentToken,
+    onDelta: (streamed: string) => send(port, { type: 'delta', text: streamed }),
+  };
+  try {
+    await sendChatMessage(await authorized(), chatId, text, []);
+    send(port, { type: 'outcome', outcome: await runTurn(deps, chatId) });
+  } catch (error) {
+    send(port, { type: 'failed', error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+/** Post into an existing chat; `false` when that chat is not there any more. */
+async function trySay(chatId: string, text: string): Promise<boolean> {
+  try {
+    await sendChatMessage(await authorized(), chatId, text, []);
+    return true;
+  } catch (error) {
+    // Handled explicitly rather than swallowed: the caller opens a new chat
+    // and the user is told nothing was lost, because nothing was.
+    console.warn('[astromatch] could not post into the stored match chat', error);
+    return false;
   }
 }
 
@@ -592,6 +884,106 @@ async function captureTab(
   }
 }
 
+// ── the selection read (docs/73 ASTRAL-338) ───────────────────────────────
+
+/**
+ * THE ONE INJECTION SITE, and it is reachable only from a gesture handler.
+ *
+ * `selection.test.ts` greps this module: `chrome.scripting.executeScript`
+ * appears exactly once, `readSelection` is called exactly three times, and
+ * each call names its gesture as a literal — `'command'`, `'context-menu'`,
+ * `'panel-button'`. There is no injection on panel open, on a tab change or
+ * on a timer, and there is no `content_scripts` key for one to hide in.
+ *
+ * `func` is the module-level `readSelectionInPage` — a named function a
+ * reviewer can read whole — rather than an inline closure, because Chrome
+ * serialises what it is given and an inline one would be invisible to the
+ * grep that proves what the page runs.
+ *
+ * `chrome.tabs.query` is used for the TAB ID only. It needs no `tabs`
+ * permission (which this manifest does not declare, by design): without it
+ * Chrome returns the tab with no `url` and no `title`, which is all this
+ * needs and deliberately less than it could have.
+ */
+async function readSelection(
+  gesture: CaptureGesture,
+  tabId?: number,
+): Promise<SelectionOutcome> {
+  try {
+    // THE TAB THE GESTURE FIRED IN (F312's lesson, applied here before it
+    // could happen again): a menu click and a command both carry their tab,
+    // and only the panel button has none — it falls back to the active tab
+    // of the current window, which is the window the panel is in.
+    const target = tabId ?? (await activeTabId());
+    if (target === undefined) {
+      return { kind: 'failed', reason: 'Chrome did not tell me which tab to read.' };
+    }
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: target },
+      func: readSelectionInPage,
+    });
+    return classifySelection(results?.[0]?.result, gesture);
+  } catch (error) {
+    return classifySelectionError(error instanceof Error ? error.message : String(error));
+  }
+}
+
+async function activeTabId(): Promise<number | undefined> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return tab?.id;
+}
+
+async function selectionReply(outcome: SelectionOutcome): Promise<SelectionReply> {
+  return { outcome, shortcut: await boundShortcut(SELECTION_COMMAND) };
+}
+
+/**
+ * The selection hand-off slot: ONE selection, in memory, never in storage.
+ *
+ * The camera's twin, and it is a separate slot rather than a shared one
+ * because the two states are different things: an image and a page's text.
+ * A single slot would make a keyboard capture silently discard a selection
+ * the user made a moment earlier.
+ */
+let pendingSelection: PendingSelection | null = null;
+
+/**
+ * Get a gesture's selection to a panel — `deliverCapture`'s twin.
+ *
+ * Same order, and for the same reason: hand it to an open panel first; hold
+ * it and open one only when nothing is listening.
+ */
+async function deliverSelection(outcome: SelectionOutcome, tabId?: number): Promise<void> {
+  if (outcome.kind !== 'selected') {
+    // A gesture that read nothing still has to say so. It cannot draw
+    // anything itself, so the panel is opened with an empty slot and asks
+    // (`selection/request`), which lands on the same stated states.
+    console.warn('[astromatch] a gesture selection read produced no text:', outcome.kind);
+    if (tabId !== undefined) {
+      await chrome.sidePanel.open({ tabId }).catch((e: unknown) => {
+        console.warn('[astromatch] could not open the panel for a selection', e);
+      });
+    }
+    return;
+  }
+  try {
+    await chrome.runtime.sendMessage({
+      type: 'selection/delivered',
+      text: outcome.text,
+      gesture: outcome.gesture,
+    });
+    return;
+  } catch {
+    // Nothing was listening — the panel is closed. Hold it and open one.
+  }
+  pendingSelection = { text: outcome.text, gesture: outcome.gesture, at: Date.now() };
+  try {
+    if (tabId !== undefined) await chrome.sidePanel.open({ tabId });
+  } catch (e: unknown) {
+    console.warn('[astromatch] could not open the panel for a selection', e);
+  }
+}
+
 /**
  * The shortcut Chrome ACTUALLY BOUND, for the instruction to name.
  *
@@ -600,11 +992,11 @@ async function captureTab(
  * key that does nothing is the same dead affordance as a button that does
  * nothing, one indirection further away.
  */
-async function boundShortcut(): Promise<string | null> {
+async function boundShortcut(name: string = CAPTURE_COMMAND): Promise<string | null> {
   try {
     const commands = await chrome.commands.getAll();
-    const capture = commands.find((c) => c.name === CAPTURE_COMMAND);
-    return capture?.shortcut ? capture.shortcut : null;
+    const bound = commands.find((c) => c.name === name);
+    return bound?.shortcut ? bound.shortcut : null;
   } catch {
     // The API is absent in a context that has no commands (and in the tests'
     // fake chrome). Not knowing the shortcut is not a failure to capture —
@@ -658,6 +1050,11 @@ function dropStalePending(): void {
   if (pendingCapture && !pendingIsFresh(pendingCapture, Date.now())) {
     pendingCapture = null;
   }
+  // The selection slot is dropped on the same events and by the same rule:
+  // a page's text left in a worker is the same promise as a page's picture.
+  if (pendingSelection && !selectionIsFresh(pendingSelection, Date.now())) {
+    pendingSelection = null;
+  }
 }
 
 /**
@@ -703,6 +1100,15 @@ async function deliverCapture(outcome: CaptureOutcome, tabId?: number): Promise<
  */
 chrome.commands.onCommand.addListener((command, tab) => {
   dropStalePending();
+  if (command === SELECTION_COMMAND) {
+    // ASTRAL-338's keyboard gesture. It ships with this listener, exactly as
+    // the capture command did: a shortcut Chrome lists and nothing answers is
+    // a dead affordance with a key binding.
+    void readSelection('command', tab?.id).then((outcome) =>
+      deliverSelection(outcome, tab?.id),
+    );
+    return;
+  }
   if (command !== CAPTURE_COMMAND) return;
   void captureTab('command', tab?.windowId).then((outcome) =>
     deliverCapture(outcome, tab?.id),
@@ -730,10 +1136,29 @@ chrome.runtime.onInstalled.addListener(() => {
       }
     },
   );
+  // ASTRAL-338's menu gesture. `contexts: ['selection']` is the point: Chrome
+  // shows this item only when the user has text selected, so the offer cannot
+  // appear where it would do nothing. Its callback is written out rather than
+  // shared with the one above, so the "lastError is read" property is visible
+  // AT each call site instead of one indirection away.
+  chrome.contextMenus.create(
+    { id: SELECTION_MENU_ID, title: SELECTION_MENU_TITLE, contexts: ['selection'] },
+    () => {
+      if (chrome.runtime.lastError) {
+        console.warn('[astromatch] selection menu:', chrome.runtime.lastError.message);
+      }
+    },
+  );
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   dropStalePending();
+  if (info.menuItemId === SELECTION_MENU_ID) {
+    void readSelection('context-menu', tab?.id).then((outcome) =>
+      deliverSelection(outcome, tab?.id),
+    );
+    return;
+  }
   if (info.menuItemId !== CONTEXT_MENU_ID) return;
   void captureTab('context-menu', tab?.windowId).then((outcome) =>
     deliverCapture(outcome, tab?.id),
@@ -755,6 +1180,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
  */
 chrome.runtime.onSuspend.addListener(() => {
   pendingCapture = null;
+  pendingSelection = null;
 });
 
 void sweep().catch((e: unknown) => {
@@ -778,9 +1204,9 @@ chrome.runtime.onInstalled.addListener(() => {
  * doctrine 8 forbids. The condition that note set has been met, so the item
  * is created above, beside the command that shares its job.
  *
- * `scripting` is still declared and still unused; it belongs to PH-41's
- * selection read and is named on `manifest.SHIPS_WITH_PH40` for exactly that
- * reason. If PH-41 slips, it comes out of the manifest.
+ * `scripting` is USED as of PH-41: `readSelection` above is its one call
+ * site, on the user's gesture, and it came off `manifest.SHIPS_WITH_PH40`
+ * in the same commit — from both sides, which is what that list is for.
  */
 
 /**

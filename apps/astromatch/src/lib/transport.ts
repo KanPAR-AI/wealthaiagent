@@ -115,8 +115,27 @@ export async function openMatchChat(
   deps: TransportDeps,
   title: string,
 ): Promise<string> {
+  return openChatWith(deps, title, MATCH_OPENER);
+}
+
+/**
+ * The same first step, with a DIFFERENT opener (docs/73 ASTRAL-341).
+ *
+ * PH-41's per-match chat opens with `askAboutMatchTurn`'s sentence rather
+ * than `MATCH_OPENER`, because it is a different act: not "score these two"
+ * but "tell me about the score you already have". The engine branches on the
+ * sentence deterministically either way — `_MATCH_WITH_CUE` for the first,
+ * `_MATCH_NAME_CUE` → `_rehydrate_stored_match` for the second — which is why
+ * the openers are constants built in one place and never composed at a call
+ * site.
+ */
+export async function openChatWith(
+  deps: TransportDeps,
+  title: string,
+  opener: string,
+): Promise<string> {
   const token = await requireToken(deps);
-  const { chatId } = await createChatSession(token, title, MATCH_OPENER, []);
+  const { chatId } = await createChatSession(token, title, opener, []);
   return chatId;
 }
 

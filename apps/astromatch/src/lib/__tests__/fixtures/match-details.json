@@ -1,0 +1,592 @@
+{
+  "p_360b407756fa__self": {
+    "pair_key": "p_360b407756fa__self",
+    "people": [
+      {
+        "person_id": "self",
+        "display_name": "Ravi",
+        "tob_known": true
+      },
+      {
+        "person_id": "p_360b407756fa",
+        "display_name": "Compare Walk Timed",
+        "tob_known": true
+      }
+    ],
+    "person_id": "p_360b407756fa",
+    "display_name": "Compare Walk Timed",
+    "favourite": false,
+    "relation": "match",
+    "freshness": "stale",
+    "computed_at": "2026-09-19T15:10:20.340417+00:00",
+    "group": "complete",
+    "report": {
+      "type": "match_report",
+      "pending_max": 0,
+      "doshas": [],
+      "groom": {
+        "nakshatra_alternatives": [],
+        "moon_rashi_alternatives": [],
+        "manglik": false,
+        "moon_rashi": "Aries",
+        "time_known": true,
+        "nakshatra": "Bharani"
+      },
+      "total": 33,
+      "bride": {
+        "nakshatra_alternatives": [],
+        "moon_rashi_alternatives": [],
+        "manglik": false,
+        "moon_rashi": "Aries",
+        "time_known": true,
+        "nakshatra": "Ashwini"
+      },
+      "max_total": 36,
+      "time_known": true,
+      "firm_total": 33,
+      "kootas": [
+        {
+          "provisional": false,
+          "points": 1,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "spiritual compatibility & ego balance",
+          "note": "Kshatriya + Kshatriya",
+          "max": 1,
+          "name": "Varna"
+        },
+        {
+          "provisional": false,
+          "points": 2,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "mutual influence & attraction",
+          "note": "Chatushpada + Chatushpada",
+          "max": 2,
+          "name": "Vashya"
+        },
+        {
+          "provisional": false,
+          "points": 3,
+          "time_dependent": true,
+          "pending": false,
+          "meaning": "destiny & shared fortune",
+          "note": "birth-star counting both ways",
+          "max": 3,
+          "name": "Tara"
+        },
+        {
+          "provisional": false,
+          "points": 2,
+          "time_dependent": true,
+          "pending": false,
+          "meaning": "physical & instinctive harmony",
+          "note": "Elephant + Horse",
+          "max": 4,
+          "name": "Yoni"
+        },
+        {
+          "provisional": false,
+          "points": 5,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "mental connection & friendship",
+          "note": "same lord (Mars)",
+          "max": 5,
+          "name": "Graha Maitri"
+        },
+        {
+          "provisional": false,
+          "points": 5,
+          "time_dependent": true,
+          "pending": false,
+          "meaning": "temperament match",
+          "note": "Manushya + Deva",
+          "max": 6,
+          "name": "Gana"
+        },
+        {
+          "provisional": false,
+          "points": 7,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "prosperity & family welfare",
+          "note": "1/1 placement",
+          "max": 7,
+          "name": "Bhakoot"
+        },
+        {
+          "provisional": false,
+          "points": 8,
+          "time_dependent": true,
+          "pending": false,
+          "meaning": "health & progeny",
+          "note": "Madhya + Adi",
+          "max": 8,
+          "name": "Nadi"
+        }
+      ],
+      "pending_reasons": [],
+      "verdict": "excellent",
+      "firm_max": 36
+    }
+  },
+  "p_d064cd02e321__self": {
+    "pair_key": "p_d064cd02e321__self",
+    "people": [
+      {
+        "person_id": "self",
+        "display_name": "Ravi",
+        "tob_known": true
+      },
+      {
+        "person_id": "p_d064cd02e321",
+        "display_name": "Meera",
+        "tob_known": true
+      }
+    ],
+    "person_id": "p_d064cd02e321",
+    "display_name": "Meera",
+    "favourite": false,
+    "relation": "match",
+    "freshness": "stale",
+    "computed_at": "2026-08-27T17:44:41.474626+00:00",
+    "group": "complete",
+    "report": {
+      "type": "match_report",
+      "pending_max": 0,
+      "doshas": [
+        {
+          "provisional": false,
+          "detail": "Both share the same Nadi — traditionally linked to health and progeny concerns. Classical texts list cancellations (e.g. same rashi but different nakshatras) worth a detailed review with your family astrologer.",
+          "name": "Nadi dosha"
+        },
+        {
+          "provisional": false,
+          "detail": "Moon signs sit in a 6/8, 5/9 or 2/12 relationship — traditionally read as friction in prosperity and family life; mitigated when the sign lords are friends.",
+          "name": "Bhakoot dosha"
+        }
+      ],
+      "groom": {
+        "nakshatra_alternatives": [],
+        "moon_rashi_alternatives": [],
+        "manglik": null,
+        "moon_rashi": "Aries",
+        "time_known": true,
+        "nakshatra": "Bharani"
+      },
+      "total": 15.5,
+      "bride": {
+        "nakshatra_alternatives": [],
+        "moon_rashi_alternatives": [],
+        "manglik": null,
+        "moon_rashi": "Pisces",
+        "time_known": true,
+        "nakshatra": "Uttara Bhadrapada"
+      },
+      "max_total": 36,
+      "time_known": true,
+      "firm_total": 15.5,
+      "kootas": [
+        {
+          "provisional": false,
+          "points": 0,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "spiritual compatibility & ego balance",
+          "note": "Kshatriya + Brahmin",
+          "max": 1,
+          "name": "Varna"
+        },
+        {
+          "provisional": false,
+          "points": 1,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "mutual influence & attraction",
+          "note": "Chatushpada + Jalachara",
+          "max": 2,
+          "name": "Vashya"
+        },
+        {
+          "provisional": false,
+          "points": 1.5,
+          "time_dependent": true,
+          "pending": false,
+          "meaning": "destiny & shared fortune",
+          "note": "birth-star counting both ways",
+          "max": 3,
+          "name": "Tara"
+        },
+        {
+          "provisional": false,
+          "points": 2,
+          "time_dependent": true,
+          "pending": false,
+          "meaning": "physical & instinctive harmony",
+          "note": "Elephant + Cow",
+          "max": 4,
+          "name": "Yoni"
+        },
+        {
+          "provisional": false,
+          "points": 5,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "mental connection & friendship",
+          "note": "Mars (friend of Jupiter) / Jupiter (friend of Mars)",
+          "max": 5,
+          "name": "Graha Maitri"
+        },
+        {
+          "provisional": false,
+          "points": 6,
+          "time_dependent": true,
+          "pending": false,
+          "meaning": "temperament match",
+          "note": "Manushya + Manushya",
+          "max": 6,
+          "name": "Gana"
+        },
+        {
+          "provisional": false,
+          "points": 0,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "prosperity & family welfare",
+          "note": "12/2 placement — Bhakoot dosha",
+          "max": 7,
+          "name": "Bhakoot"
+        },
+        {
+          "provisional": false,
+          "points": 0,
+          "time_dependent": true,
+          "pending": false,
+          "meaning": "health & progeny",
+          "note": "Madhya + Madhya — Nadi dosha",
+          "max": 8,
+          "name": "Nadi"
+        }
+      ],
+      "pending_reasons": [
+        "Mangal (Kuja) dosha needs Mars's house, which needs a birth time — it is not assessed here."
+      ],
+      "verdict": "below the traditional threshold",
+      "firm_max": 36
+    }
+  },
+  "p_925c3bca862b__self": {
+    "pair_key": "p_925c3bca862b__self",
+    "people": [
+      {
+        "person_id": "self",
+        "display_name": "Ravi",
+        "tob_known": true
+      },
+      {
+        "person_id": "p_925c3bca862b",
+        "display_name": "Nisha",
+        "tob_known": true
+      }
+    ],
+    "person_id": "p_925c3bca862b",
+    "display_name": "Nisha",
+    "favourite": false,
+    "relation": "partner",
+    "freshness": "stale",
+    "computed_at": "2026-09-17T06:59:47.551281+00:00",
+    "group": "complete",
+    "report": {
+      "type": "match_report",
+      "pending_max": 0,
+      "doshas": [
+        {
+          "provisional": false,
+          "detail": "Both share the same Nadi — traditionally linked to health and progeny concerns. Classical texts list cancellations (e.g. same rashi but different nakshatras) worth a detailed review with your family astrologer.",
+          "name": "Nadi dosha"
+        },
+        {
+          "provisional": false,
+          "detail": "Moon signs sit in a 6/8, 5/9 or 2/12 relationship — traditionally read as friction in prosperity and family life; mitigated when the sign lords are friends.",
+          "name": "Bhakoot dosha"
+        },
+        {
+          "provisional": false,
+          "detail": "Mars is strong in the bride's chart only — traditionally reviewed carefully before marriage.",
+          "name": "Mangal dosha (one-sided)"
+        }
+      ],
+      "groom": {
+        "nakshatra_alternatives": [],
+        "moon_rashi_alternatives": [],
+        "manglik": false,
+        "moon_rashi": "Aries",
+        "time_known": true,
+        "nakshatra": "Bharani"
+      },
+      "total": 15.5,
+      "bride": {
+        "nakshatra_alternatives": [],
+        "moon_rashi_alternatives": [],
+        "manglik": true,
+        "moon_rashi": "Pisces",
+        "time_known": true,
+        "nakshatra": "Uttara Bhadrapada"
+      },
+      "max_total": 36,
+      "time_known": true,
+      "firm_total": 15.5,
+      "kootas": [
+        {
+          "provisional": false,
+          "points": 0,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "spiritual compatibility & ego balance",
+          "note": "Kshatriya + Brahmin",
+          "max": 1,
+          "name": "Varna"
+        },
+        {
+          "provisional": false,
+          "points": 1,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "mutual influence & attraction",
+          "note": "Chatushpada + Jalachara",
+          "max": 2,
+          "name": "Vashya"
+        },
+        {
+          "provisional": false,
+          "points": 1.5,
+          "time_dependent": true,
+          "pending": false,
+          "meaning": "destiny & shared fortune",
+          "note": "birth-star counting both ways",
+          "max": 3,
+          "name": "Tara"
+        },
+        {
+          "provisional": false,
+          "points": 2,
+          "time_dependent": true,
+          "pending": false,
+          "meaning": "physical & instinctive harmony",
+          "note": "Elephant + Cow",
+          "max": 4,
+          "name": "Yoni"
+        },
+        {
+          "provisional": false,
+          "points": 5,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "mental connection & friendship",
+          "note": "Mars (friend of Jupiter) / Jupiter (friend of Mars)",
+          "max": 5,
+          "name": "Graha Maitri"
+        },
+        {
+          "provisional": false,
+          "points": 6,
+          "time_dependent": true,
+          "pending": false,
+          "meaning": "temperament match",
+          "note": "Manushya + Manushya",
+          "max": 6,
+          "name": "Gana"
+        },
+        {
+          "provisional": false,
+          "points": 0,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "prosperity & family welfare",
+          "note": "12/2 placement — Bhakoot dosha",
+          "max": 7,
+          "name": "Bhakoot"
+        },
+        {
+          "provisional": false,
+          "points": 0,
+          "time_dependent": true,
+          "pending": false,
+          "meaning": "health & progeny",
+          "note": "Madhya + Madhya — Nadi dosha",
+          "max": 8,
+          "name": "Nadi"
+        }
+      ],
+      "pending_reasons": [],
+      "verdict": "below the traditional threshold",
+      "firm_max": 36
+    }
+  },
+  "p_8ab4dafabbc1__self": {
+    "pair_key": "p_8ab4dafabbc1__self",
+    "people": [
+      {
+        "person_id": "self",
+        "display_name": "Ravi",
+        "tob_known": true
+      },
+      {
+        "person_id": "p_8ab4dafabbc1",
+        "display_name": "Compare Walk Timeless",
+        "tob_known": false
+      }
+    ],
+    "person_id": "p_8ab4dafabbc1",
+    "display_name": "Compare Walk Timeless",
+    "favourite": false,
+    "relation": "match",
+    "freshness": "stale",
+    "computed_at": "2026-09-19T15:08:18.769894+00:00",
+    "group": "firm_only",
+    "report": {
+      "type": "match_report",
+      "pending_max": 21,
+      "doshas": [],
+      "groom": {
+        "nakshatra_alternatives": [],
+        "moon_rashi_alternatives": [],
+        "manglik": false,
+        "moon_rashi": "Aries",
+        "time_known": true,
+        "nakshatra": "Bharani"
+      },
+      "total": null,
+      "bride": {
+        "nakshatra_alternatives": [
+          "Purva Bhadrapada"
+        ],
+        "moon_rashi_alternatives": [],
+        "manglik": null,
+        "moon_rashi": "Aquarius",
+        "time_known": false,
+        "nakshatra": null
+      },
+      "max_total": null,
+      "time_known": false,
+      "firm_total": 9.5,
+      "kootas": [
+        {
+          "provisional": false,
+          "points": 1,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "spiritual compatibility & ego balance",
+          "note": "Kshatriya + Shudra",
+          "max": 1,
+          "name": "Varna"
+        },
+        {
+          "provisional": false,
+          "points": 1,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "mutual influence & attraction",
+          "note": "Chatushpada + Manava",
+          "max": 2,
+          "name": "Vashya"
+        },
+        {
+          "provisional": false,
+          "points": null,
+          "time_dependent": true,
+          "pending": true,
+          "meaning": "destiny & shared fortune",
+          "note": "needs a birth time — this koota is read from the Moon's nakshatra",
+          "max": 3,
+          "name": "Tara"
+        },
+        {
+          "provisional": false,
+          "points": null,
+          "time_dependent": true,
+          "pending": true,
+          "meaning": "physical & instinctive harmony",
+          "note": "needs a birth time — this koota is read from the Moon's nakshatra",
+          "max": 4,
+          "name": "Yoni"
+        },
+        {
+          "provisional": false,
+          "points": 0.5,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "mental connection & friendship",
+          "note": "Mars (neutral of Saturn) / Saturn (enemy of Mars)",
+          "max": 5,
+          "name": "Graha Maitri"
+        },
+        {
+          "provisional": false,
+          "points": null,
+          "time_dependent": true,
+          "pending": true,
+          "meaning": "temperament match",
+          "note": "needs a birth time — this koota is read from the Moon's nakshatra",
+          "max": 6,
+          "name": "Gana"
+        },
+        {
+          "provisional": false,
+          "points": 7,
+          "time_dependent": false,
+          "pending": false,
+          "meaning": "prosperity & family welfare",
+          "note": "11/3 placement",
+          "max": 7,
+          "name": "Bhakoot"
+        },
+        {
+          "provisional": false,
+          "points": null,
+          "time_dependent": true,
+          "pending": true,
+          "meaning": "health & progeny",
+          "note": "needs a birth time — this koota is read from the Moon's nakshatra",
+          "max": 8,
+          "name": "Nadi"
+        }
+      ],
+      "pending_reasons": [
+        "Nadi dosha (health and progeny) cannot be checked without both birth times — it is read from the Moon's nakshatra.",
+        "Mangal (Kuja) dosha needs Mars's house, which needs a birth time — it is not assessed here."
+      ],
+      "verdict": "incomplete",
+      "firm_max": 15
+    }
+  },
+  "p_0397906da40c__self": {
+    "pair_key": "p_0397906da40c__self",
+    "people": [
+      {
+        "person_id": "self",
+        "display_name": "Ravi",
+        "tob_known": true
+      },
+      {
+        "person_id": "p_0397906da40c",
+        "display_name": "Compare Walk Refused",
+        "tob_known": false
+      }
+    ],
+    "person_id": "p_0397906da40c",
+    "display_name": "Compare Walk Refused",
+    "favourite": false,
+    "relation": "match",
+    "freshness": "stale",
+    "computed_at": "2026-09-19T15:04:24.038348+00:00",
+    "group": "refused",
+    "refusal": {
+      "ask": "Add a birth time and I'll score this match.",
+      "sentence": "I can't show a score for this match. When it was scored, one side's Moon sign was undetermined — the record does not say whose — and four of the eight kootas (Varna, Vashya, Graha Maitri and Bhakoot) are read from the Moon's rashi alone. A birth time settles it; add one and I'll match the full chart.",
+      "reason": "I can't show a score for this match. When it was scored, one side's Moon sign was undetermined — the record does not say whose — and four of the eight kootas (Varna, Vashya, Graha Maitri and Bhakoot) are read from the Moon's rashi alone. A birth time settles it; add one and I'll match the full chart.",
+      "code": "moon_rashi_undetermined"
+    }
+  }
+}

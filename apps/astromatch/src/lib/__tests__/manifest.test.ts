@@ -22,6 +22,7 @@ import {
   BACKEND_HOST_PERMISSION,
   CONNECT_HOSTS,
   CAPTURE_COMMAND,
+  SELECTION_COMMAND,
   CSP,
   cspFor,
   DEV_HOST_PERMISSION,
@@ -66,6 +67,8 @@ describe('B5 — a permission declared ahead of its capability is on a list, and
    * checked from both directions rather than left in a comment.
    */
   const USED_BY: Record<string, keyof typeof capabilities> = {
+    // `activeTab` now carries BOTH page gestures — the capture and the
+    // selection injection — and either one alone keeps it earned.
     activeTab: 'snapshot',
     scripting: 'readSelection',
     // PH-40: the menu item's job is "Read this page into AstroMatch" — it is
@@ -79,6 +82,16 @@ describe('B5 — a permission declared ahead of its capability is on a list, and
 
   it('maps every declared permission to a capability', () => {
     expect([...MANIFEST_PERMISSIONS].sort()).toEqual([...Object.keys(USED_BY)].sort());
+  });
+
+  it('the list is EMPTY, because every permission now has a capability behind it', () => {
+    // PH-41 took the last name off it (`scripting`). Stated as its own case
+    // so the emptiness is a claim somebody made, not an absence nobody
+    // noticed — the two-directional assertions below still bind.
+    expect([...SHIPS_WITH_PH40]).toEqual([]);
+    for (const permission of MANIFEST_PERMISSIONS) {
+      expect(capabilities[USED_BY[permission]]).toBe(true);
+    }
   });
 
   it('every permission whose capability is FALSE is on the PH-40 list', () => {
@@ -226,8 +239,15 @@ describe('the shell Chrome will actually load', () => {
         suggested_key: { default: 'Alt+Shift+M' },
         description: 'Capture this page into AstroMatch',
       },
+      // PH-41's second gesture, and it ships under the same condition: the
+      // `onCommand` branch that honours it is in the same commit.
+      selection: {
+        suggested_key: { default: 'Alt+Shift+S' },
+        description: 'Read my selection into AstroMatch',
+      },
     });
     expect(CAPTURE_COMMAND).toBe('capture');
+    expect(SELECTION_COMMAND).toBe('selection');
 
     const sw = readSource(join(__dirname, '..', '..', 'sw.ts'), 'utf8');
     expect(sw).toMatch(/chrome\.commands\.onCommand\.addListener/);
@@ -239,12 +259,17 @@ describe('the shell Chrome will actually load', () => {
   });
 
   it('declares no command the worker does not handle', () => {
-    // The other direction: a second shortcut added "for later" would have no
-    // branch in `onCommand` and would be the same dead affordance again.
+    // The other direction: a shortcut added "for later" would have no branch
+    // in `onCommand` and would be the same dead affordance again. Asserted
+    // per command rather than as one boolean, so a second one cannot ride in
+    // on the first one's branch.
     const sw = readSource(join(__dirname, '..', '..', 'sw.ts'), 'utf8');
-    const handled = /CAPTURE_COMMAND/.test(sw);
-    expect(handled).toBe(true);
-    expect(Object.keys(production.commands)).toEqual([CAPTURE_COMMAND]);
+    const code = sw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const onCommand = code.slice(code.indexOf('chrome.commands.onCommand.addListener'));
+    const body = onCommand.slice(0, onCommand.indexOf('\n});'));
+    expect(body).toContain('CAPTURE_COMMAND');
+    expect(body).toContain('SELECTION_COMMAND');
+    expect(Object.keys(production.commands)).toEqual([CAPTURE_COMMAND, SELECTION_COMMAND]);
   });
 });
 

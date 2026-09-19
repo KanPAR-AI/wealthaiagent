@@ -46,8 +46,10 @@ export const PERMISSION_REASONS: Record<string, string> = {
     'for that tab, until it navigates. It carries the snapshot — the visible ' +
     'viewport, captured on a gesture, with no DOM read and no site host.',
   scripting:
-    'PH-41\'s selection flow: one programmatic injection on the user\'s ' +
-    'click. There is deliberately no `content_scripts` key in this manifest.',
+    'The selection flow: ONE programmatic injection on the user\'s gesture, ' +
+    'which reads the text they highlighted and returns it. There is ' +
+    'deliberately no `content_scripts` key in this manifest, so nothing runs ' +
+    'on any page at load and nothing is left behind afterwards.',
   storage:
     'The user\'s own settings. No captured content and no raw token is ever ' +
     'written here — the session token lives in `chrome.storage.session`, ' +
@@ -72,6 +74,18 @@ export const MANIFEST_PERMISSIONS = Object.keys(PERMISSION_REASONS);
  * rather than this literal.
  */
 export const CAPTURE_COMMAND = 'capture';
+
+/**
+ * PH-41's keyboard gesture, and it is a SECOND command rather than a mode on
+ * the first (docs/73 ASTRAL-338).
+ *
+ * A shortcut does one thing. "Capture this page" and "read what I selected"
+ * are two different acts on two different kinds of content, and a single key
+ * that guessed between them would be the panel inferring intent from state —
+ * which is the class of bug `family_add.py` exists to prevent. Both commands
+ * ship with their listeners in `sw.ts`; a command nothing answers is removed.
+ */
+export const SELECTION_COMMAND = 'selection';
 
 export interface ChromeCommands {
   [name: string]: { suggested_key: { default: string }; description: string };
@@ -163,23 +177,26 @@ export const CSP = cspFor('production');
 /**
  * Permissions that are declared and NOT USED YET (docs/73 B5).
  *
+ * **EMPTY as of PH-41, and that is the whole point of the list.** Every
+ * permission in this manifest now has a capability behind it that is `true`:
+ * PH-40 took `activeTab` and `contextMenus` off, and PH-41 took `scripting`
+ * — its one call site is `sw.readSelection`, on the user's gesture. The list
+ * stays, because the next permission added ahead of its phase belongs on it
+ * and the assertions below run in both directions whether it is empty or not.
+ *
  * The list is asserted against `capabilities.ts` from both sides: a
  * permission whose capability is false must be named here, and a name here
- * that no longer has a false capability must be removed. PH-40 took
- * `activeTab` and `contextMenus` OFF it — the camera uses both, measured in
- * a real Chromium — and left `scripting`, which belongs to PH-41's selection
- * read and does nothing in this build.
+ * that no longer has a false capability must be removed — so a stale entry
+ * is a red diff, and so is a permission quietly added ahead of its use.
  *
  * The export keeps its name because the rule it encodes is the same one: a
- * permission nothing uses is exactly what a store review reads first. If
- * PH-41 slips, `scripting` comes out of the manifest rather than staying on
- * this list forever.
+ * permission nothing uses is exactly what a store review reads first.
  *
- * `commands` is no longer in this file's negative space: PH-40 adds the
- * `capture` shortcut TOGETHER WITH the `chrome.commands.onCommand` listener
- * that honours it, which is the condition PH-39 set for its return.
+ * `commands` is not in this file's negative space either: both shortcuts
+ * ship TOGETHER WITH the `chrome.commands.onCommand` branches that honour
+ * them, which is the condition PH-39 set for their return.
  */
-export const SHIPS_WITH_PH40 = ['scripting'] as const;
+export const SHIPS_WITH_PH40: readonly string[] = [];
 
 export function buildManifest(mode: BuildMode): ChromeManifest {
   return {
@@ -211,6 +228,10 @@ export function buildManifest(mode: BuildMode): ChromeManifest {
       [CAPTURE_COMMAND]: {
         suggested_key: { default: 'Alt+Shift+M' },
         description: 'Capture this page into AstroMatch',
+      },
+      [SELECTION_COMMAND]: {
+        suggested_key: { default: 'Alt+Shift+S' },
+        description: 'Read my selection into AstroMatch',
       },
     },
     host_permissions:

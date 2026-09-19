@@ -15,6 +15,7 @@
  */
 
 import { CONFIRMED_TAG } from '../confirmed';
+import { claimKept } from '../pending-deletes';
 import { MATCH_PORT } from '../messages';
 
 type Listener = (...args: unknown[]) => unknown;
@@ -45,6 +46,11 @@ const menuListeners: Listener[] = [];
 export const PERMISSION_REFUSAL =
   "Either the '<all_urls>' or 'activeTab' permission is required.";
 let captureAnswer: () => Promise<string> = async () => 'data:image/png;base64,AAAA';
+/** What `chrome.scripting.executeScript` answers, and what it was handed. */
+let selectionAnswer: () => Promise<Array<{ result?: unknown }>> = async () => [
+  { result: 'Name: Asha Verma' },
+];
+let injections: Array<{ target: { tabId: number }; func: () => string }> = [];
 let storage: Record<string, unknown> = {};
 let local: Record<string, unknown> = {};
 let calls: Array<{ url: string; method: string; body?: string }> = [];
@@ -93,6 +99,18 @@ beforeAll(async () => {
       // PH-40. `captureVisibleTab` answers whatever the case under test set:
       // an image, or a rejection with Chrome's own permission sentence.
       captureVisibleTab: async () => captureAnswer(),
+      // PH-41. The worker asks for the active tab's ID and nothing else —
+      // this fake answers with no `url` and no `title`, exactly as Chrome
+      // does without the `tabs` permission this manifest refuses.
+      query: async () => [{ id: 99 }],
+    },
+    scripting: {
+      // PH-41. `executeScript` answers whatever the case under test set: the
+      // page's selection, or a rejection with Chrome's permission sentence.
+      executeScript: async (args: { target: { tabId: number }; func: () => string }) => {
+        injections.push(args);
+        return selectionAnswer();
+      },
     },
     contextMenus: {
       create: (_item: unknown, done?: () => void) => done?.(),
@@ -134,6 +152,7 @@ function installDefaultFetch() {
 
 beforeEach(() => {
   calls = [];
+  injections = [];
   storage = {};
   local = {};
   nextResponse = { status: 200, body: {} };
@@ -489,6 +508,323 @@ describe('B1 — closing the panel deletes the unsaved reading', () => {
     expect(calls.filter((c) => c.method === 'DELETE')).toEqual([]);
   });
 
+  /**
+   * F383, found by PH-41's walk and fixed with it.
+   *
+   * The test above proves the PORT does not delete a saved reading. The SWEEP
+   * did: `notePending` records the chat id when the chat is created, and
+   * `clearPending` runs only after a successful delete — so a saved reading's
+   * id sat in `chrome.storage.local` and the NEXT PANEL OPEN deleted the
+   * conversation the user had chosen to keep. PH-40's walk closed the panel,
+   * waited, and never opened another one, so it could not see it.
+   */
+  it('RELEASES the delete promise when the reading is saved, so no later sweep takes it', async () => {
+    scriptFetch();
+    const port = await startRun();
+    expect(JSON.stringify(local['astromatch.pending_deletes'])).toContain('chat-7');
+    port.onMessage.fire({
+      type: 'widget/answer',
+      chatId: 'chat-7',
+      text: 'Saving.\n\n```input_response\n{"type":"input_response","ask":"save_match_offer",' +
+        '"values":{"save_match":"save","person2_name":"Someone"}}\n```',
+    });
+    await settle();
+    expect(local['astromatch.pending_deletes']).toEqual([]);
+
+    // …and the panel that opens next sweeps NOTHING
+    calls.length = 0;
+    const reply = await ask({ type: 'auth/state' });
+    await settle();
+    expect(calls.filter((c) => c.method === 'DELETE')).toEqual([]);
+    expect((reply.value as { notice: string }).notice).toBe('');
+  });
+
+  it('KEEPS the promise when the save turn came back empty — that reading is not saved', async () => {
+    // The other half, and it is the reason the promise is released on the
+    // OUTCOME rather than on the click: a save that did not land leaves a
+    // chat carrying a third party's birth details, still owed a delete.
+    (globalThis as unknown as { fetch: unknown }).fetch = async (
+      input: unknown,
+      init?: { method?: string; body?: string },
+    ) => {
+      const url = String(input);
+      calls.push({ url, method: (init?.method ?? 'GET').toUpperCase() });
+      if (url.includes('/stream')) return sse('');
+      if (url.endsWith('/chats')) return json({ chat: { id: 'chat-7' }, messages: [] });
+      return json({});
+    };
+    storage['astromatch.session'] = session();
+    const port = connect();
+    port.onMessage.fire({ type: 'match/start', title: 'Match — Someone', profile: CONFIRMED });
+    await settle();
+    port.onMessage.fire({
+      type: 'widget/answer',
+      chatId: 'chat-7',
+      text: 'Saving.\n\n```input_response\n{"type":"input_response","ask":"save_match_offer",' +
+        '"values":{"save_match":"save","person2_name":"Someone"}}\n```',
+    });
+    await settle();
+    expect(JSON.stringify(local['astromatch.pending_deletes'])).toContain('chat-7');
+  });
+
+  /**
+   * ITEM 6 RESIDUE — the four rows of the reviewer's table, re-proved against
+   * the DURABLE claim rather than against a WeakSet the worker loses.
+   *
+   * "This run was saved" used to live in `savedRuns`, keyed by the panel's
+   * port. An MV3 worker is torn down whenever Chrome feels like it, including
+   * between the save POST and the turn coming back — and the next panel open
+   * then swept the conversation the user had chosen to keep. The claim is now
+   * written to `chrome.storage.local` BEFORE the save is sent.
+   */
+  describe('item 6 — the kept claim is durable, and an unsaved reading still dies', () => {
+    const SAVE_TEXT =
+      'Saving.\n\n```input_response\n{"type":"input_response","ask":"save_match_offer",' +
+      '"values":{"save_match":"save","person2_name":"Someone"}}\n```';
+
+    it('(1) save OK → the record is gone, and no sweep or close deletes the chat', async () => {
+      scriptFetch();
+      const port = await startRun();
+      port.onMessage.fire({ type: 'widget/answer', chatId: 'chat-7', text: SAVE_TEXT });
+      await settle();
+      expect(local['astromatch.pending_deletes']).toEqual([]);
+      calls.length = 0;
+      port.onDisconnect.fire();
+      await ask({ type: 'auth/state' });
+      await settle();
+      expect(calls.filter((c) => c.method === 'DELETE')).toEqual([]);
+    });
+
+    it('(0) the claim is on disk BEFORE the save POST leaves — the ordering IS the fix', async () => {
+      // The whole point of item 6: a worker torn down between the POST and
+      // the turn coming back must leave the claim behind. A claim written
+      // AFTER the round trip would be lost in exactly the window it exists
+      // for, so the store is read at the instant the request is made.
+      storage['astromatch.session'] = session();
+      let atPost: string | null = null;
+      (globalThis as unknown as { fetch: unknown }).fetch = async (
+        input: unknown,
+        init?: { method?: string },
+      ) => {
+        const url = String(input);
+        calls.push({ url, method: (init?.method ?? 'GET').toUpperCase() });
+        if (url.includes('/messages') && atPost === null) {
+          atPost = JSON.stringify(local['astromatch.pending_deletes'] ?? []);
+        }
+        if (url.includes('/stream')) return sse('Saved.');
+        if (url.endsWith('/chats')) return json({ chat: { id: 'chat-7' }, messages: [] });
+        return json({});
+      };
+      const port = connect();
+      port.onMessage.fire({ type: 'match/start', title: 'Match — Someone', profile: CONFIRMED });
+      await settle();
+      port.onMessage.fire({ type: 'widget/answer', chatId: 'chat-7', text: SAVE_TEXT });
+      await settle();
+      expect(atPost).not.toBeNull();
+      expect(atPost).toContain('kept-claimed');
+      expect(atPost).toContain('chat-7');
+    });
+
+    it('(2) save came back EMPTY → the claim is RELEASED and the chat is swept', async () => {
+      (globalThis as unknown as { fetch: unknown }).fetch = async (
+        input: unknown,
+        init?: { method?: string },
+      ) => {
+        const url = String(input);
+        calls.push({ url, method: (init?.method ?? 'GET').toUpperCase() });
+        if (url.includes('/stream')) return sse('');
+        if (url.endsWith('/chats')) return json({ chat: { id: 'chat-7' }, messages: [] });
+        return json({});
+      };
+      storage['astromatch.session'] = session();
+      const port = connect();
+      port.onMessage.fire({ type: 'match/start', title: 'Match — Someone', profile: CONFIRMED });
+      await settle();
+      port.onMessage.fire({ type: 'widget/answer', chatId: 'chat-7', text: SAVE_TEXT });
+      await settle();
+      // owed again — the state is off the record
+      expect(local['astromatch.pending_deletes']).toEqual([
+        { chatId: 'chat-7', noticedAt: expect.any(Number) },
+      ]);
+      calls.length = 0;
+      // The panel is still OPEN on it, so the sweep leaves it alone — a chat
+      // with a live port is in use, not left over. Leaving is what deletes
+      // it, and the released claim is what allows that.
+      await ask({ type: 'auth/state' });
+      await settle();
+      expect(calls.filter((c) => c.method === 'DELETE')).toEqual([]);
+      port.onDisconnect.fire();
+      await settle();
+      expect(calls.some((c) => c.method === 'DELETE' && c.url.includes('chat-7'))).toBe(true);
+    });
+
+    it('(3) the worker was KILLED mid-save, and the claim is FRESH → kept for now', async () => {
+      // Exactly what a torn-down worker leaves behind: the claim, unresolved.
+      // The WeakSet is gone with the worker; this is what survives — and
+      // inside the grace the save may still be finishing.
+      storage['astromatch.session'] = session();
+      local['astromatch.pending_deletes'] = [
+        { chatId: 'chat-killed', noticedAt: Date.now(), state: 'kept-claimed' },
+      ];
+      scriptFetch();
+      calls.length = 0;
+      const reply = await ask({ type: 'auth/state' });
+      await settle();
+      expect(calls.filter((c) => c.method === 'DELETE')).toEqual([]);
+      expect((reply.value as { notice: string }).notice).toBe('');
+      // …and it is still on the record, not silently forgotten
+      expect(JSON.stringify(local['astromatch.pending_deletes'])).toContain('kept-claimed');
+    });
+
+    it('(3a) a STALE claim asks the engine — nothing stored → the chat is deleted', async () => {
+      // The residual this round closed: a claim used to be immortal, so the
+      // unsaved reading's chat — a third party's birth details — was never
+      // deleted and the user was never told.
+      storage['astromatch.session'] = session();
+      local['astromatch.pending_deletes'] = [
+        { chatId: 'chat-stale', noticedAt: Date.now() - 20 * 60_000, state: 'kept-claimed' },
+      ];
+      nextResponse = { status: 200, body: { groups: [], total: 0 } };
+      calls.length = 0;
+      const reply = await ask({ type: 'auth/state' });
+      await settle();
+      expect(calls.some((c) => c.url.includes('/people/matches'))).toBe(true);
+      expect(calls.some((c) => c.method === 'DELETE' && c.url.includes('chat-stale'))).toBe(true);
+      expect((reply.value as { notice: string }).notice).toBe(
+        'The reading you left open was deleted just now.',
+      );
+      expect(local['astromatch.pending_deletes']).toEqual([]);
+    });
+
+    it('(3b) a STALE claim whose save LANDED keeps the chat and drops the record', async () => {
+      const claimedAt = Date.now() - 20 * 60_000;
+      storage['astromatch.session'] = session();
+      local['astromatch.pending_deletes'] = [
+        { chatId: 'chat-saved', noticedAt: claimedAt, state: 'kept-claimed' },
+      ];
+      nextResponse = {
+        status: 200,
+        body: {
+          groups: [
+            {
+              key: 'complete',
+              label: 'Scored out of 36',
+              rows: [{ pair_key: 'p_x__self', computed_at: new Date(claimedAt + 60_000).toISOString() }],
+            },
+          ],
+          total: 1,
+        },
+      };
+      calls.length = 0;
+      await ask({ type: 'auth/state' });
+      await settle();
+      expect(calls.filter((c) => c.method === 'DELETE')).toEqual([]);
+      expect(local['astromatch.pending_deletes']).toEqual([]);
+    });
+
+    it('(3e) a match stored BEFORE the claim is not evidence — the chat is deleted', async () => {
+      // The question is "was anything stored SINCE this claim was made?".
+      // An account that already had matches must not make every stale claim
+      // look like a save that landed.
+      const claimedAt = Date.now() - 20 * 60_000;
+      storage['astromatch.session'] = session();
+      local['astromatch.pending_deletes'] = [
+        { chatId: 'chat-older', noticedAt: claimedAt, state: 'kept-claimed' },
+      ];
+      nextResponse = {
+        status: 200,
+        body: {
+          groups: [
+            {
+              key: 'complete',
+              label: 'Scored out of 36',
+              rows: [
+                {
+                  pair_key: 'p_old__self',
+                  // a month before the claim
+                  computed_at: new Date(claimedAt - 30 * 24 * 60 * 60_000).toISOString(),
+                },
+              ],
+            },
+          ],
+          total: 1,
+        },
+      };
+      calls.length = 0;
+      await ask({ type: 'auth/state' });
+      await settle();
+      expect(calls.some((c) => c.method === 'DELETE' && c.url.includes('chat-older'))).toBe(true);
+      expect(local['astromatch.pending_deletes']).toEqual([]);
+    });
+
+    it('(3c) an engine that cannot be asked keeps the claim and retries', async () => {
+      storage['astromatch.session'] = session();
+      local['astromatch.pending_deletes'] = [
+        { chatId: 'chat-unknown', noticedAt: Date.now() - 20 * 60_000, state: 'kept-claimed' },
+      ];
+      nextResponse = { status: 500, body: { error: { message: 'boom' } } };
+      calls.length = 0;
+      await ask({ type: 'auth/state' });
+      await settle();
+      expect(calls.filter((c) => c.method === 'DELETE')).toEqual([]);
+      expect(JSON.stringify(local['astromatch.pending_deletes'])).toContain('kept-claimed');
+    });
+
+    it('(3d) at the CEILING the claim is cleaned up, and the user is told', async () => {
+      storage['astromatch.session'] = session();
+      local['astromatch.pending_deletes'] = [
+        {
+          chatId: 'chat-ancient',
+          noticedAt: Date.now() - 8 * 24 * 60 * 60_000,
+          state: 'kept-claimed',
+        },
+      ];
+      scriptFetch();
+      calls.length = 0;
+      const reply = await ask({ type: 'auth/state' });
+      await settle();
+      expect(calls.some((c) => c.method === 'DELETE' && c.url.includes('chat-ancient'))).toBe(true);
+      expect((reply.value as { notice: string }).notice).toContain('could not be confirmed');
+      expect(local['astromatch.pending_deletes']).toEqual([]);
+    });
+
+    it('(4) the panel CLOSED mid-save → the claim, not the WeakSet, decides', async () => {
+      scriptFetch();
+      const port = await startRun();
+      // the claim lands before the save is sent; the port dies before the
+      // turn returns, and this worker's `savedRuns` is not consulted here
+      await claimKept(pendingStore(), 'chat-7', 1);
+      calls.length = 0;
+      port.onDisconnect.fire();
+      await settle();
+      expect(calls.filter((c) => c.method === 'DELETE')).toEqual([]);
+    });
+
+    it('(5) an UNSAVED reading is still deleted on close AND on the next sweep', async () => {
+      scriptFetch();
+      const port = await startRun();
+      calls.length = 0;
+      port.onDisconnect.fire();
+      await settle();
+      expect(calls.some((c) => c.method === 'DELETE' && c.url.includes('chat-7'))).toBe(true);
+    });
+
+    it('(6) a claim on one chat never protects another', async () => {
+      storage['astromatch.session'] = session();
+      local['astromatch.pending_deletes'] = [
+        { chatId: 'chat-kept', noticedAt: Date.now(), state: 'kept-claimed' },
+        { chatId: 'chat-owed', noticedAt: 2 },
+      ];
+      scriptFetch();
+      calls.length = 0;
+      await ask({ type: 'auth/state' });
+      await settle();
+      const deleted = calls.filter((c) => c.method === 'DELETE').map((c) => c.url);
+      expect(deleted.some((u) => u.includes('chat-owed'))).toBe(true);
+      expect(deleted.some((u) => u.includes('chat-kept'))).toBe(false);
+    });
+  });
+
   it('does not sweep when nobody is signed in — there is nothing to delete with', async () => {
     storage = {};
     local['astromatch.pending_deletes'] = [{ chatId: 'chat-9', noticedAt: 1 }];
@@ -566,6 +902,17 @@ function session() {
     refreshToken: 'r-1',
     expiresAt: Date.now() + 3_600_000,
     identifier: 'someone@example.com',
+  };
+}
+
+/** The same bag `sw.ts` writes to, so a test can put the worker's own claim
+ *  there without reaching into the module. */
+function pendingStore() {
+  return {
+    get: async (key: string) => ({ [key]: local[key] }),
+    set: async (items: Record<string, unknown>) => {
+      local = { ...local, ...items };
+    },
   };
 }
 
@@ -748,5 +1095,398 @@ describe('the crop goes to the extractor, and NOTHING else goes with it (ASTRAL-
     const reply = await ask({ type: 'capture/extract', image: 'data:image/png;base64,Q1JPUA==' });
     expect(reply).toEqual({ ok: false, error: 'Not signed in.' });
     expect(calls).toEqual([]);
+  });
+});
+
+// ── PH-41 · the selection read, the shortlist, compare and the star ────────
+
+describe('the selection read, at the worker (ASTRAL-338)', () => {
+  beforeEach(() => {
+    storage['astromatch.session'] = session();
+    selectionAnswer = async () => [{ result: 'Name: Asha Verma' }];
+  });
+
+  it('injects ONE function into the active tab and returns what it read', async () => {
+    const reply = await ask({ type: 'selection/request' });
+    expect(reply.ok).toBe(true);
+    expect(reply.value).toEqual({
+      outcome: { kind: 'selected', text: 'Name: Asha Verma', gesture: 'panel-button' },
+      // the SELECTION command's shortcut, not the camera's
+      shortcut: null,
+    });
+    expect(injections).toHaveLength(1);
+    expect(injections[0].target).toEqual({ tabId: 99 });
+    // …and what was injected is the three-line reader, not a closure
+    expect(String(injections[0].func)).toContain('getSelection');
+    expect(String(injections[0].func)).not.toContain('fetch');
+    // a selection read is not a network call, and never a paid one
+    expect(calls).toEqual([]);
+  });
+
+  it('answers a REFUSAL with needs-gesture rather than an error', async () => {
+    selectionAnswer = async () => {
+      throw new Error(PERMISSION_REFUSAL);
+    };
+    const reply = await ask({ type: 'selection/request' });
+    expect(reply.value).toEqual({ outcome: { kind: 'needs-gesture' }, shortcut: null });
+  });
+
+  it('an empty selection is `empty`, so the panel can say what is missing', async () => {
+    selectionAnswer = async () => [{ result: '   ' }];
+    const reply = (await ask({ type: 'selection/request' })) as {
+      value: { outcome: { kind: string } };
+    };
+    expect(reply.value.outcome.kind).toBe('empty');
+  });
+
+  it('a frame that answered with nothing is `empty`, not a silent success', async () => {
+    selectionAnswer = async () => [];
+    const reply = (await ask({ type: 'selection/request' })) as {
+      value: { outcome: { kind: string } };
+    };
+    expect(reply.value.outcome.kind).toBe('empty');
+  });
+
+  it('hands a gesture selection to an open panel, and stores nothing', async () => {
+    let pushed: unknown = null;
+    (globalThis as unknown as { chrome: { runtime: { sendMessage: unknown } } }).chrome.runtime
+      .sendMessage = async (m: unknown) => {
+      pushed = m;
+      return undefined;
+    };
+    commandListeners[0]('selection', { id: 7 });
+    await settle();
+    expect(pushed).toEqual({
+      type: 'selection/delivered',
+      text: 'Name: Asha Verma',
+      gesture: 'command',
+    });
+    expect(injections[0].target).toEqual({ tabId: 7 });
+    expect(await ask({ type: 'selection/pending' })).toEqual({ ok: true, value: null });
+    expect(JSON.stringify(local)).not.toContain('Asha');
+  });
+
+  it('HOLDS a gesture selection when no panel is listening, and hands it over ONCE', async () => {
+    (globalThis as unknown as { chrome: { runtime: { sendMessage: unknown } } }).chrome.runtime
+      .sendMessage = async () => {
+      throw new Error('Could not establish connection.');
+    };
+    menuListeners[0]({ menuItemId: 'astromatch.selection' }, { id: 7 });
+    await settle();
+    const first = (await ask({ type: 'selection/pending' })) as {
+      value: { text: string; gesture: string } | null;
+    };
+    expect(first.value?.text).toBe('Name: Asha Verma');
+    expect(first.value?.gesture).toBe('context-menu');
+    expect(await ask({ type: 'selection/pending' })).toEqual({ ok: true, value: null });
+    // the text is somebody's page: it never touches storage on the way past
+    expect(JSON.stringify(local)).not.toContain('Asha');
+  });
+
+  it('the CAPTURE menu item still captures — the two gestures do not cross', async () => {
+    (globalThis as unknown as { chrome: { runtime: { sendMessage: unknown } } }).chrome.runtime
+      .sendMessage = async () => {
+      throw new Error('Could not establish connection.');
+    };
+    captureAnswer = async () => 'data:image/png;base64,Q0FQ';
+    menuListeners[0]({ menuItemId: 'astromatch.capture' }, { id: 7 });
+    await settle();
+    expect(injections).toEqual([]);
+    const held = (await ask({ type: 'capture/pending' })) as { value: { image: string } | null };
+    expect(held.value?.image).toBe('data:image/png;base64,Q0FQ');
+  });
+});
+
+describe('the shortlist, the compare read and the star go to the shipped routes', () => {
+  beforeEach(() => {
+    storage['astromatch.session'] = session();
+  });
+
+  it('reads the three groups with GET /people/matches', async () => {
+    nextResponse = { status: 200, body: { groups: [], total: 0 } };
+    const reply = await ask({ type: 'matches/list' });
+    expect(reply.ok).toBe(true);
+    expect(calls).toEqual([
+      { url: 'https://chatbackend.yourfinadvisor.com/api/v1/people/matches', method: 'GET' },
+    ]);
+  });
+
+  it('reads ONE stored match by its pair key, encoded', async () => {
+    await ask({ type: 'matches/detail', pairKey: 'p_abc__self' });
+    expect(calls[0].method).toBe('GET');
+    expect(calls[0].url).toContain('/people/matches/p_abc__self');
+  });
+
+  it('stars a person with the shipped label PATCH, carrying a label and nothing else', async () => {
+    await ask({ type: 'person/star', personId: 'p_abc', favourite: true });
+    expect(calls[0].method).toBe('PATCH');
+    expect(calls[0].url).toContain('/people/p_abc');
+    expect(JSON.parse(calls[0].body as string)).toEqual({ favourite: true });
+    // INV-1: no birth fact may ride on any HTTP route
+    for (const fact of ['dob', 'tob', 'pob', 'date_of_birth', 'time_of_birth', 'place_of_birth']) {
+      expect(calls[0].body).not.toContain(fact);
+    }
+  });
+
+  it('sends none of the three when nobody is signed in', async () => {
+    storage = {};
+    for (const message of [
+      { type: 'matches/list' },
+      { type: 'matches/detail', pairKey: 'p_abc__self' },
+      { type: 'person/star', personId: 'p_abc', favourite: true },
+    ]) {
+      expect(await ask(message)).toEqual({ ok: false, error: 'Not signed in.' });
+    }
+    expect(calls).toEqual([]);
+  });
+});
+
+describe('FLAG-8 — sign-out lets go of the match-chat map, and nothing holds page text', () => {
+  const HANDOFF = {
+    personId: 'p_abc',
+    pairKey: 'p_abc__self',
+    opener: 'Tell me more about my match with Meera.',
+    title: 'Match — Meera',
+  };
+
+  it('clears the links on sign-out, for `saveSession(null)`\'s own reason', async () => {
+    storage['astromatch.session'] = session();
+    local['astromatch.match_chats'] = [{ pairKey: 'p_abc__self', chatId: 'chat-1' }];
+    await ask({ type: 'auth/sign-out' });
+    expect(local['astromatch.match_chats']).toEqual([]);
+    // …and the session bag is cleared whole, as it always was
+    expect(storage).toEqual({});
+  });
+
+  it('keeps the pending DELETES across a sign-out — they are a promise', async () => {
+    storage['astromatch.session'] = session();
+    local['astromatch.pending_deletes'] = [{ chatId: 'chat-owed', noticedAt: 1 }];
+    await ask({ type: 'auth/sign-out' });
+    expect(local['astromatch.pending_deletes']).toEqual([{ chatId: 'chat-owed', noticedAt: 1 }]);
+  });
+
+  it('NO selection text is anywhere in either storage area', async () => {
+    // The selection is a page's text. It rides the hand-off slot in worker
+    // MEMORY and is handed to the panel once; nothing about it may reach
+    // `session` or `local`. Scanned whole, rather than by checking a list of
+    // keys (the `outcomes.test.tsx` rule).
+    storage['astromatch.session'] = session();
+    selectionAnswer = async () => [{ result: 'Name: Asha Verma\nDate of Birth: 14 May 1994' }];
+    (globalThis as unknown as { chrome: { runtime: { sendMessage: unknown } } }).chrome.runtime
+      .sendMessage = async () => {
+      throw new Error('Could not establish connection.');
+    };
+    commandListeners[0]('selection', { id: 7 });
+    await settle();
+    await ask({ type: 'selection/pending' });
+    for (const area of [storage, local]) {
+      const written = JSON.stringify(area);
+      expect(written).not.toContain('Asha');
+      expect(written).not.toContain('14 May 1994');
+      expect(written).not.toContain('Date of Birth');
+    }
+  });
+
+  it('the 51st match chat drops the oldest link and opens a new chat for it', async () => {
+    storage['astromatch.session'] = session();
+    // A full store, written by earlier sessions.
+    local['astromatch.match_chats'] = Array.from({ length: 50 }, (_, n) => ({
+      pairKey: `p_${n}__self`,
+      chatId: `chat-${n}`,
+    }));
+    let created = 0;
+    (globalThis as unknown as { fetch: unknown }).fetch = async (
+      input: unknown,
+      init?: { method?: string },
+    ) => {
+      const url = String(input);
+      calls.push({ url, method: (init?.method ?? 'GET').toUpperCase() });
+      if (url.includes('/stream')) return sse('Here it is.');
+      if (url.endsWith('/chats')) {
+        created += 1;
+        return json({ chat: { id: `chat-new-${created}` }, messages: [] });
+      }
+      return json({});
+    };
+    const port = connect();
+    port.onMessage.fire({ type: 'match/ask', handoff: HANDOFF });
+    await settle();
+    const links = local['astromatch.match_chats'] as Array<{ pairKey: string; chatId: string }>;
+    expect(links).toHaveLength(50);
+    // the oldest went, the new one is there, and the user was told nothing
+    // about a bound — it simply behaves
+    expect(links.some((l) => l.pairKey === 'p_0__self')).toBe(false);
+    expect(links[links.length - 1]).toEqual({ pairKey: 'p_abc__self', chatId: 'chat-new-1' });
+    expect(port.postMessage).toHaveBeenCalledWith({ type: 'chat', chatId: 'chat-new-1' });
+  });
+
+  it('…and the match whose link was dropped simply opens a fresh chat', async () => {
+    storage['astromatch.session'] = session();
+    local['astromatch.match_chats'] = [];
+    let created = 0;
+    (globalThis as unknown as { fetch: unknown }).fetch = async (
+      input: unknown,
+      init?: { method?: string },
+    ) => {
+      const url = String(input);
+      calls.push({ url, method: (init?.method ?? 'GET').toUpperCase() });
+      if (url.includes('/stream')) return sse('Here it is.');
+      if (url.endsWith('/chats')) {
+        created += 1;
+        return json({ chat: { id: `chat-fresh-${created}` }, messages: [] });
+      }
+      return json({});
+    };
+    const port = connect();
+    port.onMessage.fire({
+      type: 'match/ask',
+      handoff: { ...HANDOFF, pairKey: 'p_0__self', title: 'Match — Someone' },
+    });
+    await settle();
+    expect(port.postMessage).toHaveBeenCalledWith({ type: 'chat', chatId: 'chat-fresh-1' });
+  });
+});
+
+describe('one chat per saved match, at the worker (ASTRAL-341)', () => {
+  const ANSWER = 'Nadi scores 0 because you share a Nadi.';
+  const HANDOFF = {
+    personId: 'p_abc',
+    pairKey: 'p_abc__self',
+    opener: 'Tell me more about my match with Meera.',
+    title: 'Match — Meera',
+  };
+
+  /** A backend that creates a chat, takes messages and streams one answer. */
+  function chatFetch(options: { sayStatus?: number } = {}) {
+    let created = 0;
+    (globalThis as unknown as { fetch: unknown }).fetch = async (
+      input: unknown,
+      init?: { method?: string; body?: string },
+    ) => {
+      const url = String(input);
+      calls.push({
+        url,
+        method: (init?.method ?? 'GET').toUpperCase(),
+        ...(init?.body === undefined ? {} : { body: String(init.body) }),
+      });
+      if (url.includes('/stream')) return sse(ANSWER);
+      if (url.endsWith('/chats')) {
+        created += 1;
+        return json({ chat: { id: `chat-${created}` }, messages: [] });
+      }
+      if (url.includes('/messages')) {
+        if (options.sayStatus && options.sayStatus >= 400) {
+          return json({ error: { message: 'gone' } }, options.sayStatus);
+        }
+        return json({ id: 'm' });
+      }
+      return json({});
+    };
+  }
+
+  it('opens ONE chat, remembers it, and reuses it next time', async () => {
+    storage['astromatch.session'] = session();
+    chatFetch();
+    const first = connect();
+    first.onMessage.fire({ type: 'match/ask', handoff: HANDOFF });
+    await settle();
+    expect(first.postMessage).toHaveBeenCalledWith({ type: 'chat', chatId: 'chat-1' });
+    expect(calls.filter((c) => c.url.endsWith('/chats') && c.method === 'POST')).toHaveLength(1);
+    // the opener travelled as the chat's first message and carried no fact
+    const opened = calls.find((c) => c.url.endsWith('/chats') && c.method === 'POST');
+    expect(opened?.body).toContain('match with Meera');
+    expect(opened?.body).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+
+    // …and the SECOND entry posts into the same chat rather than creating one
+    calls = [];
+    const second = connect();
+    second.onMessage.fire({ type: 'match/ask', handoff: HANDOFF });
+    await settle();
+    expect(calls.filter((c) => c.url.endsWith('/chats') && c.method === 'POST')).toHaveLength(0);
+    expect(calls.some((c) => c.url.includes('/chats/chat-1/messages'))).toBe(true);
+    expect(second.postMessage).toHaveBeenCalledWith({ type: 'chat', chatId: 'chat-1' });
+  });
+
+  it('keeps IDS ONLY in storage — no name, no birth value', async () => {
+    storage['astromatch.session'] = session();
+    chatFetch();
+    const port = connect();
+    port.onMessage.fire({ type: 'match/ask', handoff: HANDOFF });
+    await settle();
+    const written = JSON.stringify(local['astromatch.match_chats']);
+    expect(written).toContain('p_abc__self');
+    expect(written).not.toContain('Meera');
+    expect(written).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+  });
+
+  it('does NOT owe the match chat a delete — it belongs to a saved match', async () => {
+    storage['astromatch.session'] = session();
+    chatFetch();
+    const port = connect();
+    port.onMessage.fire({ type: 'match/ask', handoff: HANDOFF });
+    await settle();
+    // the pending-delete store is what the sweep reads; a per-match chat that
+    // landed there would be the panel deleting the user's own history
+    expect(JSON.stringify(local['astromatch.pending_deletes'] ?? [])).not.toContain('chat-1');
+    calls = [];
+    port.onDisconnect.fire();
+    await settle();
+    expect(calls.filter((c) => c.method === 'DELETE')).toEqual([]);
+  });
+
+  it('opens a NEW chat when the remembered one is gone, and says nothing was lost', async () => {
+    storage['astromatch.session'] = session();
+    local['astromatch.match_chats'] = [{ pairKey: 'p_abc__self', chatId: 'chat-old' }];
+    chatFetch({ sayStatus: 404 });
+    const port = connect();
+    port.onMessage.fire({ type: 'match/ask', handoff: HANDOFF });
+    await settle();
+    expect(port.postMessage).toHaveBeenCalledWith({ type: 'chat', chatId: 'chat-1' });
+    expect(JSON.stringify(local['astromatch.match_chats'])).toContain('chat-1');
+    expect(JSON.stringify(local['astromatch.match_chats'])).not.toContain('chat-old');
+  });
+
+  it('REFUSES a handoff that carries anything but the four declared keys', async () => {
+    storage['astromatch.session'] = session();
+    chatFetch();
+    const port = connect();
+    port.onMessage.fire({
+      type: 'match/ask',
+      handoff: { ...HANDOFF, dob: '1994-05-14' },
+    });
+    await settle();
+    expect(port.postMessage).toHaveBeenCalledWith({
+      type: 'failed',
+      error: 'I could not open a conversation about that match. Nothing was sent.',
+    });
+    expect(calls).toEqual([]);
+  });
+
+  it('REFUSES an opener with a birth value written into it', async () => {
+    storage['astromatch.session'] = session();
+    chatFetch();
+    const port = connect();
+    port.onMessage.fire({
+      type: 'match/ask',
+      handoff: { ...HANDOFF, opener: 'My match with Meera, born 1994-05-14.' },
+    });
+    await settle();
+    expect(calls).toEqual([]);
+  });
+
+  it('a follow-up goes into the same chat and reaches no astrology route', async () => {
+    storage['astromatch.session'] = session();
+    chatFetch();
+    const port = connect();
+    port.onMessage.fire({ type: 'match/ask', handoff: HANDOFF });
+    await settle();
+    calls = [];
+    port.onMessage.fire({ type: 'match/say', chatId: 'chat-1', text: 'why is Nadi zero' });
+    await settle();
+    expect(calls.map((c) => `${c.method} ${c.url.split('/api/v1')[1].split('?')[0]}`)).toEqual([
+      'POST /chats/chat-1/messages',
+      'GET /chats/chat-1/stream',
+    ]);
+    expect(calls.some((c) => c.url.includes('/astrology/'))).toBe(false);
   });
 });

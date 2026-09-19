@@ -1,0 +1,159 @@
+{
+  "groups": [
+    {
+      "key": "complete",
+      "label": "Scored out of 36",
+      "sort_rule": "Ordered by the total out of 36, then fewer dosha flags.",
+      "sort_note": "",
+      "rows": [
+        {
+          "pair_key": "p_360b407756fa__self",
+          "person_id": "p_360b407756fa",
+          "display_name": "Compare Walk Timed",
+          "favourite": false,
+          "relation": "match",
+          "tob_known": true,
+          "freshness": "fresh",
+          "computed_at": "2026-09-19T15:10:20.340417+00:00",
+          "verdict": "excellent",
+          "doshas": [],
+          "dosha_count": 0,
+          "score": {
+            "points": 33,
+            "out_of": 36
+          },
+          "leading_kootas": []
+        },
+        {
+          "pair_key": "p_d064cd02e321__self",
+          "person_id": "p_d064cd02e321",
+          "display_name": "Meera",
+          "favourite": false,
+          "relation": "match",
+          "tob_known": true,
+          "freshness": "stale",
+          "computed_at": "2026-08-27T17:44:41.474626+00:00",
+          "verdict": "below the traditional threshold",
+          "doshas": [
+            {
+              "provisional": false,
+              "detail": "Both share the same Nadi — traditionally linked to health and progeny concerns. Classical texts list cancellations (e.g. same rashi but different nakshatras) worth a detailed review with your family astrologer.",
+              "name": "Nadi dosha"
+            },
+            {
+              "provisional": false,
+              "detail": "Moon signs sit in a 6/8, 5/9 or 2/12 relationship — traditionally read as friction in prosperity and family life; mitigated when the sign lords are friends.",
+              "name": "Bhakoot dosha"
+            }
+          ],
+          "dosha_count": 2,
+          "score": {
+            "points": 15.5,
+            "out_of": 36
+          },
+          "leading_kootas": []
+        },
+        {
+          "pair_key": "p_925c3bca862b__self",
+          "person_id": "p_925c3bca862b",
+          "display_name": "Nisha",
+          "favourite": false,
+          "relation": "partner",
+          "tob_known": true,
+          "freshness": "stale",
+          "computed_at": "2026-09-17T06:59:47.551281+00:00",
+          "verdict": "below the traditional threshold",
+          "doshas": [
+            {
+              "provisional": false,
+              "detail": "Both share the same Nadi — traditionally linked to health and progeny concerns. Classical texts list cancellations (e.g. same rashi but different nakshatras) worth a detailed review with your family astrologer.",
+              "name": "Nadi dosha"
+            },
+            {
+              "provisional": false,
+              "detail": "Moon signs sit in a 6/8, 5/9 or 2/12 relationship — traditionally read as friction in prosperity and family life; mitigated when the sign lords are friends.",
+              "name": "Bhakoot dosha"
+            },
+            {
+              "provisional": false,
+              "detail": "Mars is strong in the bride's chart only — traditionally reviewed carefully before marriage.",
+              "name": "Mangal dosha (one-sided)"
+            }
+          ],
+          "dosha_count": 3,
+          "score": {
+            "points": 15.5,
+            "out_of": 36
+          },
+          "leading_kootas": []
+        }
+      ]
+    },
+    {
+      "key": "firm_only",
+      "label": "Partly scored — 21 of the 36 gunas need a birth time",
+      "sort_rule": "Ordered by the firm points out of 15, then fewer dosha flags.",
+      "sort_note": "",
+      "rows": [
+        {
+          "pair_key": "p_8ab4dafabbc1__self",
+          "person_id": "p_8ab4dafabbc1",
+          "display_name": "Compare Walk Timeless",
+          "favourite": false,
+          "relation": "match",
+          "tob_known": false,
+          "freshness": "fresh",
+          "computed_at": "2026-09-19T15:08:18.769894+00:00",
+          "verdict": "incomplete",
+          "doshas": [],
+          "dosha_count": 0,
+          "score": {
+            "firm_points": 9.5,
+            "out_of": 15,
+            "pending": 21,
+            "pending_reasons": [
+              "Nadi dosha (health and progeny) cannot be checked without both birth times — it is read from the Moon's nakshatra.",
+              "Mangal (Kuja) dosha needs Mars's house, which needs a birth time — it is not assessed here."
+            ]
+          },
+          "leading_kootas": []
+        }
+      ]
+    },
+    {
+      "key": "refused",
+      "label": "Not scored — a birth time is missing on one side",
+      "sort_rule": "Not scored, so not ranked — listed by name.",
+      "sort_note": "",
+      "rows": [
+        {
+          "pair_key": "p_0397906da40c__self",
+          "person_id": "p_0397906da40c",
+          "display_name": "Compare Walk Refused",
+          "favourite": false,
+          "relation": "match",
+          "tob_known": false,
+          "freshness": "fresh",
+          "computed_at": "2026-09-19T15:04:24.038348+00:00",
+          "verdict": null,
+          "doshas": [],
+          "dosha_count": 0,
+          "refusal": {
+            "ask": "Add a birth time and I'll score this match.",
+            "sentence": "I can't show a score for this match. When it was scored, one side's Moon sign was undetermined — the record does not say whose — and four of the eight kootas (Varna, Vashya, Graha Maitri and Bhakoot) are read from the Moon's rashi alone. A birth time settles it; add one and I'll match the full chart.",
+            "reason": "I can't show a score for this match. When it was scored, one side's Moon sign was undetermined — the record does not say whose — and four of the eight kootas (Varna, Vashya, Graha Maitri and Bhakoot) are read from the Moon's rashi alone. A birth time settles it; add one and I'll match the full chart.",
+            "code": "moon_rashi_undetermined"
+          },
+          "leading_kootas": []
+        }
+      ]
+    }
+  ],
+  "total": 5,
+  "priorities": {
+    "ranked": [],
+    "koota_order": [],
+    "interests": [],
+    "notes": []
+  }
+}
