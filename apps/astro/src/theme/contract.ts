@@ -40,6 +40,11 @@ export interface BrandTokens {
     correctionTitle: string;
     /** the line under it */
     birthDetailsSubtitle: string;
+    /** the details screen when it is opened to add a FAMILY MEMBER — it is
+     *  not "your" chart being built (owner, on device 2026-09-19) */
+    memberDetailsSubtitle: string;
+    /** under the skeleton while the engine's ask is on its way */
+    preparingForm: string;
     /** the reassurance the board puts at the foot of screen 2 */
     privacyFooter: string;
     /** what a DISABLED Continue says above the list of labels it is still

@@ -427,3 +427,18 @@ describe('the pending "add a member" intent — Role-3 blocking defect, 2026-09-
     expect(pendingAddOutcome(null, [person('p-old')], true, NOW)).toEqual({ action: 'wait' });
   });
 });
+
+describe('the details screen title when adding a member (owner, on device 2026-09-19)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { addMemberTitle } = require('../family-view');
+  it('names the relation instead of saying "Your Chart"', () => {
+    expect(addMemberTitle('son')).toBe('Add Your\nSon');
+    expect(addMemberTitle('mother')).toBe('Add Your\nMother');
+    expect(addMemberTitle('other')).toBe('Add a Family\nMember');
+  });
+  it('is null for anything that is not a known kinship, so the screen keeps its own title', () => {
+    expect(addMemberTitle(undefined)).toBeNull();
+    expect(addMemberTitle('')).toBeNull();
+    expect(addMemberTitle('uncle')).toBeNull();
+  });
+});

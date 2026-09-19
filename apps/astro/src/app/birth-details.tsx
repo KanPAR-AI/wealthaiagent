@@ -50,6 +50,7 @@
 // time the chat screen opens, rather than being re-fetched or re-sent.
 
 import { router, useLocalSearchParams } from 'expo-router';
+import { addMemberTitle } from '@/lib/family-view';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
@@ -127,8 +128,10 @@ const WASH_WIDTH = 0.62;
 
 export default function BirthDetails() {
   const { width } = useWindowDimensions();
-  const { opening, returnTo, field } = useLocalSearchParams<{
+  const { opening, returnTo, field, kinship } = useLocalSearchParams<{
     opening?: string;
+    /** set by the Family screen's add flow — a LABEL, never a fact */
+    kinship?: string;
     /** docs/49 ASTRAL-138: `profile` means send here and go back there */
     returnTo?: string;
     /** which fact is being corrected — carried for ANALYTICS only. A route
@@ -422,7 +425,7 @@ export default function BirthDetails() {
                 turn: Home and the time-ask both send one and neither is a
                 correction — the establish flow was reading "Correct Your
                 Details" on the simulator before this. */}
-            {editing ? tokens.copy.correctionTitle : tokens.copy.birthDetailsTitle}
+            {editing ? tokens.copy.correctionTitle : (addMemberTitle(kinship) ?? tokens.copy.birthDetailsTitle)}
           </Text>
 
           {request && casting ? (
@@ -489,9 +492,22 @@ export default function BirthDetails() {
               </Pressable>
             </View>
           ) : (
-            <View style={s.gap}>
-              <Text style={s.subtitle}>{tokens.copy.birthDetailsSubtitle}</Text>
-              <ActivityIndicator color={tokens.palette.accent.interactive} />
+            // Owner, on device 2026-09-19: "why does this page load". A bare
+            // spinner under a title reads as a page that is stuck. The ask
+            // is a few seconds away (the engine decides the fields, so none
+            // are drawn here) — the screen shows the SHAPE of what is coming
+            // and says so, instead of nothing.
+            <View style={s.gap} accessibilityLabel={tokens.copy.preparingForm}>
+              <Text style={s.subtitle}>
+                {addMemberTitle(kinship) ? tokens.copy.memberDetailsSubtitle : tokens.copy.birthDetailsSubtitle}
+              </Text>
+              <View style={s.ghost} />
+              <View style={s.ghost} />
+              <View style={s.ghost} />
+              <View style={s.ghostRow}>
+                <ActivityIndicator color={tokens.palette.accent.interactive} />
+                <Text style={s.footerText}>{tokens.copy.preparingForm}</Text>
+              </View>
             </View>
           )}
 
@@ -522,6 +538,13 @@ const s = StyleSheet.create({
   title: { ...t.type.scale.hero, ...t.type.display, color: t.palette.ink.primary },
   subtitle: { ...t.type.scale.sub, color: t.palette.ink.secondary },
   gap: { gap: t.space(4) },
+  ghost: {
+    height: t.space(14),
+    borderRadius: t.radius.card,
+    backgroundColor: t.palette.paper.card,
+    opacity: 0.6,
+  },
+  ghostRow: { flexDirection: 'row', alignItems: 'center', gap: t.space(2) },
   notice: {
     flexDirection: 'row',
     alignItems: 'flex-start',

@@ -24,6 +24,8 @@ const astro: BrandTokens = {
     birthDetailsTitle: "Let's Build\nYour Chart",
     correctionTitle: 'Correct Your\nDetails',
     birthDetailsSubtitle: 'Accurate birth details help us deliver precise insights.',
+    memberDetailsSubtitle: 'Their birth details, exactly as you gave your own. Only you can see them.',
+    preparingForm: 'Getting the form ready…',
     privacyFooter: 'Your data is private & secure',
     stillNeeded: 'Still needed',
     casting: 'Casting your chart…',

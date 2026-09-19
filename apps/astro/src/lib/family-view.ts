@@ -247,6 +247,16 @@ export interface AddMemberRoute {
   params: { opening: string; kinship: string; returnTo: 'family' };
 }
 
+/** The details screen's title when it was opened to add a member. It said
+ *  "Let's Build Your Chart" over somebody else's details (owner, on device
+ *  2026-09-19). Null when the route carries no known kinship — the screen
+ *  then keeps its own title. */
+export function addMemberTitle(kinship: string | null | undefined): string | null {
+  const k = String(kinship ?? '');
+  if (!(KINSHIPS as readonly string[]).includes(k)) return null;
+  return k === 'other' ? 'Add a Family\nMember' : `Add Your\n${KINSHIP_LABEL[k]}`;
+}
+
 export function addMemberRoute(kinship: Kinship): AddMemberRoute {
   return {
     pathname: '/birth-details',
