@@ -65,7 +65,7 @@ import {
   columns,
   drawnCharts,
   planetRows,
-  registerNotes,
+  chartRegisterGroups,
   stampLine,
   surfaceState,
   tabs,
@@ -497,21 +497,29 @@ function YogaSection({ chart }: { chart: ChartResponse['chart'] | undefined }) {
 
 /** What this chart cannot say, in the register's own words (ASTRAL-79). */
 function RegisterSection({ chart }: { chart: ChartResponse['chart'] | undefined }) {
-  const notes = registerNotes(chart);
-  if (!notes.length) return null;
+  // Two KINDS, two headings (docs/74 PH-45): what the chart cannot say, and
+  // what it does say that has a near alternative. The engine names the kind
+  // and the title; this renders them.
+  const groups = chartRegisterGroups(chart);
+  if (!groups.length) return null;
   return (
-    <View style={s.card}>
-      <Text style={s.cardTitle}>What this chart cannot say</Text>
-      {notes.map((n) => (
-        <View key={n.field} style={s.note}>
-          <Text style={s.noteTitle}>{n.title}</Text>
-          <Text style={s.cardBody}>{n.reason}</Text>
-          {n.alternatives.length ? (
-            <Text style={s.caption}>It is one of: {n.alternatives.join(' or ')}.</Text>
-          ) : null}
+    <>
+      {groups.map((g) => (
+        <View key={g.kind} style={s.card}>
+          <Text style={s.cardTitle}>{g.heading}</Text>
+          {g.notes.map((n) => (
+            <View key={n.field} style={s.note}>
+              <Text style={s.noteTitle}>{n.title}</Text>
+              <Text style={s.cardBody}>{n.reason}</Text>
+              {n.alternativesLine ? <Text style={s.caption}>{n.alternativesLine}</Text> : null}
+              {n.alternativesList.map((a) => (
+                <Text key={a} style={s.caption}>• {a}</Text>
+              ))}
+            </View>
+          ))}
         </View>
       ))}
-    </View>
+    </>
   );
 }
 

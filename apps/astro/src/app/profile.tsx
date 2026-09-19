@@ -88,7 +88,7 @@ import {
   handRows,
   shouldRecordOffer,
   timeAskState,
-  undeterminedNotes,
+  profileRegisterGroups,
   withdrawalNote,
   type FactRow,
 } from '@/lib/profile-view';
@@ -464,7 +464,7 @@ function Established({
     void getToken().then(setPhotoToken).catch(() => setPhotoToken(null));
   }, [hands.length]);
   const frame = readable ? frameLine(person.chart) : null;
-  const notes = undeterminedNotes(person.chart);
+  const registerGroupList = profileRegisterGroups(person.chart);
   const ask = timeAskState(person, askOffered);
   const chartIsLive = routeIsLive('/chart');
 
@@ -853,24 +853,27 @@ function Established({
       </>
       )}
 
-      {notes.length ? (
-        <>
-          <Text style={s.section}>What this chart cannot say</Text>
+      {registerGroupList.map((group) => (
+        <View key={group.kind} style={s.gap}>
+          <Text style={s.section}>{group.heading}</Text>
           <View style={s.card}>
             <View style={s.cardBody}>
-              {notes.map((note) => (
+              {group.notes.map((note) => (
                 <View key={note.field} style={s.gapTight}>
                   <Text style={s.rowLabel}>{note.title}</Text>
                   <Text style={s.sentence}>{note.reason}</Text>
-                  {note.alternatives.length ? (
-                    <Text style={s.caption}>It is one of: {note.alternatives.join(' or ')}.</Text>
+                  {note.alternativesLine ? (
+                    <Text style={s.caption}>{note.alternativesLine}</Text>
                   ) : null}
+                  {note.alternativesList.map((a) => (
+                    <Text key={a} style={s.caption}>• {a}</Text>
+                  ))}
                 </View>
               ))}
             </View>
           </View>
-        </>
-      ) : null}
+        </View>
+      ))}
     </View>
   );
 }

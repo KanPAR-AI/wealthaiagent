@@ -361,3 +361,33 @@ describe('handRows', () => {
     expect(rows[0].sourceLine).toBe('side: read from the photo');
   });
 });
+
+describe('a stale chart on the profile names only a cause the engine sent', () => {
+  // Found 2026-09-20, the day before an engine update made every stored
+  // chart stale: this screen said "before a birth detail changed" for ALL of
+  // them. ASTRAL-238 is the row that exists because that sentence was false.
+  const STALE = { ...TIMED_CHART, status: 'stale' as const };
+
+  it('says nothing about birth details when the engine named no cause', () => {
+    const state = chartState(STALE);
+    expect(state.kind).toBe('aged');
+    expect(state.sentence).toContain('something this chart was computed from changed');
+    expect(state.sentence).not.toMatch(/birth detail/i);
+    expect(state.sentence).toContain('does not recompute');
+  });
+
+  it('uses the causes the engine sent, as sent', () => {
+    const state = chartState({
+      ...STALE,
+      stale: { causes: ['settings_changed', 'engine_updated'], reason: '' },
+    });
+    expect(state.sentence).toContain('the calculation settings changed');
+    expect(state.sentence).toContain('we improved the engine');
+    expect(state.sentence).not.toMatch(/birth detail/i);
+  });
+
+  it('still says birth details when THAT is the cause', () => {
+    const state = chartState({ ...STALE, stale: { causes: ['inputs_changed'], reason: '' } });
+    expect(state.sentence).toContain('your birth details changed');
+  });
+});

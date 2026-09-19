@@ -42,6 +42,7 @@ import type {
   FullChart,
   Undetermined,
 } from './people-shapes';
+import { registerGroups, registerNote, type RegisterGroup } from './register-view';
 
 // ── the state, before anything is drawn ───────────────────────────────────
 
@@ -422,12 +423,20 @@ const REGISTER_TITLES: Record<string, string> = {
 };
 
 export function registerNotes(chart: FullChart | undefined): RegisterNote[] {
-  return (chart?.undetermined ?? []).map((e: Undetermined) => ({
-    field: e.field,
-    title: REGISTER_TITLES[e.field] ?? e.field,
-    reason: e.reason,
-    alternatives: e.alternatives ?? [],
-  }));
+  return (chart?.undetermined ?? []).map((e: Undetermined) => {
+    const note = registerNote(e, chartRegisterTitle);
+    return { field: note.field, title: note.title, reason: note.reason, alternatives: note.alternatives };
+  });
+}
+
+function chartRegisterTitle(field: string): string {
+  return REGISTER_TITLES[field] ?? field;
+}
+
+/** The register split by the engine's own `kind`, each group under its own
+ *  heading (docs/74 PH-45) — see `register-view.ts` for why they differ. */
+export function chartRegisterGroups(chart: FullChart | undefined): RegisterGroup[] {
+  return registerGroups(chart?.undetermined, chartRegisterTitle);
 }
 
 /** The ONE sentence that stands where the house column would be. Taken from

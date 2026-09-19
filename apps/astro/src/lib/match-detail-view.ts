@@ -19,7 +19,12 @@
 // used once (ASTRAL-241): a second "for convenience" entry point is how a
 // native surface quietly becomes a chat launcher again.
 
-import { formatIsoDate } from '@wealthai/astral';
+import {
+  ASK_ABOUT_MATCH_LABEL,
+  askAboutMatchTurn,
+  formatIsoDate,
+  matchStaleSentence,
+} from '@wealthai/astral';
 import type { MatchReportPayload } from '@wealthai/astral';
 
 import type { MatchDetail } from './people-shapes';
@@ -62,23 +67,27 @@ export function header(detail: MatchDetail): MatchHeader {
 }
 
 /**
- * What the freshness means for THIS screen.
+ * What the freshness means for THIS screen — and it NAMES NO CAUSE
+ * (docs/73 PH-41 FLAG-2).
  *
- * A stale match is REPORTED stale and served as it was computed
- * (ASTRAL-33/182) — re-running gun milan on a read would make the number on
+ * A stale match is still REPORTED stale and served as it was computed
+ * (ASTRAL-33/182): re-running gun milan on a read would make the number on
  * the screen differ from the number the user was told, with no event in
- * between. So the sentence says what changed, not what the score is now.
+ * between.
+ *
+ * What changed is the BLAME. This said "a birth fact on one side has changed
+ * since this was scored", and the payload cannot support it — `freshness` is
+ * a stamp comparison, and the stamp covers the function version and the
+ * calculation settings as well as the inputs. The sentence now lives in
+ * `@wealthai/astral` and is shared with the matches list and with the
+ * AstroMatch extension.
  */
 export function freshnessSentence(detail: MatchDetail): string | null {
-  if (detail.freshness === 'stale') {
-    return 'A birth fact on one side has changed since this was scored, so '
-      + 'these numbers are the ones it was scored with.';
-  }
-  if (detail.freshness === 'unprovable') {
-    return 'This match was stored without a derivation record, so we cannot '
-      + 'prove it still matches the details on file.';
-  }
-  return null;
+  return matchStaleSentence({
+    freshness: detail.freshness,
+    computedAt: detail.computed_at,
+    scored: Boolean(detail.report),
+  });
 }
 
 /** ASTRAL-144: a refusal is the whole answer — the reason, and the ask that
@@ -97,11 +106,23 @@ export function refusal(detail: MatchDetail): { reason: string; ask: string | nu
  * It carries a NAME and nothing else. A handoff that restates birth facts is
  * a second write path wearing a prompt's clothes, and the restated copy is
  * the one that goes stale.
+ *
+ * FLAG-6: the LABEL is the package's too, now that a second surface offers
+ * the same act — one control, one name for it, in one place.
  */
-export const ASK_AI_LABEL = 'Ask AI about this match';
+export const ASK_AI_LABEL = ASK_ABOUT_MATCH_LABEL;
 
+/**
+ * The turn itself lives in `@wealthai/astral` as of docs/73 PH-41.
+ *
+ * A SECOND surface now opens the same conversation — the AstroMatch panel's
+ * shortlist — and the sentence is a carrier the engine parses
+ * (`graph._MATCH_NAME_CUE` → `_rehydrate_stored_match`), not copy. Two
+ * wordings would be two parses to keep in step, failing silently as "the
+ * engine asked for both birth dates again".
+ */
 export function askTurn(detail: MatchDetail): string {
-  return `Tell me more about my match with ${detail.display_name || 'this person'}.`;
+  return askAboutMatchTurn(detail.display_name);
 }
 
 /**

@@ -26,7 +26,7 @@
 // seven were measured the same way, and they were not. So an ordinal exists
 // ONLY inside a section and is LABELLED with it.
 
-import { formatFraction, splitIsoInstant } from '@wealthai/astral';
+import { formatFraction, matchStaleSentence } from '@wealthai/astral';
 import type { MatchDosha } from '@wealthai/astral';
 
 // The SHAPES module, not the client: this file must stay importable
@@ -134,18 +134,25 @@ function scoreView(row: MatchRow): ScoreView | null {
 const ASK_FIRM_ONLY = 'Add their birth time to score the rest';
 const ASK_REFUSED = 'Add a birth time to score this match';
 
-/** Freshness, said only when there is something to say. */
+/**
+ * Freshness, said only when there is something to say — and it NAMES NO
+ * CAUSE (docs/73 PH-41 FLAG-2, ASTRAL-238's rule applied to matches).
+ *
+ * It used to say "before a birth detail changed". The match payload cannot
+ * support that: `freshness` answers "does the stamp still match?", and the
+ * stamp covers the function version and the calculation settings too — so a
+ * version bump turns every stored match stale with nobody's details touched,
+ * which is the state of a real account today (gun milan is at v4). The
+ * sentence is now `@wealthai/astral`'s, shared with the match detail screen
+ * and with the AstroMatch extension's two surfaces, so there is one wording
+ * to change when the engine starts sending `stale_causes` for matches.
+ */
 function freshnessSentence(row: MatchRow): string | null {
-  if (row.freshness === 'stale') {
-    const when = splitIsoInstant(row.computed_at);
-    return when
-      ? `Scored on ${when.date}, before a birth detail changed.`
-      : 'A birth detail has changed since this was scored.';
-  }
-  if (row.freshness === 'unprovable') {
-    return 'Scored before we recorded which details it was scored from.';
-  }
-  return null;
+  return matchStaleSentence({
+    freshness: row.freshness,
+    computedAt: row.computed_at,
+    scored: Boolean(row.score),
+  });
 }
 
 /**

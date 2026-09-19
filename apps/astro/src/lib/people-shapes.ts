@@ -47,6 +47,12 @@ export interface Undetermined {
   reason: string;
   alternatives: string[];
   unlocked_by: string;
+  /** docs/74 PH-45: the engine's own heading for the entry. Absent on an
+   *  engine that predates it; the view falls back to its local table. */
+  title?: string;
+  /** `sensitive` = a value the chart DOES state that has a near alternative.
+   *  Absent means `undetermined`, the only kind that existed before PH-45. */
+  kind?: 'undetermined' | 'sensitive';
 }
 
 export type ChartStatus =
@@ -65,6 +71,9 @@ export interface DashaPeriod {
 
 export interface ChartSummary {
   status: ChartStatus | string;
+  /** Why it is stale, when the engine says (ASTRAL-238). The list summary
+   *  does not carry it today; the full chart does. */
+  stale?: StaleBlock | null;
   computed_at?: string | null;
   reason?: string;
   missing_stamp?: string[];

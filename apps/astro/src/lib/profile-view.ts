@@ -23,6 +23,8 @@
 import { formatIsoDate, splitIsoInstant, titleCase } from '@wealthai/astral';
 
 import type { ChartSummary, EditImpact, Fact, PersonView, Undetermined } from './people-shapes';
+import { registerGroups, type RegisterGroup } from './register-view';
+import { causeClause } from './staleness';
 
 // ── birth facts, with where each one came from ─────────────────────────────
 
@@ -310,9 +312,15 @@ export function chartState(chart: ChartSummary | undefined): ChartState {
       return {
         kind: 'aged',
         status: chart.status,
+        // The CAUSE is the engine's to name (ASTRAL-238). The summary this
+        // screen reads carries no `stale` block today, so the clause is the
+        // unattributed one — on the day an engine update makes EVERY chart
+        // stale, "before a birth detail changed" told every user something
+        // false about their own data (found 2026-09-20, before PH-45 shipped).
+        // When the engine does send causes here, they are used as sent.
         sentence:
-          `Cast ${cast.text}, before a birth detail changed. It is shown as it ` +
-          'was cast — opening this screen does not recompute it.',
+          `Cast ${cast.text}, and ${causeClause(chart.stale)} since. It is ` +
+          'shown as it was cast — opening this screen does not recompute it.',
         computedAt: cast.iso,
       };
     case 'corrected_stale':
@@ -392,11 +400,16 @@ export function registerTitle(field: string): string {
   return titleCase(String(field).replace(/_/g, ' ')) ?? field;
 }
 
+/** The register split by the engine's own `kind` (docs/74 PH-45). */
+export function profileRegisterGroups(chart: ChartSummary | undefined): RegisterGroup[] {
+  return registerGroups(chart?.undetermined, registerTitle);
+}
+
 export function undeterminedNotes(chart: ChartSummary | undefined): UndeterminedNote[] {
   const register: Undetermined[] = chart?.undetermined ?? [];
   return register.map((entry) => ({
     field: String(entry.field),
-    title: registerTitle(String(entry.field)),
+    title: (typeof entry.title === 'string' && entry.title.trim()) || registerTitle(String(entry.field)),
     // VERBATIM. The engine wrote the reason and it is the one that is true.
     reason: String(entry.reason ?? ''),
     alternatives: Array.isArray(entry.alternatives) ? entry.alternatives.map(String) : [],

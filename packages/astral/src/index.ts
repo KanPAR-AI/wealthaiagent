@@ -13,6 +13,8 @@ export * from './primitives';
 export * from './block-registry';
 export * from './input-request';
 export * from './scorecard-fallback';
+export * from './match-chat';
+export * from './match-staleness';
 
 export * from './view/natal';
 export * from './view/match';

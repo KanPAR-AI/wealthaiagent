@@ -10,7 +10,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import { parseMatchReport } from '@wealthai/astral';
+import { ASK_ABOUT_MATCH_LABEL, parseMatchReport } from '@wealthai/astral';
 
 import {
   ASK_AI_LABEL,
@@ -116,10 +116,27 @@ describe('ASTRAL-241 — what the surface may not do', () => {
     expect(refusal(refused)!.ask).toBeTruthy();
   });
 
-  it('a stale match keeps its numbers and says so', () => {
+  it('a stale match keeps its numbers and says so — NAMING NO CAUSE', () => {
+    // RE-POINTED, deliberately (docs/73 PH-41 FLAG-2). This asserted the
+    // words "these numbers are the ones it was scored with" under a sentence
+    // that blamed "a birth fact on one side" — a claim the payload cannot
+    // support, because `freshness` is a stamp comparison and the stamp covers
+    // the function version and the calculation settings too. The assertion is
+    // STRENGTHENED, not relaxed: the numbers must still survive untouched,
+    // the date must be on screen, and the false blame must be absent.
     const stale: MatchDetail = { ...DETAIL, freshness: 'stale' };
-    expect(freshnessSentence(stale)).toContain('scored with');
+    const sentence = freshnessSentence(stale)!;
+    expect(sentence).toContain('may be out of date');
+    expect(sentence).toMatch(/scored on \d/i);
+    expect(sentence).not.toMatch(/birth (fact|detail)/i);
     expect(parseMatchReport(report(stale))!.total).toBe(DETAIL.report!.total);
+  });
+
+  it('an unprovable stamp is its own fact, not a change nobody observed', () => {
+    const unprovable: MatchDetail = { ...DETAIL, freshness: 'unprovable' };
+    const sentence = freshnessSentence(unprovable)!;
+    expect(sentence).toContain('before we recorded');
+    expect(sentence).not.toContain('has moved since');
   });
 
   it('a fresh match has nothing to say about freshness', () => {
@@ -133,6 +150,17 @@ describe('ASTRAL-241 — what the surface may not do', () => {
     expect(turn).not.toMatch(/\d{4}-\d{2}-\d{2}/);
     expect(turn).not.toMatch(/\d{1,2}:\d{2}/);
     expect(ASK_AI_LABEL).toBe('Ask AI about this match');
+    // FLAG-6: ONE owner for the label, now that the AstroMatch panel offers
+    // the same act. A literal here would be a second name for one control.
+    expect(ASK_AI_LABEL).toBe(ASK_ABOUT_MATCH_LABEL);
+    // …and it is the package's VALUE, not a literal that happens to match:
+    // two equal strings in two files drift the first time one is edited.
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', 'match-detail-view.ts'),
+      'utf8',
+    );
+    expect(source).toContain('ASK_AI_LABEL = ASK_ABOUT_MATCH_LABEL');
+    expect(source).not.toMatch(/ASK_AI_LABEL\s*=\s*'/);
   });
 
   it('the scorecard screen has exactly ONE chat entry point', () => {
