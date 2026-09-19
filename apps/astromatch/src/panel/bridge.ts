@@ -11,8 +11,16 @@
  * this file.
  */
 
+import type { PendingCapture } from '../lib/capture';
 import type { ConfirmedProfile } from '../lib/confirmed';
-import { MATCH_PORT, requestMatch, type MatchEvent, type PanelRequest } from '../lib/messages';
+import {
+  MATCH_PORT,
+  requestMatch,
+  type CaptureDelivered,
+  type CaptureReply,
+  type MatchEvent,
+  type PanelRequest,
+} from '../lib/messages';
 
 async function ask<T>(request: PanelRequest): Promise<T> {
   const reply = (await chrome.runtime.sendMessage(request)) as
@@ -64,6 +72,53 @@ export async function deleteReading(chatId: string): Promise<{ deleted: boolean;
     return { deleted: false, reason: error instanceof Error ? error.message : String(error) };
   }
 }
+
+// ── the camera (docs/73 ASTRAL-330/332) ────────────────────────────────────
+
+/**
+ * Ask the worker for a picture of the tab.
+ *
+ * The reply is a STATE, not an image-or-throw: `needs-gesture` is the honest
+ * answer to "I have no page access", and the panel renders the instruction
+ * rather than an error (F159).
+ */
+export const requestCapture = () => ask<CaptureReply>({ type: 'capture/request' });
+
+/** Collect a capture a gesture produced while this panel was closed. */
+export const takePendingCapture = () => ask<PendingCapture | null>({ type: 'capture/pending' });
+
+/**
+ * Send the CROP to be read.
+ *
+ * The one image that leaves this browser, and only after the per-capture
+ * consent. The body is built in the worker by `consent.extractRequestBody` —
+ * one key — so no page URL, title or site name can ride along (X-3).
+ */
+export const extractProfile = (image: string) => ask<Reply>({ type: 'capture/extract', image });
+
+/**
+ * A capture the worker pushed here, from a keyboard or context-menu gesture.
+ *
+ * Only ours: a `chrome.runtime` message can come from another extension that
+ * knows this one's id, and this one carries an image the panel is about to
+ * show. The sender's id is checked before anything is drawn.
+ */
+export function onCaptureDelivered(handler: (event: CaptureDelivered) => void): () => void {
+  const listener = (
+    message: { type?: string; image?: string; gesture?: string },
+    sender: chrome.runtime.MessageSender,
+  ) => {
+    if (sender.id !== chrome.runtime.id) return;
+    if (message?.type !== 'capture/delivered' || typeof message.image !== 'string') return;
+    handler(message as CaptureDelivered);
+  };
+  chrome.runtime.onMessage.addListener(listener);
+  return () => chrome.runtime.onMessage.removeListener(listener);
+}
+
+/** What the user has agreed to, kept locally for them to read (ASTRAL-332). */
+export const consentLog = () =>
+  ask<Array<{ version: number; text: string; at: string }>>({ type: 'consent/log' });
 
 export const suggestPlaces = (query: string) => ask<Reply>({ type: 'place/suggest', query });
 export const resolvePlace = (place: string) => ask<Reply>({ type: 'place/resolve', place });

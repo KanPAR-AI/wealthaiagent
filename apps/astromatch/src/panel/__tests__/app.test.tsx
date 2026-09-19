@@ -50,11 +50,26 @@ let port: {
   emit: (event: unknown) => void;
   posted: Array<Record<string, unknown>>;
 } | null = null;
+/** PH-40 — what the fake worker answers the camera with. */
+const deliveryListeners: Array<(m: unknown, s: unknown) => void> = [];
+let pendingCapture: unknown = null;
+let captureReply: unknown = { outcome: { kind: 'needs-gesture' }, shortcut: 'Alt+Shift+M' };
+let extractReply: unknown = { status: 200, body: {}, resetsOn: null };
 
 beforeAll(() => {
   (globalThis as unknown as { chrome: unknown }).chrome = {
     runtime: {
       id: 'astromatch-test',
+      // PH-40: the panel listens for a capture the worker pushes after a
+      // keyboard or context-menu gesture (`onCaptureDelivered`). The handler
+      // is kept so a case can fire one.
+      onMessage: {
+        addListener: (fn: (m: unknown, s: unknown) => void) => deliveryListeners.push(fn),
+        removeListener: (fn: (m: unknown, s: unknown) => void) => {
+          const at = deliveryListeners.indexOf(fn);
+          if (at >= 0) deliveryListeners.splice(at, 1);
+        },
+      },
       sendMessage: async (request: { type: string; [k: string]: unknown }) => {
         sent.push(request);
         switch (request.type) {
@@ -86,6 +101,12 @@ beforeAll(() => {
             };
           case 'place/suggest':
             return { ok: true, value: { status: 200, body: { places: [] }, resetsOn: null } };
+          case 'capture/pending':
+            return { ok: true, value: pendingCapture };
+          case 'capture/request':
+            return { ok: true, value: captureReply };
+          case 'capture/extract':
+            return { ok: true, value: extractReply };
           default:
             return { ok: true, value: null };
         }

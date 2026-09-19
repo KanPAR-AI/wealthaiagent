@@ -14,11 +14,14 @@
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
+import { readFileSync as readSource } from 'fs';
+
 import { BADGE_READY_TITLE } from '../badge';
 import { capabilities } from '../capabilities';
 import {
   BACKEND_HOST_PERMISSION,
   CONNECT_HOSTS,
+  CAPTURE_COMMAND,
   CSP,
   cspFor,
   DEV_HOST_PERMISSION,
@@ -65,7 +68,11 @@ describe('B5 — a permission declared ahead of its capability is on a list, and
   const USED_BY: Record<string, keyof typeof capabilities> = {
     activeTab: 'snapshot',
     scripting: 'readSelection',
-    contextMenus: 'readSelection',
+    // PH-40: the menu item's job is "Read this page into AstroMatch" — it is
+    // one of the two gestures that grant `activeTab` for a CAPTURE (F159),
+    // measured. PH-39 mapped it to `readSelection` because the selection read
+    // was the only thing that could have used it then.
+    contextMenus: 'snapshot',
     sidePanel: 'signIn',
     storage: 'signIn',
   };
@@ -154,6 +161,10 @@ describe('the absences, each of which is load-bearing', () => {
   it('loads no remote image, font, frame or stylesheet', () => {
     expect(CSP).toContain("default-src 'self'");
     expect(CSP).toContain("img-src 'self' data:");
+    // F301: the camera did NOT widen this. `blob:` is deliberately absent —
+    // the crop preview is a <canvas> (not governed by CSP) and the crop that
+    // is sent is `canvas.toDataURL`, so `data:` covers the whole path.
+    expect(CSP).not.toContain('blob:');
     // the one thing the panel genuinely needs, and it is scoped
     expect(CSP).toContain("style-src 'self' 'unsafe-inline'");
     expect(CSP).not.toContain('https://*');
@@ -202,13 +213,38 @@ describe('the shell Chrome will actually load', () => {
     expect(Number(production.minimum_chrome_version)).toBeGreaterThanOrEqual(116);
   });
 
-  it('declares NO keyboard command — a shortcut with nothing behind it is a dead affordance', () => {
-    // docs/73 B5. `commands.capture` (Alt+Shift+M) shipped in PH-39's first
+  it('declares the capture shortcut ONLY because sw.ts answers it (F159)', () => {
+    // docs/73 B5 + ASTRAL-330. `commands.capture` shipped in PH-39's first
     // cut with no `onCommand` listener: Chrome lists it under
     // chrome://extensions/shortcuts, a user presses it, and nothing happens.
-    // F159's fallback returns in PH-40, in the same commit as the capture it
-    // triggers.
-    expect('commands' in production).toBe(false);
+    // PH-39 removed it; PH-40 brings it back IN THE SAME COMMIT as the
+    // handler. So the pin is not "a commands block exists" — it is "a
+    // commands block exists and something listens", which is the property
+    // that was actually broken.
+    expect(production.commands).toEqual({
+      capture: {
+        suggested_key: { default: 'Alt+Shift+M' },
+        description: 'Capture this page into AstroMatch',
+      },
+    });
+    expect(CAPTURE_COMMAND).toBe('capture');
+
+    const sw = readSource(join(__dirname, '..', '..', 'sw.ts'), 'utf8');
+    expect(sw).toMatch(/chrome\.commands\.onCommand\.addListener/);
+    expect(sw).toMatch(/chrome\.contextMenus\.onClicked\.addListener/);
+    for (const name of Object.keys(production.commands)) {
+      // every declared command is named in the code that handles commands
+      expect(sw).toContain(name);
+    }
+  });
+
+  it('declares no command the worker does not handle', () => {
+    // The other direction: a second shortcut added "for later" would have no
+    // branch in `onCommand` and would be the same dead affordance again.
+    const sw = readSource(join(__dirname, '..', '..', 'sw.ts'), 'utf8');
+    const handled = /CAPTURE_COMMAND/.test(sw);
+    expect(handled).toBe(true);
+    expect(Object.keys(production.commands)).toEqual([CAPTURE_COMMAND]);
   });
 });
 

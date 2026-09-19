@@ -30,9 +30,24 @@ interface FakePort {
 
 const messageListeners: Listener[] = [];
 const connectListeners: Listener[] = [];
+const commandListeners: Listener[] = [];
+const suspendListeners: Listener[] = [];
+const menuListeners: Listener[] = [];
+
+/**
+ * What `chrome.tabs.captureVisibleTab` does in this run.
+ *
+ * A function rather than a value, so a case can make Chrome REFUSE — which
+ * is F159's pessimistic branch and the one the panel's instruction state
+ * exists for. The refusal sentence is the one measured in Chromium 145
+ * (`e2e/spike-f159.mjs`), not an invented one.
+ */
+export const PERMISSION_REFUSAL =
+  "Either the '<all_urls>' or 'activeTab' permission is required.";
+let captureAnswer: () => Promise<string> = async () => 'data:image/png;base64,AAAA';
 let storage: Record<string, unknown> = {};
 let local: Record<string, unknown> = {};
-let calls: Array<{ url: string; method: string }> = [];
+let calls: Array<{ url: string; method: string; body?: string }> = [];
 let nextResponse: { status: number; body: unknown } = { status: 200, body: {} };
 
 beforeAll(async () => {
@@ -42,6 +57,9 @@ beforeAll(async () => {
       onMessage: { addListener: (fn: Listener) => messageListeners.push(fn) },
       onConnect: { addListener: (fn: Listener) => connectListeners.push(fn) },
       onInstalled: { addListener: () => {} },
+      // R3: the worker lets go of an uncollected capture when Chrome puts it
+      // to sleep, so the fake has the door it registers on.
+      onSuspend: { addListener: (fn: Listener) => suspendListeners.push(fn) },
       sendMessage: async () => undefined,
     },
     storage: {
@@ -67,10 +85,23 @@ beforeAll(async () => {
         },
       },
     },
-    sidePanel: { setPanelBehavior: async () => {} },
+    sidePanel: { setPanelBehavior: async () => {}, open: async () => {} },
     action: { setTitle: async () => {}, setBadgeText: async () => {} },
-    tabs: { onActivated: { addListener: () => {} }, onUpdated: { addListener: () => {} } },
-    contextMenus: { create: () => {}, onClicked: { addListener: () => {} } },
+    tabs: {
+      onActivated: { addListener: () => {} },
+      onUpdated: { addListener: () => {} },
+      // PH-40. `captureVisibleTab` answers whatever the case under test set:
+      // an image, or a rejection with Chrome's own permission sentence.
+      captureVisibleTab: async () => captureAnswer(),
+    },
+    contextMenus: {
+      create: (_item: unknown, done?: () => void) => done?.(),
+      onClicked: { addListener: (fn: Listener) => menuListeners.push(fn) },
+    },
+    commands: {
+      onCommand: { addListener: (fn: Listener) => commandListeners.push(fn) },
+      getAll: async () => [{ name: 'capture', shortcut: 'Alt+Shift+M' }],
+    },
   };
 
   installDefaultFetch();
@@ -82,9 +113,16 @@ beforeAll(async () => {
 function installDefaultFetch() {
   (globalThis as unknown as { fetch: unknown }).fetch = async (
     input: unknown,
-    init?: { method?: string },
+    init?: { method?: string; body?: unknown },
   ) => {
-    calls.push({ url: String(input), method: (init?.method ?? 'GET').toUpperCase() });
+    calls.push({
+      url: String(input),
+      method: (init?.method ?? 'GET').toUpperCase(),
+      // PH-40: what is IN the extract request is the assertion (X-3 — the
+      // backend must be unable to tell which site a capture came from), so
+      // the spy has to see the body, not only the URL.
+      ...(init?.body === undefined ? {} : { body: String(init.body) }),
+    });
     return {
       ok: nextResponse.status < 400,
       status: nextResponse.status,
@@ -568,3 +606,147 @@ function sse(text: string) {
     },
   } as unknown as Response;
 }
+
+// ── PH-40 · the camera (docs/73 ASTRAL-330/331/332) ────────────────────────
+
+describe('the camera, at the worker (ASTRAL-330)', () => {
+  beforeEach(() => {
+    storage['astromatch.session'] = session();
+    captureAnswer = async () => 'data:image/png;base64,Q0FQVFVSRQ==';
+  });
+
+  it('captures the visible tab when the panel asks and Chrome allows it', async () => {
+    const reply = await ask({ type: 'capture/request' });
+    expect(reply.ok).toBe(true);
+    expect(reply.value).toEqual({
+      outcome: {
+        kind: 'captured',
+        image: 'data:image/png;base64,Q0FQVFVSRQ==',
+        gesture: 'panel-button',
+      },
+      shortcut: 'Alt+Shift+M',
+    });
+    // a capture is not a network call
+    expect(calls).toEqual([]);
+  });
+
+  it('answers a REFUSAL with needs-gesture, and the shortcut to name', async () => {
+    captureAnswer = async () => {
+      throw new Error(PERMISSION_REFUSAL);
+    };
+    const reply = await ask({ type: 'capture/request' });
+    expect(reply.ok).toBe(true);
+    expect(reply.value).toEqual({
+      outcome: { kind: 'needs-gesture' },
+      shortcut: 'Alt+Shift+M',
+    });
+  });
+
+  it('names a non-permission failure rather than sending the user round a loop', async () => {
+    captureAnswer = async () => {
+      throw new Error('Failed to capture tab: chrome://extensions/');
+    };
+    const reply = (await ask({ type: 'capture/request' })) as {
+      value: { outcome: { kind: string; reason?: string } };
+    };
+    expect(reply.value.outcome.kind).toBe('failed');
+    expect(reply.value.outcome.reason).toContain('chrome://extensions');
+  });
+
+  it('treats an EMPTY answer from Chrome as a failure, not as a capture', async () => {
+    captureAnswer = async () => '';
+    const reply = (await ask({ type: 'capture/request' })) as {
+      value: { outcome: { kind: string } };
+    };
+    expect(reply.value.outcome.kind).toBe('failed');
+  });
+
+  it('hands a gesture capture to an open panel, and stores nothing', async () => {
+    let pushed: unknown = null;
+    (globalThis as unknown as { chrome: { runtime: { sendMessage: unknown } } }).chrome.runtime
+      .sendMessage = async (m: unknown) => {
+      pushed = m;
+      return undefined;
+    };
+    commandListeners[0]('capture', { id: 7 });
+    await settle();
+    expect(pushed).toEqual({
+      type: 'capture/delivered',
+      image: 'data:image/png;base64,Q0FQVFVSRQ==',
+      gesture: 'command',
+    });
+    // nothing was held, so a later panel gets nothing
+    expect(await ask({ type: 'capture/pending' })).toEqual({ ok: true, value: null });
+    expect(JSON.stringify(local)).not.toContain('Q0FQVFVSRQ');
+  });
+
+  it('HOLDS a gesture capture when no panel is listening, and hands it over once', async () => {
+    (globalThis as unknown as { chrome: { runtime: { sendMessage: unknown } } }).chrome.runtime
+      .sendMessage = async () => {
+      throw new Error('Could not establish connection.');
+    };
+    menuListeners[0]({ menuItemId: 'astromatch.capture' }, { id: 7 });
+    await settle();
+    const first = (await ask({ type: 'capture/pending' })) as {
+      value: { image: string; gesture: string } | null;
+    };
+    expect(first.value?.image).toBe('data:image/png;base64,Q0FQVFVSRQ==');
+    expect(first.value?.gesture).toBe('context-menu');
+    // ONCE. A second ask gets nothing (ASTRAL-337 — no capture lingers).
+    expect(await ask({ type: 'capture/pending' })).toEqual({ ok: true, value: null });
+    // and it never touched storage on the way past
+    expect(JSON.stringify(local)).not.toContain('Q0FQVFVSRQ');
+  });
+
+  it('ignores a context-menu click that is not ours', async () => {
+    let captured = false;
+    captureAnswer = async () => {
+      captured = true;
+      return 'data:image/png;base64,Q0FQVFVSRQ==';
+    };
+    menuListeners[0]({ menuItemId: 'somebody.else' }, { id: 7 });
+    await settle();
+    expect(captured).toBe(false);
+  });
+
+  it('ignores a command that is not ours', async () => {
+    let captured = false;
+    captureAnswer = async () => {
+      captured = true;
+      return 'data:image/png;base64,Q0FQVFVSRQ==';
+    };
+    commandListeners[0]('some-other-command', { id: 7 });
+    await settle();
+    expect(captured).toBe(false);
+  });
+});
+
+describe('the crop goes to the extractor, and NOTHING else goes with it (ASTRAL-332)', () => {
+  beforeEach(() => {
+    storage['astromatch.session'] = session();
+  });
+
+  it('posts ONE key to the one route', async () => {
+    nextResponse = { status: 200, body: { candidates: {} } };
+    await ask({ type: 'capture/extract', image: 'data:image/png;base64,Q1JPUA==' });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe(
+      'https://chatbackend.yourfinadvisor.com/api/v1/astrology/extract-profile',
+    );
+    expect(calls[0].method).toBe('POST');
+    expect(JSON.parse(calls[0].body!)).toEqual({ image: 'data:image/png;base64,Q1JPUA==' });
+  });
+
+  it('carries no page URL, title or site name (X-3)', async () => {
+    nextResponse = { status: 200, body: { candidates: {} } };
+    await ask({ type: 'capture/extract', image: 'data:image/png;base64,Q1JPUA==' });
+    expect(Object.keys(JSON.parse(calls[0].body!))).toEqual(['image']);
+  });
+
+  it('refuses to send when nobody is signed in', async () => {
+    storage = {};
+    const reply = await ask({ type: 'capture/extract', image: 'data:image/png;base64,Q1JPUA==' });
+    expect(reply).toEqual({ ok: false, error: 'Not signed in.' });
+    expect(calls).toEqual([]);
+  });
+});

@@ -33,7 +33,13 @@
  * three signs apart, silently (`models.py`'s own comment, measured).
  */
 
-import type { Candidate, FieldAct, FieldDecision, PersonFieldKey } from './confirmed';
+import type {
+  Candidate,
+  CaptureSource,
+  FieldAct,
+  FieldDecision,
+  PersonFieldKey,
+} from './confirmed';
 import { PERSON_FIELD_KEYS } from './confirmed';
 import { spell } from './parse-profile';
 
@@ -204,8 +210,38 @@ export function fieldChoices(key: PersonFieldKey, candidate: Candidate): FieldCh
   if (!isAmbiguous(candidate)) return [];
   return (candidate.alternatives ?? []).map((value) => ({
     value,
-    label: key === 'dob' ? spell(value) || value : value,
+    label:
+      key === 'dob'
+        ? spell(value) || value
+        : key === 'tob'
+          ? spellClock(value) || value
+          : value,
   }));
+}
+
+/**
+ * "05:13" → "5:13 in the morning", "17:13" → "5:13 in the evening".
+ *
+ * Extractor v2 sends a zero-padded time with no am/pm cue as TWO readings,
+ * and it is right to: a twelve-hour error moves the ascendant by half the
+ * zodiac. But "05:13" and "17:13" side by side are two strings a reader has
+ * to decode before they can choose, and the choice is the whole point of
+ * showing them.
+ *
+ * This is FORMATTING and nothing else — the hour decides the words and the
+ * ISO 24-hour value is what travels. No astrology is computed here: "the
+ * morning" is a fact about a clock, not about a chart.
+ */
+export function spellClock(value: string): string {
+  const m = /^(\d{2}):(\d{2})$/.exec(value.trim());
+  if (!m) return '';
+  const hour = Number(m[1]);
+  const minute = m[2];
+  if (hour > 23 || Number(minute) > 59) return '';
+  const part =
+    hour < 12 ? 'in the morning' : hour < 17 ? 'in the afternoon' : hour < 21 ? 'in the evening' : 'at night';
+  const twelve = hour % 12 === 0 ? 12 : hour % 12;
+  return `${twelve}:${minute} ${part}`;
 }
 
 /**
@@ -276,12 +312,18 @@ function label(key: PersonFieldKey): string {
 
 /** docs/73 §4 — a `basis` belongs to `inferred` and to nothing else. */
 export function basisFor(candidate: Candidate): string | null {
-  return candidate.state === 'inferred' ? candidate.basis ?? null : null;
+  if (candidate.state !== 'inferred') return null;
+  return candidate.basis ?? candidate.note ?? null;
 }
 
 /** What the row says about where its value came from. Three sentences for
- *  three states, and never a `—`. */
+ *  three states, and never a `—`.
+ *
+ *  A `missing` field that carries the ENGINE's own `note` says that instead:
+ *  "not there — please add it" about a value the user can see on their own
+ *  screenshot reads as the panel not having looked (§4's widening). */
 export function stateSentence(candidate: Candidate): string {
+  if (candidate.state === 'missing' && candidate.note) return candidate.note;
   switch (candidate.state) {
     case 'stated':
       return 'read from what you gave me';
@@ -290,4 +332,137 @@ export function stateSentence(candidate: Candidate): string {
     case 'missing':
       return 'not there — please add it';
   }
+}
+
+// ── PH-40 · confidence, attention, and where a value was read (ASTRAL-333) ──
+
+/**
+ * The confidence BAND, in words (INV-5).
+ *
+ * A machine's confidence is an interpretive quantity and a headline
+ * percentage over one is the false precision INV-5 removes: "0.52" and "52%"
+ * both read as a measurement of whether the date is right, which is not what
+ * the number is. So the row says `moderate`, and the number itself is
+ * available on tap for whoever wants it — visible, never the headline.
+ *
+ * The thresholds are this client's own presentational bands over a number
+ * the engine sent. They score nothing and change nothing: the same candidate
+ * is confirmed the same way at 0.59 and at 0.61 — the only difference is
+ * whether the row asks for attention.
+ */
+export type ConfidenceBand = 'high' | 'moderate' | 'low';
+
+export const ATTENTION_BELOW = 0.6;
+const HIGH_AT = 0.8;
+
+export function confidenceBand(confidence: number): ConfidenceBand {
+  if (confidence >= HIGH_AT) return 'high';
+  if (confidence >= ATTENTION_BELOW) return 'moderate';
+  return 'low';
+}
+
+/**
+ * The words beside a field, or null when there is nothing to say.
+ *
+ * A `missing` field has no confidence worth showing: the machine is not
+ * "0% sure of the date", it did not find one, and `stateSentence` already
+ * says so.
+ */
+export function confidenceLabel(candidate: Candidate): string | null {
+  if (candidate.state === 'missing') return null;
+  return `${confidenceBand(candidate.confidence)} confidence`;
+}
+
+/**
+ * Does this row need the user to look at it properly?
+ *
+ * ASTRAL-333: "a low-confidence `stated` field is presented exactly as an
+ * `inferred` one for the purpose of demanding attention". A machine that
+ * says it READ something and is only half sure it read it right is the same
+ * risk as one that reasoned its way to a value, and the screen should not
+ * make the first look settled.
+ */
+export function needsAttention(candidate: Candidate): boolean {
+  if (candidate.state === 'missing') return false;
+  if (candidate.state === 'inferred') return true;
+  return candidate.confidence < ATTENTION_BELOW;
+}
+
+/**
+ * Where this value came from, in one sentence per capture channel.
+ *
+ * The text paths can name the LINE (`sourceLine`, B2) because the parse ran
+ * over text this panel still holds. A vision candidate has no line — §4's
+ * contract carries none and inventing one would be the panel claiming to
+ * know something the extractor never said — so the snapshot path names the
+ * snapshot instead. Never a blank, and never a fabricated quotation.
+ */
+export function sourceNote(source: CaptureSource, candidate: Candidate): string | null {
+  if (candidate.state === 'missing') return null;
+  if (candidate.sourceLine) return `read from: ${candidate.sourceLine}`;
+  if (source === 'snapshot') return 'read from your snapshot';
+  if (source === 'selection') return 'read from what you selected';
+  return null;
+}
+
+/**
+ * ONE provenance line for a value read off a SNAPSHOT (the COPY ruling).
+ *
+ * The snapshot path used to stack three sentences under every field — the
+ * state ("read from what you gave me"), the confidence ("high confidence")
+ * and the source ("read from your snapshot"). Three lines for one fact, and
+ * the first of them was FALSE on this path: the user gave a screenshot, not
+ * a value. A machine's reading of a picture is not something they told us.
+ *
+ * So on the image paths the three collapse into one sentence that says where
+ * the value came from AND how sure the machine is, in that order, because
+ * that is the order the question arrives in. The text paths keep their own
+ * sentence — there the user really did give the text.
+ *
+ * `tone` is the ink: `warn` is the attention treatment a low-confidence
+ * `stated` field gets, which is the same treatment an `inferred` one gets
+ * (ASTRAL-333) and for the same reason.
+ */
+export interface Provenance {
+  text: string;
+  tone: 'plain' | 'warn' | 'pending';
+  /** the machine's number, revealed on tap. Null when there is nothing to show. */
+  confidence: number | null;
+}
+
+export function provenanceLine(
+  source: CaptureSource,
+  candidate: Candidate,
+): Provenance | null {
+  if (source !== 'snapshot' && source !== 'selection') return null;
+  const where = source === 'snapshot' ? 'your snapshot' : 'what you selected';
+  if (candidate.state === 'missing') {
+    // `stateSentence` prefers the engine's own note when it sent one.
+    return { text: stateSentence(candidate), tone: 'pending', confidence: null };
+  }
+  if (candidate.state === 'inferred') {
+    return {
+      text: `worked out from ${where} — check it`,
+      tone: 'warn',
+      confidence: candidate.confidence,
+    };
+  }
+  // ONE rule for "this row demands attention", and it is `needsAttention` —
+  // the same predicate the text paths' ink uses (ASTRAL-333). Reading the
+  // band directly here would have been a second copy of the threshold, and
+  // a mutation that disabled the first would have left this one agreeing
+  // with it by accident.
+  const band = confidenceBand(candidate.confidence);
+  if (needsAttention(candidate)) {
+    return {
+      text: `read off ${where} — but I'm not sure I read it right`,
+      tone: 'warn',
+      confidence: candidate.confidence,
+    };
+  }
+  return {
+    text: `read off ${where} — ${band} confidence`,
+    tone: 'plain',
+    confidence: candidate.confidence,
+  };
 }

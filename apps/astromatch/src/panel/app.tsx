@@ -11,13 +11,29 @@
  * through `@wealthai/astral-dom` at 380 px — the width ASTRAL-18 names.
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { DARK_THEME, parseMatchReport, withoutScorecardFallback } from '@wealthai/astral';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  DARK_THEME,
+  buildInputResponseMessage,
+  parseMatchReport,
+  withoutScorecardFallback,
+  type InputRequestPayload,
+  type InputValue,
+} from '@wealthai/astral';
 import { AstralBlock, Narration } from '@wealthai/astral-dom';
 
 import { capabilities } from '../lib/capabilities';
-import { PANEL_WIDTH } from '../lib/config';
-import { type CaptureSource, type ConfirmedProfile, type ParsedProfile } from '../lib/confirmed';
+import { instructionFor, type Instruction } from '../lib/capture';
+import type { ChipId, ChipPlan } from '../lib/chips';
+import { ENGINE_HAS_CAPTURE_FIELDS, PANEL_WIDTH } from '../lib/config';
+import {
+  editedKeys,
+  type CaptureSource,
+  type ConfirmedProfile,
+  type ParsedProfile,
+} from '../lib/confirmed';
+import { RESETS_ON_HEADER } from '../lib/errors';
+import { DOOR_LABELS, readExtractResponse, type ExtractFailure } from '../lib/extract';
 import type { MatchEvent } from '../lib/messages';
 import { parseProfileText } from '../lib/parse-profile';
 import { TRUNCATED_NOTE, readTurn, type TurnOutcome } from '../lib/transport';
@@ -25,12 +41,18 @@ import { needsDelete, retentionNotice, type DeleteOutcome } from '../lib/retenti
 import {
   authState,
   deleteReading,
+  extractProfile,
+  onCaptureDelivered,
+  requestCapture,
   sendCode,
   signOut,
   startMatch,
+  takePendingCapture,
   verifyCode,
   type MatchRun,
 } from './bridge';
+import { ChipRow, type ChipAnswerState } from './chips';
+import { CropScreen } from './crop';
 import { Heading, ReviewScreen, ghostButton, primaryButton } from './review';
 
 const theme = DARK_THEME;
@@ -40,6 +62,23 @@ type Screen =
   | { name: 'signed-out'; notice?: string }
   | { name: 'choose' }
   | { name: 'paste' }
+  /**
+   * A capture is on screen and the user is drawing the crop (ASTRAL-331).
+   *
+   * The BYTES are not here: they live in the panel's `capture` state for the
+   * lifetime of one review, so the recovery door can reopen on the ORIGINAL
+   * rather than on the crop that just failed (F309).
+   */
+  | { name: 'crop'; problem: string | null }
+  /**
+   * Chrome would not give us the tab (F159's pessimistic branch).
+   *
+   * A STATE with words in it, naming the two gestures that do grant
+   * `activeTab` — never a button that silently did nothing.
+   */
+  | { name: 'capture-blocked'; instruction: Instruction }
+  /** the extractor refused, capped, or could not be reached (ASTRAL-333) */
+  | { name: 'capture-failed'; outcome: ExtractFailure }
   | { name: 'review'; parsed: ParsedProfile; source: CaptureSource }
   | { name: 'running'; text: string }
   | { name: 'reading'; outcome: TurnOutcome }
@@ -59,6 +98,37 @@ export function App() {
   const [deletion, setDeletion] = useState<DeleteOutcome>({ kind: 'pending' });
   /** what the worker's sweep removed on the way in, if anything */
   const [sweptNotice, setSweepNotice] = useState('');
+  /** docs/73 ASTRAL-334: the user answered the save offer, so this reading is
+   *  THEIRS TO KEEP and the leave-sweep must never touch it. */
+  const [saved, setSaved] = useState(false);
+  /** the user chose outcome (b) — an instant reading, unsaved. The chips
+   *  belong to that choice (ASTRAL-336). */
+  const [instant, setInstant] = useState(false);
+  const [busy, setBusy] = useState(false);
+  /** a chip's answer, or the engine's word about the save — both of which
+   *  arrive on a turn that must NOT replace the scorecard on screen. */
+  const [side, setSide] = useState<ChipAnswerState | null>(null);
+  /**
+   * THE UNCROPPED CAPTURE, for the lifetime of this capture's review (F309).
+   *
+   * It used to live only in the crop SCREEN's own state, so the moment the
+   * panel moved on the original was gone — and "Choose a smaller region",
+   * the one recovery door after "I couldn't read that crop", reopened the
+   * tool on the CROPPED bytes. The only way out of a read that failed
+   * because the box was too tight was to make it tighter still.
+   *
+   * It is memory and nothing else: never `chrome.storage`, never IndexedDB,
+   * dropped on confirm, on cancel, on leaving the reading and on panel close
+   * (ASTRAL-337, whose storage scan covers it).
+   */
+  const [capture, setCapture] = useState<string | null>(null);
+  /** what happened to the reading a new capture interrupted (F311) */
+  const [interrupted, setInterrupted] = useState('');
+  const sideRef = useRef<{ id: ChipId | 'save'; label: string } | null>(null);
+  /** mirrors of `run` and `saved` for the callbacks that must not be
+   *  re-created on every state change (the capture listener is one). */
+  const runRef = useRef<MatchRun | null>(null);
+  const savedRef = useRef(false);
 
   useEffect(() => {
     void authState()
@@ -75,6 +145,39 @@ export function App() {
   }, []);
 
   const onEvent = useCallback((event: MatchEvent) => {
+    // A SIDE RUN — a chip's question, or the save answer — is a turn whose
+    // result belongs BESIDE the reading, not instead of it. Routing it
+    // through the screen was the first version and it replaced the scorecard
+    // the chip was asking about, which is the one thing the user was looking
+    // at.
+    const sideRun = sideRef.current;
+    if (sideRun) {
+      if (event.type === 'delta') {
+        setSide({ ...sideRun, text: event.text, streaming: true, truncated: false });
+        return;
+      }
+      sideRef.current = null;
+      if (event.type === 'failed') {
+        setSide({ ...sideRun, text: '', streaming: false, truncated: false, error: event.error });
+        return;
+      }
+      if (event.outcome.kind === 'signed-out') {
+        setAccount(null);
+        setScreen({ name: 'signed-out', notice: event.outcome.reason });
+        return;
+      }
+      if (sideRun.id === 'save') {
+        setSaved(true);
+        savedRef.current = true;
+      }
+      setSide({
+        ...sideRun,
+        text: outcomeText(event.outcome),
+        streaming: false,
+        truncated: 'truncated' in event.outcome ? Boolean(event.outcome.truncated) : false,
+      });
+      return;
+    }
     if (event.type === 'delta') {
       setScreen({ name: 'running', text: event.text });
       return;
@@ -96,9 +199,18 @@ export function App() {
 
   const begin = (profile: ConfirmedProfile) => {
     setSubject(profile);
+    // The review is over: the bytes have done their whole job.
+    setCapture(null);
     setDeletion({ kind: 'pending' });
+    setSaved(false);
+    savedRef.current = false;
+    setInstant(false);
+    setSide(null);
+    sideRef.current = null;
     setScreen({ name: 'running', text: '' });
-    setRun(startMatch(profile, `Match — ${profile.name}`, onEvent));
+    const started = startMatch(profile, `Match — ${profile.name}`, onEvent);
+    runRef.current = started;
+    setRun(started);
   };
 
   /**
@@ -110,10 +222,11 @@ export function App() {
    */
   const leaveReading = async (then: () => void) => {
     const chatId = run?.chatId() ?? null;
-    // PH-39 never answers the save offer, so `saved` is false by
-    // construction here. It is a parameter rather than a constant because
-    // PH-40 adds the save, and a reading the user KEPT must not be deleted.
-    if (!needsDelete(chatId, false)) {
+    // ASTRAL-334/335, both halves: a reading the user SAVED is theirs to keep
+    // and is never swept; an unsaved one is deleted when they leave it. The
+    // worker holds the same fact independently (`savedRuns`), because the
+    // panel closing is a path this function never runs on.
+    if (!needsDelete(chatId, saved)) {
       then();
       return;
     }
@@ -123,12 +236,232 @@ export function App() {
       setDeletion({ kind: 'deleted' });
       run?.close();
       setRun(null);
+      runRef.current = null;
+      // R6 — every panel-local copy of the other person's values goes with
+      // the reading: the confirmed profile, the capture, the side answer.
+      // The DOM changing is not the same fact as the values being gone.
+      setSubject(null);
+      setCapture(null);
+      setSide(null);
+      setInterrupted('');
       then();
       return;
     }
     // Stay where they are: a failed delete they cannot see is the silent
     // version of the sentence this whole path exists to make true.
     setDeletion({ kind: 'failed', reason: outcome.reason });
+  };
+
+  // ── the camera (docs/73 ASTRAL-330/331/332/333) ─────────────────────────
+
+  /**
+   * The camera button asks the WORKER, and renders whatever comes back.
+   *
+   * F159, answered per click instead of assumed once: a worker holding an
+   * `activeTab` grant returns an image; one that does not returns
+   * `needs-gesture`, and the panel prints the shortcut Chrome actually bound
+   * and the context-menu item. There is no branch in which this button does
+   * nothing.
+   */
+  /**
+   * A capture arrives — from the button, a shortcut or the menu.
+   *
+   * It REPLACES whatever was on screen, including a reading in progress. The
+   * worker deletes that reading's chat on its own (it is unsaved and the port
+   * is still ours), but the user watched their screen change under them, so
+   * this says what happened in one sentence rather than leaving them to
+   * wonder (F311). A SAVED reading is theirs and is never described as
+   * closed.
+   */
+  const takeCapture = useCallback(
+    (image: string) => {
+      setInterrupted(
+        runRef.current && !savedRef.current
+          ? 'The reading you had open was not saved, so it has been closed and deleted.'
+          : '',
+      );
+      setCapture(image);
+      setScreen({ name: 'crop', problem: null });
+    },
+    [],
+  );
+
+  const askForCapture = useCallback(async () => {
+    setSweepNotice('');
+    try {
+      const reply = await requestCapture();
+      if (reply.outcome.kind === 'captured') {
+        takeCapture(reply.outcome.image);
+        return;
+      }
+      if (reply.outcome.kind === 'needs-gesture') {
+        setScreen({ name: 'capture-blocked', instruction: instructionFor(reply.shortcut) });
+        return;
+      }
+      setScreen({ name: 'failed', error: reply.outcome.reason });
+    } catch (error) {
+      setScreen({
+        name: 'failed',
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }, []);
+
+  /**
+   * A capture a GESTURE produced, arriving from the worker.
+   *
+   * Two doors, because a gesture can fire either way round: one for a panel
+   * that was already open (the worker pushes), one for a panel that has just
+   * started (it collects what was held). Both land on the same screen.
+   */
+  useEffect(() => onCaptureDelivered((event) => takeCapture(event.image)), [takeCapture]);
+
+  useEffect(() => {
+    void takePendingCapture()
+      .then((pending) => {
+        if (pending?.image) takeCapture(pending.image);
+      })
+      .catch((e: unknown) => {
+        // Named. A capture the user made with a shortcut, lost silently, is
+        // a keypress that did nothing.
+        console.warn('[astromatch] could not collect a pending capture', e);
+      });
+  }, []);
+
+  /**
+   * Send the crop and read the answer (ASTRAL-332, §4).
+   *
+   * Every failure is a designed state with a door out — and two of those
+   * doors, paste and manual entry, are never capped and never leave the
+   * browser at all.
+   */
+  const sendCrop = async (image: string) => {
+    setInterrupted('');
+    setBusy(true);
+    try {
+      const reply = await extractProfile(image);
+      const outcome = readExtractResponse(reply.status, reply.body, {
+        get: (name: string) => (name === RESETS_ON_HEADER ? reply.resetsOn : null),
+      });
+      if (outcome.kind === 'candidates') {
+        setScreen({ name: 'review', parsed: outcome.parsed, source: 'snapshot' });
+        return;
+      }
+      setScreen({ name: 'capture-failed', outcome });
+    } catch (error) {
+      const unreachable = readExtractResponse(0, null, null);
+      if (unreachable.kind !== 'candidates') {
+        setScreen({ name: 'capture-failed', outcome: unreachable });
+      }
+      console.warn('[astromatch] the extract call failed', error);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** A door out of a failed capture. Each one is somewhere real. */
+  const takeDoor = (door: string) => {
+    // F309: back to the ORIGINAL capture, not to the crop that just failed.
+    // Reopening on the cropped bytes meant the only recovery from "I
+    // couldn't read that crop" was to crop it smaller.
+    if (door === 'recrop' && capture) {
+      setScreen({ name: 'crop', problem: null });
+      return;
+    }
+    if (door === 'paste') {
+      setCapture(null);
+      setScreen({ name: 'paste' });
+      return;
+    }
+    if (door === 'manual') {
+      setCapture(null);
+      setScreen({ name: 'review', parsed: EMPTY_PARSE, source: 'manual' });
+      return;
+    }
+    if (door === 'sign-in') {
+      setCapture(null);
+      setAccount(null);
+      setScreen({ name: 'signed-out' });
+      return;
+    }
+    void askForCapture();
+  };
+
+  // ── the two outcomes (docs/73 ASTRAL-334/335) ───────────────────────────
+
+  /**
+   * (a) "Add to my matches" — the SHIPPED save path and nothing new.
+   *
+   * The engine's own `save_match_offer` ask is answered on the one carrier
+   * (`buildInputResponseMessage`), with `capture_source` and `capture_edited`
+   * riding along so a fact the user accepted unchanged lands
+   * `parsed_from_page` rather than `stated_by_user` (ASTRAL-313, AMB-68(a)).
+   * There is no `POST /people` here and there is no auto-save: nothing is
+   * written until this button is pressed.
+   */
+  const addToMatches = (offer: InputRequestPayload) => {
+    if (!subject || !run) {
+      // LOUD. A silent return here is a button that does nothing, which is
+      // the exact failure the capability rule exists to remove — and it is
+      // how this path first went wrong: the click landed, nothing was sent,
+      // and the card sat there offering to save again (F305).
+      setScreen({
+        name: 'failed',
+        error:
+          'I lost track of this reading before it could be saved. Run it again ' +
+          'and the save will work from the top.',
+      });
+      console.warn('[astromatch] save pressed with no run', {
+        hasSubject: Boolean(subject),
+        hasRun: Boolean(run),
+      });
+      return;
+    }
+    const values: Record<string, InputValue> = {
+      save_match: 'save',
+      person2_name: subject.name,
+    };
+    if (ENGINE_HAS_CAPTURE_FIELDS) {
+      values.capture_source = subject.source;
+      values.capture_edited = editedKeys(subject);
+    }
+    sideRef.current = { id: 'save', label: 'Added to your matches' };
+    setSide({ id: 'save', label: 'Added to your matches', text: '', streaming: true, truncated: false });
+    run.answer(buildInputResponseMessage(offer, values));
+  };
+
+  /**
+   * (b) "Instant reading — don't save".
+   *
+   * It sends NOTHING. F149: `_persist_saved_match` returns None unless the
+   * offer is answered, so the default is already "nothing durable", and this
+   * button is the user saying so rather than a message that asks for it. What
+   * DOES persist is the chat, which the retention card names in the product's
+   * own words, and which is deleted when they leave.
+   */
+  const keepItInstant = () => {
+    setInstant(true);
+    setSide(null);
+  };
+
+  /** A chip: either the payload answers it, or the engine does. */
+  const pickChip = (id: ChipId, label: string, plan: ChipPlan) => {
+    if (plan.kind === 'instant') {
+      // ZERO requests. The answer is already on screen in the payload the
+      // scorecard was drawn from; `chips.test.tsx` counts the fetches.
+      sideRef.current = null;
+      setSide({ id, label, text: plan.markdown, streaming: false, truncated: false });
+      return;
+    }
+    if (plan.kind === 'absent') return; // the chip is not rendered at all
+    if (!run) {
+      setSide({ id, label, text: '', streaming: false, truncated: false,
+        error: 'I lost track of this reading — ask it again from a fresh one.' });
+      return;
+    }
+    sideRef.current = { id, label };
+    setSide({ id, label, text: '', streaming: true, truncated: false });
+    run.answer(plan.question);
   };
 
   return (
@@ -168,6 +501,7 @@ export function App() {
               ? retentionNotice(deletion).headline
               : sweptNotice || undefined
           }
+          onSnapshot={() => void askForCapture()}
           onManual={() => {
             setSweepNotice('');
             setDeletion({ kind: 'pending' });
@@ -185,6 +519,71 @@ export function App() {
           onParsed={(parsed) => setScreen({ name: 'review', parsed, source: 'paste' })}
           onBack={() => setScreen({ name: 'choose' })}
         />
+      ) : null}
+      {screen.name === 'crop' && capture ? (
+        <CropScreen
+          image={capture}
+          busy={busy}
+          problem={screen.problem}
+          interrupted={interrupted}
+          onSend={(cropped) => void sendCrop(cropped)}
+          onCancel={() => {
+            setCapture(null);
+            setInterrupted('');
+            setScreen({ name: 'choose' });
+          }}
+        />
+      ) : null}
+      {screen.name === 'capture-blocked' ? (
+        <Padded>
+          <Heading>{screen.instruction.headline}</Heading>
+          <p style={prose}>
+            Chrome only lets an extension see a page when you point at it — so the
+            camera in here cannot take the picture on its own.
+          </p>
+          <ul data-testid="capture-instruction" style={{ ...prose, paddingLeft: '18px' }}>
+            {screen.instruction.steps.map((step) => (
+              <li key={step} style={{ marginBottom: '6px' }}>
+                {step}
+              </li>
+            ))}
+          </ul>
+          <button type="button" style={ghostButton} onClick={() => setScreen({ name: 'choose' })}>
+            Back
+          </button>
+        </Padded>
+      ) : null}
+      {screen.name === 'capture-failed' ? (
+        <Padded>
+          <Heading>{CAPTURE_FAILURE_HEADINGS[screen.outcome.kind]}</Heading>
+          <p style={{ ...prose, color: theme.warn }} data-testid="capture-problem">
+            {screen.outcome.message}
+          </p>
+          {screen.outcome.kind === 'capped' && screen.outcome.resetsOn ? (
+            <p style={prose} data-testid="capture-resets">
+              {`Captures come back on ${screen.outcome.resetsOn}.`}
+            </p>
+          ) : null}
+          {screen.outcome.kind === 'capped' ? (
+            <p style={prose}>
+              Pasting their biodata and typing their details are never capped, and
+              neither one sends a picture anywhere.
+            </p>
+          ) : null}
+          {screen.outcome.doors
+            .filter((door) => door !== 'recrop' || Boolean(capture))
+            .map((door) => (
+            <button
+              key={door}
+              type="button"
+              data-testid={`door-${door}`}
+              style={ghostButton}
+              onClick={() => takeDoor(door)}
+            >
+              {DOOR_LABELS[door]}
+            </button>
+          ))}
+        </Padded>
       ) : null}
       {screen.name === 'review' ? (
         <ReviewScreen
@@ -206,6 +605,12 @@ export function App() {
           onRetry={subject ? () => begin(subject) : undefined}
           deletion={deletion}
           onDeleteNow={() => void leaveReading(() => setScreen({ name: 'choose' }))}
+          saved={saved}
+          instant={instant}
+          onSave={addToMatches}
+          onInstant={keepItInstant}
+          side={side}
+          onChip={pickChip}
         />
       ) : null}
       {screen.name === 'failed' ? (
@@ -339,10 +744,12 @@ function SignIn({
 function Choose({
   onManual,
   onPaste,
+  onSnapshot,
   notice,
 }: {
   onManual: () => void;
   onPaste: () => void;
+  onSnapshot: () => void;
   notice?: string;
 }) {
   return (
@@ -357,8 +764,20 @@ function Choose({
         Your own chart is already on your account. Give me theirs and I'll score the Kundli Milan
         against it.
       </p>
+      {capabilities.snapshot ? (
+        <button type="button" style={primaryButton} data-testid="snapshot" onClick={onSnapshot}>
+          📷 Read this page
+        </button>
+      ) : null}
+      {capabilities.snapshot ? (
+        <p style={{ ...prose, fontSize: '12px' }}>
+          I take a picture of what is on screen, you draw a box around the birth
+          details, and only that box is sent to be read. I never read the page
+          itself.
+        </p>
+      ) : null}
       {capabilities.manualEntry ? (
-        <button type="button" style={primaryButton} data-testid="manual" onClick={onManual}>
+        <button type="button" style={ghostButton} data-testid="manual" onClick={onManual}>
           Type their details
         </button>
       ) : null}
@@ -367,9 +786,9 @@ function Choose({
           Paste their biodata
         </button>
       ) : null}
-      {/* The camera and the selection read are ABSENT, not disabled: a
-          capability marked false removes its control (doctrine 8). Nothing
-          here promises them. */}
+      {/* The SELECTION read, the shortlist and the compare view are ABSENT,
+          not disabled: a capability marked false removes its control
+          (doctrine 8). Nothing here promises them. */}
     </Padded>
   );
 }
@@ -505,6 +924,12 @@ function Reading({
   deletion,
   onDeleteNow,
   streaming = false,
+  saved = false,
+  instant = false,
+  onSave,
+  onInstant,
+  side = null,
+  onChip,
 }: {
   outcome: TurnOutcome;
   onAnswer: (text: string) => void;
@@ -514,6 +939,14 @@ function Reading({
   onDeleteNow?: () => void;
   /** the turn is still arriving — see `Running` */
   streaming?: boolean;
+  /** the save offer was answered with `save` (ASTRAL-334) */
+  saved?: boolean;
+  /** the user chose the unsaved reading (ASTRAL-335) */
+  instant?: boolean;
+  onSave?: (offer: InputRequestPayload) => void;
+  onInstant?: () => void;
+  side?: ChipAnswerState | null;
+  onChip?: (id: ChipId, label: string, plan: ChipPlan) => void;
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '16px' }}>
@@ -522,9 +955,37 @@ function Reading({
           <AstralBlock type="match_report" value={reportValue(outcome.text, outcome)} />
           <Reading0Narration text={outcome.text} drewBlock />
           {outcome.truncated ? <CutOff onRetry={onRetry} /> : null}
-          {streaming ? null : (
+
+          {/* THE TWO OUTCOMES (ASTRAL-334/335). Offered only while the choice
+              is still open — once it is made, the card below says what
+              happened instead of asking again. */}
+          {!streaming && !saved && !instant && outcome.saveOffer && capabilities.saveMatch ? (
+            <TwoOutcomes
+              offer={outcome.saveOffer}
+              onSave={onSave}
+              onInstant={onInstant}
+            />
+          ) : null}
+
+          {saved ? <Saved note={side} /> : null}
+
+          {/* A save that FAILED has to be visible (F306). It used to have
+              nowhere to render — `side` was drawn only inside `Saved` (which
+              needs `saved`) and inside the chips (which need the instant
+              choice) — so a failed save left the offer card sitting there as
+              if the button had not been pressed. */}
+          {!saved && side?.id === 'save' ? <SaveProblem note={side} /> : null}
+
+          {/* The retention card belongs to the UNSAVED reading. A saved one
+              is theirs to keep and nothing is deleted. */}
+          {!streaming && !saved ? (
             <Retention outcome={deletion ?? { kind: 'pending' }} onDeleteNow={onDeleteNow} />
-          )}
+          ) : null}
+
+          {/* The common questions belong to the instant reading (ASTRAL-336). */}
+          {!streaming && instant && !saved && onChip ? (
+            <ChipRow report={outcome.report} answer={side} onPick={onChip} />
+          ) : null}
         </>
       ) : null}
 
@@ -647,6 +1108,141 @@ function Retention({
       ) : null}
     </div>
   );
+}
+
+/**
+ * The choice, stated as two acts rather than as a default plus an escape
+ * (docs/73 ASTRAL-334/335).
+ *
+ * Neither is pre-selected and neither happens on its own: the engine writes
+ * nothing durable unless the offer is ANSWERED (F149), so "don't save" is
+ * literally the absence of a message and "add to my matches" is one carrier
+ * on the shipped ask. The sentence under each is what the user is choosing,
+ * including the residue they would otherwise not know about.
+ */
+function TwoOutcomes({
+  offer,
+  onSave,
+  onInstant,
+}: {
+  offer: InputRequestPayload;
+  onSave?: (offer: InputRequestPayload) => void;
+  onInstant?: () => void;
+}) {
+  return (
+    <div
+      data-testid="two-outcomes"
+      style={{
+        border: `1px solid ${theme.border}`,
+        borderRadius: '12px',
+        padding: '12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+      }}
+    >
+      <span style={{ fontSize: '13px', fontWeight: 600, color: theme.text }}>
+        Keep this match, or just read it?
+      </span>
+      <button
+        type="button"
+        data-testid="save-match"
+        style={primaryButton}
+        onClick={() => onSave?.(offer)}
+      >
+        Add to my matches
+      </button>
+      <span style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.45 }}>
+        They become a person on your account, with this scorecard, and you will
+        find them in the Astral app under People and Matches. Every detail keeps
+        a note of where it came from.
+      </span>
+      <button
+        type="button"
+        data-testid="instant-reading"
+        style={ghostButton}
+        onClick={() => onInstant?.()}
+      >
+        Instant reading — don't save
+      </button>
+      <span style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.45 }}>
+        Nothing is added to your matches. The conversation itself is saved in your
+        history for a day and you can delete it.
+      </span>
+    </div>
+  );
+}
+
+/** The save is still running, or it failed. Either way it is on screen. */
+function SaveProblem({ note }: { note: ChipAnswerState }) {
+  return (
+    <div
+      data-testid="save-problem"
+      style={{
+        border: `1px solid ${note.error ? theme.warn : theme.border}`,
+        borderRadius: '12px',
+        padding: '12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+      }}
+    >
+      <span style={{ fontSize: '13px', fontWeight: 600, color: note.error ? theme.warn : theme.text }}>
+        {note.error ? "I couldn't add them to your matches." : 'Adding them to your matches…'}
+      </span>
+      {note.error ? (
+        <span style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.45 }}>
+          {`${note.error} Nothing was saved. Try again, or read the match afresh.`}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/** What happened after "Add to my matches", in the engine's own words. */
+function Saved({ note }: { note: ChipAnswerState | null }) {
+  return (
+    <div
+      data-testid="saved"
+      style={{
+        border: `1px solid ${theme.accent}`,
+        borderRadius: '12px',
+        padding: '12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+      }}
+    >
+      <span style={{ fontSize: '13px', fontWeight: 600, color: theme.text }}>
+        Added to your matches.
+      </span>
+      <span style={{ fontSize: '12px', color: theme.textMuted, lineHeight: 1.45 }}>
+        Open the Astral app and you will find them under People, and this
+        scorecard under Matches. This conversation stays in your history.
+      </span>
+      {note?.text ? <Reading0Narration text={note.text} /> : null}
+      {note?.error ? (
+        <span style={{ fontSize: '12px', color: theme.warn }}>{note.error}</span>
+      ) : null}
+    </div>
+  );
+}
+
+/** The heading over each designed capture failure (ASTRAL-333, §4). */
+const CAPTURE_FAILURE_HEADINGS: Record<string, string> = {
+  unreadable: "I couldn't read that crop",
+  capped: "That's today's captures",
+  'too-large': 'That crop is too big',
+  'signed-out': 'Your sign-in expired',
+  unreachable: "I couldn't reach Astral",
+};
+
+/** The readable half of a turn, whatever kind it was. */
+function outcomeText(outcome: TurnOutcome): string {
+  if (outcome.kind === 'scorecard' || outcome.kind === 'text') return outcome.text;
+  if (outcome.kind === 'ask') return outcome.text;
+  if (outcome.kind === 'empty') return outcome.reason;
+  return outcome.reason;
 }
 
 function Padded({ children }: { children: React.ReactNode }) {

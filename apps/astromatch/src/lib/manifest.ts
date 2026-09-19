@@ -43,8 +43,8 @@ export const PERMISSION_REASONS: Record<string, string> = {
     'object to.',
   activeTab:
     'The ONLY page access: granted by the user\'s gesture on the extension, ' +
-    'for that tab, until it navigates. Carries both the snapshot (PH-40) and ' +
-    'the selection read (PH-41).',
+    'for that tab, until it navigates. It carries the snapshot — the visible ' +
+    'viewport, captured on a gesture, with no DOM read and no site host.',
   scripting:
     'PH-41\'s selection flow: one programmatic injection on the user\'s ' +
     'click. There is deliberately no `content_scripts` key in this manifest.',
@@ -53,11 +53,29 @@ export const PERMISSION_REASONS: Record<string, string> = {
     'written here — the session token lives in `chrome.storage.session`, ' +
     'which is memory-backed and cleared with the browser (ASTRAL-323).',
   contextMenus:
-    '"Read this page into AstroMatch" — a second gesture that grants ' +
-    'activeTab unambiguously (docs/73 F159\'s designed fallback).',
+    '"Read this page into AstroMatch" — one of the two gestures that grant ' +
+    'activeTab unambiguously, measured (docs/73 F159). It is created by ' +
+    'PH-40, which is the phase that can honour it.',
 };
 
 export const MANIFEST_PERMISSIONS = Object.keys(PERMISSION_REASONS);
+
+/**
+ * The keyboard gesture (docs/73 §2, F159).
+ *
+ * `_execute_action` is Chrome's own reserved name and is deliberately NOT
+ * used: this shortcut does not open the panel, it CAPTURES — and a command
+ * the extension handles itself is what grants `activeTab` for the tab the
+ * user is looking at. `suggested_key` is a suggestion; Chrome lets the user
+ * rebind it and may leave it unbound if another extension took it, which is
+ * why `chrome.commands.getAll()` is what the panel's instruction reads
+ * rather than this literal.
+ */
+export const CAPTURE_COMMAND = 'capture';
+
+export interface ChromeCommands {
+  [name: string]: { suggested_key: { default: string }; description: string };
+}
 
 export interface ChromeManifest {
   manifest_version: 3;
@@ -69,6 +87,7 @@ export interface ChromeManifest {
   side_panel: { default_path: string };
   background: { service_worker: string; type: 'module' };
   permissions: string[];
+  commands: ChromeCommands;
   host_permissions: string[];
   content_security_policy: { extension_pages: string };
 }
@@ -89,10 +108,15 @@ export interface ChromeManifest {
  *                        drops the element entirely, because an image in
  *                        model output about somebody's pasted page is a
  *                        request to a host of their choosing. `data:` is here
- *                        for an inline asset; nothing uses it today.
- *                        ⚠ PH-40's crop preview is a `blob:` URL (the shared
- *                        `ImagePicker` shows one before it uploads) and will
- *                        need `blob:` added HERE, in the same commit.
+ *                        for the CAPTURE (PH-40), which arrives from
+ *                        `chrome.tabs.captureVisibleTab` as a `data:` URI and
+ *                        is drawn into a canvas. `blob:` was considered for
+ *                        the crop preview and is NOT here: the preview is a
+ *                        <canvas>, which CSP does not govern, and the crop
+ *                        that is sent is `canvas.toDataURL`. So the camera
+ *                        widened this policy by nothing at all — the
+ *                        directive that was already here simply stopped
+ *                        being unused (F301).
  *   style-src 'self' 'unsafe-inline'
  *                        REQUIRED, measured: the panel styles through React's
  *                        `style={{…}}` (39 occurrences across `app.tsx` and
@@ -137,22 +161,25 @@ export function cspFor(mode: BuildMode): string {
 export const CSP = cspFor('production');
 
 /**
- * Permissions that are declared for PH-40 and unused today (docs/73 B5).
+ * Permissions that are declared and NOT USED YET (docs/73 B5).
  *
- * PH-39 and PH-40 ship to a user as ONE release (§5), which is the only thing
- * that makes an unused permission legitimate. This list is asserted against
- * `capabilities.ts` from both sides: a permission whose capability is false
- * must be named here, and a name here that no longer has a false capability
- * must be removed. If PH-39 is ever shipped alone, every entry below comes
- * out of the manifest with it.
+ * The list is asserted against `capabilities.ts` from both sides: a
+ * permission whose capability is false must be named here, and a name here
+ * that no longer has a false capability must be removed. PH-40 took
+ * `activeTab` and `contextMenus` OFF it — the camera uses both, measured in
+ * a real Chromium — and left `scripting`, which belongs to PH-41's selection
+ * read and does nothing in this build.
  *
- * `commands` is deliberately NOT here — it is GONE. A keyboard shortcut whose
- * only job is to grant `activeTab` for a capture that does not exist yet is a
- * dead affordance with a key binding: Chrome shows it in chrome://extensions
- * /shortcuts, a user presses it, and nothing happens. PH-40 adds it back in
- * the same commit as the thing it triggers.
+ * The export keeps its name because the rule it encodes is the same one: a
+ * permission nothing uses is exactly what a store review reads first. If
+ * PH-41 slips, `scripting` comes out of the manifest rather than staying on
+ * this list forever.
+ *
+ * `commands` is no longer in this file's negative space: PH-40 adds the
+ * `capture` shortcut TOGETHER WITH the `chrome.commands.onCommand` listener
+ * that honours it, which is the condition PH-39 set for its return.
  */
-export const SHIPS_WITH_PH40 = ['activeTab', 'scripting', 'contextMenus'] as const;
+export const SHIPS_WITH_PH40 = ['scripting'] as const;
 
 export function buildManifest(mode: BuildMode): ChromeManifest {
   return {
@@ -176,6 +203,16 @@ export function buildManifest(mode: BuildMode): ChromeManifest {
     side_panel: { default_path: 'panel.html' },
     background: { service_worker: 'sw.js', type: 'module' },
     permissions: [...MANIFEST_PERMISSIONS],
+    // F159's first designed fallback, and it returns WITH its listener
+    // (`sw.ts`'s `chrome.commands.onCommand`). A shortcut Chrome lists under
+    // chrome://extensions/shortcuts and nothing answers is a dead affordance
+    // with a key binding, which is why PH-39 removed it.
+    commands: {
+      [CAPTURE_COMMAND]: {
+        suggested_key: { default: 'Alt+Shift+M' },
+        description: 'Capture this page into AstroMatch',
+      },
+    },
     host_permissions:
       mode === 'development'
         ? [BACKEND_HOST_PERMISSION, DEV_HOST_PERMISSION]

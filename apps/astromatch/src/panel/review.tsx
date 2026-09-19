@@ -26,6 +26,7 @@ import { domPrimitives } from '@wealthai/astral-dom';
 import {
   PERSON_FIELD_KEYS,
   confirmProfile,
+  type Candidate,
   type CaptureSource,
   type ConfirmedProfile,
   type FieldAct,
@@ -35,11 +36,16 @@ import {
 } from '../lib/confirmed';
 import {
   basisToShow,
+  confidenceBand,
+  confidenceLabel,
   confirmGate,
   fieldChoices,
   readResolveResponse,
+  needsAttention,
+  provenanceLine,
   rowsFor,
   shouldResolvePlace,
+  sourceNote,
   stateSentence,
   valueInWords,
   type PlaceResolution,
@@ -60,6 +66,18 @@ const STATE_INK: Record<string, string> = {
   inferred: theme.warn,
   missing: theme.textPending,
 };
+
+/**
+ * The ink a row's state sentence is drawn in (ASTRAL-333).
+ *
+ * `needsAttention` — not the state alone. A `stated` field the machine is
+ * only half sure of gets the SAME treatment as an inference, because the two
+ * carry the same risk and a settled-looking row is how a wrong date gets
+ * confirmed with one tap.
+ */
+function stateInk(candidate: { state: string; confidence: number }): string {
+  return needsAttention(candidate as never) ? theme.warn : STATE_INK[candidate.state];
+}
 
 export function ReviewScreen({
   parsed,
@@ -175,7 +193,7 @@ export function ReviewScreen({
             <FieldControl
               fieldKey={key}
               value={row.value}
-              describedBy={describedBy(key, row, choices)}
+              describedBy={describedBy(key, row, source)}
               onChange={(value) => set(key, { act: 'typed', value })}
             />
 
@@ -218,14 +236,15 @@ export function ReviewScreen({
               // the user has typed the value it is theirs, and leaving "not
               // there — please add it" under something they just typed reads
               // as the panel not having noticed.
-              <span
-                id={`field-${key}-state`}
-                data-testid={`field-${key}-state`}
-                style={{ fontSize: '12px', color: STATE_INK[row.candidate.state] }}
-              >
-                {stateSentence(row.candidate)}
-              </span>
+              //
+              // On an IMAGE path the state, the confidence and the source are
+              // ONE sentence (the COPY ruling) — three stacked lines for one
+              // fact, the first of them false, is what this replaces.
+              <ProvenanceOrState fieldKey={key} source={source} candidate={row.candidate} />
             )}
+            {row.act === null && !provenanceLine(source, row.candidate) ? (
+              <ConfidenceWord fieldKey={key} candidate={row.candidate} />
+            ) : null}
             {basis ? (
               <span
                 id={`field-${key}-basis`}
@@ -236,15 +255,18 @@ export function ReviewScreen({
               </span>
             ) : null}
 
-            {/* Where this value came from (B2). A page about a family makes
-                "which line was this?" the question, and it should have an
-                answer that is not a re-read of the page. */}
-            {row.candidate.sourceLine ? (
+            {/* Where this value came from (B2, ASTRAL-333). A page about a
+                family makes "which line was this?" the question, and it
+                should have an answer that is not a re-read of the page. A
+                VISION candidate has no line — §4 carries none — so the
+                snapshot is named instead of a quotation being invented. */}
+            {!provenanceLine(source, row.candidate) && sourceNote(source, row.candidate) ? (
               <span
+                id={`field-${key}-source`}
                 data-testid={`field-${key}-source`}
                 style={{ fontSize: '11px', color: theme.textPending, lineHeight: 1.4 }}
               >
-                {`read from: ${row.candidate.sourceLine}`}
+                {sourceNote(source, row.candidate)}
               </span>
             ) : null}
 
@@ -321,6 +343,121 @@ export function ReviewScreen({
 }
 
 /**
+ * Where this value came from, in ONE sentence (the COPY ruling).
+ *
+ * On the image paths it replaces the state line, the confidence badge and
+ * the source note — and it is still the thing that reveals the number on a
+ * tap, because ASTRAL-333 asks for the number to be available and not to be
+ * the headline. On the text paths it renders the state sentence it always
+ * did, and the confidence and source keep their own lines.
+ */
+function ProvenanceOrState({
+  fieldKey,
+  source,
+  candidate,
+}: {
+  fieldKey: PersonFieldKey;
+  source: CaptureSource;
+  candidate: Candidate;
+}) {
+  const [shown, setShown] = useState(false);
+  const provenance = provenanceLine(source, candidate);
+  if (!provenance) {
+    return (
+      <span
+        id={`field-${fieldKey}-state`}
+        data-testid={`field-${fieldKey}-state`}
+        style={{ fontSize: '12px', color: stateInk(candidate) }}
+      >
+        {stateSentence(candidate)}
+      </span>
+    );
+  }
+  const ink =
+    provenance.tone === 'warn'
+      ? theme.warn
+      : provenance.tone === 'pending'
+        ? theme.textPending
+        : theme.textMuted;
+  if (provenance.confidence === null) {
+    return (
+      <span
+        id={`field-${fieldKey}-state`}
+        data-testid={`field-${fieldKey}-state`}
+        style={{ fontSize: '12px', color: ink }}
+      >
+        {provenance.text}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      id={`field-${fieldKey}-state`}
+      data-testid={`field-${fieldKey}-state`}
+      onClick={() => setShown((v) => !v)}
+      aria-label={`${provenance.text}. Tap to see the number.`}
+      style={{
+        alignSelf: 'flex-start',
+        border: 'none',
+        background: 'transparent',
+        padding: 0,
+        textAlign: 'left',
+        fontSize: '12px',
+        lineHeight: 1.4,
+        cursor: 'pointer',
+        color: ink,
+      }}
+    >
+      {shown ? `${provenance.text} (${provenance.confidence})` : provenance.text}
+    </button>
+  );
+}
+
+/**
+ * The machine's confidence, in WORDS (ASTRAL-333, INV-5).
+ *
+ * A band is the headline; the number is one tap away for whoever wants it.
+ * The reason the number is not the headline is not squeamishness about
+ * numbers — it is that "0.52" reads as a measurement of whether the date is
+ * RIGHT, and it is a measurement of how sure a model is that it read the
+ * pixels correctly. Those are different claims and only one of them is the
+ * user's question.
+ */
+function ConfidenceWord({
+  fieldKey,
+  candidate,
+}: {
+  fieldKey: PersonFieldKey;
+  candidate: { state: string; confidence: number };
+}) {
+  const [shown, setShown] = useState(false);
+  const label = confidenceLabel(candidate as never);
+  if (!label) return null;
+  const band = confidenceBand(candidate.confidence);
+  return (
+    <button
+      type="button"
+      data-testid={`field-${fieldKey}-confidence`}
+      onClick={() => setShown((v) => !v)}
+      aria-label={`${label}. Tap to see the number.`}
+      style={{
+        alignSelf: 'flex-start',
+        border: 'none',
+        background: 'transparent',
+        padding: 0,
+        fontSize: '11px',
+        letterSpacing: '0.04em',
+        cursor: 'pointer',
+        color: band === 'low' ? theme.warn : theme.textPending,
+      }}
+    >
+      {shown ? `${label} (${candidate.confidence})` : label}
+    </button>
+  );
+}
+
+/**
  * Which sentences describe this control, for a screen reader (follow-up 5).
  *
  * The state sentence, the basis and the words-date are the three things a
@@ -329,14 +466,24 @@ export function ReviewScreen({
  */
 function describedBy(
   key: PersonFieldKey,
-  row: { act: FieldAct | null; candidate: { sourceLine?: string } },
-  choices: unknown[],
+  row: { act: FieldAct | null; candidate: Candidate },
+  source: CaptureSource,
 ): string {
   const ids: string[] = [];
   if (key === 'dob') ids.push(`field-${key}-words`);
+  // The STATE line — which on an image path is the whole provenance
+  // sentence, including the confidence and where it was read.
   if (row.act !== 'typed') ids.push(`field-${key}-state`);
+  // A1: on the TEXT paths the confidence and the source are their own
+  // elements, and a screen-reader user was getting neither — so the
+  // attention treatment for a low-confidence `stated` field reached a
+  // sighted user only. Both are named here; `aria-describedby` ignores an id
+  // that is not on the page, so a row without them costs nothing.
+  if (row.act === null && !provenanceLine(source, row.candidate)) {
+    ids.push(`field-${key}-confidence`);
+  }
+  if (!provenanceLine(source, row.candidate)) ids.push(`field-${key}-source`);
   ids.push(`field-${key}-basis`);
-  void choices;
   return ids.join(' ');
 }
 

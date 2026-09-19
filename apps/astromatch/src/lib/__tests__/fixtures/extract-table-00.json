@@ -1,0 +1,28 @@
+{
+  "candidates": {
+    "name": {
+      "state": "stated",
+      "value": "Kavya Nair",
+      "confidence": 1
+    },
+    "dob": {
+      "state": "stated",
+      "value": "1988-01-01",
+      "confidence": 1
+    },
+    "tob": {
+      "state": "missing",
+      "value": null,
+      "confidence": 0
+    },
+    "pob": {
+      "state": "stated",
+      "value": "Coimbatore",
+      "confidence": 1
+    }
+  },
+  "model": "gemini-flash-latest",
+  "extractor_version": 1,
+  "retained": false,
+  "resets_on": null
+}

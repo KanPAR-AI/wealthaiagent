@@ -12,7 +12,7 @@
  * is plumbing between them and Chrome.
  */
 
-import { initCore, type PlatformAdapter } from '@wealthai/core';
+import { initCore, sendChatMessage, type PlatformAdapter } from '@wealthai/core';
 
 import {
   sendOtp,
@@ -21,11 +21,35 @@ import {
   type AuthDeps,
   type Session,
 } from './lib/auth';
+import {
+  CONTEXT_MENU_ID,
+  CONTEXT_MENU_TITLE,
+  CURRENT_WINDOW,
+  classifyCaptureError,
+  pendingIsFresh,
+  takePending,
+  type CaptureGesture,
+  type CaptureOutcome,
+  type PendingCapture,
+} from './lib/capture';
 import { apiUrl } from './lib/config';
 import { FIREBASE_API_KEY } from './lib/config';
 import { parseConfirmedProfile, type ConfirmedProfile } from './lib/confirmed';
 import { RESETS_ON_HEADER } from './lib/errors';
-import { MATCH_PORT, type MatchEvent, type PanelRequest } from './lib/messages';
+import {
+  CONSENT_LOG_KEY,
+  CONSENT_TEXT,
+  CONSENT_VERSION,
+  appendConsentLog,
+  extractRequestBody,
+} from './lib/consent';
+import { CAPTURE_COMMAND } from './lib/manifest';
+import {
+  MATCH_PORT,
+  type CaptureReply,
+  type MatchEvent,
+  type PanelRequest,
+} from './lib/messages';
 import {
   clearPending,
   notePending,
@@ -118,6 +142,7 @@ function fromOurPanel(sender: chrome.runtime.MessageSender): boolean {
 }
 
 chrome.runtime.onMessage.addListener((message: PanelRequest, sender, sendResponse) => {
+  dropStalePending();
   if (!fromOurPanel(sender)) {
     // Refused by name rather than ignored: a silent drop looks like a hung
     // panel to whoever is debugging it.
@@ -169,6 +194,34 @@ async function handle(message: PanelRequest): Promise<unknown> {
       if (gone) await clearPending(pendingStore, message.chatId);
       return reply;
     }
+    case 'capture/request':
+      // The PANEL BUTTON. F159's open question, asked at run time instead of
+      // assumed: if this worker holds an `activeTab` grant for the tab the
+      // user is looking at, an image comes back; if it does not, the reply
+      // is `needs-gesture` and the panel prints the two gestures that grant
+      // one. It is never a button that appears to work and does not.
+      return captureReply(await captureTab('panel-button'));
+    case 'capture/pending': {
+      // A capture a GESTURE produced before this panel existed. Handed over
+      // ONCE: `takePending` returns the new slot value, which is always
+      // null, so a capture cannot be collected twice or linger (ASTRAL-337).
+      const { taken, slot } = takePending(pendingCapture, Date.now());
+      pendingCapture = slot;
+      return taken;
+    }
+    case 'capture/extract': {
+      // The CROP, and the only image that ever leaves this browser. The body
+      // is built by `consent.extractRequestBody` — one key — so there is one
+      // place to assert that no page URL, title or site name travels (X-3).
+      //
+      // The user's copy of what they agreed to is written FIRST and locally:
+      // a send that happens is a consent that was given, and recording it
+      // after the round trip would lose it whenever the round trip failed.
+      await recordConsent();
+      return post('/astrology/extract-profile', extractRequestBody(message.image));
+    }
+    case 'consent/log':
+      return (await pendingStore.get(CONSENT_LOG_KEY))[CONSENT_LOG_KEY] ?? [];
     case 'match/start':
       // Started on a PORT, not here — a match is a stream of states, not one
       // answer. Named rather than ignored, so a caller that sends it the
@@ -317,6 +370,7 @@ const openChats = new Set<string>();
 const savedRuns = new WeakSet<chrome.runtime.Port>();
 
 chrome.runtime.onConnect.addListener((port) => {
+  dropStalePending();
   if (port.name !== MATCH_PORT) return;
   // FAIL CLOSED. An absent `sender` is not "it must be us" — it is a fact we
   // do not have about a port that is about to be handed a birth-details run
@@ -434,7 +488,19 @@ async function sayAndRun(port: chrome.runtime.Port, chatId: string, text: string
     onDelta: (streamed: string) => send(port, { type: 'delta', text: streamed }),
   };
   try {
-    const { sendChatMessage } = await import('@wealthai/core');
+    // STATICALLY IMPORTED, and that is the fix rather than the style (F306).
+    //
+    // This was `await import('@wealthai/core')`. In an MV3 service worker a
+    // dynamic import after the worker has been evaluated does not resolve:
+    // the promise never settles, nothing throws, and the caller waits
+    // forever. Measured — the panel's "Add to my matches" posted the carrier,
+    // the worker RECEIVED it (the port log proved that), and then nothing
+    // happened at all: no message on the chat, no error, no state.
+    //
+    // PH-39 never met it because `sayAndRun` is only reached when the USER
+    // answers a widget, and PH-39's walk had the worker auto-answer the
+    // partner ask through `answerAsk`, which uses the static import at the
+    // top of `transport.ts`. PH-40's save is its first live caller.
     await sendChatMessage(await authorized(), chatId, text, []);
     let outcome = await runTurn(deps, chatId);
 
@@ -456,6 +522,224 @@ async function sayAndRun(port: chrome.runtime.Port, chatId: string, text: string
   }
 }
 
+/**
+ * The user's own record of the consent (ASTRAL-332).
+ *
+ * `chrome.storage.local`, deliberately: it is theirs to read back, and a
+ * session-scoped copy would vanish before they looked. The entry carries the
+ * WORDS, the version and the time — and nothing about the capture. The
+ * storage scan in `outcomes.test.tsx` is what keeps that true.
+ *
+ * A failure here never blocks the send: the consent was given, and losing our
+ * note of it is not a reason to refuse the thing the user asked for. It is
+ * logged rather than swallowed.
+ */
+async function recordConsent(): Promise<void> {
+  try {
+    const bag = await pendingStore.get(CONSENT_LOG_KEY);
+    await pendingStore.set({
+      [CONSENT_LOG_KEY]: appendConsentLog(bag[CONSENT_LOG_KEY], {
+        version: CONSENT_VERSION,
+        text: CONSENT_TEXT,
+        at: new Date().toISOString(),
+      }),
+    });
+  } catch (e: unknown) {
+    console.warn('[astromatch] could not record the consent locally', e);
+  }
+}
+
+// ── the camera (docs/73 ASTRAL-330) ───────────────────────────────────────
+
+/**
+ * THE ONE CALL SITE, and it is reachable only from a gesture handler.
+ *
+ * `capture.test.ts` greps this module: `chrome.tabs.captureVisibleTab`
+ * appears exactly once, `captureTab` is called exactly three times, and each
+ * call names its gesture as a literal — `'command'`, `'context-menu'`,
+ * `'panel-button'` — so a fourth caller would have to invent a fourth
+ * gesture, which the type forbids. There is no capture on panel open, on a
+ * tab change, or on a timer.
+ *
+ * The visible viewport only. No DOM is read on this path, by anything: the
+ * extension has no `content_scripts`, and `scripting` is not used here.
+ */
+async function captureTab(
+  gesture: CaptureGesture,
+  windowId?: number,
+): Promise<CaptureOutcome> {
+  try {
+    // THE WINDOW THE GESTURE FIRED IN (R4). `captureVisibleTab` with no
+    // window captures the LAST FOCUSED one, and an `activeTab` grant can be
+    // held on a tab in a different window — so the default could hand back a
+    // picture of a page the user was not pointing at, which on this surface
+    // is somebody else's data in somebody else's reading. The panel button
+    // has no tab of its own and falls back to the current window, which is
+    // the window the panel is in.
+    const image = await chrome.tabs.captureVisibleTab(windowId ?? CURRENT_WINDOW, {
+      format: 'png',
+    });
+    if (!image) {
+      // Chrome answered without an error and without an image — a real
+      // outcome on a tab that cannot be captured (a devtools window, a
+      // chrome:// page). Named, because "nothing happened" is the failure
+      // this whole path exists to remove.
+      return { kind: 'failed', reason: 'Chrome gave me no picture of this tab.' };
+    }
+    return { kind: 'captured', image, gesture };
+  } catch (error) {
+    return classifyCaptureError(error instanceof Error ? error.message : String(error));
+  }
+}
+
+/**
+ * The shortcut Chrome ACTUALLY BOUND, for the instruction to name.
+ *
+ * `suggested_key` is a suggestion: another extension may already hold
+ * Alt+Shift+M, and Chrome then leaves ours unbound. An instruction naming a
+ * key that does nothing is the same dead affordance as a button that does
+ * nothing, one indirection further away.
+ */
+async function boundShortcut(): Promise<string | null> {
+  try {
+    const commands = await chrome.commands.getAll();
+    const capture = commands.find((c) => c.name === CAPTURE_COMMAND);
+    return capture?.shortcut ? capture.shortcut : null;
+  } catch {
+    // The API is absent in a context that has no commands (and in the tests'
+    // fake chrome). Not knowing the shortcut is not a failure to capture —
+    // the instruction drops to the context-menu door, which always exists.
+    return null;
+  }
+}
+
+/**
+ * Wrap an outcome with the shortcut the instruction will name.
+ *
+ * Deliberately not an indirection that takes the gesture as a PARAMETER: that
+ * would be a fourth call site of `captureTab` whose argument is a variable,
+ * and the grep proving "the capture is reachable only from a gesture handler"
+ * would have to reason about it. Three call sites, three literals, one per
+ * handler.
+ */
+async function captureReply(outcome: CaptureOutcome): Promise<CaptureReply> {
+  return { outcome, shortcut: await boundShortcut() };
+}
+
+/**
+ * The hand-off slot: ONE capture, in memory, never in storage.
+ *
+ * A gesture can fire with no panel open. The image waits here until the panel
+ * asks for it and is dropped the moment it is taken — `takePending` returns
+ * the new slot value rather than mutating, so both branches empty it. It is
+ * never written to `chrome.storage.*`, which `panel/__tests__/outcomes.test.tsx` asserts by
+ * scanning the whole store rather than by checking a list of keys.
+ */
+let pendingCapture: PendingCapture | null = null;
+
+/**
+ * Drop a stale hand-off for real (R3).
+ *
+ * `takePending` only FILTERS at read time, so an uncollected capture — a
+ * shortcut pressed with no panel open, and no panel ever opened — sat in
+ * this worker's memory until something overwrote it. The bytes are a
+ * screenshot of somebody else's page and "it would not be handed over" is
+ * not the same promise as "it is gone".
+ *
+ * THE BOUND, stated: a capture is dropped at the first worker event after
+ * `PENDING_CAPTURE_TTL_MS` (60 s) — every message, every port connect, every
+ * gesture — and unconditionally when Chrome suspends the worker. In the
+ * worst case (no event at all after the gesture) it lives until the worker
+ * is torn down, which is Chrome's own 30-second idle timeout, and it is
+ * never written anywhere that survives that. No timer is used: a timer near
+ * `captureTab` is the shape `capture.test.ts` bans by name.
+ */
+function dropStalePending(): void {
+  if (pendingCapture && !pendingIsFresh(pendingCapture, Date.now())) {
+    pendingCapture = null;
+  }
+}
+
+/**
+ * A gesture captured something. Get it to a panel.
+ *
+ * Tried in the order that loses nothing: hand it to an open panel first; if
+ * no panel is listening, hold it and open one. `chrome.sidePanel.open` needs
+ * a user gesture, and a command or context-menu click IS one — which is the
+ * second reason these two gestures are the fallbacks F159 names.
+ */
+async function deliverCapture(outcome: CaptureOutcome, tabId?: number): Promise<void> {
+  if (outcome.kind !== 'captured') {
+    // A gesture that could not capture still has to say so. It cannot draw
+    // anything itself, so the panel is opened on the instruction state by
+    // holding nothing and letting the panel ask (`capture/request`).
+    console.warn('[astromatch] a gesture capture did not produce an image:', outcome.kind);
+    return;
+  }
+  try {
+    await chrome.runtime.sendMessage({
+      type: 'capture/delivered',
+      image: outcome.image,
+      gesture: outcome.gesture,
+    });
+    return;
+  } catch {
+    // Nothing was listening — the panel is closed. Hold it and open one.
+  }
+  pendingCapture = { image: outcome.image, gesture: outcome.gesture, at: Date.now() };
+  try {
+    if (tabId !== undefined) await chrome.sidePanel.open({ tabId });
+  } catch (e: unknown) {
+    console.warn('[astromatch] could not open the panel for a capture', e);
+  }
+}
+
+/**
+ * F159's first designed fallback — a keyboard gesture, which grants
+ * `activeTab` unambiguously.
+ *
+ * It ships in the same commit as this listener. docs/73 B5 removed the
+ * `commands` block in PH-39 precisely because nothing answered it.
+ */
+chrome.commands.onCommand.addListener((command, tab) => {
+  dropStalePending();
+  if (command !== CAPTURE_COMMAND) return;
+  void captureTab('command', tab?.windowId).then((outcome) =>
+    deliverCapture(outcome, tab?.id),
+  );
+});
+
+/**
+ * F159's second designed fallback — a context-menu item, same reason.
+ *
+ * Created HERE rather than in the manifest because a menu item is created by
+ * the phase that can honour it (PH-39's note said so and this is that
+ * phase). The title claims nothing about having looked: "Read this page into
+ * AstroMatch" is an offer, and the reading happens after the user crops and
+ * consents.
+ */
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create(
+    { id: CONTEXT_MENU_ID, title: CONTEXT_MENU_TITLE, contexts: ['page', 'selection', 'image'] },
+    () => {
+      // `lastError` READ, not ignored: an un-read lastError is an unhandled
+      // rejection in the worker's log and a menu item that silently is not
+      // there.
+      if (chrome.runtime.lastError) {
+        console.warn('[astromatch] context menu:', chrome.runtime.lastError.message);
+      }
+    },
+  );
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  dropStalePending();
+  if (info.menuItemId !== CONTEXT_MENU_ID) return;
+  void captureTab('context-menu', tab?.windowId).then((outcome) =>
+    deliverCapture(outcome, tab?.id),
+  );
+});
+
 // ── the toolbar ────────────────────────────────────────────────────────────
 
 /**
@@ -465,6 +749,14 @@ async function sayAndRun(port: chrome.runtime.Port, chatId: string, text: string
  * the next event, so "on start" is the other half of the sweep: whatever a
  * previous life owed is collected here, before the panel is even open.
  */
+/**
+ * Chrome is putting this worker to sleep: let go of the capture now rather
+ * than relying on the process going away (R3).
+ */
+chrome.runtime.onSuspend.addListener(() => {
+  pendingCapture = null;
+});
+
 void sweep().catch((e: unknown) => {
   console.warn('[astromatch] start-up sweep failed; the ids are still owed', e);
 });
@@ -478,19 +770,17 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 /**
- * There is NO context-menu item in this build, and that is deliberate.
+ * The context-menu item IS created in this build (PH-40).
  *
- * `contextMenus` is declared in the manifest because PH-39 and PH-40 ship to
- * a user as one release (docs/73 §5) and the item is F159's designed
- * fallback for granting `activeTab`. But "Read this page into AstroMatch" has
- * nothing to read a page INTO yet — `capabilities.readSelection` and
- * `capabilities.snapshot` are both false — and a menu item that answers with
- * "not in this build" is the dead affordance doctrine 8 forbids. So the item
- * is CREATED by the phase that can honour it, not by this one.
+ * PH-39 deliberately did not create it: "Read this page into AstroMatch" had
+ * nothing to read a page into — `capabilities.snapshot` was false — and a
+ * menu item that answers with "not in this build" is the dead affordance
+ * doctrine 8 forbids. The condition that note set has been met, so the item
+ * is created above, beside the command that shares its job.
  *
- * If PH-39 is ever shipped WITHOUT PH-40, drop `activeTab`, `scripting`,
- * `contextMenus` and the `commands` block from the manifest at the same time:
- * a permission nothing uses is exactly what a store review reads first.
+ * `scripting` is still declared and still unused; it belongs to PH-41's
+ * selection read and is named on `manifest.SHIPS_WITH_PH40` for exactly that
+ * reason. If PH-41 slips, it comes out of the manifest.
  */
 
 /**

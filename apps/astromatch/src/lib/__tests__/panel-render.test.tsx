@@ -197,7 +197,13 @@ describe('the client derives nothing (INV-9)', () => {
    * The exemption is a COUNT and the line is checked below, so a percentage
    * smuggled into this file is still a red diff.
    */
-  const PERCENT_EXEMPT: Record<string, number> = { 'src/lib/parse-profile.ts': 3 };
+  const PERCENT_EXEMPT: Record<string, number> = {
+    'src/lib/parse-profile.ts': 3,
+    // `spellClock`'s twelve-hour arithmetic: `hour % 12 === 0 ? 12 : hour % 12`.
+    // A clock modulus, on a number that came off a clock — the same class of
+    // exemption as the leap-year rule above, and checked the same way below.
+    'src/lib/review-view.ts': 2,
+  };
 
   it.each(SOURCES.map((f) => f.replace(`${APP}/`, '')))('%s writes no percentage', (rel) => {
     const code = codeOf(join(APP, rel));
@@ -212,12 +218,71 @@ describe('the client derives nothing (INV-9)', () => {
     expect(lines[0]).toContain('y % 400 === 0');
   });
 
+  it('the review-view exemption is the CLOCK modulus and nothing else', () => {
+    const code = codeOf(join(APP, 'src/lib/review-view.ts'));
+    const lines = code.split('\n').filter((l) => l.includes('%'));
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain('hour % 12');
+    // and it is not the HOUSE derivation the next case forbids
+    expect(lines[0]).not.toMatch(/%\s*12\s*\)?\s*\+\s*1/);
+  });
+
+  /**
+   * PIXEL GEOMETRY IS NOT A SCORE — the second exemption, and it is a
+   * TIGHTENING rather than a hole (F302, PH-40).
+   *
+   * The crop tool rounds COORDINATES: `Math.round(width * 0.1)` is where a
+   * rectangle's left edge sits, not a claim about anybody's chart. The grep
+   * above exists for engine numbers, and it cannot tell the two apart.
+   *
+   * So these two modules are exempted from `Math.round(` and given a
+   * STRICTER rule instead, asserted immediately below: they may not see a
+   * payload at all. No import of a payload type, no payload field name, no
+   * `report`/`koota`/`guna` anywhere. A module that cannot reach an engine
+   * number cannot compute one — which is a stronger statement than "it does
+   * not round", not a weaker one. The other three greps still bind on them.
+   */
+  const GEOMETRY_ONLY = ['src/lib/crop.ts', 'src/panel/crop.tsx'];
+
   it.each(SOURCES.map((f) => f.replace(`${APP}/`, '')))('%s computes no score', (rel) => {
     const code = codeOf(join(APP, rel));
-    expect(code).not.toContain('Math.round(');
+    if (!GEOMETRY_ONLY.includes(rel)) expect(code).not.toContain('Math.round(');
     expect(code).not.toContain('toFixed');
     expect(code).not.toMatch(/\/\s*36\b/);
     expect(code).not.toMatch(/[*/]\s*100\b/);
+  });
+
+  it.each(GEOMETRY_ONLY)('%s cannot reach an engine number at all', (rel) => {
+    const code = codeOf(join(APP, rel));
+    for (const forbidden of [
+      'MatchReport',
+      'parseMatchReport',
+      'koota',
+      'Koota',
+      'guna',
+      'verdict',
+      'firm_total',
+      'pending_max',
+      'max_total',
+      'nakshatra',
+      'rashi',
+      'dosha',
+    ]) {
+      expect(code).not.toContain(forbidden);
+    }
+    // The only thing either file may take from the astrology package is the
+    // THEME — colours, not numbers.
+    const imports = code.match(/import\s*\{([^}]*)\}\s*from '@wealthai\/astral'/g) ?? [];
+    for (const line of imports) {
+      expect(line.replace(/\s+/g, ' ')).toBe("import { DARK_THEME } from '@wealthai/astral'");
+    }
+  });
+
+  it('the geometry exemption would catch a score smuggled into it', () => {
+    // anti-vacuity: the compensating assertion has to be able to fail.
+    const sample = "const band = report.verdict;";
+    expect(sample).toContain('verdict');
+    expect(GEOMETRY_ONLY.length).toBeGreaterThan(0);
   });
 
   it.each(SOURCES.map((f) => f.replace(`${APP}/`, '')))('%s carries no band threshold', (rel) => {

@@ -20,14 +20,15 @@ export interface Capabilities {
   paste: boolean;
   /**
    * The camera: `chrome.tabs.captureVisibleTab` → crop → consent → the
-   * vision extractor.
+   * vision extractor (PH-40, ASTRAL-330…333).
    *
-   * FALSE: PH-40. It needs `POST /astrology/extract-profile`, which does not
-   * exist yet (docs/73 ASTRAL-315/316, F146), and it needs the `activeTab`
-   * gesture spike (F159) — whose outcome this spec explicitly refuses to
-   * assert from documentation. A camera button that opened a picker and then
-   * said "we couldn't reach the extractor" is the dead affordance the rule
-   * above forbids.
+   * TRUE as of PH-40. `POST /astrology/extract-profile` is live (PH-38), and
+   * the F159 gesture question is answered by BUILDING FOR THE PESSIMISTIC
+   * BRANCH rather than by an assumption: the camera button asks the worker
+   * to capture, and a worker that has no `activeTab` grant answers with the
+   * INSTRUCTION naming the two gestures that grant one unambiguously — the
+   * Alt+Shift+M command and the "Read this page into AstroMatch" menu item.
+   * A button that cannot capture becomes words, never a no-op.
    */
   snapshot: boolean;
   /**
@@ -53,19 +54,19 @@ export interface Capabilities {
   /**
    * "Add to my matches" — answering the engine's save offer.
    *
-   * FALSE: PH-40 (ASTRAL-334). Saving is the one act that mints a PERSON,
-   * and the provenance it must be stamped with — `parsed_from_page` for a
-   * fact the user accepted unchanged — travels on `capture_source`, a field
-   * the engine does not declare yet (docs/73 ASTRAL-313, and `config.ts`'s
-   * ENGINE_HAS_CAPTURE_FIELDS). Saving before it exists would stamp every
-   * fact `stated_by_user`, which is the exact thing the provenance ladder
-   * exists to prevent (F143) — and it is unfixable afterwards, because a
-   * machine origin may never overwrite a statement.
+   * TRUE as of PH-40 (ASTRAL-334). Saving is the one act that mints a
+   * PERSON, and the provenance it must be stamped with — `parsed_from_page`
+   * for a fact the user accepted unchanged — travels on `capture_source`
+   * and `capture_edited`, which the engine declares as of PH-38
+   * (`graph.INPUT_FIELDS`; `config.ENGINE_HAS_CAPTURE_FIELDS`). Saving
+   * before those existed would have stamped every fact `stated_by_user`,
+   * which is the exact thing the provenance ladder exists to prevent (F143)
+   * and is unfixable afterwards, because a machine origin may never
+   * overwrite a statement.
    *
-   * So the offer is not rendered, and what DID happen is stated instead:
-   * nothing durable was written (F149), and the conversation this reading
-   * created is DELETED when the user leaves or closes the panel
-   * (`retention-view.ts`).
+   * The other outcome — "Instant reading, don't save" — is the offer left
+   * UNANSWERED (F148/F149), and the chat it created is deleted when the
+   * user leaves or closes the panel (`retention-view.ts`).
    */
   saveMatch: boolean;
 }
@@ -74,9 +75,9 @@ export const capabilities: Capabilities = {
   signIn: true,
   manualEntry: true,
   paste: true,
-  snapshot: false,
+  snapshot: true,
   readSelection: false,
   shortlist: false,
   compare: false,
-  saveMatch: false,
+  saveMatch: true,
 };

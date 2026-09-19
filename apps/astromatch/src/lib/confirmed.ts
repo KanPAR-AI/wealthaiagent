@@ -68,6 +68,20 @@ export interface Candidate {
    */
   sourceLine?: string;
   /**
+   * The engine's own sentence about this field, when it has one.
+   *
+   * §4's contract is being widened (2026-09-19, the other agent's work on
+   * `profile_capture.py`): a value that was ON the page but could not be
+   * read as a date is downgraded to `missing` WITH a note saying so, and a
+   * value that looks cut off by the image edge is downgraded to `inferred`
+   * with a note saying that. Without it a `missing` row says "not there —
+   * please add it" about something the user can see on their own screenshot,
+   * which reads as the panel not having looked.
+   *
+   * ABSENT on today's engine, and absent is today's behaviour.
+   */
+  note?: string;
+  /**
    * The readings this value could ALSO have had (B3).
    *
    * Present only where a candidate is `inferred` because two readings are

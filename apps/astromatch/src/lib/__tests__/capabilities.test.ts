@@ -15,16 +15,16 @@ import { capabilities } from '../capabilities';
 const SRC = readFileSync(join(__dirname, '..', 'capabilities.ts'), 'utf8');
 
 describe('what this build says it can do', () => {
-  it('is honest about PH-39: manual entry and paste, and nothing else yet', () => {
+  it('is honest about PH-40: the camera and the save join paste and manual', () => {
     expect(capabilities).toEqual({
       signIn: true,
       manualEntry: true,
       paste: true,
-      snapshot: false,
+      snapshot: true,
       readSelection: false,
       shortlist: false,
       compare: false,
-      saveMatch: false,
+      saveMatch: true,
     });
   });
 

@@ -128,11 +128,18 @@ describe('B3 — an ambiguous candidate offers choices and pre-fills nothing', (
     expect(fieldChoices('dob', plain)).toEqual([]);
   });
 
-  it('offers a time\'s two readings in the form they travel', () => {
+  it('offers a time\'s two readings IN WORDS, and travels the 24-hour value', () => {
+    // PIN UPDATED, deliberately (the COPY ruling + extractor v2). It used to
+    // assert the label was the 24-hour string itself, on the grounds that a
+    // 24-hour time is already unambiguous. It is unambiguous and it is not
+    // legible: "07:30" and "19:30" side by side are two strings a reader has
+    // to decode before they can choose, and the choosing is the whole point
+    // of showing them. The VALUE that travels is unchanged — that is what
+    // the first column of each row asserts — and no assertion was dropped.
     const tob = parseProfileText('Time of Birth: 7:30').fields.tob;
     expect(fieldChoices('tob', tob)).toEqual([
-      { value: '07:30', label: '07:30' },
-      { value: '19:30', label: '19:30' },
+      { value: '07:30', label: '7:30 in the morning' },
+      { value: '19:30', label: '7:30 in the evening' },
     ]);
   });
 
