@@ -102,13 +102,23 @@ const ALL_FILES = PRESENT_ROOTS.flatMap((root) => walk(join(WORKSPACE, root)));
  * how ASTRAL-99's move announced itself. The React Native pair now sits in
  * `packages/astral-native` rather than inside `apps/mobile`: the assertions
  * about them moved WITH the files instead of being dropped in the move.
+ *
+ * The DOM pair moved the same way and for the same reason on 2026-09-19
+ * (docs/73 ASTRAL-321, F153): a second DOM surface exists — the AstroMatch
+ * extension's side panel — and the web copies imported `@/config/environment`
+ * and `@/store/auth`, which resolve in more than one tsconfig. The paths are
+ * UPDATED rather than relaxed, and the update STRENGTHENS two assertions that
+ * used to step around a non-package file: "the binding imports no app-local
+ * module" skips anything outside `packages/`, so it had never bound on the
+ * DOM adapter at all. `src/components/astral/{dom-primitives,astral-block}.tsx`
+ * still exist as the web app's host wiring and carry no rendering.
  */
 const ADAPTERS = [
-  'src/components/astral/dom-primitives.tsx',
+  'packages/astral-dom/src/dom-primitives.tsx',
   'packages/astral-native/src/rn-primitives.tsx',
 ];
 const HOSTS = [
-  'src/components/astral/astral-block.tsx',
+  'packages/astral-dom/src/astral-block.tsx',
   'packages/astral-native/src/astral-block.tsx',
 ];
 const rel = (f: string) => relative(WORKSPACE, f).split(sep).join('/');
@@ -367,7 +377,7 @@ describe('ASTRAL-91 — exactly one input widget in the workspace', () => {
 
 describe('the native picker seam, and the fallback that must not be silent', () => {
   const RN = 'packages/astral-native/src/rn-primitives.tsx';
-  const DOM = 'src/components/astral/dom-primitives.tsx';
+  const DOM = 'packages/astral-dom/src/dom-primitives.tsx';   // moved, ASTRAL-321
 
   it('React Native declares `disclosure`; the DOM adapter declares nothing', () => {
     // The one capability that decides whether the shared widget draws the
@@ -840,14 +850,32 @@ describeWithApps('ASTRAL-105 — one chat surface, and it is not inside an app',
     // The web app is not one of the two surfaces this row is about; if it is
     // ever folded in, this list is where that shows up.
     expect(filesContaining(/listenToChatStreamCore\(/, (f) => !isTest(f))).toEqual([
+      'apps/astromatch/src/lib/transport.ts',
       'packages/chat-native/src/use-send-message.ts',
       'src/services/chat-service.ts',
     ]);
   });
 
-  it('no app opens a stream of its own', () => {
+  /**
+   * The THIRD entry, named on 2026-09-19 (docs/73 ASTRAL-324) rather than
+   * excluded — which is what the comment above asked for: "if it is ever
+   * folded in, this list is where that shows up".
+   *
+   * The AstroMatch extension is a DOM surface, so `packages/chat-native` —
+   * which is React Native from its imports down — cannot serve it, and it
+   * renders no transcript, no bubble and no composer at all: it runs one
+   * scripted two-turn sequence (docs/73 §3a) in a service worker. What it
+   * must NOT do is own a second SSE reader, with a second copy of the TTFB
+   * and idle watchdogs; so it calls core's, and this pin is the place that
+   * fact is visible.
+   *
+   * The assertion stays an EXACT SET in both tests. `apps/astro` or
+   * `apps/mobile` growing a stream of its own is still a red diff, which is
+   * the property ASTRAL-105 is actually about.
+   */
+  it('no app opens a stream of its own, except the extension\'s one scripted sequence', () => {
     const owners = filesContaining(/listenToChatStreamCore\(/, (f) => rel(f).startsWith('apps/'));
-    expect(owners).toEqual([]);
+    expect(owners).toEqual(['apps/astromatch/src/lib/transport.ts']);
   });
 
   it('one channel carries a composed message, declared once', () => {

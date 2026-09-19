@@ -10,6 +10,11 @@ This repo is also an npm-workspaces monorepo with **two shipped React Native
 | **Arthur1203** | [`apps/mobile/`](apps/mobile/) (own CLAUDE.md/AGENTS.md) | `com.yourfinadvisor.mobile` | the YourFinAdvisor app — all agents, drawer, credits, Control Centre |
 | **Astral AI** | [`apps/astro/`](apps/astro/) | `com.yourfinadvisor.astro` | the standalone Jyotish app — five tabs, agent pinned, routing off |
 
+…and one **Chrome MV3 extension**, [`apps/astromatch/`](apps/astromatch/) (own
+README): the AstroMatch side panel — check a kundli match against your own
+chart from any page. Same backend, same renderers, no site adapters. PH-39
+(the shell) only; see [`../docs/73`](../docs/73-astromatch-extension-spec.md).
+
 Shared platform-agnostic services live in `packages/core` (`@wealthai/core`),
 the chat surface in `packages/chat-native`, the astrology renderers in
 `packages/astral`. The web app stays at the repo root.
@@ -127,11 +132,17 @@ dropped for months because that warning did not exist.
 **`@wealthai/astral`** (`packages/astral/`): the astrology renderers — natal
 wheel, match scorecard, muhurta windows — written ONCE against a small
 primitive contract (`primitives.ts`) so the same source file serves the web
-app, the 380px AstroMatch extension panel and the React Native app. Web binds
-it in `src/components/astral/` (`dom-primitives.tsx`, `astral-block.tsx`);
-mobile in `apps/mobile/src/components/astral/`. A second implementation of the
-scorecard anywhere in the workspace is a SPEC-DEVIATION and
-`packages/astral/src/__tests__/structural.test.ts` fails on it.
+app, the 380px AstroMatch extension panel and the React Native app. Its two
+BINDINGS live in packages, not in apps (docs/73 F153, and F22 before it —
+`@/*` resolves in more than one tsconfig, so a copied binding compiles against
+the wrong module): `@wealthai/astral-dom` for the DOM (the web app and the
+extension panel) and `@wealthai/astral-native` for React Native. Each host
+injects its own capabilities through `installAstralDomHost` /
+`installAstralHost`; the web's live in `src/components/astral/install-host.ts`
+and the two files next to it are re-export shims with zero rendering logic. A
+second implementation of the scorecard anywhere in the workspace is a
+SPEC-DEVIATION and `packages/astral/src/__tests__/structural.test.ts` fails on
+it.
 
 Mobile-first: 24px slider thumbs, `touch-none`, `active:scale` feedback.
 

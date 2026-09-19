@@ -1,0 +1,24 @@
+{
+  "name": "@wealthai/astral-dom",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The React-DOM BINDING for @wealthai/astral (docs/73 ASTRAL-321, from F153). `packages/astral` is platform-neutral source; this is its DOM host binding \u2014 the primitives adapter and the block dispatcher \u2014 living in a package rather than inside the web app, so the web chat and the AstroMatch extension side panel render ONE wheel, ONE scorecard and ONE input widget. The app-local capabilities it needs (a way to send a message, an image upload) are INJECTED through `installAstralDomHost`, never imported from `@/\u2026` \u2014 which resolves in more than one tsconfig and would compile against the wrong module (F153, and F22 before it). This package performs NO network.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "@wealthai/astral": "*",
+    "react-markdown": ">=10",
+    "remark-gfm": ">=4"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2"
+  }
+}

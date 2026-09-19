@@ -1,0 +1,23 @@
+event: message_start
+data: {"type": "message_start", "message": {"id": "9960a23c-a32b-4d97-8edd-7fcf62dad9ce", "sender": "assistant", "timestamp": "2026-09-19T07:32:42.275479+00:00"}}
+
+event: message_delta
+data: {"type": "message_delta", "delta": "[Using astrology_ai agent]\n\n"}
+
+: ping - 2026-09-19 07:32:52.277379+00:00
+
+event: message_delta
+data: {"type": "message_delta", "delta": "Your own chart is on file \u2014 I only need your partner's details now: their birth date, time and place."}
+
+event: message_delta
+data: {"type": "message_delta", "delta": "\n\n```input_request\n{\"type\": \"input_request\", \"ask\": \"required_slots_missing\", \"reason\": \"Your own chart is on file \u2014 these details are your partner's. Their time is optional, but it unlocks 21 of the 36 gunas of the match.\", \"fields\": [{\"key\": \"person2_dob\", \"kind\": \"date\", \"label\": \"Your partner's date of birth\", \"required\": true, \"allow_unknown\": false}, {\"key\": \"person2_tob\", \"kind\": \"time\", \"label\": \"Your partner's birth time\", \"required\": true, \"allow_unknown\": true}, {\"key\": \"person2_pob\", \"kind\": \"place\", \"label\": \"Your partner's birth place\", \"required\": true, \"allow_unknown\": false}]}\n```\n\n"}
+
+event: message_delta
+data: {"type": "message_delta", "delta": "\n\n```reading_subject\n{\"type\": \"reading_subject\", \"mode\": \"self\", \"person_id\": null, \"name\": null, \"relation\": null, \"label\": \"You\"}\n```\n"}
+
+event: message_delta
+data: {"type": "widget_action_tiles", "content": "{\"id\": \"suggestion_tiles\", \"tile_mode\": \"engage\", \"data\": {\"actions\": [{\"label\": \"Match Kundali with partner\", \"message\": \"Kundali matching\"}]}}"}
+
+event: message_complete
+data: {"type": "message_complete", "message": {"content": "[Using astrology_ai agent]\n\nYour own chart is on file \u2014 I only need your partner's details now: their birth date, time and place.\n\n```input_request\n{\"type\": \"input_request\", \"ask\": \"required_slots_missing\", \"reason\": \"Your own chart is on file \u2014 these details are your partner's. Their time is optional, but it unlocks 21 of the 36 gunas of the match.\", \"fields\": [{\"key\": \"person2_dob\", \"kind\": \"date\", \"label\": \"Your partner's date of birth\", \"required\": true, \"allow_unknown\": false}, {\"key\": \"person2_tob\", \"kind\": \"time\", \"label\": \"Your partner's birth time\", \"required\": true, \"allow_unknown\": true}, {\"key\": \"person2_pob\", \"kind\": \"place\", \"label\": \"Your partner's birth place\", \"required\": true, \"allow_unknown\": false}]}\n```\n\n\n\n```reading_subject\n{\"type\": \"reading_subject\", \"mode\": \"self\", \"person_id\": null, \"name\": null, \"relation\": null, \"label\": \"You\"}\n```\n", "finish_reason": "stop"}}
+

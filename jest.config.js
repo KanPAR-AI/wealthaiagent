@@ -18,6 +18,8 @@ export default {
     // package.json "exports"-to-TS-source arrangement, so map directly.
     '^@wealthai/core$': '<rootDir>/packages/core/src/index.ts',
     '^@wealthai/astral$': '<rootDir>/packages/astral/src/index.ts',
+    // docs/73 ASTRAL-321: the DOM binding moved out of src/components/astral
+    '^@wealthai/astral-dom$': '<rootDir>/packages/astral-dom/src/index.ts',
     '^@wealthai/chat-native$': '<rootDir>/packages/chat-native/src/index.ts',
     // Captured-payload fixtures are a subpath export so they stay OUT of the
     // app bundle; tests import them explicitly.
@@ -52,13 +54,26 @@ export default {
     }],
   },
   transformIgnorePatterns: [
-    // ESM-only packages in the msw dependency tree that Jest's CJS require()
-    // can't parse without a babel transform. `rettime` (pulled in by msw's
-    // core in newer 2.12.x builds — package.json "type":"module", ships only
-    // `.mjs`, no CJS build) is here for the same reason until-async/outvariant
-    // are: CI installs a newer msw within the ^2.7.0 range whose core imports
-    // rettime, so it must be transformed or the whole suite fails to parse.
-    'node_modules/(?!(nanoid|msw|@mswjs|until-async|outvariant|strict-event-emitter|is-node-process|headers-polyfill|@open-draft|@bundled-es-modules|rettime)/)'
+    // ONE pattern, deliberately: a file is ignored if it matches ANY entry in
+    // this array, so a second "allow these" pattern cannot widen the first —
+    // it only re-states the exclusion. (Measured: adding the markdown tree as
+    // a second entry left `react-markdown` untransformed and the suite still
+    // failed to parse.)
+    //
+    // Two families of ESM-only packages need babel:
+    //
+    //   msw's tree — `until-async`, `outvariant`, `rettime` and friends.
+    //     `rettime` is pulled in by msw's core in newer 2.12.x builds; CI
+    //     installs a newer msw within the ^2.7.0 range, so it must be
+    //     transformed or the whole suite fails to parse.
+    //
+    //   the `react-markdown` / `remark-gfm` tree — unified, micromark, mdast,
+    //     hast, unist, vfile: 84 packages, all `"type": "module"` with no CJS
+    //     build. Grouped by family so the line stays readable. Only the suites
+    //     that actually import them pay the transform. Added for docs/73 B4
+    //     (`packages/astral-dom/narration.tsx`), the first component in this
+    //     repo to render markdown under test.
+    'node_modules/(?!(nanoid|msw|@mswjs|until-async|outvariant|strict-event-emitter|is-node-process|headers-polyfill|@open-draft|@bundled-es-modules|rettime|micromark.*|mdast-util-.*|unist-util-.*|hast-util-.*|remark-.*|vfile.*|character-entit.*|character-reference-.*|@ungap\/structured-clone|bail|ccount|comma-separated-tokens|decode-named-character-reference|devlop|estree-util-is-identifier-name|html-url-attributes|is-alphabetical|is-alphanumerical|is-decimal|is-hexadecimal|is-plain-obj|longest-streak|markdown-table|parse-entities|property-information|react-markdown|space-separated-tokens|stringify-entities|trim-lines|trough|unified|zwitch|escape-string-regexp)/)'
   ],
   testMatch: [
     '**/__tests__/**/*.test.ts',

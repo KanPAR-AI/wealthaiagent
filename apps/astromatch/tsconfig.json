@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    // `jest` and `node` because this app's pure modules are unit-tested in
+    // the ROOT jest project, where the tests read fixtures off disk. Nothing
+    // under `src/panel` or `src/sw.ts` may import `fs`.
+    //
+    // There is deliberately NO `paths` entry: `@/*` resolves in more than one
+    // tsconfig in this workspace, which is how a copied file compiles against
+    // the wrong module (F153, and F22 before it). Every import here is a
+    // relative path or a package name.
+    "types": ["chrome", "jest", "node"]
+  },
+  // `type-fixtures/` is deliberately NOT included: those two files exist to
+  // FAIL type-checking, and `trust-boundary.test.ts` / `review.test.ts`
+  // compile them with their own programs. Same arrangement as
+  // `packages/astral/tsconfig.json`.
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"]
+}

@@ -1,0 +1,26 @@
+event: message_start
+data: {"type": "message_start", "message": {"id": "a073dc10-7383-4692-94fe-f075631ab6c3", "sender": "assistant", "timestamp": "2026-09-19T08:08:28.835055+00:00"}}
+
+event: message_delta
+data: {"type": "message_delta", "delta": "[Using astrology_ai agent]\n\n"}
+
+event: message_delta
+data: {"type": "message_delta", "delta": "Those are **Ranchi**'s birth details (1990-08-02) \u2014 I have **not** written them to your own profile, which stays as it is. I'm using them as the other person in this match.\n\n"}
+
+event: message_delta
+data: {"type": "message_delta", "delta": "Casting both Kundlis and matching the 36 gunas... \ud83d\udc9e\n\n"}
+
+event: message_delta
+data: {"type": "message_delta", "delta": "I can't score this match. Without a birth time, your partner's Moon could be in **Scorpio** or **Sagittarius** \u2014 the Moon crosses from one rashi into the next during that day, and four of the eight kootas (Varna, Vashya, Graha Maitri and Bhakoot) are read from the Moon's rashi alone. Each of those four would have two different answers, so there is no honest scorecard to show you \u2014 not even a partial one. A birth time, even to the nearest hour, settles which rashi it is, and then I'll match the full chart."}
+
+event: message_delta
+data: {"type": "message_delta", "delta": "\n\n```reading_subject\n{\"type\": \"reading_subject\", \"mode\": \"self\", \"person_id\": null, \"name\": null, \"relation\": null, \"label\": \"You\"}\n```\n"}
+
+: ping - 2026-09-19 08:08:38.837603+00:00
+
+event: message_delta
+data: {"type": "widget_action_tiles", "content": "{\"id\": \"suggestion_tiles\", \"tile_mode\": \"engage\", \"data\": {\"actions\": [{\"label\": \"Match Kundali with partner\", \"message\": \"Kundali matching\"}]}}"}
+
+event: message_complete
+data: {"type": "message_complete", "message": {"content": "[Using astrology_ai agent]\n\nThose are **Ranchi**'s birth details (1990-08-02) \u2014 I have **not** written them to your own profile, which stays as it is. I'm using them as the other person in this match.\n\nCasting both Kundlis and matching the 36 gunas... \ud83d\udc9e\n\nI can't score this match. Without a birth time, your partner's Moon could be in **Scorpio** or **Sagittarius** \u2014 the Moon crosses from one rashi into the next during that day, and four of the eight kootas (Varna, Vashya, Graha Maitri and Bhakoot) are read from the Moon's rashi alone. Each of those four would have two different answers, so there is no honest scorecard to show you \u2014 not even a partial one. A birth time, even to the nearest hour, settles which rashi it is, and then I'll match the full chart.\n\n```reading_subject\n{\"type\": \"reading_subject\", \"mode\": \"self\", \"person_id\": null, \"name\": null, \"relation\": null, \"label\": \"You\"}\n```\n", "finish_reason": "stop"}}
+

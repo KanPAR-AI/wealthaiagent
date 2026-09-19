@@ -1,0 +1,30 @@
+{
+  "name": "@wealthai/astromatch",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AstroMatch \u2014 the Chrome MV3 side-panel extension (docs/73 PH-39). Check a kundli match against your own chart from any page you are reading. It renders `@wealthai/astral` through `@wealthai/astral-dom` and talks to the same chatservice as the apps; it writes no astrology of its own and derives nothing.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --mode development --watch",
+    "build": "vite build",
+    "build:dev": "vite build --mode development",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@wealthai/astral": "*",
+    "@wealthai/astral-dom": "*",
+    "@wealthai/core": "*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.7.2",
+    "vite": "^6.3.1"
+  }
+}
