@@ -85,3 +85,19 @@ describe('useCaching stays off on iOS while the player URL is the no-store redir
     expect(useCachingFor('web')).toBe(false);
   });
 });
+
+// ── per-URI iOS caching (2026-09-19) ────────────────────────────────────────
+
+import { useCachingFor } from '../player-view';
+
+describe('useCachingFor', () => {
+  it('android caches everything', () => {
+    expect(useCachingFor('android', 'https://api/files/x')).toBe(true);
+    expect(useCachingFor('android')).toBe(true);
+  });
+  it('iOS caches ONLY direct storage URLs — the ticketed redirect broke its cache layer', () => {
+    expect(useCachingFor('ios', 'https://storage.googleapis.com/m/abc/source?sig=x')).toBe(true);
+    expect(useCachingFor('ios', 'https://api/files/corpus-media/abc?t=tok')).toBe(false);
+    expect(useCachingFor('ios')).toBe(false);
+  });
+});

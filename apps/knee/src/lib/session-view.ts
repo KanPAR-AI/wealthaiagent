@@ -6,6 +6,7 @@
 // presentation, and it lives here where the root jest project can hold it.
 
 import type { Lang } from './i18n';
+import { dubUrl } from './library-view';
 import type { WireExercise, WirePhaseDetail } from './library-view';
 
 export type RecipeId = 'full' | 'short' | 'gentle' | 'custom';
@@ -14,6 +15,8 @@ export interface SessionExercise {
   name: string;
   clipUrl: string | null;
   videoUrl: string | null;
+  /** ready Hindi FULL track (a signed URL can't take the &kind= transform) */
+  hindiUrl: string | null;
   hasHindi: boolean;
   /** the segment window inside the full video, for looping WITH audio */
   startSeconds: number;
@@ -38,8 +41,13 @@ function toSessionExercise(e: WireExercise): SessionExercise {
   const d = e.dose;
   return {
     name: e.name,
-    clipUrl: e.clip_url ?? null,
-    videoUrl: e.url,
+    // Direct signed URLs preferred (2026-09-19): no per-Range redirect tax,
+    // and the iOS media cache can hold them. Ticketed fields remain the
+    // fallback for an old wire or a signing outage.
+    clipUrl: e.clip_src ?? e.clip_url ?? null,
+    videoUrl: e.src ?? e.url,
+    hindiUrl: e.src_hi
+      ?? (e.dub_langs.includes('hi') && e.url ? dubUrl(e.url, 'hi') : null),
     hasHindi: e.dub_langs.includes('hi'),
     startSeconds: typeof e.start_seconds === 'number' ? e.start_seconds : 0,
     endSeconds: typeof e.end_seconds === 'number' ? e.end_seconds : null,

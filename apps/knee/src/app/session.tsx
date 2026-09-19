@@ -27,6 +27,7 @@ import {
   type PromptPhase,
 } from '@/lib/completion-view';
 import { getLang, speechLocale, t, type Lang } from '@/lib/i18n';
+import { useCachingFor } from '@/lib/player-view';
 import { track } from '@/lib/telemetry';
 import {
   announcement,
@@ -113,14 +114,14 @@ export default function Session() {
   // whenever the URL is unchanged (tickets rotate hourly, so within-session
   // and same-hour replays are free). A content-keyed cache that survives
   // ticket rotation needs expo-file-system and rides the next native build.
-  const player = useVideoPlayer({ uri: source, useCaching: Platform.OS === 'android' }, (p) => {
+  const player = useVideoPlayer({ uri: source, useCaching: useCachingFor(Platform.OS, source) }, (p) => {
     p.loop = true;
     p.muted = true;
     p.play();
   });
   useEffect(() => {
     if (!source) return;
-    void player.replaceAsync({ uri: source, useCaching: Platform.OS === 'android' }).then(() => {
+    void player.replaceAsync({ uri: source, useCaching: useCachingFor(Platform.OS, source) }).then(() => {
       player.loop = true;
       player.muted = true;
       player.play();
@@ -567,7 +568,7 @@ export default function Session() {
                   url: exercise.videoUrl!,
                   start: String(exercise.startSeconds ?? 0),
                   end: exercise.endSeconds == null ? '' : String(exercise.endSeconds),
-                  hindi: exercise.hasHindi ? '1' : '',
+                  hindiUrl: exercise.hindiUrl ?? '',
                 },
               } as never)}
               accessibilityRole="button" style={s.watch}>

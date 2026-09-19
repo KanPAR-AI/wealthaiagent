@@ -149,3 +149,48 @@ describe('sectionsRows — the stamped non-exercise categories (SEG-5)', () => {
     expect(sectionsRows({ ...phase2, sections: [] })).toEqual([]);
   });
 });
+
+// ── the playback plan: clip-first + direct URLs + Hindi resolution ──────────
+
+import { playbackPlan } from '../library-view';
+
+describe('playbackPlan', () => {
+  const base = { url: 'https://api/files/corpus-media/abc?t=tok', dub_langs: [] as string[] };
+
+  it('CLIP-FIRST: a clip opens first, the full source one tap away', () => {
+    const p = playbackPlan({ ...base, clip_src: 'https://storage.googleapis.com/m/abc/clip_1_2?sig=x',
+                             src: 'https://storage.googleapis.com/m/abc/source?sig=x#t=71' });
+    expect(p.playUrl).toContain('/clip_1_2');
+    expect(p.fullUrl).toContain('/source');
+    expect(p.clipFirst).toBe(true);
+  });
+
+  it('prefers direct fields over ticketed ones, falls back when absent', () => {
+    const direct = playbackPlan({ ...base, src: 'https://storage.googleapis.com/m/abc/source?sig=x' });
+    expect(direct.fullUrl).toContain('storage.googleapis.com');
+    const legacy = playbackPlan(base);
+    expect(legacy.fullUrl).toBe(base.url);
+    expect(legacy.clipFirst).toBe(false);
+    expect(legacy.playUrl).toBe(base.url);
+  });
+
+  it('NEVER applies the &kind= transform to a signed URL: hindi rides its own field', () => {
+    const p = playbackPlan({ ...base, dub_langs: ['hi'],
+                             src: 'https://storage.googleapis.com/m/abc/source?sig=x',
+                             src_hi: 'https://storage.googleapis.com/m/abc/source_hi?sig=y' });
+    expect(p.hindiUrl).toContain('/source_hi');
+    expect(p.hindiUrl).not.toContain('kind=');
+  });
+
+  it('legacy wire (no src_hi): hindi resolves via the ticketed transform', () => {
+    const p = playbackPlan({ ...base, dub_langs: ['hi'] });
+    expect(p.hindiUrl).toContain('kind=source_hi');
+    expect(p.hindiUrl).toContain('/files/corpus-media/');
+  });
+
+  it('no hindi track -> null, and no clip -> not clipFirst', () => {
+    const p = playbackPlan(base);
+    expect(p.hindiUrl).toBeNull();
+    expect(p.clipFirst).toBe(false);
+  });
+});

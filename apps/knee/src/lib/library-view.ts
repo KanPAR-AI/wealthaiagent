@@ -37,6 +37,13 @@ export interface WireExercise {
   end_seconds: number | null;
   video_file: string | null;
   url: string | null;
+  /** direct signed GCS source (skips the per-Range redirect tax); the
+   *  ticketed `url` stays beside it for old clients + signing-outage falls */
+  src?: string | null;
+  /** direct Hindi dub track — travels as its own field because the legacy
+   *  &kind= transform cannot be applied to a signed URL */
+  src_hi?: string | null;
+  clip_src?: string | null;
   /** the muted ~15s demo loop, present only when its artifact exists */
   clip_url?: string | null;
   /** the transcript's own dose, or absent — never defaulted client-side */
@@ -53,7 +60,10 @@ export interface WireAbout {
   start_seconds: number | null;
   end_seconds: number | null;
   url: string | null;
+  src?: string | null;
+  src_hi?: string | null;
   clip_url?: string | null;
+  clip_src?: string | null;
   dub_langs: string[];
 }
 
@@ -67,7 +77,10 @@ export interface WireSectionItem {
   end_seconds: number | null;
   video_file: string | null;
   url: string | null;
+  src?: string | null;
+  src_hi?: string | null;
   clip_url?: string | null;
+  clip_src?: string | null;
   dub_langs: string[];
 }
 
@@ -117,20 +130,53 @@ export interface ExerciseRow {
    *  without a play affordance rather than with a dead one. */
   playable: boolean;
   url: string | null;
+  /** what a tap plays FIRST: the instant clip when one exists (owner ruling
+   *  2026-09-19 — clips load instantly on-device; full sources measured slow
+   *  and twice "Cannot Open" on iOS), else the full source */
+  playUrl: string | null;
+  /** direct-preferred full source; null only when nothing is stored */
+  fullUrl: string | null;
+  /** the Hindi FULL track, resolved here: the direct field when the server
+   *  sent one, else the legacy &kind= transform over the ticketed url */
+  hindiUrl: string | null;
+  /** true when playUrl is the clip — the player shows "Full video ▸" */
+  clipFirst: boolean;
   startSeconds: number | null;
   endSeconds: number | null;
 }
 
 /** Wire rows → render rows, in SERVER ORDER — reordering here would be the
  *  client deciding what the program teaches first. */
+
+/** The playback plan for one wire row — pure, so the clip-first rule and the
+ *  legacy-Hindi fallback are testable without a screen. */
+export function playbackPlan(e: {
+  url: string | null; src?: string | null; src_hi?: string | null;
+  clip_url?: string | null; clip_src?: string | null; dub_langs: string[];
+}): { playUrl: string | null; fullUrl: string | null;
+      hindiUrl: string | null; clipFirst: boolean } {
+  const fullUrl = e.src ?? e.url ?? null;
+  const clip = e.clip_src ?? e.clip_url ?? null;
+  const hasHindi = e.dub_langs.includes('hi');
+  const hindiUrl = e.src_hi
+    ?? (hasHindi && e.url ? dubUrl(e.url, 'hi') : null);
+  return {
+    playUrl: clip ?? fullUrl,
+    fullUrl,
+    hindiUrl,
+    clipFirst: Boolean(clip && fullUrl),
+  };
+}
+
 export function exerciseRows(detail: WirePhaseDetail): ExerciseRow[] {
   return detail.exercises.map((e, i) => ({
     key: `${detail.phase}:${i}:${e.name}`,
     name: e.name,
     clock: formatClock(e.start_seconds),
     hasHindi: e.dub_langs.includes('hi'),
-    playable: Boolean(e.url),
+    playable: Boolean(e.url || e.src || e.clip_src || e.clip_url),
     url: e.url,
+    ...playbackPlan(e),
     startSeconds: e.start_seconds,
     endSeconds: e.end_seconds,
   }));
@@ -160,8 +206,9 @@ export function sectionsRows(detail: WirePhaseDetail): SectionRows[] {
         name: it.name,
         clock: formatClock(it.start_seconds),
         hasHindi: it.dub_langs.includes('hi'),
-        playable: Boolean(it.url),
+        playable: Boolean(it.url || it.src || it.clip_src || it.clip_url),
         url: it.url,
+        ...playbackPlan(it),
         startSeconds: it.start_seconds,
         endSeconds: it.end_seconds,
       })),

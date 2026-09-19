@@ -70,8 +70,15 @@ export function createPlayerGate(start: number, end: number | null) {
  */
 export const CACHING_IOS = false;
 
-/** The `useCaching` flag for a platform. Android's cache layer handles the
- *  redirect fine and stays on. */
-export function useCachingFor(platform: string): boolean {
-  return platform === 'android' || (platform === 'ios' && CACHING_IOS);
+/** The `useCaching` flag for a platform AND a source. Android's cache layer
+ *  handles anything and stays on. iOS caches ONLY direct storage URLs
+ *  (2026-09-19): the ticketed /files redirect is what its cache layer choked
+ *  on (the can't-play glyph), and direct signed GCS URLs are stable for
+ *  3.5–7 days and content-keyed — exactly the shape a week-long device
+ *  cache wants (owner's 7-day-cache ask; the sha is the reload flag). */
+export function useCachingFor(platform: string, uri?: string): boolean {
+  if (platform === 'android') return true;
+  if (platform !== 'ios') return false;
+  if (uri && uri.startsWith('https://storage.googleapis.com/')) return true;
+  return CACHING_IOS;
 }

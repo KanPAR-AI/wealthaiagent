@@ -20,6 +20,7 @@ import { setStatusBarStyle } from 'expo-status-bar';
 
 import { fetchPhase, fetchProgram } from '@/lib/api';
 import {
+  dubUrl,
   exerciseRows,
   phaseSubtitle,
   sectionsRows,
@@ -116,12 +117,14 @@ export default function Library() {
             {detail.about.map((a, i) => (
               <Pressable
                 key={`about:${i}`}
-                onPress={() => a.url && router.push({
+                onPress={() => (a.src || a.url) && router.push({
                   pathname: '/player',
                   params: {
-                    name: a.name, url: a.url,
+                    name: a.name, url: (a.src ?? a.url)!,
                     start: a.start_seconds == null ? '' : String(a.start_seconds),
-                    end: '', hindi: a.dub_langs.includes('hi') ? '1' : '',
+                    end: '',
+                    hindiUrl: a.src_hi
+                      ?? (a.dub_langs.includes('hi') && a.url ? dubUrl(a.url, 'hi') : ''),
                   },
                 } as never)}
                 disabled={!a.url}
@@ -190,15 +193,20 @@ export default function Library() {
 
 function ExerciseLine({ row, last, accent }: { row: ExerciseRow; last: boolean; accent: string }) {
   const open = () => {
-    if (!row.playable || !row.url) return;
+    if (!row.playable || !row.playUrl) return;
     router.push({
       pathname: '/player',
       params: {
         name: row.name,
-        url: row.url,
+        // Clip-first (owner ruling 2026-09-19): the instant loop opens,
+        // narration is one tap away. start/end stay the FULL segment's
+        // bounds — the player applies them only in full mode.
+        url: row.playUrl,
+        full: row.clipFirst && row.fullUrl ? row.fullUrl : '',
+        mode: row.clipFirst ? 'clip' : 'full',
+        hindiUrl: row.hindiUrl ?? '',
         start: row.startSeconds == null ? '' : String(row.startSeconds),
         end: row.endSeconds == null ? '' : String(row.endSeconds),
-        hindi: row.hasHindi ? '1' : '',
       },
     } as never);
   };
