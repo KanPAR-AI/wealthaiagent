@@ -111,6 +111,10 @@ export const astroWidgetRegistry = createBlockRegistry<ChatWidgetHandler>(
     ...sharedWidgetHandlers,
     ...astralHandlers,
     reading_subject: ((data) => <SubjectSink data={data} />) as ChatWidgetHandler,
+    // docs/71 §10: the add-a-member arc's typed state. The DETAILS screen reads
+    // it; in a transcript it is nothing to draw — registered so it renders as
+    // nothing rather than warning as an unknown block or showing raw JSON.
+    member_add: (() => null) as ChatWidgetHandler,
     reading_handoff: ((data) => <ReadingHandoffCard data={data} />) as ChatWidgetHandler,
   },
   { surface: 'astro-chat' },

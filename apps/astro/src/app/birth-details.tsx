@@ -50,7 +50,16 @@
 // time the chat screen opens, rather than being re-fetched or re-sent.
 
 import { router, useLocalSearchParams } from 'expo-router';
-import { addMemberTitle } from '@/lib/family-view';
+import {
+  addMemberFailure,
+  addMemberTitle,
+  afterCastTurn,
+  afterKeepTurn,
+  memberAddState,
+  plainSentence,
+  castingMemberLine,
+  isAddingMember,
+} from '@/lib/family-view';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
@@ -68,6 +77,7 @@ import Svg from 'react-native-svg';
 import {
   InputRequestView,
   LIGHT_THEME,
+  keepPersonMessage,
   parseInputRequest,
   splitDataBlocks,
   type InputRequestPayload,
@@ -128,10 +138,13 @@ const WASH_WIDTH = 0.62;
 
 export default function BirthDetails() {
   const { width } = useWindowDimensions();
-  const { opening, returnTo, field, kinship } = useLocalSearchParams<{
+  const { opening, returnTo, field, kinship, memberName } = useLocalSearchParams<{
     opening?: string;
     /** set by the Family screen's add flow — a LABEL, never a fact */
     kinship?: string;
+    /** the name the user typed on the Family screen. A LABEL, never a fact
+     *  — it becomes the person's `display_name` and nothing else. */
+    memberName?: string;
     /** docs/49 ASTRAL-138: `profile` means send here and go back there */
     returnTo?: string;
     /** which fact is being corrected — carried for ANALYTICS only. A route
@@ -139,8 +152,15 @@ export default function BirthDetails() {
     field?: string;
   }>();
   const editing = isReturningEdit(returnTo);
+  // docs/71 §10: the add-a-member flow. Like `editing`, it SENDS from this
+  // screen and goes back where it came from — the user never sees a chat.
+  const adding = isAddingMember(returnTo) && !!addMemberTitle(kinship);
+  const member = String(memberName ?? '').trim();
   const [request, setRequest] = useState<InputRequestPayload | null>(null);
   const [prose, setProse] = useState('');
+  // The add arc's own failure — the engine's sentence, shown ON the form so
+  // a wrong birthplace can be corrected (Role-3 F-A).
+  const [addError, setAddError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [chatId, setChatId] = useState<string | null>(null);
   const chatIdRef = useRef<string | null>(null);
@@ -338,9 +358,121 @@ export default function BirthDetails() {
     [send, report, field],
   );
 
+  /**
+   * Read the engine's last reply out of the SHARED store, parsed the one way
+   * this screen parses anything: the fenced `input_request` (if the engine
+   * asked again) and the prose beside it.
+   *
+   * Nothing derives a fact from it, and nothing decides whether the chart was
+   * cast — the Family screen re-reads `GET /people` and shows what is
+   * actually on file.
+   */
+  const readLastReply = useCallback(() => {
+    const id = chatIdRef.current;
+    const msgs = id ? useChatStore.getState().chats[id]?.messages ?? [] : [];
+    const last = [...msgs].reverse().find((m) => m.sender === 'bot');
+    if (!last || last.error) {
+      return { failed: true, detail: last?.error, request: null, prose: '', reply: '' };
+    }
+    const segments = splitDataBlocks(last.message ?? '', ['input_request']);
+    const block = segments.find((seg) => seg.kind === 'block');
+    return {
+      failed: false,
+      detail: undefined as string | undefined,
+      request: block ? parseInputRequest(block.value) : null,
+      prose: segments
+        .filter((seg) => seg.kind === 'text')
+        .map((seg) => (seg.kind === 'text' ? seg.text : ''))
+        .join('')
+        .trim(),
+      reply: last.message ?? '',
+    };
+  }, []);
+
+  const sendAndRead = useCallback(async (message: string) => {
+    try {
+      await send(message, []);
+    } catch (e: any) {
+      return { failed: true, detail: String(e?.message ?? e), request: null,
+               prose: '', reply: '' };
+    }
+    return readLastReply();
+  }, [send, readLastReply]);
+
+  /**
+   * Adding a family member (docs/71 §10) — and the point is what it does NOT
+   * do: it never opens the chat screen.
+   *
+   * Two turns on the SAME shared lifecycle this screen already uses, both
+   * deterministic and neither costing a model call (the engine's add arc is
+   * counted, not claimed — `tests/test_astrology_add_member.py`):
+   *
+   *   1. the typed carrier the widget just produced. The engine geocodes,
+   *      casts the chart QUIETLY and answers with one sentence. If it asks
+   *      something instead — a contested birthplace is the real case — the
+   *      ask is rendered HERE and the user answers it in place. Bouncing
+   *      them into a transcript to answer it is the friction this whole
+   *      change is about.
+   *   2. the keep carrier. `reconcile` mints the person, stamps the kinship
+   *      the opening sentence named, and attaches the chart already cast.
+   *
+   * Then back to Family with the engine's own sentence. Nothing is parsed out
+   * of it and nothing is written here.
+   */
+  const submitMember = useCallback(
+    async (message: string) => {
+      track('family_add_submitted', { kinship: String(kinship ?? '') });
+      setAddError(null);
+      setCasting(true);
+      const cast = await sendAndRead(message);
+      if (cast.failed) {
+        report(addMemberFailure('transport', cast.detail), true);
+        router.back();
+        return;
+      }
+      // What happens next is decided by the ENGINE's typed state, in a pure
+      // function with tests (`afterCastTurn`) — never by the absence of an
+      // ask. Role-3 F-A: an unfindable birthplace used to fall through to the
+      // keep and come back as a green tick over a chartless person.
+      const step = afterCastTurn(memberAddState(cast.reply), !!cast.request);
+      if (step.action === 'ask') {
+        setRequest(cast.request);
+        setProse(cast.prose);
+        if (step.failed) setAddError(plainSentence(outcomeLine(cast.reply)));
+        setCasting(false);
+        return;
+      }
+      if (step.action === 'done') {
+        // Nothing was kept. The engine's own sentence, as a FAILURE, with the
+        // form still up so the birthplace can be corrected.
+        setAddError(plainSentence(outcomeLine(cast.reply)) || addMemberFailure('no_form'));
+        setCasting(false);
+        return;
+      }
+      const kept = await sendAndRead(keepPersonMessage(member));
+      if (kept.failed) {
+        report(addMemberFailure('transport', kept.detail), true);
+        router.back();
+        return;
+      }
+      // Only `kept` is a success. A full circle, a store failure, a person
+      // stored but not labelled — each is the engine's sentence under the
+      // FAILURE icon, because Family would not show them.
+      const end = afterKeepTurn(memberAddState(kept.reply));
+      report(plainSentence(outcomeLine(kept.reply) || outcomeLine(cast.reply)),
+             end.action === 'done' ? end.failed : true);
+      router.back();
+    },
+    [sendAndRead, report, kinship, member],
+  );
+
   const handOff = useCallback((message: string) => {
     if (editing) {
       void submitEdit(message);
+      return;
+    }
+    if (adding) {
+      void submitMember(message);
       return;
     }
     track('birth_details_submitted');
@@ -352,7 +484,7 @@ export default function BirthDetails() {
       });
     }, HANDOFF_MS);
     handoffTimer.current = to;
-  }, [editing, submitEdit]);
+  }, [editing, submitEdit, adding, submitMember]);
 
   // Cleared on unmount: a `router.replace` fired out of a screen that is
   // already gone is a warning in dev and a wasted navigation in production.
@@ -428,6 +560,12 @@ export default function BirthDetails() {
             {editing ? tokens.copy.correctionTitle : (addMemberTitle(kinship) ?? tokens.copy.birthDetailsTitle)}
           </Text>
 
+          {addError ? (
+            <View style={s.notice} accessibilityRole="alert">
+              <Text style={s.noticeText}>{addError}</Text>
+            </View>
+          ) : null}
+
           {request && casting ? (
             // The one moment in this flow where something real is about to
             // happen. It used to be a jump cut; now the screen says what it
@@ -435,7 +573,11 @@ export default function BirthDetails() {
             <View style={s.gap}>
               <ActivityIndicator color={tokens.palette.accent.interactive} />
               <Text style={s.subtitle}>
-                {editing ? tokens.copy.applyingEdit : tokens.copy.casting}
+                {editing
+                  ? tokens.copy.applyingEdit
+                  : adding
+                    ? castingMemberLine(member)
+                    : tokens.copy.casting}
               </Text>
             </View>
           ) : request ? (

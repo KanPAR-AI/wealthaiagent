@@ -33,6 +33,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -49,11 +50,15 @@ import {
   EMPTY_TITLE,
   askAboutTurn,
   isEmpty,
+  REMOVE_MATCH_LABEL,
   partnerMode,
+  removeMatchConfirmation,
+  removeTarget,
   sections,
   type MatchRowView,
 } from '@/lib/matches-view';
 import {
+  deletePerson,
   fetchMatches,
   fetchSelf,
   patchLabels,
@@ -151,6 +156,28 @@ export default function Matches() {
     });
   }, []);
 
+  // Owner 2026-09-19: "add a way to remove… the matches — this does not
+  // exist". The shipped cascade, behind one confirm that says what goes.
+  const [removing, setRemoving] = useState<string | null>(null);
+  const remove = useCallback((row: MatchRowView, isPartner: boolean) => {
+    const id = removeTarget(row);
+    if (!id) return;
+    Alert.alert(`Remove ${row.name}?`, removeMatchConfirmation(row.name, isPartner), [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => {
+          setRemoving(id);
+          deletePerson(id)
+            .then(() => { track('match_removed'); read(); })
+            .catch((e: any) => Alert.alert('Could not remove them', String(e?.message ?? e)))
+            .finally(() => setRemoving(null));
+        },
+      },
+    ]);
+  }, [read]);
+
   const view = sections(data);
   const partnered = partner ? partnerMode(data, partner.person_id) : null;
 
@@ -200,6 +227,8 @@ export default function Matches() {
                   onStar={() => toggleStar(partnered.partnerRow!)}
                   onAsk={() => askAbout(partnered.partnerRow!)}
                   onAskAbout={() => askAboutPerson(partnered.partnerRow!)}
+                  onRemove={removeTarget(partnered.partnerRow) ? () => remove(partnered.partnerRow!, true) : undefined}
+                  removing={removing === removeTarget(partnered.partnerRow)}
                   onOpen={() =>
                     router.push({
                       pathname: '/match',
@@ -259,6 +288,8 @@ export default function Matches() {
                     onStar={() => toggleStar(row)}
                     onAsk={() => void askAbout(row)}
                     onAskAbout={() => askAboutPerson(row)}
+                  onRemove={removeTarget(row) ? () => remove(row, false) : undefined}
+                  removing={removing === removeTarget(row)}
                     onOpen={() => {
                       // docs/49 ASTRAL-241: the scorecard is a SCREEN now,
                       // not a question. Every koota, its points and its
@@ -282,7 +313,7 @@ export default function Matches() {
 }
 
 function Row({
-  row, starBusy, onStar, onAsk, onAskAbout, onOpen,
+  row, starBusy, onStar, onAsk, onAskAbout, onOpen, onRemove, removing,
 }: {
   row: MatchRowView;
   starBusy: boolean;
@@ -292,6 +323,9 @@ function Row({
    *  their palm — not about the match. Binds the chat's reading subject. */
   onAskAbout: () => void;
   onOpen: () => void;
+  /** absent when the row cannot be removed — then no button is drawn */
+  onRemove?: () => void;
+  removing?: boolean;
 }) {
   return (
     <View style={[s.card, row.favourite ? s.cardStarred : null]}>
@@ -399,6 +433,22 @@ function Row({
         >
           <Text style={s.ghostText}>Ask about {row.name}</Text>
         </Pressable>
+        {onRemove ? (
+          <Pressable
+            style={s.removeLink}
+            onPress={onRemove}
+            disabled={removing}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${row.name} and everything saved about them`}
+          >
+            {removing ? (
+              <ActivityIndicator color={tokens.palette.ink.onCosmicMuted} />
+            ) : (
+              <Text style={s.removeText}>{REMOVE_MATCH_LABEL}</Text>
+            )}
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -486,4 +536,6 @@ const s = StyleSheet.create({
     marginTop: t.space(1),
   },
   ghostText: { ...t.type.scale.label, color: t.palette.accent.ceremonial },
+  removeLink: { alignSelf: 'center', paddingVertical: t.space(2) },
+  removeText: { ...t.type.scale.caption, color: t.palette.cosmic.horizon },
 });

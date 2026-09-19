@@ -31,6 +31,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -54,7 +55,8 @@ import {
   refusal,
   report,
 } from '@/lib/match-detail-view';
-import { fetchMatch } from '@/lib/people';
+import { deletePerson, fetchMatch } from '@/lib/people';
+import { REMOVE_MATCH_LABEL, removeMatchConfirmation } from '@/lib/matches-view';
 import type { MatchDetail } from '@/lib/people-shapes';
 import { tokens } from '@/theme';
 
@@ -180,6 +182,37 @@ export default function Match() {
               >
                 <Text style={s.ghostText}>{ASK_AI_LABEL}</Text>
               </Pressable>
+
+              {/* Owner 2026-09-19: a match could be saved and never removed.
+                  The shipped person cascade, behind one confirm. */}
+              {detail?.person_id ? (
+                <Pressable
+                  style={s.removeLink}
+                  hitSlop={8}
+                  onPress={() => {
+                    const id = detail!.person_id!;
+                    Alert.alert(`Remove ${head!.name}?`,
+                      removeMatchConfirmation(head!.name, detail!.relation === 'partner'), [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Remove', style: 'destructive',
+                          onPress: () => {
+                            deletePerson(id)
+                              .then(() => {
+                                track('match_removed');
+                                if (router.canGoBack()) router.back(); else router.replace('/matches');
+                              })
+                              .catch((e: any) => Alert.alert('Could not remove them', String(e?.message ?? e)));
+                          },
+                        },
+                      ]);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${head!.name} and everything saved about them`}
+                >
+                  <Text style={s.removeText}>{REMOVE_MATCH_LABEL}</Text>
+                </Pressable>
+              ) : null}
             </>
           ) : null}
         </ScrollView>
@@ -247,4 +280,6 @@ const s = StyleSheet.create({
     borderColor: t.palette.cosmic.line,
   },
   ghostText: { ...t.type.scale.label, color: t.palette.ink.onCosmic },
+  removeLink: { alignSelf: 'center', paddingVertical: t.space(3) },
+  removeText: { ...t.type.scale.caption, color: t.palette.cosmic.horizon },
 });

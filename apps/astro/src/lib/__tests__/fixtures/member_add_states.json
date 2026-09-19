@@ -1,0 +1,23 @@
+{
+ "captured_from": "services.agents.astrology.family_add.state_block",
+ "states": [
+  "asking",
+  "chart_cast",
+  "cast_failed",
+  "kept",
+  "circle_full",
+  "no_chart",
+  "keep_failed",
+  "kept_unlabelled"
+ ],
+ "replies": {
+  "asking": "*engine sentence*\n\n\n\n```member_add\n{\"type\": \"member_add\", \"state\": \"asking\"}\n```\n",
+  "chart_cast": "*Aarav's chart is cast.*\n\n\n\n```member_add\n{\"type\": \"member_add\", \"state\": \"chart_cast\"}\n```\n",
+  "cast_failed": "*engine sentence*\n\n\n\n```member_add\n{\"type\": \"member_add\", \"state\": \"cast_failed\"}\n```\n",
+  "kept": "*engine sentence*\n\n\n\n```member_add\n{\"type\": \"member_add\", \"state\": \"kept\"}\n```\n",
+  "circle_full": "*engine sentence*\n\n\n\n```member_add\n{\"type\": \"member_add\", \"state\": \"circle_full\"}\n```\n",
+  "no_chart": "*Aarav was not added \u2014 their chart could not be cast. Check the birthplace and try again.*\n\n\n\n```member_add\n{\"type\": \"member_add\", \"state\": \"no_chart\"}\n```\n",
+  "keep_failed": "*engine sentence*\n\n\n\n```member_add\n{\"type\": \"member_add\", \"state\": \"keep_failed\"}\n```\n",
+  "kept_unlabelled": "*engine sentence*\n\n\n\n```member_add\n{\"type\": \"member_add\", \"state\": \"kept_unlabelled\"}\n```\n"
+ }
+}

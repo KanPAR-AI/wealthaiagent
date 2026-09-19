@@ -226,25 +226,100 @@ export function circleRoom(members: readonly unknown[]): number {
   return Math.max(0, CIRCLE_MAX - members.length);
 }
 
-// ── adding a member (ASTRAL-286) ──────────────────────────────────────────
+// ── adding a member (ASTRAL-286, rewritten docs/71 §10) ───────────────────
 //
-// There is no route that accepts a birth fact and there is not going to be
-// one. Adding a member is the SHIPPED details flow: the opening sentence
-// binds the chat to a standalone reading, the arc collects the details
-// through `input_request` → `input_response` → `reconcile`, the engine
-// offers to keep the person, and the person it mints is a `friend` (F115).
-// The kinship arrives afterwards, as ONE label PATCH.
+// THE OWNER'S SENTENCE, 2026-09-19: "while adding a member to family it's
+// not necessary to go to chat — users might get confused."
 //
-// The sentence below is `subject.CUE_ADHOC`'s own wording — the engine
-// parses it deterministically, whole-message. `test_people_circle.py`
-// pins it on the engine's side (`subject_cue(ADD_MEMBER_TURN) == adhoc`),
-// which is the side that owns the grammar.
+// What this replaced: the details screen handed the typed carrier to the
+// CHAT screen, the engine ran a full natal interpretation nobody asked for
+// (thirty to sixty seconds on the Pro reading model), the user then had to
+// type a name and tap Keep INSIDE the chat, and only then did THIS module
+// guess — from "the one new kinship-less person" — who had just been added,
+// so it could PATCH the kinship on. Role-3 caught that guess labelling a
+// stranger (docs/71 §8).
+//
+// What it is now: the user picks the relation, types the name, fills the
+// birth-details card, taps once, and lands back here. Three deterministic
+// turns go out on the shared chat lifecycle from the details screen, none of
+// them costs a model call, and the ENGINE stamps the kinship when reconcile
+// mints the person — so there is nothing left for a client heuristic to get
+// wrong, and `pendingAddOutcome` / `newlyAddedPerson` are gone with it.
+//
+// There is STILL no route that accepts a birth fact and there is not going
+// to be one. The details travel `input_request` → `input_response` →
+// `reconcile`, exactly as before. What travels on the route is two LABELS —
+// a kinship and a display name — which is what a route param may carry.
 
-export const ADD_MEMBER_TURN = 'Reading for someone new.';
+/** The word each kinship is spoken with in the opening sentence.
+ *
+ *  Pinned against `services/agents/astrology/family_add.KINSHIP_WORD`: a
+ *  sentence composed at runtime can drift out of the engine's cue with
+ *  NOTHING going red — the user taps Add, the engine answers with a
+ *  paragraph, and this screen waits for a form that never comes. Two files
+ *  asserting the same literals cannot fail that quietly (the
+ *  `lib/edit-fact.ts::CORRECTION_TURNS` discipline). */
+export const KINSHIP_WORD: Record<string, string> = {
+  partner: 'partner',
+  mother: 'mother',
+  father: 'father',
+  son: 'son',
+  daughter: 'daughter',
+  brother: 'brother',
+  sister: 'sister',
+  grandmother: 'grandmother',
+  grandfather: 'grandfather',
+  // "Add my other, Priya." is not a sentence.
+  other: 'relative',
+};
+
+/** The engine's own limits on a display name, restated so the screen can say
+ *  what is wrong BEFORE the tap rather than after a refusal
+ *  (`family_add.NAME_MAX`, `NAME_MAX_WORDS`, and the cue's punctuation
+ *  class). The engine is still the authority; this is the courtesy. */
+export const NAME_MAX = 60;
+export const NAME_MAX_WORDS = 4;
+
+/** What is wrong with this name, in a sentence, or null when nothing is. */
+export function memberNameProblem(name: string | null | undefined): string | null {
+  const clean = String(name ?? '').trim().replace(/\s+/g, ' ');
+  if (!clean) return 'What should I call them?';
+  if (clean.length > NAME_MAX) return `That is longer than ${NAME_MAX} characters.`;
+  if (clean.split(' ').length > NAME_MAX_WORDS) {
+    return `A name here is up to ${NAME_MAX_WORDS} words.`;
+  }
+  if (/[,.!?;:]/.test(clean)) return 'A name here carries no punctuation.';
+  return null;
+}
+
+/**
+ * The opening sentence. ONE DECLARED SHAPE, matching
+ * `family_add.turn_for(kinship, name)` byte for byte.
+ *
+ * Null when this build cannot build a sentence the engine parses back —
+ * never a composed fallback, because a sentence no engine test has ever
+ * fired is the silent prose degradation described above.
+ */
+export function addMemberTurn(
+  kinship: string | null | undefined,
+  name: string | null | undefined,
+): string | null {
+  const k = String(kinship ?? '');
+  if (!(KINSHIPS as readonly string[]).includes(k)) return null;
+  if (memberNameProblem(name)) return null;
+  const clean = String(name).trim().replace(/\s+/g, ' ');
+  return `Add my ${KINSHIP_WORD[k]}, ${clean}.`;
+}
 
 export interface AddMemberRoute {
   pathname: '/birth-details';
-  params: { opening: string; kinship: string; returnTo: 'family' };
+  params: {
+    opening: string;
+    kinship: string;
+    /** a LABEL — the name the user typed. Never a birth fact. */
+    memberName: string;
+    returnTo: 'family';
+  };
 }
 
 /** The details screen's title when it was opened to add a member. It said
@@ -257,85 +332,138 @@ export function addMemberTitle(kinship: string | null | undefined): string | nul
   return k === 'other' ? 'Add a Family\nMember' : `Add Your\n${KINSHIP_LABEL[k]}`;
 }
 
-export function addMemberRoute(kinship: Kinship): AddMemberRoute {
+export function addMemberRoute(
+  kinship: Kinship,
+  name: string,
+): AddMemberRoute | null {
+  const opening = addMemberTurn(kinship, name);
+  if (!opening) return null;
   return {
     pathname: '/birth-details',
-    params: { opening: ADD_MEMBER_TURN, kinship, returnTo: 'family' },
+    params: {
+      opening,
+      kinship,
+      memberName: String(name).trim().replace(/\s+/g, ' '),
+      returnTo: 'family',
+    },
   };
 }
 
-/**
- * After the details flow: which person just arrived without a kinship.
- *
- * The engine minted them as `friend` and gave them no kinship, so the
- * newest kinship-less person who is not `self` and not a saved match is
- * the one the user just added. Pure over the list the screen re-read — no
- * second fetch, no id smuggled through a route param, and NOTHING is
- * written until the screen sends the one PATCH.
- *
- * Returns null when there is no candidate, which is the honest answer when
- * the user abandoned the flow: the screen then says nothing rather than
- * labelling somebody at random.
- */
-export function newlyAddedPerson(
-  people: readonly PersonView[],
-  knownIds: readonly string[],
-): PersonView | null {
-  const known = new Set(knownIds);
-  const fresh = people.filter(
-    (p) => p.id !== 'self' && !p.in_circle && !known.has(p.id) && p.relation !== 'match',
-  );
-  if (fresh.length !== 1) return null;
-  return fresh[0];
+/** Does this details-screen instance belong to the add-a-member flow?
+ *  (`isReturningEdit`'s twin — one question, one answer, one place.) */
+export function isAddingMember(returnTo: string | undefined | null): boolean {
+  return returnTo === 'family';
 }
 
-/**
- * What to DO with a pending "add a member" intent, given the list the screen
- * just re-read. Pure, so the abandon path is testable — `family.tsx` is a
- * component and nothing tests it.
- *
- * Role-3 found the defect this closes (2026-09-19): the intent was module
- * state that only ever cleared on success, so abandoning the details flow
- * left it armed. An unrelated person saved from a chat later became the sole
- * candidate and was silently labelled with a kinship the user had chosen for
- * somebody else, entering the circle with no confirmation. That is docs/67's
- * bug class — a fact attached to the wrong person — and it must not come back
- * through a client-side door.
- *
- * Three outcomes, and the caller clears the intent on all but `wait`:
- *   `wait`    — the read has not settled yet; decide nothing.
- *   `label`   — exactly one new kinship-less person: the one just minted.
- *   `discard` — no candidate (abandoned), or the intent is older than
- *               PENDING_ADD_TTL_MS. The intent dies rather than waiting for
- *               somebody to mislabel.
- */
-export const PENDING_ADD_TTL_MS = 15 * 60 * 1000;
-
-export interface PendingAdd {
-  kinship: Kinship;
-  known: readonly string[];
-  at: number;
+/** The honest progress line while the chart is being cast. It names the
+ *  person, because "Casting your chart…" over somebody else's details is
+ *  the copy bug the title above was just fixed out of. */
+export function castingMemberLine(name: string | null | undefined): string {
+  const clean = String(name ?? '').trim();
+  return clean ? `Casting ${clean}'s chart…` : 'Casting their chart…';
 }
 
-export type PendingAddOutcome =
-  | { action: 'wait' }
-  | { action: 'discard'; reason: 'abandoned' | 'expired' }
-  | { action: 'label'; personId: string; kinship: Kinship };
-
-export function pendingAddOutcome(
-  pending: PendingAdd | null,
-  people: readonly PersonView[] | null,
-  settled: boolean,
-  now: number,
-): PendingAddOutcome {
-  if (!pending) return { action: 'wait' };
-  if (now - pending.at > PENDING_ADD_TTL_MS) {
-    return { action: 'discard', reason: 'expired' };
+/** What to say when the flow did not complete. Three different facts about
+ *  the world, kept apart for `editFailure`'s reason: collapsing them into
+ *  "something went wrong" is what makes a user try the same thing four
+ *  times. The engine's own refusal (INV-4) is quoted, never rewritten. */
+export function addMemberFailure(
+  kind: 'transport' | 'no_form',
+  detail?: string,
+): string {
+  const said = String(detail ?? '').trim();
+  if (kind === 'transport') {
+    return `I couldn't reach the engine to add them${said ? ` (${said})` : ''}. ` +
+      'Nothing was saved — try again in a moment.';
   }
-  if (!people || !settled) return { action: 'wait' };
-  const minted = newlyAddedPerson(people, pending.known);
-  if (!minted) return { action: 'discard', reason: 'abandoned' };
-  return { action: 'label', personId: minted.id, kinship: pending.kinship };
+  return (
+    'The engine answered without the birth-details card this time, so there ' +
+    'is nothing to fill in here. Nothing was saved.'
+  );
+}
+
+// ── the add arc, step by step (Role-3 F-A — SAFETY-BLOCKER, 2026-09-19) ──
+//
+// The details screen drives three turns. The first version decided what to do
+// next from what was MISSING: "no input_request came back, so the chart is
+// cast — send the keep". A birthplace the geocoder could not find answers in
+// prose only, so the keep went out, a person with no chart was created, and
+// Family showed a green tick over the engine's own refusal. The engine was
+// honest; the client threw the honesty away — and that whole decision lived in
+// the component, untested (F-B).
+//
+// The engine now SAYS which state each turn ended in (a typed ```member_add```
+// block, closed vocabulary). This module reads that and nothing else. An
+// ABSENT or UNKNOWN state is a failure, never a success: the keep is sent on
+// exactly one state, `chart_cast`.
+
+export const MEMBER_ADD_BLOCK = 'member_add';
+export const MEMBER_STATES = [
+  'asking', 'chart_cast', 'cast_failed', 'kept', 'circle_full', 'no_chart',
+  'keep_failed', 'kept_unlabelled',
+] as const;
+export type MemberState = (typeof MEMBER_STATES)[number];
+
+/** The engine's state for this reply, or null. Parses the fenced block the
+ *  engine wrote; never infers a state from the prose around it. */
+export function memberAddState(reply: string | null | undefined): MemberState | null {
+  const m = /```member_add\n([\s\S]*?)\n```/.exec(String(reply ?? ''));
+  if (!m) return null;
+  try {
+    const v = JSON.parse(m[1]) as { type?: unknown; state?: unknown };
+    if (v?.type !== MEMBER_ADD_BLOCK) return null;
+    return (MEMBER_STATES as readonly string[]).includes(String(v.state))
+      ? (v.state as MemberState) : null;
+  } catch {
+    return null;
+  }
+}
+
+export type MemberStep =
+  /** the engine is asking something — render its ask on this screen.
+   *  `failed` is true when the ask FOLLOWS a refusal (a birthplace it could
+   *  not find): the engine's sentence is shown as an error above the ask. */
+  | { action: 'ask'; failed: boolean }
+  /** the chart is cast — and ONLY now may the keep be sent */
+  | { action: 'keep' }
+  /** over. `failed` decides the icon; `stay` keeps the form up so a wrong
+   *  birthplace can be corrected instead of being lost with the screen */
+  | { action: 'done'; failed: boolean; stay: boolean };
+
+/** After the DETAILS turn. `hasAsk` is whether a parsed input_request came
+ *  back (the screen already knows how to render one). */
+export function afterCastTurn(state: MemberState | null, hasAsk: boolean): MemberStep {
+  if (state === 'chart_cast') return { action: 'keep' };
+  if (state === 'asking' && hasAsk) return { action: 'ask', failed: false };
+  // The engine refused AND asked again — for the birthplace only, so the date
+  // and time the user already gave are not retyped.
+  if (state === 'cast_failed' && hasAsk) return { action: 'ask', failed: true };
+  // cast_failed, a missing state, an unknown one, an "asking" with nothing to
+  // render: nothing is kept, and the engine's own sentence is shown as a
+  // FAILURE with the form still up.
+  return { action: 'done', failed: true, stay: true };
+}
+
+/** The engine's sentence as plain words: its markdown emphasis is for a
+ *  transcript, and a notice that prints "*Pune*" with the asterisks reads as
+ *  a rendering bug (seen on the simulator walk). Wording untouched. */
+export function plainSentence(text: string | null | undefined): string {
+  return String(text ?? '')
+    .replace(/\*\*?([^*\n]+?)\*\*?/g, '$1')
+    // …and an UNPAIRED marker: `outcomeLine` trims the closing asterisk, so
+    // the banner opened with a stray "*Kabeer is in your family" (walked
+    // 2026-09-19).
+    .replace(/^\*+\s*|\s*\*+$/g, '')
+    .trim();
+}
+
+/** After the KEEP turn. Only `kept` is a success. */
+export function afterKeepTurn(state: MemberState | null): MemberStep {
+  if (state === 'kept') return { action: 'done', failed: false, stay: false };
+  // kept_unlabelled: stored but NOT in the circle — the Family screen would
+  // not show them, so a green tick would be a lie. circle_full / no_chart /
+  // keep_failed / missing: nothing was added.
+  return { action: 'done', failed: true, stay: false };
 }
 
 // ── Forget (ASTRAL-287) ───────────────────────────────────────────────────
@@ -348,7 +476,7 @@ export function pendingAddOutcome(
 // and echoed on the DELETE response as `not_covered`.
 
 export const FORGET_GAP =
-  'Palm images they uploaded are not covered — that deletion is not built yet (ASTRAL-43).';
+  'Palm images they uploaded are not covered — that deletion is not built yet.';
 
 export const FORGET_COVERS =
   'their birth details, their chart, their saved cards and timeline, and every match that named them';

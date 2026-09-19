@@ -62,10 +62,12 @@ import { CAPABILITIES } from '@/lib/capabilities';
 import { openPartnerSheet } from '@/components/partner-sheet';
 import { CitySheet } from '@/components/city-sheet';
 import { turnForPerson } from '@/lib/subject-view';
+import { REMOVE_MATCH_LABEL, removeMatchConfirmation } from '@/lib/matches-view';
 import { editRoute } from '@/lib/edit-fact';
 import { useEditOutcome } from '@/lib/edit-outcome';
 import {
   clearPartner,
+  deletePerson,
   fetchEditImpact,
   fetchPeople,
   fetchPriorities,
@@ -725,6 +727,34 @@ function Established({
                   <Text style={s.rowLabel}>{p.display_name || 'Unnamed'}</Text>
                   <Text style={s.caption}>Ask about their chart, palm or match</Text>
                 </View>
+                {/* Owner 2026-09-19: "add a way to remove… this does not
+                    exist". The shipped cascade behind one confirm; an inner
+                    Pressable, so the row's own tap still opens the chat. */}
+                <Pressable
+                  hitSlop={10}
+                  onPress={() => {
+                    const name = p.display_name || 'this person';
+                    Alert.alert(`Remove ${name}?`,
+                      removeMatchConfirmation(name, person.partner?.person_id === p.id), [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Remove', style: 'destructive',
+                          onPress: () => {
+                            deletePerson(p.id)
+                              .then(() => {
+                                track('person_removed');
+                                setPeople((prev) => prev.filter((q) => q.id !== p.id));
+                              })
+                              .catch((e: any) => Alert.alert('Could not remove them', String(e?.message ?? e)));
+                          },
+                        },
+                      ]);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove ${p.display_name || 'this person'} and everything saved about them`}
+                >
+                  <Text style={s.removeText}>{REMOVE_MATCH_LABEL}</Text>
+                </Pressable>
                 <ChevronRight size={tokens.size.icon} color={tokens.palette.ink.muted} />
               </Pressable>
             ))}
@@ -838,6 +868,7 @@ const s = StyleSheet.create({
   },
   sentence: { ...t.type.scale.sub, color: t.palette.ink.secondary },
   caption: { ...t.type.scale.caption, color: t.palette.ink.muted },
+  removeText: { ...t.type.scale.caption, color: t.palette.danger, marginRight: t.space(2) },
   handsRow: {
     flexDirection: 'row',
     gap: t.space(3),

@@ -271,3 +271,32 @@ export const EMPTY_BODY =
 export function askAboutTurn(name: string): string {
   return `Tell me more about my match with ${name}.`;
 }
+
+// ── removing a match (owner, 2026-09-19: "add a way to remove… this does not
+//    exist") ────────────────────────────────────────────────────────────────
+//
+// A saved match IS a person on file plus the scorecard that names them, so
+// removing the match is the shipped person cascade (`DELETE /people/{id}`,
+// ASTRAL-36): their birth details, their chart and every match naming them go
+// together. There is no "delete only the score" — a scorecard with no person
+// behind it is an orphan the engine refuses to keep. A row with no person id
+// (a legacy row the store cannot address) offers no Remove, rather than a
+// button that would 404.
+
+/** The person this row would remove, or null when it cannot be removed. */
+export function removeTarget(row: Pick<MatchRowView, 'personId'>): string | null {
+  const id = (row.personId ?? '').trim();
+  return id ? id : null;
+}
+
+export const REMOVE_MATCH_LABEL = 'Remove';
+
+/** What the confirm says. It names the partner case out loud: removing the
+ *  person you declared as your partner also ends the couple reading. */
+export function removeMatchConfirmation(name: string, isPartner: boolean): string {
+  const who = (name ?? '').trim() || 'this person';
+  const base = `This removes ${who}'s birth details, their chart and every match that names them. It cannot be undone.`;
+  return isPartner
+    ? `${base} ${who} is set as your partner, so your day as a couple goes too.`
+    : base;
+}

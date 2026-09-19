@@ -11,6 +11,8 @@ import type { MatchGroup, MatchRow, MatchesResponse } from '../people-shapes';
 import {
   askAboutTurn,
   isEmpty,
+  removeMatchConfirmation,
+  removeTarget,
   sections,
   type MatchRowView,
 } from '../matches-view';
@@ -412,5 +414,33 @@ describe('ASTRAL-157 — the ordering is falsifiable by the reader', () => {
     const [complete] = sections(bare);
     expect(complete.rule).toBe('');
     expect(complete.rows[0].leading).toEqual([]);
+  });
+});
+
+describe('removing a match (owner, 2026-09-19: "this does not exist")', () => {
+  it('a row with a person behind it can be removed; one without cannot', () => {
+    expect(removeTarget({ personId: 'p_1' })).toBe('p_1');
+    expect(removeTarget({ personId: null })).toBeNull();
+    expect(removeTarget({ personId: '   ' })).toBeNull();
+  });
+
+  it('the confirm says what goes, by name, and that it cannot be undone', () => {
+    const s = removeMatchConfirmation('Meera', false);
+    expect(s).toContain("Meera's birth details");
+    expect(s).toContain('every match that names them');
+    expect(s).toContain('cannot be undone');
+    expect(s).not.toContain('partner');
+  });
+
+  it('removing the declared partner says the couple reading goes too', () => {
+    const s = removeMatchConfirmation('Anjali', true);
+    expect(s).toContain('Anjali is set as your partner');
+    expect(s).toContain('your day as a couple goes too');
+  });
+
+  it('no internal spec id ever reaches the user', () => {
+    for (const s of [removeMatchConfirmation('X', true), removeMatchConfirmation('', false)]) {
+      expect(s).not.toMatch(/ASTRAL-\d+|docs\/\d+/);
+    }
   });
 });

@@ -17,24 +17,36 @@ import path from 'path';
 
 import { CAPABILITIES, type Capabilities } from '../capabilities';
 import {
-  ADD_MEMBER_TURN,
   BAND_WORD,
   CIRCLE_MAX,
   FORGET_GAP,
   KINSHIPS,
+  KINSHIP_WORD,
+  NAME_MAX,
+  MEMBER_STATES,
+  NAME_MAX_WORDS,
   addMemberRoute,
+  addMemberTitle,
+  addMemberTurn,
+  afterCastTurn,
+  afterKeepTurn,
+  castingMemberLine,
   circleMembers,
   circleRoom,
   familyBlock,
   familyRows,
   familyView,
   forgetConfirmation,
-  newlyAddedPerson,
+  isAddingMember,
+  memberAddState,
+  memberNameProblem,
+  plainSentence,
   familyPlaceLine,
   yourRow,
-  pendingAddOutcome,
-  PENDING_ADD_TTL_MS,
 } from '../family-view';
+import type { MemberState } from '../family-view';
+import { outcomeLine } from '../edit-fact';
+import { keepPersonMessage } from '@wealthai/astral';
 import type { DailyReady, PersonView } from '../people-shapes';
 import { DECLARED_PUSHED_ROUTES, routeIsLive, visiblePushedRoutes } from '../tabs';
 
@@ -272,39 +284,106 @@ describe('the circle, from the one people read', () => {
 // ══════════════════════════════════════════════════════════════════════════
 
 describe('adding a member', () => {
-  it('opens the details flow with the engine’s own adhoc cue, verbatim', () => {
-    // Pinned on the engine's side too: `test_people_circle.py` asserts
-    // `subject.subject_cue(ADD_MEMBER_TURN) == ("adhoc", "")`.
-    expect(ADD_MEMBER_TURN).toBe('Reading for someone new.');
-    const route = addMemberRoute('son');
-    expect(route.pathname).toBe('/birth-details');
-    expect(route.params.opening).toBe(ADD_MEMBER_TURN);
-    expect(route.params.kinship).toBe('son');
+  // WHAT WAS DELETED HERE, AND WHY IT IS NOT A WEAKENING.
+  //
+  // `newlyAddedPerson` and `pendingAddOutcome` are gone, and their tests with
+  // them. They existed for ONE reason: the engine never learned the kinship,
+  // so this module had to work out afterwards which stored person the chat
+  // had just minted and PATCH a label onto it. Role-3 caught that guess
+  // labelling a stranger (docs/71 §8), and the TTL/abandon machinery was the
+  // patch for the symptom.
+  //
+  // The engine now stamps the kinship itself, inside `reconcile`, on the
+  // person it minted — `chatservice/tests/test_astrology_add_member.py::
+  // TestTheEngineStampsTheKinship` is where that property lives now. There is
+  // no client-side guess left to test, and keeping tests for a deleted
+  // mechanism would launder it.
+
+  it('builds the engine’s own opening sentence, byte for byte', () => {
+    // Pinned on the engine's side too: `test_astrology_add_member.py`
+    // asserts `family_add.turn_for('son', 'Aarav') == 'Add my son, Aarav.'`
+    // and parses it back. Two files asserting the same literal cannot drift
+    // quietly — the `CORRECTION_TURNS` discipline.
+    expect(addMemberTurn('son', 'Aarav')).toBe('Add my son, Aarav.');
+    expect(addMemberTurn('other', 'Priya')).toBe('Add my relative, Priya.');
+    expect(addMemberTurn('grandmother', 'Kamla Devi'))
+      .toBe('Add my grandmother, Kamla Devi.');
   });
 
-  it('carries NO birth fact in the route params', () => {
-    const json = JSON.stringify(addMemberRoute('daughter').params);
+  it('has a word for every kinship the engine declares', () => {
+    // `family_add.KINSHIP_WORD` has exactly these keys; a kinship added to
+    // the store without a word here would produce a sentence the engine
+    // cannot parse, and the user would wait for a form that never comes.
+    expect(Object.keys(KINSHIP_WORD).sort()).toEqual([...KINSHIPS].sort());
+    for (const k of KINSHIPS) expect(addMemberTurn(k, 'Aarav')).toBeTruthy();
+  });
+
+  it('refuses to compose a sentence the engine would not parse back', () => {
+    expect(addMemberTurn('uncle' as never, 'Aarav')).toBeNull();
+    expect(addMemberTurn('son', '')).toBeNull();
+    expect(addMemberTurn('son', 'Aarav, and cast his chart')).toBeNull();
+    expect(addMemberTurn('son', 'a b c d e')).toBeNull();
+    expect(addMemberTurn('son', 'x'.repeat(NAME_MAX + 1))).toBeNull();
+  });
+
+  it('says what is wrong with a name BEFORE the tap', () => {
+    expect(memberNameProblem('Aarav')).toBeNull();
+    expect(memberNameProblem('Aarav Kumar Singh')).toBeNull();
+    expect(memberNameProblem('  ')).toBe('What should I call them?');
+    expect(memberNameProblem('a b c d e'))
+      .toBe(`A name here is up to ${NAME_MAX_WORDS} words.`);
+    expect(memberNameProblem('Aarav.')).toBe('A name here carries no punctuation.');
+    expect(memberNameProblem('x'.repeat(NAME_MAX + 1)))
+      .toBe(`That is longer than ${NAME_MAX} characters.`);
+  });
+
+  it('routes to the details screen carrying two LABELS and no birth fact', () => {
+    const route = addMemberRoute('son', 'Aarav')!;
+    expect(route.pathname).toBe('/birth-details');
+    expect(route.params.opening).toBe('Add my son, Aarav.');
+    expect(route.params.kinship).toBe('son');
+    expect(route.params.memberName).toBe('Aarav');
+    expect(route.params.returnTo).toBe('family');
+    const json = JSON.stringify(route.params);
     expect(json).not.toMatch(/\d{4}-\d{2}-\d{2}/);
     expect(json).not.toMatch(/\d{1,2}:\d{2}/);
     expect(json).not.toMatch(/(date_of_birth|time_of_birth|place_of_birth)/);
   });
 
-  it('finds the person the engine just minted, and only when it is certain', () => {
-    const people = FIX.people.people;
-    const known = people.map((p) => p.id);
-    // Nothing new → nothing labelled. The honest answer when the user
-    // abandoned the flow.
-    expect(newlyAddedPerson(people, known)).toBeNull();
-    const minted = {
-      id: 'p_new', relation: 'friend', display_name: 'Aarav',
-      source_label: 'chat', favourite: false, tob_known: false,
-      birth_facts: {}, created_at: '', updated_at: '', in_circle: false,
-    } as unknown as PersonView;
-    expect(newlyAddedPerson([...people, minted], known)?.id).toBe('p_new');
-    // Two candidates → none: labelling somebody at random is worse than
-    // asking again.
-    const second = { ...minted, id: 'p_new2' } as PersonView;
-    expect(newlyAddedPerson([...people, minted, second], known)).toBeNull();
+  it('is null when it cannot build the route, rather than a half one', () => {
+    expect(addMemberRoute('son', 'Aarav, and cast his chart')).toBeNull();
+    expect(addMemberRoute('son', '')).toBeNull();
+  });
+
+  it('tells the details screen which flow it is in', () => {
+    expect(isAddingMember('family')).toBe(true);
+    expect(isAddingMember('profile')).toBe(false);
+    expect(isAddingMember(undefined)).toBe(false);
+  });
+
+  it('names the person in the progress line', () => {
+    // "Casting your chart…" over somebody else's details is the copy bug
+    // `addMemberTitle` was fixed out of on 2026-09-19.
+    expect(castingMemberLine('Aarav')).toBe("Casting Aarav's chart…");
+    expect(castingMemberLine('')).toBe('Casting their chart…');
+  });
+
+  it('the keep carrier travels typed, and the echo is not the answer', () => {
+    // The ONE thing the details screen sends without a widget behind it, and
+    // it goes through the same builder as every widget answer. Delete the
+    // fence and nothing is recoverable — the property `input-request.test.ts`
+    // pins for every other ask.
+    const message = keepPersonMessage('Aarav');
+    const body = JSON.parse(
+      message.split('```input_response\n')[1].split('\n```')[0],
+    );
+    expect(body.type).toBe('input_response');
+    expect(body.ask).toBe('save_person_offer');
+    expect(body.values).toEqual({ person_name: 'Aarav', save_person: 'save' });
+    // no birth fact rides it — the details were collected by the ask before
+    expect(JSON.stringify(body.values)).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+    // the echo is readable and carries nothing the engine reads
+    expect(message.startsWith('Keeping: Aarav')).toBe(true);
   });
 });
 
@@ -318,8 +397,12 @@ describe('the Forget confirmation', () => {
     // (that module's own test asserts it against the cascade's source, so
     // this string goes stale loudly the day ASTRAL-43 ships).
     expect(FORGET_GAP).toBe(
-      'Palm images they uploaded are not covered — that deletion is not built yet (ASTRAL-43).',
+      'Palm images they uploaded are not covered — that deletion is not built yet.',
     );
+  });
+
+  it('carries no ticket id — a user reads this (walked 2026-09-19)', () => {
+    expect(forgetConfirmation('Aarav')).not.toMatch(/ASTRAL-\d+|\bF\d+\b|AMB-\d+/);
   });
 
   it('names the person and what IS removed', () => {
@@ -374,63 +457,7 @@ describe('the family capability', () => {
   });
 });
 
-describe('the pending "add a member" intent — Role-3 blocking defect, 2026-09-19', () => {
-  const NOW = 1_800_000_000_000;
-  const known = ['p-old'];
-  const pending = { kinship: 'son' as const, known, at: NOW };
-  const person = (id: string, extra: any = {}) => ({
-    id, display_name: id, relation: 'friend', in_circle: false,
-    kinship: null, chart_status: 'fresh', ...extra,
-  }) as any;
-
-  it('labels the one person the flow just minted', () => {
-    const out = pendingAddOutcome(pending, [person('p-old'), person('p-new')], true, NOW + 1000);
-    expect(out).toEqual({ action: 'label', personId: 'p-new', kinship: 'son' });
-  });
-
-  it('DISCARDS the intent when the flow was abandoned — nobody gets labelled', () => {
-    const out = pendingAddOutcome(pending, [person('p-old')], true, NOW + 1000);
-    expect(out).toEqual({ action: 'discard', reason: 'abandoned' });
-  });
-
-  // The defect itself: abandon, then save an unrelated person from a chat,
-  // then open Family. Before the fix that stranger was silently PATCHed with
-  // the kinship chosen for somebody else (docs/67's bug class).
-  it('a stranger saved from chat AFTER an abandon is never labelled', () => {
-    const abandoned = pendingAddOutcome(pending, [person('p-old')], true, NOW + 1000);
-    expect(abandoned.action).toBe('discard');
-    // the screen clears on discard, so the next read sees no intent at all
-    const later = pendingAddOutcome(null, [person('p-old'), person('p-stranger')], true, NOW + 2000);
-    expect(later).toEqual({ action: 'wait' });
-  });
-
-  it('an intent older than the TTL expires even if a candidate exists', () => {
-    const out = pendingAddOutcome(
-      pending, [person('p-old'), person('p-new')], true, NOW + PENDING_ADD_TTL_MS + 1,
-    );
-    expect(out).toEqual({ action: 'discard', reason: 'expired' });
-  });
-
-  it('waits while the read is still in flight — a half-loaded list is not an abandon', () => {
-    expect(pendingAddOutcome(pending, null, false, NOW + 1).action).toBe('wait');
-    expect(pendingAddOutcome(pending, [person('p-old')], false, NOW + 1).action).toBe('wait');
-  });
-
-  it('two new people is not a candidate — it refuses rather than guessing', () => {
-    const out = pendingAddOutcome(
-      pending, [person('p-old'), person('p-a'), person('p-b')], true, NOW + 1000,
-    );
-    expect(out).toEqual({ action: 'discard', reason: 'abandoned' });
-  });
-
-  it('does nothing at all when no intent is pending', () => {
-    expect(pendingAddOutcome(null, [person('p-old')], true, NOW)).toEqual({ action: 'wait' });
-  });
-});
-
 describe('the details screen title when adding a member (owner, on device 2026-09-19)', () => {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { addMemberTitle } = require('../family-view');
   it('names the relation instead of saying "Your Chart"', () => {
     expect(addMemberTitle('son')).toBe('Add Your\nSon');
     expect(addMemberTitle('mother')).toBe('Add Your\nMother');
@@ -440,5 +467,76 @@ describe('the details screen title when adding a member (owner, on device 2026-0
     expect(addMemberTitle(undefined)).toBeNull();
     expect(addMemberTitle('')).toBeNull();
     expect(addMemberTitle('uncle')).toBeNull();
+  });
+});
+
+describe('the add arc acts on the ENGINE’s typed state — Role-3 F-A, SAFETY-BLOCKER', () => {
+  const fx = JSON.parse(
+    fs.readFileSync(path.join(__dirname, 'fixtures', 'member_add_states.json'), 'utf8'),
+  );
+
+  it('the client’s vocabulary IS the engine’s, state for state', () => {
+    expect([...MEMBER_STATES].sort()).toEqual([...fx.states].sort());
+  });
+
+  it('reads the state out of every engine-written reply, by value', () => {
+    for (const st of fx.states) expect(memberAddState(fx.replies[st])).toBe(st);
+  });
+
+  it('prose alone is NEVER a state — the defect itself', () => {
+    expect(memberAddState("I couldn't find *Zzzqqx Village*.")).toBeNull();
+    expect(memberAddState("*Aarav's chart is cast.*")).toBeNull();
+    expect(memberAddState('')).toBeNull();
+    expect(memberAddState('```member_add\n{"type":"member_add","state":"probably_fine"}\n```')).toBeNull();
+    expect(memberAddState('```member_add\nnot json\n```')).toBeNull();
+  });
+
+  it('the keep is sent on exactly ONE state', () => {
+    const keeps = [...(fx.states as MemberState[]), null].filter(
+      (st: MemberState | null) => afterCastTurn(st, false).action === 'keep'
+        || afterCastTurn(st, true).action === 'keep');
+    expect(keeps).toEqual(['chart_cast']);
+  });
+
+  it('an unfindable birthplace fails ON the form, and nothing is kept', () => {
+    // what the reviewer measured: prose only, no ask, no state
+    expect(afterCastTurn(null, false)).toEqual({ action: 'done', failed: true, stay: true });
+    expect(afterCastTurn('cast_failed', false)).toEqual({ action: 'done', failed: true, stay: true });
+  });
+
+  it('an ask is rendered only when there is one to render', () => {
+    expect(afterCastTurn('asking', true)).toEqual({ action: 'ask', failed: false });
+    // a refusal that comes WITH an ask (the birthplace only) is answered here,
+    // under the engine's sentence — the date and time are not retyped
+    expect(afterCastTurn('cast_failed', true)).toEqual({ action: 'ask', failed: true });
+    expect(afterCastTurn('asking', false)).toEqual({ action: 'done', failed: true, stay: true });
+  });
+
+  it('only `kept` is a success; a full circle is not a green tick (F-F)', () => {
+    const ok = [...(fx.states as MemberState[]), null].filter((st: MemberState | null) => {
+      const s = afterKeepTurn(st);
+      return s.action === 'done' && !s.failed;
+    });
+    expect(ok).toEqual(['kept']);
+    expect(afterKeepTurn('circle_full')).toEqual({ action: 'done', failed: true, stay: false });
+    expect(afterKeepTurn('kept_unlabelled')).toEqual({ action: 'done', failed: true, stay: false });
+  });
+});
+
+describe('plainSentence — the notice shows words, not markdown', () => {
+  it('drops the emphasis and keeps every word', () => {
+    expect(plainSentence("I couldn't find *Zzqxnovillage*. Could you try a more specific city name?"))
+      .toBe("I couldn't find Zzqxnovillage. Could you try a more specific city name?");
+    expect(plainSentence('**Dev** was not added')).toBe('Dev was not added');
+    expect(plainSentence('no emphasis here')).toBe('no emphasis here');
+    expect(plainSentence(null)).toBe('');
+  });
+  it('strips an UNPAIRED marker — outcomeLine trims the closing one (walked 2026-09-19)', () => {
+    const reply = '*Kabeer is in your family as your son. You can remove them, '
+      + 'and everything stored about them, in one action.*\n\n```member_add\n{"type":"member_add","state":"kept"}\n```';
+    expect(plainSentence(outcomeLine(reply))).toBe(
+      'Kabeer is in your family as your son. You can remove them, and everything stored about them, in one action.');
+    expect(plainSentence('*half open')).toBe('half open');
+    expect(plainSentence('2 * 3 is six')).toBe('2 * 3 is six');
   });
 });

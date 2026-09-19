@@ -267,6 +267,46 @@ export function buildInputResponseMessage(
   return `${echo}\n\n\`\`\`input_response\n${JSON.stringify(payload)}\n\`\`\``;
 }
 
+/**
+ * docs/71 §10 — the keep carrier the add-a-member flow sends.
+ *
+ * WHY IT IS HERE AND NOWHERE ELSE. `buildInputResponseMessage` is the one
+ * place a widget answer becomes a message (a structural test says so), and
+ * this is the one answer the user does not tap a widget to give: they tapped
+ * "Add my son" three screens ago, and the engine's save offer would be a
+ * second question about a decision already made. So the details screen sends
+ * this carrier itself — through the SAME builder, with the same declared
+ * keys, so the bytes on the wire are the ones the engine's parser was
+ * written against.
+ *
+ * `save_person` and `person_name` are both declared engine fields
+ * (`graph.INPUT_FIELDS`); `save_person` is a closed choice and the engine
+ * refuses anything off its menu. Nothing here is a birth fact: the details
+ * were already collected by the ask this follows.
+ */
+export function keepPersonMessage(name: string): string {
+  const request: InputRequestPayload = {
+    type: 'input_request',
+    ask: 'save_person_offer',
+    reason: '',
+    fields: [
+      {
+        key: 'person_name',
+        kind: 'text',
+        // the ECHO's label — what the user reads back in their transcript
+        label: 'Keeping',
+        required: true,
+        allowUnknown: false,
+        options: [],
+      },
+    ],
+  };
+  return buildInputResponseMessage(request, {
+    person_name: String(name ?? '').trim(),
+    save_person: 'save',
+  });
+}
+
 const INPUT_RESPONSE_FENCE = /```input_response[ \t]*\r?\n[\s\S]*?```/g;
 
 /**

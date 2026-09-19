@@ -19,7 +19,7 @@
 // Every rule above lives in `lib/family-view.ts`, which is pure and tested
 // at the workspace root. What is left here is layout.
 
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -30,11 +30,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ChevronLeft } from '@/components/glyphs';
+import { ChevronLeft, SymbolIcon } from '@/components/glyphs';
 import { SignInGateCard } from '@/components/sign-in-gate';
 import { track } from '@/lib/analytics';
 import {
@@ -45,15 +46,14 @@ import {
   circleMembers,
   circleRoom,
   forgetConfirmation,
-  pendingAddOutcome,
-  type PendingAdd,
+  memberNameProblem,
   type CircleMemberView,
   type Kinship,
 } from '@/lib/family-view';
+import { useEditOutcome } from '@/lib/edit-outcome';
 import {
   deletePerson,
   fetchPeople,
-  setKinship,
   type PersonView,
 } from '@/lib/people';
 import { turnForPerson } from '@/lib/subject-view';
@@ -67,7 +67,18 @@ export default function Family() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
   const [rowBusy, setRowBusy] = useState<string | null>(null);
+  // The add flow, in two steps on this screen: pick the relation, then type
+  // the name. Both are LABELS — this screen still cannot write a birth fact,
+  // and the details themselves are collected by the engine's own card.
   const [picking, setPicking] = useState(false);
+  const [adding, setAdding] = useState<Kinship | null>(null);
+  const [name, setName] = useState('');
+  const [nameError, setNameError] = useState<string | null>(null);
+  // The receipt the details screen leaves behind — the ENGINE's sentence,
+  // never one composed here (the Profile pattern, `lib/edit-outcome.ts`).
+  const outcome = useEditOutcome((s) => s.outcome);
+  const outcomeFailed = useEditOutcome((s) => s.failed);
+  const clearOutcome = useEditOutcome((s) => s.clear);
 
   // Capability law: a build without `family` has no route here, so a deep
   // link or a stale push leaves rather than rendering a screen this build
@@ -95,57 +106,53 @@ export default function Family() {
   useEffect(read, [read]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (resolved && !blocked) read(); }, [resolved, blocked]);
+  // Coming BACK from the details flow (docs/71 §10): the member was minted
+  // and labelled by the engine a moment ago, so the list on screen is one
+  // read out of date. Gated on the receipt so an ordinary tab switch does
+  // not re-fetch — the Profile pattern, same store, same reason.
+  useFocusEffect(
+    useCallback(() => {
+      if (useEditOutcome.getState().outcome) read();
+    }, [read]),
+  );
+  // The receipt is for the return trip only.
+  useEffect(() => () => clearOutcome(), [clearOutcome]);
 
   const members = people ? circleMembers(people) : [];
   const room = circleRoom(members);
 
-  /**
-   * The kinship label, on the SHIPPED `PATCH /people/{id}`.
-   *
-   * The server refuses a kinship on `self`, an unknown term and a fifth
-   * member — each with 422 and a sentence. This screen shows that sentence
-   * rather than pre-empting it with a rule of its own.
-   */
-  const label = useCallback((personId: string, kinship: Kinship) => {
-    setRowBusy(personId);
-    setKinship(personId, kinship)
-      .then(() => { track('family_kinship_set', { kinship }); read(); })
-      .catch((e: any) => setError(String(e?.message ?? e)))
-      .finally(() => setRowBusy(null));
-  }, [read]);
+  // THE KINSHIP PATCH IS GONE FROM THIS SCREEN (docs/71 §10), and its absence
+  // is the change. It existed for one caller: the add flow, which had to
+  // label a person the engine had already minted without one — the guess
+  // Role-3 caught mislabelling a stranger (§8). `reconcile` stamps the
+  // kinship now, on the person it minted, so there is nothing here to send.
+  // `PATCH /people/{id}` itself is untouched and still pinned by
+  // `tests/test_people_api.py`; this screen simply no longer calls it.
 
   /**
-   * "+ Add a family member" — the shipped details flow, plus one label.
+   * "+ Add a family member" — docs/71 §10, and the owner's sentence it comes
+   * from: "while adding a member to family it's not necessary to go to chat".
    *
-   * The opening sentence is the engine's own adhoc cue; the arc collects
-   * the birth details through `input_request` → `input_response` →
-   * `reconcile` and OFFERS to keep the person, and the person it mints is
-   * a `friend` (F115). Coming back here, the screen finds the one new
-   * kinship-less person and sends the single label PATCH.
+   * The relation and the name are collected HERE, both labels. The route
+   * carries them plus the engine's own opening sentence; the details screen
+   * runs the rest and comes back. THE USER NEVER SEES A CHAT, the engine
+   * stamps the kinship itself when reconcile mints the person, and this
+   * screen no longer guesses who was just added.
    */
-  const add = useCallback((kinship: Kinship) => {
-    setPicking(false);
+  const add = useCallback((kinship: Kinship, who: string) => {
+    const problem = memberNameProblem(who);
+    if (problem) { setNameError(problem); return; }
+    const route = addMemberRoute(kinship, who);
+    // Null means this build cannot compose a sentence the engine parses
+    // back. Better to say nothing happened than to send one it cannot read.
+    if (!route) { setNameError(memberNameProblem(who) ?? 'I can’t open that.'); return; }
     track('family_add_opened', { kinship });
-    const known = (people ?? []).map((p) => p.id);
-    pendingAdd = { kinship, known, at: Date.now() };
-    router.push(addMemberRoute(kinship) as never);
-  }, [people]);
-
-  // On return from the details flow: label whoever the engine just minted —
-  // and, just as importantly, DROP the intent when the flow was abandoned.
-  // The decision is pure (`pendingAddOutcome`) so the abandon path has a test;
-  // this screen only carries it out. Gated on a SETTLED read (`!busy`), or a
-  // half-loaded list would read as "abandoned".
-  useEffect(() => {
-    const outcome = pendingAddOutcome(pendingAdd, people, !busy, Date.now());
-    if (outcome.action === 'wait') return;
-    pendingAdd = null;
-    if (outcome.action === 'discard') {
-      track('family_add_dropped', { reason: outcome.reason });
-      return;
-    }
-    label(outcome.personId, outcome.kinship);
-  }, [people, busy, label]);
+    setAdding(null);
+    setPicking(false);
+    setName('');
+    setNameError(null);
+    router.push(route as never);
+  }, []);
 
   /** ASTRAL-287: the shipped cascade, and the sentence about its gap. */
   const forget = useCallback((m: CircleMemberView) => {
@@ -193,6 +200,18 @@ export default function Family() {
           <Text style={s.title}>Your family</Text>
 
           {resolved && blocked ? <SignInGateCard /> : null}
+
+          {outcome ? (
+            <View style={outcomeFailed ? s.noticeBad : s.notice}>
+              <SymbolIcon
+                name={outcomeFailed ? 'exclamationmark.triangle' : 'checkmark.circle'}
+                size={tokens.size.icon}
+                color={outcomeFailed ? tokens.palette.danger
+                                     : tokens.palette.accent.ceremonial}
+              />
+              <Text style={s.noticeText}>{outcome}</Text>
+            </View>
+          ) : null}
 
           {blocked ? null : busy && !people ? (
             <ActivityIndicator color={tokens.palette.accent.ceremonial} />
@@ -283,7 +302,52 @@ export default function Family() {
               ))}
 
               {room > 0 ? (
-                picking ? (
+                adding ? (
+                  /* Step two: their NAME. Asked here, with the relation, so
+                     the engine holds it from the first turn — which is what
+                     lets the details screen say "Casting Aarav's chart…"
+                     instead of asking for it again inside a chat. */
+                  <View style={s.card}>
+                    <View style={s.cardBody}>
+                      <Text style={s.sentence}>
+                        What should I call your {KINSHIP_LABEL[adding].toLowerCase()}?
+                      </Text>
+                      <TextInput
+                        value={name}
+                        onChangeText={(v) => { setName(v); setNameError(null); }}
+                        placeholder="Their name"
+                        placeholderTextColor={tokens.palette.ink.onCosmicMuted}
+                        style={s.input}
+                        autoFocus
+                        autoCapitalize="words"
+                        returnKeyType="next"
+                        accessibilityLabel="Their name"
+                        onSubmitEditing={() => add(adding, name)}
+                      />
+                      {nameError ? (
+                        <Text style={s.muted}>{nameError}</Text>
+                      ) : null}
+                      <View style={s.chips}>
+                        <Pressable
+                          style={s.cta}
+                          accessibilityRole="button"
+                          accessibilityLabel="Add their birth details"
+                          onPress={() => add(adding, name)}
+                        >
+                          <Text style={s.ctaText}>Next</Text>
+                        </Pressable>
+                        <Pressable
+                          style={s.chip}
+                          accessibilityRole="button"
+                          accessibilityLabel="Cancel"
+                          onPress={() => { setAdding(null); setName(''); setNameError(null); }}
+                        >
+                          <Text style={s.chipText}>Cancel</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  </View>
+                ) : picking ? (
                   <View style={s.card}>
                     <View style={s.cardBody}>
                       <Text style={s.sentence}>Who are they to you?</Text>
@@ -294,7 +358,7 @@ export default function Family() {
                             style={s.chip}
                             accessibilityRole="button"
                             accessibilityLabel={KINSHIP_LABEL[k]}
-                            onPress={() => add(k)}
+                            onPress={() => { setPicking(false); setAdding(k); }}
                           >
                             <Text style={s.chipText}>{KINSHIP_LABEL[k]}</Text>
                           </Pressable>
@@ -325,13 +389,6 @@ export default function Family() {
     </View>
   );
 }
-
-/** What the user chose before the details flow, who was already on file when
- *  they chose it, and WHEN. Module-level because the screen unmounts while the
- *  flow runs; it holds no birth fact and no person id. The timestamp is what
- *  stops an abandoned intent from labelling a stranger days later — see
- *  `pendingAddOutcome`. */
-let pendingAdd: PendingAdd | null = null;
 
 const t = tokens;
 
@@ -371,6 +428,37 @@ const s = StyleSheet.create({
     paddingVertical: t.space(1.5),
   },
   chipText: { ...t.type.scale.label, color: t.palette.ink.onCosmic },
+  input: {
+    ...t.type.scale.body,
+    color: t.palette.ink.onCosmic,
+    backgroundColor: t.palette.cosmic.deep,
+    borderRadius: t.radius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.palette.cosmic.line,
+    paddingHorizontal: t.space(3),
+    paddingVertical: t.space(3),
+  },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: t.space(3),
+    backgroundColor: t.palette.cosmic.card,
+    borderRadius: t.radius.card,
+    borderLeftWidth: 3,
+    borderLeftColor: t.palette.accent.ceremonial,
+    padding: t.space(4),
+  },
+  noticeBad: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: t.space(3),
+    backgroundColor: t.palette.cosmic.card,
+    borderRadius: t.radius.card,
+    borderLeftWidth: 3,
+    borderLeftColor: t.palette.danger,
+    padding: t.space(4),
+  },
+  noticeText: { ...t.type.scale.body, color: t.palette.ink.onCosmic, flex: 1 },
   chipDanger: { ...t.type.scale.label, color: t.palette.accent.ceremonial },
   cta: {
     alignSelf: 'flex-start',
