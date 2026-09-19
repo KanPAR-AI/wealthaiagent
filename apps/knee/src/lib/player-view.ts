@@ -16,7 +16,8 @@
  * seconds to seek to, or null for "do nothing" — the screen applies the
  * seek, the gate owns the WHEN.
  */
-export function createPlayerGate(start: number, end: number | null) {
+export function createPlayerGate(start: number, end: number | null,
+                                 loopWhole = false) {
   // start=0 needs no seek — playback begins there anyway, and skipping the
   // no-op means a 0-start video can never be interrupted by a late "ready".
   let initialSeekPending = start > 0;
@@ -46,8 +47,13 @@ export function createPlayerGate(start: number, end: number | null) {
       return start;
     },
 
-    /** playToEnd: the native end-of-file loop, same guard. */
-    onPlayToEnd(): number {
+    /** playToEnd: with a segment, loop it (the "loops this move" rule);
+     *  a CLIP loops whole by request (`loopWhole` — it IS the loop). An
+     *  UNCUT full video (no end, not a clip) STOPS at its end: restarting a
+     *  10-minute source from 0 forever was "video running continuously"
+     *  (owner, 2026-09-19) — a battery drain and an egress leak in one. */
+    onPlayToEnd(): number | null {
+      if (end === null && !loopWhole) return null;
       loopSeekInFlight = true;
       return start;
     },

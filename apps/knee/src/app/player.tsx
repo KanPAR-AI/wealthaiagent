@@ -75,7 +75,8 @@ export default function Player() {
   // needs no seek and loops the whole file.
   const gate = useMemo(
     () => createPlayerGate(mode === 'clip' ? 0 : start,
-                           mode === 'clip' ? null : end),
+                           mode === 'clip' ? null : end,
+                           /* loopWhole */ mode === 'clip'),
     [mode, start, end]);
 
   const player = useVideoPlayer(
@@ -112,7 +113,9 @@ export default function Player() {
     }
   });
   useEventListener(player, 'playToEnd', () => {
-    player.currentTime = gate.onPlayToEnd();
+    const to = gate.onPlayToEnd();
+    if (to === null) return;   // uncut full video: rest at the end
+    player.currentTime = to;
     player.play();
   });
 

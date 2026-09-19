@@ -88,7 +88,6 @@ describe('useCaching stays off on iOS while the player URL is the no-store redir
 
 // ── per-URI iOS caching (2026-09-19) ────────────────────────────────────────
 
-import { useCachingFor } from '../player-view';
 
 describe('useCachingFor', () => {
   it('android caches everything', () => {
@@ -99,5 +98,21 @@ describe('useCachingFor', () => {
     expect(useCachingFor('ios', 'https://storage.googleapis.com/m/abc/source?sig=x')).toBe(true);
     expect(useCachingFor('ios', 'https://api/files/corpus-media/abc?t=tok')).toBe(false);
     expect(useCachingFor('ios')).toBe(false);
+  });
+});
+
+// ── end-of-file behaviour split by intent (2026-09-19) ──────────────────────
+
+
+describe('onPlayToEnd', () => {
+  it('a SEGMENT loops this move', () => {
+    expect(createPlayerGate(68, 146).onPlayToEnd()).toBe(68);
+  });
+  it('a CLIP loops whole — it IS the loop', () => {
+    expect(createPlayerGate(0, null, true).onPlayToEnd()).toBe(0);
+  });
+  it('an UNCUT full video STOPS at its end — no forever-restart of a 10-minute source', () => {
+    expect(createPlayerGate(0, null).onPlayToEnd()).toBeNull();
+    expect(createPlayerGate(30, null).onPlayToEnd()).toBeNull();
   });
 });
