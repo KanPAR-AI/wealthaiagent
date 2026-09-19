@@ -36,7 +36,7 @@
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { ActionSheetIOS, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActionSheetIOS, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import Svg from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -60,7 +60,18 @@ import { ASTRO_DATA_LANGUAGES, AstroWidget } from '@/lib/chat-widgets';
 import { track } from '@/lib/analytics';
 import { fetchPeople } from '@/lib/people';
 import type { PersonView } from '@/lib/people-shapes';
-import { chipLabel, subjectSheet, subjectStore, type ReadingSubject } from '@/lib/subject-view';
+import { chipLabel, subjectStore, type ReadingSubject } from '@/lib/subject-view';
+// docs/71 PH-34 (owner 2026-09-19, looking at the shipped one-person sheet:
+// "Modify this to have a picker for the group that I want to do reading
+// for"). The rows and the sentences are `lib/group-view.ts`; the SENTENCES
+// are the engine's own cues and the member set lives on the ENGINE, so this
+// screen sends words and renders what comes back. It keeps no member set.
+import {
+  canSelectMore,
+  pickable,
+  subjectSheetWithGroups,
+  turnForSelection,
+} from '@/lib/group-view';
 import { fetchBalance } from '@/lib/credits';
 import { tokens } from '@/theme';
 import { fetchChatMessageCount } from '@/lib/chat-meta';
@@ -186,16 +197,51 @@ export default function Chat() {
     return rawSend(text, atts as never);
   }, [readingGated, rawSend]) as typeof rawSend;
 
+  // docs/71 PH-34: the multi-select the "Pick people…" row opens. The
+  // selection is LOCAL to the sheet and dies with it — the member set that
+  // matters is `reading_members` on the chat envelope, which only the
+  // engine writes (F102). Nothing here is persisted.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [withMe, setWithMe] = useState(true);
+  const openPicker = useCallback(() => {
+    setPicked([]);
+    setWithMe(true);
+    setPickerOpen(true);
+  }, []);
+  const togglePicked = useCallback((id: string) => {
+    setPicked((cur) => (cur.includes(id)
+      ? cur.filter((x) => x !== id)
+      : canSelectMore(cur) ? [...cur, id] : cur));
+  }, []);
+  const pickedTurn = useMemo(
+    () => turnForSelection(people, picked, withMe),
+    [people, picked, withMe],
+  );
+  const sendPicked = useCallback(() => {
+    if (!pickedTurn) return;
+    setPickerOpen(false);
+    track('subject_switch', { mode: 'group' });
+    // A SCOPE CHANGE STARTS A NEW READING (docs/70 §3a.1 screen 7), through
+    // the same handoff the adhoc cue uses.
+    router.push({ pathname: '/chat', params: { pending: pickedTurn, fresh: '1', handoffKey: String(Date.now()) } });
+  }, [pickedTurn]);
+
   const openSubjectSheet = useCallback(() => {
-    const rows = subjectSheet(people);
+    const rows = subjectSheetWithGroups(people);
     const labels = rows.map((r) => r.label);
     const pick = (i: number) => {
       const row = rows[i];
       if (!row) return;
-      track('subject_switch', { mode: i === 0 ? 'self' : i === rows.length - 1 ? 'adhoc' : 'person' });
+      if (row.kind === 'pick') {
+        openPicker();
+        return;
+      }
+      track('subject_switch', { mode: row.kind });
       if (row.fresh) {
-        // A clean slate: the adhoc cue opens a NEW conversation through the
-        // same handoff the Matches screen uses (owner, 2026-09-17).
+        // A clean slate: the cue opens a NEW conversation through the same
+        // handoff the Matches screen uses (owner, 2026-09-17), which is
+        // also what keeps one conversation from mixing two sets of people.
         router.push({ pathname: '/chat', params: { pending: row.turn, fresh: '1', handoffKey: String(Date.now()) } });
         return;
       }
@@ -209,10 +255,10 @@ export default function Chat() {
       return;
     }
     Alert.alert('Who is this reading for?', undefined, [
-      ...rows.slice(0, 6).map((r, i) => ({ text: r.label, onPress: () => pick(i) })),
+      ...rows.slice(0, 8).map((r, i) => ({ text: r.label, onPress: () => pick(i) })),
       { text: 'Cancel', style: 'cancel' as const },
     ]);
-  }, [people, send]);
+  }, [people, send, openPicker]);
   const busy = isSending || isCreatingChat;
 
   // The board draws a MENU glyph in the header's right slot, and it used to
@@ -499,6 +545,67 @@ export default function Chat() {
           }
           pending={<View style={s.emptyBody} />}
         />
+        {/* docs/71 PH-34 — "Pick people…". A multi-select over the people
+            already on file, capped at the ENGINE's own cap so the sheet
+            cannot promise a sixth person. Done sends one SENTENCE; the ids
+            are resolved server-side from the names, because a client that
+            guessed an id could name a stranger. */}
+        <Modal
+          visible={pickerOpen}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setPickerOpen(false)}
+        >
+          <View style={s.pickerScrim}>
+            <View style={s.pickerSheet}>
+              <Text style={s.pickerTitle}>Who is this reading for?</Text>
+              <Text style={s.pickerHint}>
+                Choose up to {String(5)} people. A new reading starts so this
+                one stays as it is.
+              </Text>
+              <ScrollView style={s.pickerList}>
+                {pickable(people).map((p) => {
+                  const on = picked.includes(p.id);
+                  return (
+                    <Pressable
+                      key={p.id}
+                      style={[s.pickerRow, on && s.pickerRowOn]}
+                      onPress={() => togglePicked(p.id)}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: on }}
+                      accessibilityLabel={p.display_name}
+                    >
+                      <Text style={s.pickerRowText}>{p.display_name}</Text>
+                      <Text style={s.pickerTick}>{on ? '✓' : ''}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              <View style={s.pickerMeRow}>
+                <Text style={s.pickerRowText}>…and me</Text>
+                <Switch value={withMe} onValueChange={setWithMe} />
+              </View>
+              <View style={s.pickerActions}>
+                <Pressable
+                  style={s.newChip}
+                  onPress={() => setPickerOpen(false)}
+                  accessibilityRole="button"
+                >
+                  <Text style={s.newChipText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[s.subjectChip, !pickedTurn && s.pickerDoneOff]}
+                  onPress={sendPicked}
+                  disabled={!pickedTurn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Read for the people I picked"
+                >
+                  <Text style={s.subjectChipText}>Read for them</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </View>
   );
@@ -563,4 +670,36 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: t.palette.cosmic.line,
   },
   newChipText: { ...t.type.scale.label, color: t.palette.ink.onCosmic },
+  // docs/71 PH-34 — the "Pick people…" sheet.
+  pickerScrim: {
+    flex: 1, justifyContent: 'flex-end',
+    backgroundColor: t.palette.scrim,
+  },
+  pickerSheet: {
+    backgroundColor: t.palette.cosmic.deep,
+    borderTopLeftRadius: t.radius.card, borderTopRightRadius: t.radius.card,
+    padding: t.space(4), gap: t.space(2), maxHeight: '80%',
+  },
+  pickerTitle: { ...t.type.scale.title, color: t.palette.ink.onCosmic },
+  pickerHint: { ...t.type.scale.label, color: t.palette.ink.onCosmicMuted },
+  pickerList: { maxHeight: 320 },
+  pickerRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: t.space(2.5), paddingHorizontal: t.space(3),
+    borderRadius: t.radius.button,
+    borderWidth: 1, borderColor: t.palette.cosmic.line,
+    marginBottom: t.space(1.5),
+  },
+  pickerRowOn: { backgroundColor: t.palette.accent.interactive },
+  pickerRowText: { ...t.type.scale.body, color: t.palette.ink.onCosmic },
+  pickerTick: { ...t.type.scale.body, color: t.palette.ink.onCosmic },
+  pickerMeRow: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', paddingHorizontal: t.space(3),
+  },
+  pickerActions: {
+    flexDirection: 'row', justifyContent: 'flex-end',
+    alignItems: 'center', gap: t.space(2), paddingTop: t.space(2),
+  },
+  pickerDoneOff: { opacity: 0.4 },
 });

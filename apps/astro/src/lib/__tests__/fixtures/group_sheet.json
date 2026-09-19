@@ -1,0 +1,286 @@
+{
+  "people": [
+    {
+      "id": "self",
+      "relation": "self",
+      "kinship": null,
+      "kinship_source": null,
+      "in_circle": false,
+      "display_name": "Ravi",
+      "source_label": "chat",
+      "favourite": false,
+      "notes": "",
+      "tob_known": true,
+      "birth_facts": {
+        "date_of_birth": {
+          "value": "1989-12-10",
+          "provenance": "stated_by_user",
+          "recorded_at": "2026-09-19T01:38:12.233447+00:00"
+        },
+        "place_of_birth": {
+          "value": "Jamshedpur, India",
+          "provenance": "stated_by_user",
+          "recorded_at": "2026-09-19T01:38:12.233456+00:00"
+        },
+        "time_of_birth": {
+          "value": "10:30",
+          "provenance": "stated_by_user",
+          "recorded_at": "2026-09-19T01:38:12.233453+00:00"
+        }
+      },
+      "coordinates": {
+        "latitude": {
+          "value": 22.8046,
+          "provenance": "geocoded",
+          "recorded_at": "2026-09-19T01:38:12.233461+00:00"
+        },
+        "longitude": {
+          "value": 86.2029,
+          "provenance": "geocoded",
+          "recorded_at": "2026-09-19T01:38:12.233463+00:00"
+        },
+        "timezone": {
+          "value": "Asia/Kolkata",
+          "provenance": "geocoded",
+          "recorded_at": "2026-09-19T01:38:12.233465+00:00"
+        },
+        "geocoded_place": {
+          "value": "Jamshedpur, India",
+          "provenance": "geocoded",
+          "recorded_at": "2026-09-19T01:38:12.233466+00:00"
+        }
+      },
+      "created_at": "2026-09-19T01:38:12.233436+00:00",
+      "updated_at": "2026-09-19T01:38:12.233489+00:00",
+      "priorities": {
+        "version": 1,
+        "mapping_version": 1,
+        "ranked": [],
+        "interests": [],
+        "removed": [],
+        "history": [],
+        "updated_at": null
+      },
+      "partner": null,
+      "current_place": null,
+      "chart": {
+        "status": "absent",
+        "reason": "no chart has been computed for this person yet"
+      },
+      "palms": {}
+    },
+    {
+      "id": "p_f32b0a45e46b",
+      "relation": "friend",
+      "kinship": "partner",
+      "kinship_source": "stored",
+      "in_circle": true,
+      "display_name": "Anjali",
+      "source_label": "chat",
+      "favourite": false,
+      "notes": "",
+      "tob_known": false,
+      "birth_facts": {
+        "date_of_birth": {
+          "value": "1991-07-04",
+          "provenance": "stated_by_user",
+          "recorded_at": "2026-09-19T01:38:12.234889+00:00"
+        }
+      },
+      "coordinates": null,
+      "created_at": "2026-09-19T01:38:12.234883+00:00",
+      "updated_at": "2026-09-19T01:38:12.236576+00:00",
+      "chart": {
+        "status": "absent",
+        "reason": "no chart has been computed for this person yet"
+      },
+      "palms": {}
+    },
+    {
+      "id": "p_d728b67649a9",
+      "relation": "friend",
+      "kinship": "father",
+      "kinship_source": "stored",
+      "in_circle": true,
+      "display_name": "Dev",
+      "source_label": "chat",
+      "favourite": false,
+      "notes": "",
+      "tob_known": false,
+      "birth_facts": {
+        "date_of_birth": {
+          "value": "1958-09-30",
+          "provenance": "stated_by_user",
+          "recorded_at": "2026-09-19T01:38:12.236770+00:00"
+        }
+      },
+      "coordinates": null,
+      "created_at": "2026-09-19T01:38:12.236767+00:00",
+      "updated_at": "2026-09-19T01:38:12.236818+00:00",
+      "chart": {
+        "status": "absent",
+        "reason": "no chart has been computed for this person yet"
+      },
+      "palms": {}
+    },
+    {
+      "id": "p_c98b1e7a4f84",
+      "relation": "friend",
+      "kinship": null,
+      "kinship_source": null,
+      "in_circle": false,
+      "display_name": "Kiran",
+      "source_label": "chat",
+      "favourite": false,
+      "notes": "",
+      "tob_known": false,
+      "birth_facts": {
+        "date_of_birth": {
+          "value": "1994-12-02",
+          "provenance": "stated_by_user",
+          "recorded_at": "2026-09-19T01:38:12.236837+00:00"
+        }
+      },
+      "coordinates": null,
+      "created_at": "2026-09-19T01:38:12.236834+00:00",
+      "updated_at": "2026-09-19T01:38:12.236840+00:00",
+      "chart": {
+        "status": "absent",
+        "reason": "no chart has been computed for this person yet"
+      },
+      "palms": {}
+    },
+    {
+      "id": "p_9a4e260aa333",
+      "relation": "friend",
+      "kinship": "mother",
+      "kinship_source": "stored",
+      "in_circle": true,
+      "display_name": "Meera",
+      "source_label": "chat",
+      "favourite": false,
+      "notes": "",
+      "tob_known": false,
+      "birth_facts": {
+        "date_of_birth": {
+          "value": "1962-01-22",
+          "provenance": "stated_by_user",
+          "recorded_at": "2026-09-19T01:38:12.236699+00:00"
+        }
+      },
+      "coordinates": null,
+      "created_at": "2026-09-19T01:38:12.236695+00:00",
+      "updated_at": "2026-09-19T01:38:12.236750+00:00",
+      "chart": {
+        "status": "absent",
+        "reason": "no chart has been computed for this person yet"
+      },
+      "palms": {}
+    },
+    {
+      "id": "p_02c9dfe23cbc",
+      "relation": "friend",
+      "kinship": "son",
+      "kinship_source": "stored",
+      "in_circle": true,
+      "display_name": "Rohan",
+      "source_label": "chat",
+      "favourite": false,
+      "notes": "",
+      "tob_known": false,
+      "birth_facts": {
+        "date_of_birth": {
+          "value": "2011-03-09",
+          "provenance": "stated_by_user",
+          "recorded_at": "2026-09-19T01:38:12.236617+00:00"
+        }
+      },
+      "coordinates": null,
+      "created_at": "2026-09-19T01:38:12.236613+00:00",
+      "updated_at": "2026-09-19T01:38:12.236676+00:00",
+      "chart": {
+        "status": "absent",
+        "reason": "no chart has been computed for this person yet"
+      },
+      "palms": {}
+    }
+  ],
+  "sentences": {
+    "self": "Read for me.",
+    "person": "Let's talk about Anjali.",
+    "adhoc": "Just this reading.",
+    "partner_pair": "Read for me and Anjali.",
+    "whole_family": "Read for the whole family.",
+    "pick_two": "Read for Anjali and Rohan.",
+    "pick_three_with_me": "Read for me, Anjali, Rohan and Meera.",
+    "one_person_is_not_a_group": "Read for Anjali."
+  },
+  "engine_parse": {
+    "self": {
+      "group_cue": null,
+      "subject_cue": [
+        "self",
+        ""
+      ]
+    },
+    "person": {
+      "group_cue": null,
+      "subject_cue": [
+        "person",
+        "Anjali"
+      ]
+    },
+    "adhoc": {
+      "group_cue": null,
+      "subject_cue": [
+        "adhoc",
+        ""
+      ]
+    },
+    "partner_pair": {
+      "group_cue": [
+        "names",
+        [
+          "Anjali"
+        ]
+      ],
+      "subject_cue": null
+    },
+    "whole_family": {
+      "group_cue": [
+        "all",
+        []
+      ],
+      "subject_cue": null
+    },
+    "pick_two": {
+      "group_cue": [
+        "names",
+        [
+          "Anjali",
+          "Rohan"
+        ]
+      ],
+      "subject_cue": null
+    },
+    "pick_three_with_me": {
+      "group_cue": [
+        "names",
+        [
+          "Anjali",
+          "Rohan",
+          "Meera"
+        ]
+      ],
+      "subject_cue": null
+    },
+    "one_person_is_not_a_group": {
+      "group_cue": null,
+      "subject_cue": [
+        "person",
+        "Anjali"
+      ]
+    }
+  },
+  "member_cap": 5
+}
