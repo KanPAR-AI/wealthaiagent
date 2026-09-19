@@ -32,4 +32,11 @@ paths = [
 ]
 regexes = [
   '''AIzaSyBaV0-3rpmqPwwmF-DxrzOxo7RMeZGPxc0''',
+  # People-store PAIR KEYS — `p_<12 hex>__self` / `p_<12 hex>__p_<12 hex>`.
+  # An opaque id naming two person records, not a credential: it grants
+  # nothing without the owner's own token. The generic-api-key rule fires on
+  # the word "key" beside hex (ten hits in the extension's captured match
+  # fixtures failed build 0480841c, 2026-09-20). Allowlisted by SHAPE, not by
+  # path, so a real secret pasted into a fixture is still caught.
+  '''p_[0-9a-f]{12}__(?:self|p_[0-9a-f]{12})''',
 ]
