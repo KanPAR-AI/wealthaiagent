@@ -10,22 +10,38 @@ import { MemoryPage } from "@/components/memory/memory-page";
 import MemoryMemoriesPage from "@/pages/memory/MemoryMemoriesPage";
 import MemoryTimelinePage from "@/pages/memory/MemoryTimelinePage";
 import MemoryGraphPage from "@/pages/memory/MemoryGraphPage";
+import MemoryFullGraphPage from "@/pages/memory/MemoryFullGraphPage";
 import MemoryInboxPage from "@/pages/memory/MemoryInboxPage";
 import MemoryDebuggerPage from "@/pages/memory/MemoryDebuggerPage";
 import MemoryOverviewPage from "@/pages/memory/MemoryOverviewPage";
 import { useAuth } from "@/hooks/use-auth";
-import { searchMemories, getMemory, getMemoryHistory } from "@/services/memory-engine-service";
+import {
+  searchMemories,
+  getMemory,
+  getMemoryHistory,
+  listMemories,
+  listEntities,
+} from "@/services/memory-engine-service";
 
 jest.mock("@/hooks/use-auth");
 jest.mock("@/services/memory-engine-service", () => {
   const actual = jest.requireActual("@/services/memory-engine-service");
-  return { ...actual, searchMemories: jest.fn(), getMemory: jest.fn(), getMemoryHistory: jest.fn() };
+  return {
+    ...actual,
+    searchMemories: jest.fn(),
+    getMemory: jest.fn(),
+    getMemoryHistory: jest.fn(),
+    listMemories: jest.fn(),
+    listEntities: jest.fn(),
+  };
 });
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockSearchMemories = searchMemories as jest.MockedFunction<typeof searchMemories>;
 const mockGetMemory = getMemory as jest.MockedFunction<typeof getMemory>;
 const mockGetHistory = getMemoryHistory as jest.MockedFunction<typeof getMemoryHistory>;
+const mockListMemories = listMemories as jest.MockedFunction<typeof listMemories>;
+const mockListEntities = listEntities as jest.MockedFunction<typeof listEntities>;
 
 function auth(overrides: Record<string, unknown> = {}) {
   return {
@@ -69,6 +85,7 @@ function renderMemoryApp(initialPath: string) {
           <Route path="memories/:id" element={<MemoryMemoriesPage />} />
           <Route path="timeline" element={<MemoryTimelinePage />} />
           <Route path="graph" element={<MemoryGraphPage />} />
+          <Route path="full-graph" element={<MemoryFullGraphPage />} />
           <Route path="inbox" element={<MemoryInboxPage />} />
           <Route
             path="debugger"
@@ -89,6 +106,8 @@ describe("Memory route tree", () => {
     mockSearchMemories.mockResolvedValue({
       results: [], pinned: [], plan_reason: "default", cached: false, ambiguous_entities: [],
     });
+    mockListMemories.mockResolvedValue({ memories: [] });
+    mockListEntities.mockResolvedValue({ entities: [] });
   });
 
   test("/memory redirects to /memory/overview and renders header + subnav", async () => {
@@ -97,7 +116,7 @@ describe("Memory route tree", () => {
 
     expect(await screen.findByRole("heading", { name: "Memory" })).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Memory sections" })).toBeInTheDocument();
-    for (const label of ["Overview", "Memories", "Timeline", "Graph", "Inbox"]) {
+    for (const label of ["Overview", "Memories", "Timeline", "Graph", "Full graph", "Inbox"]) {
       expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
     }
     // Cosmetic gate: Debugger hidden for a non-admin (no memory.debug_retrieval).
@@ -176,6 +195,15 @@ describe("Memory route tree", () => {
     // Inbox (UI-8) is still NOT_STARTED — an honest placeholder.
     renderMemoryApp("/memory/inbox");
     expect(await screen.findByRole("heading", { name: "Inbox" })).toBeInTheDocument();
+  });
+
+  test("/memory/full-graph mounts the real complete knowledge-graph debug view", async () => {
+    mockUseAuth.mockReturnValue(auth());
+    mockListMemories.mockResolvedValue({ memories: [] });
+    mockListEntities.mockResolvedValue({ entities: [] });
+    renderMemoryApp("/memory/full-graph");
+    expect(await screen.findByText("No records")).toBeInTheDocument();
+    expect(mockListMemories).toHaveBeenCalled();
   });
 
   test("deep link /memory/memories/:id opens the Inspector drawer (UI-2, UI-26)", async () => {

@@ -25,6 +25,7 @@ import { MemoryPage } from "@/components/memory/memory-page";
 import MemoryMemoriesPage from "@/pages/memory/MemoryMemoriesPage";
 import MemoryTimelinePage from "@/pages/memory/MemoryTimelinePage";
 import MemoryGraphPage from "@/pages/memory/MemoryGraphPage";
+import MemoryFullGraphPage from "@/pages/memory/MemoryFullGraphPage";
 import MemoryInboxPage from "@/pages/memory/MemoryInboxPage";
 import MemoryDebuggerPage from "@/pages/memory/MemoryDebuggerPage";
 import MemoryOverviewPage from "@/pages/memory/MemoryOverviewPage";
@@ -109,6 +110,7 @@ const App = () => (
           <Route path="timeline" element={<MemoryTimelinePage />} />
           <Route path="run/:runId" element={<MemoryRunPage />} />
           <Route path="graph" element={<MemoryGraphPage />} />
+          <Route path="full-graph" element={<MemoryFullGraphPage />} />
           <Route path="inbox" element={<MemoryInboxPage />} />
           <Route
             path="debugger"

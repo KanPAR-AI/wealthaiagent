@@ -1,5 +1,8 @@
 // components/memory/memory-sub-nav.tsx — Memory sub-nav (§2): Overview ·
-// Memories · Timeline · Graph · Inbox · Debugger. Debugger is additionally
+// Memories · Timeline · Graph · Full graph · Inbox · Debugger. "Full graph"
+// (MUI-0057, owner request 2026-09-19) is the COMPLETE knowledge-graph
+// debug view — every record/entity/relation — distinct from "Graph"'s
+// bounded 1-hop neighborhood of a single entity. Debugger is additionally
 // gated on memory.debug_retrieval (cosmetic — nav item hidden without it,
 // backend re-checks; ROUTES.md).
 import { NavLink } from "react-router-dom";
@@ -11,6 +14,7 @@ const NAV_ITEMS = [
   { to: "/memory/memories", label: "Memories", end: false },
   { to: "/memory/timeline", label: "Timeline", end: false },
   { to: "/memory/graph", label: "Graph", end: false },
+  { to: "/memory/full-graph", label: "Full graph", end: false },
   { to: "/memory/inbox", label: "Inbox", end: false },
 ];
 
