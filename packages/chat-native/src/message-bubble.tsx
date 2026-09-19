@@ -15,7 +15,13 @@
 import { memo, useEffect, useState, type ReactNode } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, type TextStyle } from 'react-native';
 import Markdown from 'react-native-markdown-display';
-import { splitDataBlocks, stripInputResponse } from '@wealthai/astral';
+import { splitDataBlocks } from '@wealthai/astral';
+
+import {
+  applyAssistantOverride,
+  resolveAssistantOverride,
+  resolveUserText,
+} from './bubble-text';
 import { getPlatform, type ContentBlock, type Message, type Widget } from '@wealthai/core';
 
 import { CHAT_RETRY_EVENT, getChatHost } from './host';
@@ -113,6 +119,43 @@ export interface MessageBubbleProps {
    *  players here (web parity: response.tsx embedCorpusMediaLinks); a host
    *  that passes nothing gets plain markdown. */
   renderText?: (text: string, key: string, theme: ChatTheme) => ReactNode;
+  /**
+   * (b) What a USER bubble reads as, when the host wants a say.
+   *
+   * Default: `stripInputResponse(message.message)` — exactly what shipped,
+   * and what every host that passes nothing still gets. `apps/astro` passes
+   * one because the owner asked for the birth details to be hidden
+   * (2026-09-19): a widget answer's echo is the user's own exact date, time
+   * and place, sitting in the transcript forever, and the app draws it
+   * masked until the phone proves its owner is present.
+   *
+   * It takes the WHOLE message, not the string: the decision there is made
+   * from the typed `input_response` keys inside it, never from a regex over
+   * the sentence — and a transformer handed only the stripped text could not
+   * see those keys.
+   */
+  userText?: (message: Message) => string;
+  /**
+   * (b) What an ASSISTANT bubble reads as, when the host wants a say —
+   * `undefined` means "render it exactly as before", which is what every
+   * host that passes nothing gets.
+   *
+   * It receives the PREVIOUS message as well as this one, because the thing
+   * `apps/astro` needs to recognise is a REPLY: the engine's deterministic
+   * correction receipt states the new birth value in prose, and the only
+   * structural way to spot it is that the turn before it is a
+   * `field_correction` answer carrying a locked key. A transformer given
+   * only this bubble's text would have to match the prose, which is what the
+   * whole feature refuses to do.
+   *
+   * When it returns a string, that string REPLACES the bubble's body: the
+   * receipt is plain prose and carries no widget, so there is nothing else
+   * to preserve, and rendering the replacement beside the original would
+   * defeat the point.
+   */
+  assistantText?: (message: Message, previous: Message | undefined) => string | undefined;
+  /** the message before this one in the transcript, for `assistantText` */
+  previous?: Message;
 }
 
 export const MessageBubble = memo(function MessageBubble({
@@ -121,6 +164,9 @@ export const MessageBubble = memo(function MessageBubble({
   renderWidget,
   dataLanguages,
   renderText,
+  userText,
+  assistantText,
+  previous,
 }: MessageBubbleProps) {
   const { metrics } = theme;
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
@@ -138,6 +184,9 @@ export const MessageBubble = memo(function MessageBubble({
       f.type.startsWith('image/') ||
       /\.(png|jpe?g|webp|heic)($|\?)/i.test(f.url) ||
       (!f.type && /\/files\/[^/]+\/download/.test(f.url) && !failedImages.has(f.url));
+    // The host's say, or the shipped default — decided in `bubble-text.ts`,
+    // which a test can actually run (this component cannot be mounted here).
+    const shownUserText = resolveUserText(message, userText);
     const images = (message.files || []).filter(isImage);
     const docs = (message.files || []).filter((f) => !images.includes(f));
     return (
@@ -156,7 +205,7 @@ export const MessageBubble = memo(function MessageBubble({
               <ChatText theme={theme} step="small" tone="onUserBubble">📄 {f.name}</ChatText>
             </View>
           ))}
-          {stripInputResponse(message.message) ? (
+          {shownUserText ? (
             <View style={styles.userBubble}>
               {/* selectable → native long-press "Copy" menu. RN Text isn't
                   copyable by default, so users couldn't copy what they sent
@@ -168,7 +217,7 @@ export const MessageBubble = memo(function MessageBubble({
                   same way data fences already are on an assistant bubble. The
                   ASTRAL-89 echo is what remains. */}
               <ChatText theme={theme} step="bubble" tone="onUserBubble" selectable>
-                {stripInputResponse(message.message)}
+                {shownUserText}
               </ChatText>
             </View>
           ) : null}
@@ -177,8 +226,12 @@ export const MessageBubble = memo(function MessageBubble({
     );
   }
 
-  // Assistant. Prefer contentBlocks (streaming order, widget-aware); fall
-  // back to the flat message string for history rows that predate blocks.
+  // Assistant. The host's override, when it has one — applied AFTER the
+  // fenced-widget split below, so it replaces the PROSE and leaves a widget
+  // in the same reply alone (a re-ask must stay answerable).
+  const override = resolveAssistantOverride(message, previous, assistantText);
+  // Prefer contentBlocks (streaming order, widget-aware); fall back to the
+  // flat message string for history rows that predate blocks.
   const rawBlocks: ContentBlock[] =
     message.contentBlocks?.length
       ? message.contentBlocks
@@ -190,7 +243,10 @@ export const MessageBubble = memo(function MessageBubble({
   // events — the web parses these fences out of markdown; do the same
   // here so a computed chart renders as a chart rather than as a
   // screenful of raw JSON.
-  const blocks = rawBlocks.flatMap((b) => splitFencedWidgets(b, dataLanguages));
+  const blocks = applyAssistantOverride(
+    rawBlocks.flatMap((b) => splitFencedWidgets(b, dataLanguages)),
+    override,
+  );
 
   const markdownStyles = chatMarkdownStyles(theme);
 

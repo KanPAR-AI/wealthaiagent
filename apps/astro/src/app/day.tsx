@@ -19,6 +19,8 @@ import {
   absences, cardDate, coupleCard, dayView, isReady, panchangLine, transitLines,
   type DayView,
 } from '@/lib/daily-view';
+import { maskedPlaceName } from '@/lib/birth-privacy-view';
+import { useBirthPrivacy } from '@/lib/birth-privacy';
 import { fetchDaily } from '@/lib/people';
 import type { DailyResponse } from '@/lib/people-shapes';
 import { routeIsLive } from '@/lib/tabs';
@@ -33,6 +35,9 @@ export default function Day() {
   useFocusEffect(useCallback(() => setStatusBarStyle('light'), []));
   useEffect(() => { if (!routeIsLive('/day')) router.replace('/home'); }, []);
   const { date } = useLocalSearchParams<{ date?: string }>();
+  // The one app-wide unlock (owner 2026-09-19) — this screen names the place
+  // the day was scored for, twice.
+  const birthRevealed = useBirthPrivacy((st) => st.revealed());
   const [load, setLoad] = useState<Load>({ phase: 'loading' });
 
   useEffect(() => {
@@ -83,7 +88,16 @@ export default function Day() {
                   {res.is_today ? <Text style={s.caption}>today</Text> : null}
                 </View>
                 <Text style={s.cardBody}>{view.line}</Text>
-                {view.place ? <Text style={s.caption}>scored for {view.place}, from your Moon</Text> : null}
+                {/* Owner 2026-09-19: the birth place is a locked fact
+                    wherever it is named. The card's own `basis` decides
+                    (`maskedPlaceName`); a city the user set stays. */}
+                {view.place ? (
+                  <Text style={s.caption}>
+                    scored for {maskedPlaceName(
+                      { name: view.place, basis: view.placeBasis }, birthRevealed,
+                    )}, from your Moon
+                  </Text>
+                ) : null}
                 {view.notYours ? <Text style={s.caption}>{view.notYours}.</Text> : null}
               </View>
 
@@ -117,7 +131,11 @@ export default function Day() {
                     <Text key={line.id} style={s.bullet}><Text style={s.lead}>{line.label}</Text> {line.value}</Text>
                   ))}
                   {panchangLine(res.card) ? (
-                    <Text style={s.caption}>{panchangLine(res.card)!.value} · for {panchangLine(res.card)!.place}</Text>
+                    <Text style={s.caption}>
+                      {panchangLine(res.card)!.value} · for{' '}
+                      {maskedPlaceName(res.card.panchang?.panchang_place, birthRevealed)
+                        ?? panchangLine(res.card)!.place}
+                    </Text>
                   ) : null}
                 </View>
               ) : null}

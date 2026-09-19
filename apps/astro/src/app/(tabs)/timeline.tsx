@@ -45,16 +45,24 @@ import type { TimelineResponse } from '@/lib/people-shapes';
 import {
   SADE_SATI_NOT_FOUND,
   absentView,
-  antardashaBands,
-  dashaAxis,
   isReady,
-  rows,
   sadeSatiBar,
   yearPills,
   type DashaBand,
   type SadeSatiBar,
   type TimelineRow,
 } from '@/lib/timeline-view';
+// Owner 2026-09-19 — the birth-details lock. A Vimshottari table is anchored
+// at BIRTH, so the first row's start, the first band's range and that band's
+// spoken accessibility label were all the exact birth date. The three
+// `masked*` wrappers are what this screen may import; the unmasked builders
+// are not in scope here, and `birth-privacy-structure.test.ts` pins it.
+import {
+  maskedAntardashaBands,
+  maskedDashaAxis,
+  maskedTimelineRows,
+} from '@/lib/birth-privacy-view';
+import { useBirthReveal } from '@/lib/use-birth-reveal';
 import { SignInGateCard } from '@/components/sign-in-gate';
 import { useReadingBlocked } from '@/lib/use-account';
 import { tokens } from '@/theme';
@@ -112,20 +120,24 @@ export default function Timeline() {
   // nothing here depends on the year pill, and nothing here depends on a
   // clock: which leg and which period are CURRENT arrive computed.
   const sade = useMemo(() => (artifact ? sadeSatiBar(artifact) : null), [artifact]);
-  const axis = useMemo(() => (artifact ? dashaAxis(artifact) : null), [artifact]);
+  const reveal = useBirthReveal();
+  const axis = useMemo(
+    () => (artifact ? maskedDashaAxis(artifact, reveal.revealed) : null),
+    [artifact, reveal.revealed],
+  );
   const [openBand, setOpenBand] = useState<number | null>(null);
   const nested = useMemo(() => {
     if (!artifact) return [];
     const index = openBand ?? axis?.currentIndex ?? null;
-    return index === null ? [] : antardashaBands(artifact, index);
-  }, [artifact, axis, openBand]);
+    return index === null ? [] : maskedAntardashaBands(artifact, index, reveal.revealed);
+  }, [artifact, axis, openBand, reveal.revealed]);
   const pills = artifact ? yearPills(artifact) : [];
   // Memoised on (artifact, year) so a pill tap re-filters rather than
   // re-deriving on every render — and so nothing on this screen can be
   // mistaken for a fetch.
   const visible: TimelineRow[] = useMemo(
-    () => (artifact ? rows(artifact, year) : []),
-    [artifact, year],
+    () => (artifact ? maskedTimelineRows(artifact, year, reveal.revealed) : []),
+    [artifact, year, reveal.revealed],
   );
 
   return (
@@ -313,7 +325,7 @@ function SadeSatiSection({ bar }: { bar: SadeSatiBar | null }) {
 function DashaAxisSection({
   axis, nested, open, onOpen,
 }: {
-  axis: NonNullable<ReturnType<typeof dashaAxis>>;
+  axis: NonNullable<ReturnType<typeof maskedDashaAxis>>;
   nested: DashaBand[];
   open: number | null;
   onOpen: (index: number) => void;

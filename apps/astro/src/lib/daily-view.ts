@@ -436,6 +436,17 @@ export interface DayView {
   momentsAbsent: string | null;
   /** the place the day is scored for (F31: a day is a fact about a place) */
   place: string | null;
+  /**
+   * WHY that place — the engine's own `basis` ("birth_place" when the day
+   * was scored where the person was born, something else when they set a
+   * current city).
+   *
+   * Carried because the birth-details lock needs it: a birth place named in
+   * clear is a locked fact wherever it is printed, and "is this the birth
+   * place" must be answered from the payload rather than by comparing the
+   * string against one this app derived somewhere else.
+   */
+  placeBasis: string | null;
 }
 
 function windowText(w: DayWindow): string {
@@ -469,6 +480,7 @@ export function dayView(card: DailyCard): DayView | null {
     silence: (d.moments?.silence ?? []).map(windowText),
     momentsAbsent: d.moments ? null : (d.moments_absent ?? null),
     place: d.place?.name?.trim() || null,
+    placeBasis: d.place?.basis ?? null,
   };
 }
 

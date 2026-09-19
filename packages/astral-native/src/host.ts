@@ -111,6 +111,41 @@ export interface AstralHost {
   openDay?: (isoDate: string) => void;
 
   /**
+   * "Is the birth block on a kundli card allowed to be drawn in clear right
+   * now?" — asked at PAINT TIME, once per block (owner ruling, 2026-09-19).
+   *
+   * OPTIONAL, and a host that supplies none gets today's behaviour: the
+   * Astral AI app hides the user's own exact birth date, time and place
+   * behind a device-authentication reveal, `apps/mobile` does not, and this
+   * binding serves both. It is a FUNCTION rather than a boolean because the
+   * answer changes inside the lifetime of a screen — the unlock expires
+   * after a minute and dies when the app backgrounds — and a value captured
+   * at install time would be a lock that opened once and stayed open.
+   *
+   * It says NOTHING about whose chart it is: the `natal_chart` payload
+   * carries no subject, so a host that returns true masks every chart in the
+   * transcript (see the finding filed with this feature). It returns false,
+   * and everything draws exactly as it did.
+   */
+  maskBirthDetails?: () => boolean;
+
+  /**
+   * …and the same question for a FORM. When true, an `input_request` block
+   * drops the engine's pre-filled value from the fields the host names as
+   * locked, so a correction picker opens blank rather than at the stored
+   * birth time.
+   *
+   * A SEPARATE hook rather than a second use of `maskBirthDetails`, and the
+   * difference is the whole reason it exists: the block host does not know
+   * which field keys belong to the reader (`dob` is self, `person2_dob` is
+   * their partner, and only the app has that list). So the host is handed
+   * the parsed request and gives one back — it decides, this package does
+   * not. A host without the hook gets the request untouched, which is what
+   * the web app and the extension ship.
+   */
+  maskInputRequest?: <T>(request: T) => T;
+
+  /**
    * A glyph per field KIND, drawn by the host (the board's frame 2 puts a
    * calendar, a clock and a pin on its three rows).
    *
@@ -163,4 +198,38 @@ export function getAstralHost(): AstralHost {
 /** Test seam — forget the installed host between cases. */
 export function resetAstralHost(): void {
   host = null;
+}
+
+// ── the two mask reads, HERE rather than in the block dispatcher ───────────
+//
+// Role-3 measured the reason: `astral-block.tsx`'s host read could be changed
+// to a constant `false` and the whole suite stayed green, because that module
+// imports React Native and no jest project in this workspace can mount it.
+// These two functions hold the same logic in a file that imports nothing but
+// React's types, so the JOIN between a host's answer and a rendered card is
+// testable — and the block dispatcher becomes a call rather than a decision.
+
+/**
+ * "Should a kundli card be drawn with its birth block hidden?"
+ *
+ * Asked at PAINT time: the answer expires (the Astral AI unlock lasts a
+ * minute and dies when the app backgrounds), so a value captured at install
+ * time would be a lock that opened once. A host that does not lock birth
+ * details has no hook and gets `false`, which is today's card.
+ */
+export function hostMaskBirth(): boolean {
+  if (!isAstralHostInstalled()) return false;
+  return getAstralHost().maskBirthDetails?.() === true;
+}
+
+/**
+ * …and the same question for a FORM: the host gets the parsed request and
+ * gives one back. A host with no hook gets its request back UNCHANGED —
+ * identity, not a guess, because this package does not know which field keys
+ * belong to the reader.
+ */
+export function hostMaskRequest<T>(request: T): T {
+  if (!isAstralHostInstalled()) return request;
+  const hook = getAstralHost().maskInputRequest;
+  return hook ? hook(request) : request;
 }

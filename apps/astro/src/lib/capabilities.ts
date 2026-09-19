@@ -214,6 +214,32 @@ export interface Capabilities {
   notifications: boolean;
 
   /**
+   * REVEALING your own birth details after a device check (owner ruling,
+   * 2026-09-19: "hide my birth details — only visible with a screen lock or
+   * face lock; exact date and time of birth should not be visible").
+   *
+   * Read the polarity carefully, because it is the opposite of every other
+   * entry here: HIDING is not a capability and is not gated by anything. The
+   * date, the time and the place are masked on every surface of every build,
+   * including one where this is false — the mask needs no native module, no
+   * permission and no backend. What this flag governs is the "Show" control.
+   *
+   * TRUE since 2026-09-19: `expo-local-authentication` is in `package.json`
+   * and its config plugin is in `app.json` with an honest
+   * `NSFaceIDUsageDescription`. The flag says the PRODUCT has the reveal;
+   * whether THIS binary does is a runtime question
+   * (`birth-privacy.revealSupported()`), exactly as `notifications` asks
+   * `pushSupported()` — builds 12/13 share this runtime version, receive
+   * every OTA and contain no authenticator, so their Show control REMOVES
+   * itself and one sentence says the reveal arrives with the next version.
+   *
+   * Flipping this to false removes the Show control everywhere and leaves
+   * the details hidden with no way to read them in-app. That is a coherent
+   * state, not a broken one — which is the test of an honest capability.
+   */
+  birthDetailsReveal: boolean;
+
+  /**
    * The Circle — your family inside Astral (docs/71 PH-33, ASTRAL-280..289).
    *
    * TRUE since chatservice grew `kinship` on the person, `in_circle` on
@@ -261,4 +287,5 @@ export const CAPABILITIES: Capabilities = {
   subscriptionBilling: false,
   notifications: true,
   family: true,
+  birthDetailsReveal: true,
 };

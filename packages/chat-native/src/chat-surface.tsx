@@ -16,7 +16,7 @@
 import { type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { useChatStore, type MessageFile, type Widget } from '@wealthai/core';
+import { useChatStore, type Message, type MessageFile, type Widget } from '@wealthai/core';
 
 import { ChatInput } from './chat-input';
 import { ChatText } from './message-bubble';
@@ -35,6 +35,10 @@ export interface ChatSurfaceProps {
   renderWidget?: (widget: Widget, key: string) => ReactNode;
   dataLanguages?: string[];
   renderText?: (text: string, key: string, theme: ChatTheme) => ReactNode;
+  /** (b) what a USER bubble reads as — see `MessageBubbleProps.userText`. */
+  userText?: (message: Message) => string;
+  /** (b) …and an ASSISTANT one, which also sees the turn before it. */
+  assistantText?: (message: Message, previous: Message | undefined) => string | undefined;
 
   /** (a) what fills the screen before the first turn. */
   empty?: ReactNode;
@@ -92,6 +96,8 @@ export function ChatSurface({
   renderWidget,
   dataLanguages,
   renderText,
+  userText,
+  assistantText,
   empty,
   pending,
   belowTranscript,
@@ -113,6 +119,8 @@ export function ChatSurface({
           renderWidget={renderWidget}
           dataLanguages={dataLanguages}
           renderText={renderText}
+          userText={userText}
+          assistantText={assistantText}
         />
       ) : busy ? (
         // New-chat creation in flight — immediate feedback instead of the

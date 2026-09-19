@@ -85,7 +85,7 @@ They live in `src/lib/__tests__/` and run in the **root** jest project:
 ```bash
 cd wealthaiagent
 npx tsc --noEmit -p apps/astro/tsconfig.json
-npx jest apps/astro packages/astral
+npx jest apps/astro/src packages/astral
 cd apps/astro && npx expo lint && npx expo export --platform ios --output-dir /tmp/x
 ```
 

@@ -48,6 +48,17 @@ export interface NatalChartViewProps extends AstralRenderProps {
    * title, so the three charts differ in their CONTENTS and in nothing else.
    */
   model?: DivisionalChart;
+
+  /**
+   * Draw the birth block MASKED — `••••••` for the date, the time and the
+   * place (owner ruling, 2026-09-19; `view/natal.ts::birthLines`).
+   *
+   * A HOST asks for this; the renderer never decides it. Default false, so
+   * the web app and the AstroMatch panel keep exactly today's behaviour and
+   * only the Astral AI app — which knows whether the phone's owner has
+   * authenticated in the last minute — passes true.
+   */
+  maskBirth?: boolean;
 }
 
 const MAX_WHEEL = 340;
@@ -68,10 +79,10 @@ export function NatalChartView(props: NatalChartViewProps): ReactNode {
   const { Box, Text } = ui;
   const wide = isWide(width);
   const rows = placementRows(chart);
-  const birth = birthLines(chart);
+  const birth = birthLines(chart, { mask: props.maskBirth === true });
   const stamp = calculationStamp(chart);
   const moonNote = moonAmbiguityNote(chart);
-  const dashas = dashaRows(chart);
+  const dashas = dashaRows(chart, { mask: props.maskBirth === true });
 
   return (
     <Box

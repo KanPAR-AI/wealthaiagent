@@ -1,0 +1,13 @@
+{
+ "_capture": {
+  "as_of": "2026-09-19",
+  "captured_by": "GET /api/v1/chats/{id} (local container, read-only)",
+  "what": "the user bubble a birth-details widget answer leaves in a transcript — the ASTRAL-89 echo followed by the typed `input_response` fence, exactly as the server persisted it",
+  "shape_is_the_engines": "the envelope, the fence language, the key set (dob/tob/pob) and the echo grammar are VERBATIM from the capture",
+  "values_substituted": "YES, deliberately. The captured turn belonged to a THIRD PARTY on a production chat (an adhoc \"just this reading\"), and checking a real person's birth date, time and place into a git repository is the thing this feature exists to prevent. The date, time and place were replaced with a synthetic set; nothing else was touched. What the tests assert — that the fence identifies the bubble and that no exact value survives the mask — is a property of the SHAPE, not of the values."
+ },
+ "id": "b27b77ce-14c7-42f3-8548-28e2355a0529",
+ "sender": "user",
+ "timestamp": "2026-09-17T15:36:44.310102Z",
+ "content": "Date of birth: 2 Feb 1970 · Birth time: 7:45 am · Birth place: Springfield\n\n```input_response\n{\"type\":\"input_response\",\"ask\":\"required_slots_missing\",\"echo\":\"Date of birth: 2 Feb 1970 · Birth time: 7:45 am · Birth place: Springfield\",\"values\":{\"dob\":\"1970-02-02\",\"tob\":\"07:45\",\"pob\":\"Springfield\"}}\n```"
+}

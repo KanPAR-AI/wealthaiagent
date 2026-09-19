@@ -34,6 +34,10 @@ export interface MessageListProps {
   renderWidget?: (widget: Widget, key: string) => ReactNode;
   dataLanguages?: string[];
   renderText?: (text: string, key: string, theme: ChatTheme) => ReactNode;
+  /** (b) what a USER bubble reads as — see `MessageBubbleProps.userText`. */
+  userText?: (message: Message) => string;
+  /** (b) …and an ASSISTANT one, which also sees the turn before it. */
+  assistantText?: (message: Message, previous: Message | undefined) => string | undefined;
 }
 
 export function MessageList({
@@ -42,6 +46,8 @@ export function MessageList({
   renderWidget,
   dataLanguages,
   renderText,
+  userText,
+  assistantText,
 }: MessageListProps) {
   // Subscribe narrowly: only this chat's messages array. The store swaps
   // the array reference on every mutation, so FlashList sees new data.
@@ -89,16 +95,21 @@ export function MessageList({
   }, []);
 
   const renderItem = useCallback(
-    ({ item }: { item: Message }) => (
+    ({ item, index }: { item: Message; index: number }) => (
       <MessageBubble
         message={item}
+        // The turn BEFORE this one, for `assistantText`: the store keeps the
+        // list sorted by timestamp, so this is the message being answered.
+        previous={index > 0 ? messages[index - 1] : undefined}
         theme={theme}
         renderWidget={renderWidget}
         dataLanguages={dataLanguages}
         renderText={renderText}
+        userText={userText}
+        assistantText={assistantText}
       />
     ),
-    [theme, renderWidget, dataLanguages, renderText],
+    [messages, theme, renderWidget, dataLanguages, renderText, userText, assistantText],
   );
 
   return (

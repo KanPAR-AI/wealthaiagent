@@ -321,3 +321,59 @@ export function stripInputResponse(text: string): string {
   if (!text || text.indexOf('```input_response') === -1) return text;
   return text.replace(INPUT_RESPONSE_FENCE, '').trim();
 }
+
+/**
+ * What a user bubble's answer fence CARRIES — the keys, read here because
+ * this module is the one that knows the fence.
+ *
+ * It exists for the Astral AI birth-details lock (owner ruling, 2026-09-19):
+ * a transcript bubble that is the user's own birth-details answer is drawn
+ * masked, and it must be identified STRUCTURALLY — by the typed keys the
+ * engine parses — rather than by a regex over the sentence beside it. The
+ * caller decides what a key means and what to draw; this only reads.
+ *
+ * ── the third case, and why it is not folded into the first ───────────────
+ *
+ * `unreadable` is "this message IS a widget answer and I could not tell you
+ * which fields it holds". `none` is "there is no answer fence here". They
+ * demand opposite renders — the first might be anything and is therefore
+ * hidden by a caller that hides; the second is ordinary text — so collapsing
+ * them into `null` would make the safe render impossible to write. The
+ * reason travels so the caller can say it rather than guess.
+ */
+export type InputResponseRead =
+  | { kind: 'none' }
+  /** `ask` is the engine's own reason for the question this answers
+   *  (`field_correction`, `required_slots_missing`, …) — '' when the stored
+   *  envelope predates it. A caller that needs to know WHICH question was
+   *  answered reads this rather than the sentence beside it. */
+  | { kind: 'values'; ask: string; values: Record<string, unknown> }
+  | { kind: 'unreadable'; reason: string };
+
+const INPUT_RESPONSE_BODY = /```input_response[ \t]*\r?\n([\s\S]*?)```/;
+
+export function readInputResponse(text: string): InputResponseRead {
+  const raw = String(text ?? '');
+  if (raw.indexOf('```input_response') === -1) return { kind: 'none' };
+  const m = INPUT_RESPONSE_BODY.exec(raw);
+  if (!m) return { kind: 'unreadable', reason: 'the answer fence never closes' };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(m[1]);
+  } catch (e: unknown) {
+    return { kind: 'unreadable', reason: String((e as Error)?.message ?? e) };
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { kind: 'unreadable', reason: 'the answer fence is not an object' };
+  }
+  const values = (parsed as { values?: unknown }).values;
+  if (!values || typeof values !== 'object' || Array.isArray(values)) {
+    return { kind: 'unreadable', reason: 'the answer fence carries no values map' };
+  }
+  const ask = (parsed as { ask?: unknown }).ask;
+  return {
+    kind: 'values',
+    ask: typeof ask === 'string' ? ask : '',
+    values: values as Record<string, unknown>,
+  };
+}

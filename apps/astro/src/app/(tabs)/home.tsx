@@ -55,13 +55,14 @@ import { openPartnerSheet } from '@/components/partner-sheet';
 import { CitySheet } from '@/components/city-sheet';
 import { useCurrentPlace } from '@/components/use-current-place';
 import { placeLine, type KnownPlace } from '@/lib/location-view';
+import { maskedDashaLines, maskedPlaceName } from '@/lib/birth-privacy-view';
+import { useBirthPrivacy } from '@/lib/birth-privacy';
 import { subscribeToAccount, type Account } from '@/lib/auth';
 import {
   absences,
   absentView,
   cardDate,
   coupleCard,
-  dashaLines,
   dayView,
   greeting,
   greetingName,
@@ -105,6 +106,10 @@ export default function Home() {
   useFocusEffect(useCallback(() => setStatusBarStyle('light'), []));
 
   const { width } = useWindowDimensions();
+  // The one app-wide unlock (owner 2026-09-19): the panchang line names the
+  // place the day was computed for, which is the BIRTH place unless the user
+  // set a current city.
+  const birthRevealed = useBirthPrivacy((st) => st.revealed());
   const [load, setLoad] = useState<Load>({ phase: 'loading' });
   const [refreshing, setRefreshing] = useState(false);
   const [account, setAccount] = useState<Account | null>(null);
@@ -416,11 +421,21 @@ export default function Home() {
               {/* The Jyotish half the board's Western frame had no slot for:
                   the running mahadasha AND antardasha (ASTRAL-125 / F33). A
                   mahadasha alone lasts up to twenty years and is not news. */}
-              {dashaLines(res.card).length ? (
+              {/* Owner's lock, 2026-09-19: a native inside their FIRST
+                  mahadasha has `start_date === their birth date`, and the
+                  card carries no index to tell that case apart — so the
+                  START goes UNCONDITIONALLY while locked and the line reads
+                  "<Planet> · until <end>". The a11y label is built from the
+                  SAME masked value, so VoiceOver reads what the screen shows. */}
+              {maskedDashaLines(res.card, birthRevealed).length ? (
                 <View style={s.card}>
                   <Text style={s.cardTitle}>Your periods now</Text>
-                  {dashaLines(res.card).map((line) => (
-                    <View key={line.id} style={s.row}>
+                  {maskedDashaLines(res.card, birthRevealed).map((line) => (
+                    <View
+                      key={line.id}
+                      style={s.row}
+                      accessibilityLabel={`${line.label}: ${line.value}`}
+                    >
                       <Text style={s.rowLabel}>{line.label}</Text>
                       <Text style={s.rowValue}>{line.value}</Text>
                     </View>
@@ -433,7 +448,14 @@ export default function Home() {
                 <View style={s.card}>
                   <Text style={s.cardTitle}>Today’s panchang</Text>
                   <Text style={s.cardBody}>{panchangLine(res.card)!.value}</Text>
-                  <Text style={s.caption}>for {panchangLine(res.card)!.place}</Text>
+                  {/* …and the place it is FOR, which is the BIRTH place
+                      whenever the engine's own `basis` says so — a locked
+                      fact wherever it is printed. `maskedPlaceName` reads
+                      that flag, never a string this app derived. */}
+                  <Text style={s.caption}>
+                    for {maskedPlaceName(res.card.panchang?.panchang_place, birthRevealed)
+                          ?? panchangLine(res.card)!.place}
+                  </Text>
                 </View>
               ) : null}
 
@@ -624,6 +646,15 @@ function CoupleHomeCard({ card, onDeclared, partnerChip }: { card: CoupleCard; o
  *  the card's `day` layer; a day the engine could not score is a hollow dot
  *  with its reason, never a guess. */
 function WeekCard({ view, open, onToggle, onShare, selfPlace, onChangePlace }: { view: DayView; open: boolean; onToggle: () => void; onShare: () => void; selfPlace: KnownPlace | null; onChangePlace: () => void }) {
+  // Owner 2026-09-19 — `place_of_birth` is a locked fact, and this line named
+  // it out loud ("scored for <city>, from your Moon") three taps from the
+  // Profile row that shows it as dots. The decision is the ENGINE's `basis`
+  // on the card's own place, read by `maskedPlaceName`: a city the USER set
+  // is not a birth fact and is left alone.
+  const revealed = useBirthPrivacy((st) => st.revealed());
+  const shownPlace = maskedPlaceName(
+    { name: view.place, basis: view.placeBasis }, revealed,
+  );
   return (
     <View style={s.weekCard} accessibilityLabel={`Your week: ${view.strip.map((d) => `${d.weekday} ${d.band ?? 'not scored'}`).join(', ')}`}>
       <Text style={s.weekTitle}>Your week</Text>
@@ -658,12 +689,12 @@ function WeekCard({ view, open, onToggle, onShare, selfPlace, onChangePlace }: {
       <Pressable
         onPress={onChangePlace}
         accessibilityRole="button"
-        accessibilityLabel={placeLine(selfPlace, view.place).cta}
+        accessibilityLabel={placeLine(selfPlace, shownPlace).cta}
       >
         <Text style={s.weekNote}>
-          {placeLine(selfPlace, view.place).text}
+          {placeLine(selfPlace, shownPlace).text}
           {' · '}
-          <Text style={s.weekNoteCta}>{placeLine(selfPlace, view.place).cta}</Text>
+          <Text style={s.weekNoteCta}>{placeLine(selfPlace, shownPlace).cta}</Text>
         </Text>
       </Pressable>
       {view.notYours ? <Text style={s.weekNote}>{view.notYours}.</Text> : null}

@@ -94,7 +94,16 @@ export function decide(input: PolicyInput): Decision {
   return { action: 'quiet', reason: 'place set within 7 days' };
 }
 
-/** The line under the week strip, and whether it invites a change. */
+/**
+ * The line under the week strip, and whether it invites a change.
+ *
+ * `cardPlaceName` is the name the SCREEN decided to show — which since the
+ * birth-details lock (2026-09-19) is "your birth place" rather than the city
+ * whenever the card's own `basis` says the day was scored where the person
+ * was born and the details are hidden. The decision is
+ * `birth-privacy-view.maskedPlaceName`'s, made from the payload's flag; this
+ * function composes and decides nothing about it.
+ */
 export function placeLine(place: KnownPlace | null, cardPlaceName: string | null): {
   text: string;
   cta: string;

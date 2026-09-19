@@ -20,13 +20,31 @@ interface EditOutcomeState {
   outcome: string;
   /** true when the edit did not complete — the banner says so differently */
   failed: boolean;
-  report: (outcome: string, failed?: boolean) => void;
+  /**
+   * WHICH fact the correction was for — `date_of_birth` / `time_of_birth` /
+   * `place_of_birth`, or null when this outcome did not come from a
+   * field-scoped edit (the add-a-member flow reports through here too).
+   *
+   * It travels because the birth-details lock needs it (F345): the engine's
+   * receipt states the new value, so while the details are hidden Profile
+   * draws a client-owned sentence keyed by the FIELD instead. This is that
+   * key, taken from the route param `editRoute` set — never parsed out of
+   * the engine's sentence, which would be reading a value in order to hide
+   * one.
+   *
+   * Still not a value: this is a field NAME, and a birth fact does not
+   * travel through this store any more than it did before.
+   */
+  field: string | null;
+  report: (outcome: string, failed?: boolean, field?: string | null) => void;
   clear: () => void;
 }
 
 export const useEditOutcome = create<EditOutcomeState>((set) => ({
   outcome: '',
   failed: false,
-  report: (outcome: string, failed = false) => set({ outcome, failed }),
-  clear: () => set({ outcome: '', failed: false }),
+  field: null,
+  report: (outcome: string, failed = false, field: string | null = null) =>
+    set({ outcome, failed, field }),
+  clear: () => set({ outcome: '', failed: false, field: null }),
 }));

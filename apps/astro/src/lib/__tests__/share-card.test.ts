@@ -17,6 +17,12 @@ const VIEW: DayView = {
   golden: ['06:08–10:38', '12:08–13:38'], silence: ['15:08–16:38'],
   momentsAbsent: null,
   place: 'Bengaluru, Karnataka, India',
+  // Added 2026-09-19 with the birth-details lock: `DayView` now carries WHY
+  // the place is the place ("birth_place" vs a city the user set), because
+  // a birth place named in clear is a locked fact. This literal is a
+  // current-city day, so the basis is not the birth place — and the seal
+  // carries no place either way, which is what the cases below assert.
+  placeBasis: 'current_place',
 };
 
 describe('the Day Seal carries the verdict and nothing about the person (ASTRAL-63)', () => {

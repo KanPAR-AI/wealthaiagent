@@ -47,7 +47,11 @@ import {
   loadChatIntoStore,
   useSendMessage,
 } from '@wealthai/chat-native';
-import { getPlatform, useChatStore } from '@wealthai/core';
+import { getPlatform, useChatStore, type Message } from '@wealthai/core';
+import { stripInputResponse } from '@wealthai/astral';
+
+import { maskedAssistantText, maskedUserBubbleText } from '@/lib/birth-privacy-view';
+import { useBirthPrivacy } from '@/lib/birth-privacy';
 
 import { ArrowUp, ChevronLeft, DotGrid, StopSquare } from '@/components/glyphs';
 import { CornerWash } from '@/components/sky';
@@ -99,6 +103,57 @@ const WASH_HEIGHT = 132;
 /** how far across the header the corner bleed reaches — it must not touch the
  *  wordmark, which is what a full-width wash did */
 const WASH_WIDTH = 0.45;
+
+/**
+ * Owner 2026-09-19 — the birth-details lock reaches the TRANSCRIPT.
+ *
+ * A widget answer is persisted as its ASTRAL-89 echo plus a typed
+ * `input_response` fence, and the echo of a birth-details answer IS the
+ * user's own exact date, time and place ("Date of birth: <their date> ·
+ * Birth time: <their time> · …"), scrollable forever. Masked ON RENDER — the
+ * stored message is untouched, the fence is still the carrier the engine
+ * parsed — and only for the bubbles identified STRUCTURALLY by their carrier
+ * keys. `stripInputResponse` is handed in because the fence's own module owns
+ * that suppression (AMB-17 (a)).
+ *
+ * Module scope, not a `useCallback`: it depends on nothing but the message,
+ * and `useBirthPrivacy.getState()` is read at paint time so an expiry that
+ * happened while the list was idle re-masks on the next frame.
+ *
+ * ⚠ ONE THING TO KNOW BEFORE ADDING A REVEAL CONTROL TO THIS SCREEN.
+ * `MessageBubble` is `memo`'d and both of these read the unlock imperatively
+ * at paint, so a bubble PAINTED while revealed would stay revealed past the
+ * 60 seconds — nothing re-renders it. That is unreachable today (this screen
+ * has no reveal control, and leaving Profile or the chart re-locks before
+ * anyone can get here unlocked), but a Show button here would make it real:
+ * the fix then is to subscribe the list to the unlock so an expiry
+ * re-renders the rows, not to read it harder.
+ */
+function userBubbleText(message: Message): string {
+  return maskedUserBubbleText(
+    message.message ?? '',
+    useBirthPrivacy.getState().revealed(),
+    stripInputResponse,
+  );
+}
+
+/**
+ * …and the ASSISTANT's side of the same lock (F345).
+ *
+ * The engine's correction receipt — "Your birth time is now **15:20**." —
+ * is a permanent bot bubble, so masking it only on the Profile banner was
+ * cosmetic. Identified STRUCTURALLY: the bubble whose PREVIOUS turn is a
+ * `field_correction` answer carrying a locked self key. Never a regex over
+ * the reply. `undefined` means "draw it exactly as before", which is every
+ * other bubble in the transcript.
+ */
+function assistantBubbleText(message: Message, previous: Message | undefined): string | undefined {
+  return maskedAssistantText({
+    message: message.message ?? '',
+    previous: previous?.message,
+    revealed: useBirthPrivacy.getState().revealed(),
+  });
+}
 
 export default function Chat() {
   // Per-tab status bar, set ON FOCUS. Every tab screen stays MOUNTED, so a
@@ -477,6 +532,8 @@ export default function Chat() {
             <AstroWidget key={key} widget={widget} theme={astroChatTheme} />
           )}
           dataLanguages={ASTRO_DATA_LANGUAGES}
+          userText={userBubbleText}
+          assistantText={assistantBubbleText}
           belowTranscript={
             <>
             {/* Owner 2026-09-18: past thirty messages — and said plainly when

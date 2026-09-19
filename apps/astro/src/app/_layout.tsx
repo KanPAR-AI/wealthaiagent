@@ -13,6 +13,7 @@ import { ensureChatHostInstalled } from '@/lib/chat-host';
 import { ensureCoreInitialized } from '@/lib/core-adapter';
 import { installPushHandlers, refreshPushRegistration } from '@/lib/push';
 import { routeForPush } from '@/lib/push-view';
+import { installBirthPrivacyRelock } from '@/lib/birth-privacy';
 
 // Install this app's PlatformAdapter into @wealthai/core before any screen
 // imports the shared chat client.
@@ -90,6 +91,15 @@ export default function RootLayout() {
     void refreshPushRegistration();
     return installPushHandlers((url) => router.push(routeForPush(url) as never));
   }, []);
+  // Owner 2026-09-19 — the birth-details lock closes when the app leaves.
+  //
+  // At the ROOT and not only on the screens that show the values: iOS
+  // photographs the whole app for the switcher card as it backgrounds, and
+  // a re-lock that only ran where a screen happened to be mounted would
+  // leave that photograph holding the date and the time. Re-locking on the
+  // way OUT (`change` to anything but `active`) is what puts the mask in
+  // the snapshot; a re-lock on the way back would be one frame too late.
+  useEffect(() => installBirthPrivacyRelock(AppState), []);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>

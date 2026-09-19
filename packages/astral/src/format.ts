@@ -256,3 +256,20 @@ export function keyAsWords(value: unknown): string | null {
   if (!t) return null;
   return t.replace(/\b[a-z]/g, (c) => c.toUpperCase());
 }
+
+/**
+ * What a HIDDEN value reads as (the Astral AI birth-details lock, owner
+ * 2026-09-19).
+ *
+ * Six dots, the same six for every value: not the year, not the month, not
+ * the initial, not the length of the string. It lives here, with the
+ * formatters, because it IS one — the notation a value takes when the host
+ * says it may not be drawn — and because one constant shared by the package
+ * and by `apps/astro` is one fewer pair of strings that can drift apart.
+ *
+ * The DECISION to mask is never taken here. `birthLines` masks when its
+ * caller asks it to, and the caller is a host that knows whether the person
+ * reading has authenticated (`apps/astro/src/lib/birth-privacy-view.ts`).
+ * The web app and the extension do not ask, so nothing there changes.
+ */
+export const MASKED_VALUE = '••••••';

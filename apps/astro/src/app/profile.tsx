@@ -84,7 +84,6 @@ import {
   chartLines,
   chartState,
   editDisclosure,
-  factRows,
   frameLine,
   handRows,
   shouldRecordOffer,
@@ -97,6 +96,20 @@ import { Image } from 'expo-image';
 import { apiUrl } from '@/lib/core-adapter';
 import { getToken } from '@/lib/auth';
 import { rememberTimeAskOffered, timeAskAlreadyOffered } from '@/lib/profile-prefs';
+// Owner 2026-09-19 — the birth-details lock. `maskedFactRows` WRAPS
+// `factRows`, so this screen cannot get the unmasked rows by reaching past
+// it, and `lib/__tests__/birth-privacy-structure.test.ts` pins that it does
+// not try.
+import {
+  HIDDEN_EXPLANATION,
+  HIDE_LABEL,
+  REVEALED_NOTE,
+  REVEAL_LABEL,
+  maskedFactRows,
+  outcomeBanner,
+} from '@/lib/birth-privacy-view';
+import { useBirthPrivacy } from '@/lib/birth-privacy';
+import { useBirthReveal } from '@/lib/use-birth-reveal';
 import { routeIsLive } from '@/lib/tabs';
 import { tokens } from '@/theme';
 
@@ -156,7 +169,20 @@ export default function Profile() {
   // was never unmounted, the edit was pushed on top of it.
   const outcome = useEditOutcome((s) => s.outcome);
   const outcomeFailed = useEditOutcome((s) => s.failed);
+  const outcomeField = useEditOutcome((s) => s.field);
   const clearOutcome = useEditOutcome((s) => s.clear);
+  // …and F345: the engine's receipt STATES THE NEW VALUE ("Your birth time
+  // is now **15:20**."), so while the details are hidden this screen draws a
+  // client-owned sentence keyed by the field the user was sent to correct.
+  // The decision is `outcomeBanner`'s, tested at the workspace root; a plain
+  // store read, because the control and the timers live in `Established`.
+  const bannerRevealed = useBirthPrivacy((st) => st.revealed());
+  const bannerText = outcomeBanner({
+    engineSentence: outcome,
+    failed: outcomeFailed,
+    field: outcomeField,
+    revealed: bannerRevealed,
+  });
   useFocusEffect(
     useCallback(() => {
       if (useEditOutcome.getState().outcome) read();
@@ -231,14 +257,14 @@ export default function Profile() {
               ENGINE's words. Not composed here — the sentence is computed
               server-side from the same `edit_impact` the sheet promised
               from, so the promise and the receipt cannot disagree. */}
-          {outcome ? (
+          {bannerText ? (
             <View style={outcomeFailed ? s.noticeBad : s.notice}>
               <SymbolIcon
                 name={outcomeFailed ? 'exclamationmark.triangle' : 'checkmark.circle'}
                 size={tokens.size.icon}
                 color={outcomeFailed ? tokens.palette.danger : tokens.palette.accent.interactive}
               />
-              <Text style={s.noticeText}>{outcome}</Text>
+              <Text style={s.noticeText}>{bannerText}</Text>
             </View>
           ) : null}
           {load.phase === 'loading' ? (
@@ -362,7 +388,8 @@ function Established({
   onOfferTime: () => void;
   onOffered: () => void;
 }) {
-  const rows = factRows(person);
+  const reveal = useBirthReveal();
+  const rows = maskedFactRows(person, reveal.revealed);
   const state = chartState(person.chart);
   const readable = chartIsReadable(state);
   const lines = readable ? chartLines(person.chart) : [];
@@ -453,7 +480,30 @@ function Established({
       <Text style={s.title}>{person.display_name || 'Your profile'}</Text>
       <Text style={s.caption}>This is you — the person every reading is cast for.</Text>
 
-      <Text style={s.section}>Birth details</Text>
+      <View style={s.sectionRow}>
+        <Text style={s.section}>Birth details</Text>
+        {/* Owner 2026-09-19: the exact date, time and place are hidden until
+            the phone proves its owner is here. The control is ABSENT — not
+            greyed — on a build without the authenticator and on a phone with
+            no screen lock, and one sentence below says which (the capability
+            rule: a false capability REMOVES). */}
+        {reveal.gate.kind === 'available' ? (
+          <Pressable
+            onPress={reveal.revealed ? reveal.hide : reveal.show}
+            accessibilityRole="button"
+            accessibilityLabel={reveal.revealed ? HIDE_LABEL : REVEAL_LABEL}
+            hitSlop={12}
+          >
+            {reveal.busy ? (
+              <ActivityIndicator color={tokens.palette.accent.interactive} />
+            ) : (
+              <Text style={s.revealAction}>
+                {reveal.revealed ? HIDE_LABEL : REVEAL_LABEL}
+              </Text>
+            )}
+          </Pressable>
+        ) : null}
+      </View>
       <View style={s.card}>
         {rows.map((row, i) => (
           <View key={row.key}>
@@ -480,6 +530,18 @@ function Established({
           </View>
         ))}
       </View>
+
+      {/* Why it reads as dots, said once. The sentence follows the STATE:
+          hidden and unlockable, hidden and not (with the reason), or
+          visible and about to stop being. */}
+      <Text style={s.caption}>
+        {reveal.notice
+          ?? (reveal.revealed
+            ? REVEALED_NOTE
+            : reveal.gate.kind === 'absent' && reveal.gate.sentence
+              ? reveal.gate.sentence
+              : HIDDEN_EXPLANATION)}
+      </Text>
 
       {ask !== 'none' ? (
         <View style={s.note}>
@@ -830,6 +892,17 @@ const s = StyleSheet.create({
     letterSpacing: 1,
     marginTop: t.space(3),
     textTransform: 'uppercase',
+  },
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  revealAction: {
+    ...t.type.scale.caption,
+    color: t.palette.accent.interactive,
+    marginTop: t.space(3),
+    fontWeight: '600',
   },
   card: {
     backgroundColor: t.palette.paper.card,

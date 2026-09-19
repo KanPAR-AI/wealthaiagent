@@ -44,7 +44,12 @@ import {
 import type { ReactElement, ReactNode } from 'react';
 import { useWindowDimensions } from 'react-native';
 
-import { getAstralHost, isAstralHostInstalled } from './host';
+import {
+  getAstralHost,
+  hostMaskBirth,
+  hostMaskRequest,
+  isAstralHostInstalled,
+} from './host';
 import { rnPrimitives } from './rn-primitives';
 
 /** chat bubble padding either side; keeps the wheel off the screen edge */
@@ -75,13 +80,26 @@ interface BlockContext {
   suggestPlaces?: (query: string) => Promise<Array<{ name: string; country?: string | null; timezone?: string | null }>>;
   /** docs/64 W-3: the host's door to a day's card, when it has one */
   openDay?: (isoDate: string) => void;
+  /** owner 2026-09-19: draw a kundli card's birth block masked. Absent on a
+   *  host that does not lock birth details, which is today's behaviour. */
+  maskBirth?: boolean;
+  /** …and the host's transform for a FORM's pre-filled values (see `host.ts`
+   *  for why a form needs the host to decide rather than a boolean). */
+  maskRequest?: <T>(request: T) => T;
 }
 
 type BlockRenderer = (ctx: BlockContext) => ReactElement | null;
 
 const handlers: Record<string, BlockRenderer> = {
-  input_request: ({ data, theme, width, send, fieldHints, fieldIcons, suggestPlaces }) => {
-    const request = parseInputRequest(data);
+  input_request: ({ data, theme, width, send, fieldHints, fieldIcons, suggestPlaces, maskRequest }) => {
+    // The engine attaches the CURRENT value to a `field_correction` ask so
+    // the picker opens at it (ASTRAL-138). In the Astral AI app that is the
+    // user's exact stored birth time, drawn on a wheel in the transcript —
+    // reachable with no authentication at all, because the correction turn
+    // Profile sends lands in the SHARED chat. The host is asked to strip it;
+    // a host without the hook gets today's behaviour.
+    const parsed = parseInputRequest(data);
+    const request = parsed && maskRequest ? maskRequest(parsed) : parsed;
     // The answer rides the host's send capability. What travels is the typed
     // fence the shared component builds; nothing here assembles a sentence
     // for a model to re-parse (F18).
@@ -99,10 +117,16 @@ const handlers: Record<string, BlockRenderer> = {
     ) : null;
   },
 
-  natal_chart: ({ data, theme, width }) => {
+  natal_chart: ({ data, theme, width, maskBirth }) => {
     const chart = parseNatalChart(data);
     return chart ? (
-      <NatalChartView ui={rnPrimitives} theme={theme} width={width} chart={chart} />
+      <NatalChartView
+        ui={rnPrimitives}
+        theme={theme}
+        width={width}
+        chart={chart}
+        maskBirth={maskBirth}
+      />
     ) : null;
   },
 
@@ -176,5 +200,17 @@ export function AstralBlock({ type, data }: { type: string; data: unknown }) {
   const fieldIcons = isAstralHostInstalled() ? getAstralHost().fieldIcons : undefined;
   const suggestPlaces = isAstralHostInstalled() ? getAstralHost().suggestPlaces : undefined;
   const openDay = isAstralHostInstalled() ? getAstralHost().openDay : undefined;
-  return render({ data, theme, width, send, fieldHints, fieldIcons, suggestPlaces, openDay });
+  // Asked HERE and not captured at install time: the answer expires (the
+  // Astral AI unlock lasts a minute and dies on background), so a block
+  // painted after it expired must paint masked. A host without the
+  // capability answers by not having it, which is `false` — today's card.
+  // The two mask reads live in `host.ts` — a file with no React Native in
+  // it, so the join between a host's answer and a rendered card can be
+  // driven by a test (Role-3's measured gap: an always-false here was
+  // invisible to the whole suite).
+  return render({
+    data, theme, width, send, fieldHints, fieldIcons, suggestPlaces, openDay,
+    maskBirth: hostMaskBirth(),
+    maskRequest: hostMaskRequest,
+  });
 }

@@ -1,0 +1,125 @@
+{
+ "_capture": {
+  "as_of": "2026-09-19",
+  "captured_by": "GET /api/v1/people/self (local container, read-only)",
+  "endpoint": "/api/v1/people/self",
+  "known_inconsistency": "the `chart` summary below was cast from the ORIGINAL birth facts, so its lagna/rashis no longer follow from the substituted ones. Nothing asserts that relationship — the masking tests read `birth_facts`, and the chart tests use `fixtures/chart.json`. Stated here rather than silently repaired, because a hand-computed chart would be a fabricated artifact (ASTRAL-19).",
+  "values_substituted": "YES, deliberately. The capture was the OWNER'S OWN record, and this is the fixture for the feature whose whole point is that those three values are not left lying around. `date_of_birth`, `time_of_birth`, `place_of_birth`, `coordinates.geocoded_place`, `coordinates.latitude` and `coordinates.longitude` were replaced with a synthetic set (1991-03-07 / 06:45 / Nagpur, India and Nagpur's coordinates). Nothing else was touched: the keys, the provenance values, the recorded_at stamps and the `chart` summary are the server's.",
+  "what": "the `self` person as `services/people` serves it — the envelope, the birth_facts map, the provenance vocabulary, the coordinates block and the chart summary, all verbatim from the capture"
+ },
+ "person": {
+  "birth_facts": {
+   "birth_time_confidence": {
+    "provenance": "stated_by_user",
+    "recorded_at": "2026-08-25T20:38:44.398017+00:00",
+    "value": "unknown"
+   },
+   "date_of_birth": {
+    "provenance": "stated_by_user",
+    "recorded_at": "2026-08-28T04:30:41.399964+00:00",
+    "value": "1991-03-07"
+   },
+   "place_of_birth": {
+    "provenance": "stated_by_user",
+    "recorded_at": "2026-08-28T04:05:58.135426+00:00",
+    "value": "Nagpur, India"
+   },
+   "time_of_birth": {
+    "provenance": "stated_by_user",
+    "recorded_at": "2026-08-28T04:05:58.135310+00:00",
+    "value": "06:45"
+   }
+  },
+  "chart": {
+   "antardasha": {
+    "end_date": "2028-03-06",
+    "planet": "Jupiter",
+    "start_date": "2025-10-11"
+   },
+   "ayanamsa": "LAHIRI",
+   "computed_at": "2026-09-18T10:32:43.455574+00:00",
+   "house_system": "W",
+   "houses": 12,
+   "lagna": "Capricorn",
+   "lagna_degree": 27.85,
+   "mahadasha": {
+    "end_date": "2041-01-29",
+    "planet": "Rahu",
+    "start_date": "2023-01-29"
+   },
+   "moon_rashi": "Aries",
+   "nakshatra": "Bharani",
+   "nakshatra_pada": 2,
+   "status": "fresh",
+   "sun_rashi": "Scorpio",
+   "time_known": true,
+   "undetermined": [],
+   "zodiac_mode": "sidereal"
+  },
+  "coordinates": {
+   "geocoded_place": {
+    "provenance": "geocoded",
+    "recorded_at": "2026-08-28T04:06:04.456441+00:00",
+    "value": "Nagpur, India"
+   },
+   "latitude": {
+    "provenance": "geocoded",
+    "recorded_at": "2026-08-28T04:06:04.456405+00:00",
+    "value": 21.146633
+   },
+   "longitude": {
+    "provenance": "geocoded",
+    "recorded_at": "2026-08-28T04:06:04.456430+00:00",
+    "value": 79.08886
+   },
+   "timezone": {
+    "provenance": "geocoded",
+    "recorded_at": "2026-08-28T04:06:04.456436+00:00",
+    "value": "Asia/Kolkata"
+   }
+  },
+  "created_at": "2026-08-25T20:27:48.870709+00:00",
+  "current_place": {
+   "country": null,
+   "latitude": 12.962896,
+   "longitude": 77.57754,
+   "name": "Bengaluru, Karnataka, India",
+   "set_at": "2026-09-17T11:56:21.212206+00:00",
+   "source": "manual",
+   "timezone": "Asia/Kolkata"
+  },
+  "display_name": "Ravi",
+  "favourite": false,
+  "id": "self",
+  "in_circle": false,
+  "kinship": null,
+  "kinship_source": null,
+  "notes": "",
+  "palms": {
+   "right": {
+    "file_id": "verify-fix-f1",
+    "hand_source": "declared",
+    "read_at": "2026-09-12T19:23:43.917820+00:00"
+   }
+  },
+  "partner": {
+   "declared_at": "2026-09-17T06:59:48.508789+00:00",
+   "person_id": "p_925c3bca862b",
+   "status": "partnered"
+  },
+  "priorities": {
+   "history": [],
+   "interests": [],
+   "mapping_version": 1,
+   "ranked": [],
+   "removed": [],
+   "updated_at": null,
+   "version": 1
+  },
+  "relation": "self",
+  "source_label": "chat",
+  "tob_known": true,
+  "updated_at": "2026-09-19T10:38:01.759191+00:00"
+ },
+ "state": "established"
+}

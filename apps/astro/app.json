@@ -18,7 +18,7 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "13"
+      "buildNumber": "14"
     },
     "android": {
       "package": "com.yourfinadvisor.astro",
@@ -106,6 +106,12 @@
         "expo-calendar",
         {
           "calendarPermission": "Astral AI adds your good days and golden windows to your calendar, only when you ask it to."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Astral AI uses Face ID so only you can reveal your exact birth date, birth time and birth place. Your phone's passcode works too."
         }
       ]
     ],

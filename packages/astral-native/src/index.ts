@@ -18,6 +18,8 @@ export { AstralBlock, astralBlockRegistry } from './astral-block';
 export { rnPrimitives } from './rn-primitives';
 export {
   getAstralHost,
+  hostMaskBirth,
+  hostMaskRequest,
   installAstralHost,
   isAstralHostInstalled,
   resetAstralHost,

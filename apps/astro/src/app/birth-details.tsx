@@ -61,7 +61,7 @@ import {
   isAddingMember,
 } from '@/lib/family-view';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 // The keyboard is handled by the library the app already installs a provider
 // for at the root (`_layout.tsx`), not by `automaticallyAdjustKeyboardInsets`.
@@ -93,6 +93,13 @@ import { track } from '@/lib/analytics';
 import { adoptOwnChat, rememberChat } from '@/lib/chat-session';
 import { fetchBalance } from '@/lib/credits';
 import { editFailure, isReturningEdit, outcomeLine } from '@/lib/edit-fact';
+// Owner 2026-09-19 — a correction does not require revealing the old value.
+// The engine pre-fills a `field_correction` ask with the stored value so the
+// picker opens AT it (ASTRAL-138); while the details are locked that value is
+// removed from the payload here, so the picker opens blank and what the user
+// enters replaces it. Nothing else about the ask changes.
+import { CORRECTING_WHILE_HIDDEN, maskedInputRequest } from '@/lib/birth-privacy-view';
+import { useBirthPrivacy } from '@/lib/birth-privacy';
 import { useEditOutcome } from '@/lib/edit-outcome';
 import { useReadingBlocked } from '@/lib/use-account';
 import { suggestPlaces } from '@/lib/people';
@@ -114,6 +121,18 @@ import { tokens } from '@/theme';
  * reached state without `reconcile` (INV-1).
  */
 const OPENING_TURN = "I'd like my birth chart.";
+
+/**
+ * The `field` the add-a-member flow reports its outcome under.
+ *
+ * NOT one of the locked birth-fact keys, deliberately. `outcomeBanner` keys
+ * its while-locked sentence off the field, and a member outcome arriving
+ * with NO field fell to the generic "Your birth details were updated." —
+ * a sentence about the OWNER's record, said after saving somebody else's.
+ * Naming the flow explicitly keeps the engine's own words for it, which are
+ * about the person who was actually added.
+ */
+const MEMBER_OUTCOME_FIELD = 'member_add';
 
 /**
  * How long the "casting your chart" state is on screen before the handoff.
@@ -157,6 +176,31 @@ export default function BirthDetails() {
   const adding = isAddingMember(returnTo) && !!addMemberTitle(kinship);
   const member = String(memberName ?? '').trim();
   const [request, setRequest] = useState<InputRequestPayload | null>(null);
+  // The ONE unlock, shared with Profile and the chart screen.
+  //
+  // In practice this screen almost always opens LOCKED, and that is the
+  // design rather than an accident: leaving a screen re-locks (docs' three
+  // triggers), and arriving here means Profile just blurred. So a correction
+  // normally opens blank, with the sentence below saying why — which is the
+  // point the owner asked for: you can fix a birth fact without ever being
+  // shown the one on file. The state is read rather than assumed so that if
+  // the rule is ever relaxed, this screen follows it instead of pinning a
+  // copy of it.
+  const birthRevealed = useBirthPrivacy((st) => st.revealed());
+  // Memoised so the widget is not handed a new object on every keystroke.
+  // It returns the SAME request when there is nothing to strip, which is why
+  // `shownRequest !== request` is the honest test for "a value was hidden".
+  const shownRequest = useMemo(
+    // …and NOT when this screen is collecting ANOTHER PERSON's details. The
+    // add-a-member flow uses the same field keys for somebody else, and
+    // their birth date is not the thing this lock is about (owner's scope,
+    // 2026-09-19). Today the distinction is theoretical — only a
+    // `field_correction` ask carries a pre-filled value, and a member ask is
+    // `required_slots_missing` — but stating it here means the day the
+    // engine pre-fills a member correction, it still opens at their value.
+    () => (request && !adding ? maskedInputRequest(request, birthRevealed) : request),
+    [request, adding, birthRevealed],
+  );
   const [prose, setProse] = useState('');
   // The add arc's own failure — the engine's sentence, shown ON the form so
   // a wrong birthplace can be corrected (Role-3 F-A).
@@ -339,7 +383,7 @@ export default function BirthDetails() {
       try {
         await send(message, []);
       } catch (e: any) {
-        report(editFailure('transport', String(e?.message ?? e)), true);
+        report(editFailure('transport', String(e?.message ?? e)), true, field ?? null);
         router.back();
         return;
       }
@@ -347,11 +391,11 @@ export default function BirthDetails() {
       const msgs = id ? useChatStore.getState().chats[id]?.messages ?? [] : [];
       const last = [...msgs].reverse().find((m) => m.sender === 'bot');
       if (!last || last.error) {
-        report(editFailure('transport', last?.error), true);
+        report(editFailure('transport', last?.error), true, field ?? null);
       } else {
         // A refusal (INV-4) arrives as words in the same reply, so the line
         // is shown either way and the user reads what actually happened.
-        report(outcomeLine(last.message), false);
+        report(outcomeLine(last.message), false, field ?? null);
       }
       router.back();
     },
@@ -426,7 +470,7 @@ export default function BirthDetails() {
       setCasting(true);
       const cast = await sendAndRead(message);
       if (cast.failed) {
-        report(addMemberFailure('transport', cast.detail), true);
+        report(addMemberFailure('transport', cast.detail), true, MEMBER_OUTCOME_FIELD);
         router.back();
         return;
       }
@@ -451,7 +495,7 @@ export default function BirthDetails() {
       }
       const kept = await sendAndRead(keepPersonMessage(member));
       if (kept.failed) {
-        report(addMemberFailure('transport', kept.detail), true);
+        report(addMemberFailure('transport', kept.detail), true, MEMBER_OUTCOME_FIELD);
         router.back();
         return;
       }
@@ -460,7 +504,7 @@ export default function BirthDetails() {
       // FAILURE icon, because Family would not show them.
       const end = afterKeepTurn(memberAddState(kept.reply));
       report(plainSentence(outcomeLine(kept.reply) || outcomeLine(cast.reply)),
-             end.action === 'done' ? end.failed : true);
+             end.action === 'done' ? end.failed : true, MEMBER_OUTCOME_FIELD);
       router.back();
     },
     [sendAndRead, report, kinship, member],
@@ -589,11 +633,17 @@ export default function BirthDetails() {
               {request.reason ? null : (
                 <Text style={s.subtitle}>{tokens.copy.birthDetailsSubtitle}</Text>
               )}
+              {/* The pre-fill is dropped while the details are locked, and
+                  the sheet SAYS so — a picker that silently opened at a
+                  default would read as the app having lost the value. */}
+              {shownRequest && shownRequest !== request ? (
+                <Text style={s.subtitle}>{CORRECTING_WHILE_HIDDEN}</Text>
+              ) : null}
               <InputRequestView
                 ui={rnPrimitives}
                 theme={LIGHT_THEME}
                 width={width - tokens.space(12)}
-                request={request}
+                request={shownRequest ?? request}
                 layout="page"
                 submitLabel="Continue"
                 requiredNote={tokens.copy.stillNeeded}

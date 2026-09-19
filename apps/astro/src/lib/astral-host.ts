@@ -17,6 +17,8 @@ import { FIELD_ICONS } from '@/components/field-icons';
 import { tokens } from '@/theme';
 
 import { getToken } from './auth';
+import { birthDetailsRevealed } from './birth-privacy';
+import { maskedInputRequest } from './birth-privacy-view';
 import { ensureCoreInitialized } from './core-adapter';
 
 export function ensureAstralHostInstalled(): void {
@@ -59,5 +61,32 @@ export function ensureAstralHostInstalled(): void {
     // docs/64 W-3: a ranked day's tap opens that day's card — the same
     // door the week strip's dots are (docs/64 W-1).
     openDay: (isoDate) => router.push({ pathname: '/day', params: { date: isoDate } }),
+
+    // Owner 2026-09-19 — the kundli card in chat draws its birth block
+    // masked unless the phone has just proved its owner is present. Asked
+    // at PAINT time (the binding calls it per block) because the unlock
+    // expires after a minute and dies when the app backgrounds; a boolean
+    // captured here would be a lock that opened once.
+    //
+    // It masks EVERY chart card, not only the user's own: the `natal_chart`
+    // payload carries no subject, so the client cannot tell whose chart it
+    // is drawing (filed as a finding). Hiding a friend's card costs a tap;
+    // showing the owner's is the thing this feature exists to stop.
+    maskBirthDetails: () => !birthDetailsRevealed(),
+
+    // …and the same lock on a FORM in the transcript. The engine pre-fills a
+    // `field_correction` ask with the stored value so the picker opens at it
+    // (ASTRAL-138); in this app that value is the thing the whole feature
+    // hides, and the correction turn Profile sends lands in the SHARED chat,
+    // so the wheel sat open at the exact stored birth time with no
+    // authentication anywhere near it.
+    //
+    // `maskedInputRequest` removes ONLY the pre-fill, and only from the SELF
+    // keys — a partner's `person2_*` field keeps its value, which is why the
+    // decision belongs to the app rather than to the binding.
+    maskInputRequest: (request) => maskedInputRequest(
+      request as { fields: Array<{ key: string; value?: unknown }> },
+      birthDetailsRevealed(),
+    ) as typeof request,
   });
 }

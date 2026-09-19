@@ -23,7 +23,7 @@
 //     (`timeline.py:categorise`). This file formats them and never maps a
 //     planet, a house or a period to a life area.
 
-import { formatIsoDate } from '@wealthai/astral';
+import { MASKED_VALUE, formatIsoDate } from '@wealthai/astral';
 
 import { titleFromKey } from './daily-view';
 import { staleSentence } from './staleness';
@@ -106,8 +106,10 @@ export function namedAbsence(artifact: TimelineArtifact): { layer: string; reaso
  * true regardless of which year is selected is for the decision to live
  * here rather than in a screen's JSX.
  */
-export function rows(artifact: TimelineArtifact, year: number | null = null): TimelineRow[] {
+export function rows(artifact: TimelineArtifact, year: number | null = null,
+                     options: TimelineMaskOptions = {}): TimelineRow[] {
   const dasha = artifact.dasha;
+  const anchor = options.mask === true ? birthAnchor(artifact) : null;
   const cursor = artifact.cursor ?? { mahadasha_index: null, antardasha_index: null, as_of: '' };
   const out: TimelineRow[] = [];
 
@@ -128,10 +130,10 @@ export function rows(artifact: TimelineArtifact, year: number | null = null): Ti
     }
   } else {
     (dasha.periods ?? []).forEach((p, i) => {
-      out.push(periodRow(p, 'dasha', `md-${i}`, i === cursor.mahadasha_index));
+      out.push(periodRow(p, 'dasha', `md-${i}`, i === cursor.mahadasha_index, anchor));
     });
     (dasha.sub_periods ?? []).forEach((p, i) => {
-      out.push(periodRow(p, 'antardasha', `ad-${i}`, i === cursor.antardasha_index));
+      out.push(periodRow(p, 'antardasha', `ad-${i}`, i === cursor.antardasha_index, anchor));
     });
   }
 
@@ -152,8 +154,9 @@ export function rows(artifact: TimelineArtifact, year: number | null = null): Ti
 
 /** The rows a YEAR pill selects — the same one set, filtered in memory.
  *  Exported separately so a test can assert the filter is a filter. */
-export function rowsInYear(artifact: TimelineArtifact, year: number): TimelineRow[] {
-  return rows(artifact, year);
+export function rowsInYear(artifact: TimelineArtifact, year: number,
+                           options: TimelineMaskOptions = {}): TimelineRow[] {
+  return rows(artifact, year, options);
 }
 
 function overlapsYear(row: TimelineRow, year: number): boolean {
@@ -166,14 +169,14 @@ function overlapsYear(row: TimelineRow, year: number): boolean {
 }
 
 function periodRow(p: TimelinePeriod, kind: 'dasha' | 'antardasha', id: string,
-                   current: boolean): TimelineRow {
+                   current: boolean, anchor: string | null): TimelineRow {
   const level = kind === 'dasha' ? 'Mahadasha' : 'Antardasha';
   return {
     id,
     kind,
     title: `${p.planet} ${level.toLowerCase()}`,
     subtitle: (p.categories ?? []).map(capitalise).join(' · '),
-    range: range(p.start_date, p.end_date),
+    range: range(p.start_date, p.end_date, anchor),
     startYear: yearOf(p.start_date),
     endYear: yearOf(p.end_date),
     current,
@@ -207,10 +210,46 @@ function yearOf(iso?: string): number | null {
   return Number.isFinite(y) && y > 0 ? y : null;
 }
 
-function range(start?: string, end?: string): string {
-  const a = formatIsoDate(start) ?? start ?? '';
+/**
+ * A period's range — with the BIRTH-ANCHORED start hidden when asked
+ * (owner's lock, 2026-09-19).
+ *
+ * A Vimshottari table starts at birth: `span.start`, `dasha.periods[0]
+ * .start_date` and `sub_periods[0].start_date` are all the birth date on
+ * every engine-captured artifact here. So a timeline set to "All" prints it
+ * in its first row, in its dasha band, and — worse, because it cannot be
+ * screenshotted — in the accessibility label VoiceOver reads aloud.
+ *
+ * `anchor` is the ISO date to hide, decided by the caller from THIS
+ * artifact's own payload (`birthAnchor` below). Only the start goes: an end
+ * date is not a birth fact, and a range with both halves hidden would hide
+ * the period rather than the birth date.
+ */
+function range(start?: string, end?: string, anchor?: string | null): string {
+  const hidden = !!anchor && start === anchor;
+  const a = hidden ? MASKED_VALUE : (formatIsoDate(start) ?? start ?? '');
   const b = formatIsoDate(end) ?? end ?? '';
   return a && b ? `${a} → ${b}` : a || b;
+}
+
+/**
+ * The date this artifact is anchored at, structurally.
+ *
+ * `span.start` is the engine's own statement of where the timeline begins,
+ * and it equals the birth date. When it is absent the first mahadasha's
+ * start says the same thing; when that is absent too there is nothing to
+ * hide and nothing is hidden.
+ */
+export function birthAnchor(artifact: TimelineArtifact): string | null {
+  const span = artifact.span?.start;
+  if (typeof span === 'string' && span) return span;
+  const first = (artifact.dasha?.periods ?? [])[0]?.start_date;
+  return typeof first === 'string' && first ? first : null;
+}
+
+export interface TimelineMaskOptions {
+  /** hide the birth-anchored start wherever it would be printed or spoken */
+  mask?: boolean;
 }
 
 function capitalise(s: string): string {
@@ -407,9 +446,11 @@ export interface DashaAxis {
 }
 
 /** The mahadasha band: every period on one axis, the current one marked. */
-export function dashaAxis(artifact: TimelineArtifact): DashaAxis | null {
+export function dashaAxis(artifact: TimelineArtifact,
+                          options: TimelineMaskOptions = {}): DashaAxis | null {
   const periods = artifact.dasha?.periods ?? [];
   if (periods.length === 0) return null;
+  const anchor = options.mask === true ? birthAnchor(artifact) : null;
   const start = periods[0].start_date;
   const end = periods[periods.length - 1].end_date;
   const cursor = artifact.cursor?.mahadasha_index ?? null;
@@ -422,7 +463,7 @@ export function dashaAxis(artifact: TimelineArtifact): DashaAxis | null {
       id: `md-${i}-${p.planet}`,
       index: i,
       planet: p.planet,
-      range: range(p.start_date, p.end_date),
+      range: range(p.start_date, p.end_date, anchor),
       categories: p.categories ?? [],
       basis: prettyBasis(p.category_basis),
       current: cursor === i,
@@ -443,9 +484,11 @@ export function dashaAxis(artifact: TimelineArtifact): DashaAxis | null {
 export function antardashaBands(
   artifact: TimelineArtifact,
   mahadashaIndex: number,
+  options: TimelineMaskOptions = {},
 ): DashaBand[] {
   const parent = (artifact.dasha?.periods ?? [])[mahadashaIndex];
   if (!parent) return [];
+  const anchor = options.mask === true ? birthAnchor(artifact) : null;
   const cursor = artifact.cursor?.antardasha_index ?? null;
   const subs = artifact.dasha?.sub_periods ?? [];
   const out: DashaBand[] = [];
@@ -459,7 +502,7 @@ export function antardashaBands(
       id: `ad-${i}-${p.planet}`,
       index: i,
       planet: p.planet,
-      range: range(p.start_date, p.end_date),
+      range: range(p.start_date, p.end_date, anchor),
       categories: p.categories ?? [],
       basis: prettyBasis(p.category_basis),
       current: cursor === i,

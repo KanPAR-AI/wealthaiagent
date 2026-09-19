@@ -45,6 +45,13 @@ export {
   chatMarkdownStyles,
   type MessageBubbleProps,
 } from './message-bubble';
+// The bubble's three text decisions, pure — exported so they can be TESTED
+// (this workspace's jest cannot mount the component that calls them).
+export {
+  applyAssistantOverride,
+  resolveAssistantOverride,
+  resolveUserText,
+} from './bubble-text';
 export { ChatInput, type ChatInputProps } from './chat-input';
 export { BugReportSheet, type BugReportSheetProps } from './bug-report-sheet';
 export {

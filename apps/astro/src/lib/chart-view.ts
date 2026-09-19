@@ -32,7 +32,7 @@
 //     word, including "enemy's sign". Nothing here parses a basis out of
 //     prose, and nothing here prettifies one.
 
-import { formatDegrees, formatIsoDate, modelCells } from '@wealthai/astral';
+import { MASKED_VALUE, formatDegrees, formatIsoDate, modelCells } from '@wealthai/astral';
 import type { DiamondCell } from '@wealthai/astral';
 
 import { staleSentence } from './staleness';
@@ -480,12 +480,42 @@ export interface DashaRow {
  * calendar. This file reads no clock, so it could not make that decision even
  * if it wanted to.
  */
-export function dashaRows(chart: FullChart | undefined): DashaRow[] {
+/**
+ * THE FIRST PERIOD STARTS ON THE BIRTH DATE (owner's lock, 2026-09-19).
+ *
+ * `dasha_periods[0].start_date` IS `birth_data.date_of_birth` — a Vimshottari
+ * table is anchored at birth, and every engine-captured fixture in this repo
+ * agrees. So this table prints the birth date one tab away from the Birth
+ * block that shows it as dots, in the identical notation.
+ *
+ * `mask` hides the START of any period anchored at birth and NOTHING else:
+ * the end date, the planet, the "Now" marker and every other row are
+ * untouched, because none of them is a birth fact. The anchor is decided
+ * STRUCTURALLY from this payload's own `birth_data`; a payload with no birth
+ * data falls back to index 0, which is the same claim stated without a
+ * comparison rather than a guess at one.
+ */
+function birthAnchor(chart: FullChart | undefined): string | null {
+  const declared = chart?.birth_data?.date_of_birth;
+  if (typeof declared === 'string' && declared) return declared;
+  const first = (chart?.dasha_periods ?? [])[0]?.start_date;
+  return typeof first === 'string' && first ? first : null;
+}
+
+export function dashaRows(
+  chart: FullChart | undefined,
+  options: { mask?: boolean } = {},
+): DashaRow[] {
   const current = chart?.mahadasha;
+  const anchor = options.mask === true ? birthAnchor(chart) : null;
   return (chart?.dasha_periods ?? []).map((d) => ({
+    // The React key keeps the ISO date: a key is not rendered and is not
+    // spoken, and changing it would remount every row on unlock.
     id: `${d.planet}-${d.start_date}`,
     planet: d.planet,
-    start: formatIsoDate(d.start_date),
+    start: anchor !== null && d.start_date === anchor
+      ? MASKED_VALUE
+      : formatIsoDate(d.start_date),
     end: formatIsoDate(d.end_date),
     current: !!current && current.planet === d.planet
       && current.start_date === d.start_date,

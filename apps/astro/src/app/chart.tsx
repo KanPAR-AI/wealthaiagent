@@ -48,12 +48,21 @@ import { ChevronLeft, SymbolIcon } from '@/components/glyphs';
 import { SkyDefs, SkyField, Stars } from '@/components/sky';
 import { track } from '@/lib/analytics';
 import { astroChartThemeNight } from '@/lib/chart-theme';
+// Owner 2026-09-19 — the birth-details lock. `maskedChartBirthLines` WRAPS
+// `chart-view`'s `birthLines`, so this screen cannot reach past it to the
+// unmasked builder (`lib/__tests__/birth-privacy-structure.test.ts` pins
+// that it does not).
+import {
+  HIDE_LABEL,
+  REVEAL_LABEL,
+  maskedChartBirthLines,
+  maskedDashaRows,
+} from '@/lib/birth-privacy-view';
+import { useBirthReveal } from '@/lib/use-birth-reveal';
 import {
   absentModels,
-  birthLines,
   headerPeriod,
   columns,
-  dashaRows,
   drawnCharts,
   planetRows,
   registerNotes,
@@ -314,9 +323,13 @@ export default function Chart() {
 
 /** The birth instant AS RECORDED, beside the zone it was pinned to
  *  (ASTRAL-245). Nothing here says a time was rounded, because the record
- *  does not say so. */
+ *  does not say so — and since 2026-09-19 nothing here says WHAT it was
+ *  either, unless the phone has just proved its owner is present. The ZONE
+ *  row survives the mask: it is the frame the instant was pinned to, not the
+ *  instant (`birth-privacy-view.ts`). */
 function BirthBlock({ chart }: { chart: ChartResponse['chart'] | undefined }) {
-  const lines = birthLines(chart);
+  const reveal = useBirthReveal();
+  const lines = maskedChartBirthLines(chart, reveal.revealed);
   if (!lines.length) return null;
   return (
     <View style={s.card}>
@@ -326,6 +339,25 @@ function BirthBlock({ chart }: { chart: ChartResponse['chart'] | undefined }) {
           <Text style={s.kvValue}>{line.value}</Text>
         </View>
       ))}
+      {/* The control, or the sentence that replaces it — never an empty
+          row: `probing` and a withdrawn capability draw nothing at all. */}
+      {reveal.gate.kind === 'available' ? (
+        <View style={s.kv}>
+          <Text style={s.kvLabel} />
+          <Pressable
+            onPress={reveal.revealed ? reveal.hide : reveal.show}
+            accessibilityRole="button"
+            accessibilityLabel={reveal.revealed ? HIDE_LABEL : REVEAL_LABEL}
+            hitSlop={12}
+          >
+            <Text style={s.revealAction}>
+              {reveal.revealed ? HIDE_LABEL : REVEAL_LABEL}
+            </Text>
+          </Pressable>
+        </View>
+      ) : reveal.gate.kind === 'absent' && reveal.gate.sentence ? (
+        <Text style={s.kvNote}>{reveal.gate.sentence}</Text>
+      ) : null}
     </View>
   );
 }
@@ -421,7 +453,11 @@ function GrahasTab({ chart }: { chart: ChartResponse['chart'] | undefined }) {
  *  by the ENGINE from the stored dates, never from `is_current` and never
  *  from this device's clock (ASTRAL-240). */
 function DashaTab({ chart }: { chart: ChartResponse['chart'] | undefined }) {
-  const rows = dashaRows(chart);
+  // The first period STARTS ON THE BIRTH DATE, so this table printed the
+  // date the Birth block one tab away shows as dots — in the same notation.
+  // `maskedDashaRows` hides that one start and nothing else.
+  const reveal = useBirthReveal();
+  const rows = maskedDashaRows(chart, reveal.revealed);
   if (!rows.length) return null;
   return (
     <View style={s.card}>
@@ -555,6 +591,12 @@ const s = StyleSheet.create({
   kv: { flexDirection: 'row', alignItems: 'baseline', gap: t.space(3) },
   kvLabel: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted, width: t.space(14) },
   kvValue: { ...t.type.scale.sub, color: t.palette.ink.onCosmic, flex: 1 },
+  kvNote: { ...t.type.scale.caption, color: t.palette.ink.onCosmicMuted, flex: 1 },
+  revealAction: {
+    ...t.type.scale.caption,
+    color: t.palette.accent.interactive,
+    fontWeight: '600',
+  },
 
   tableHead: {
     flexDirection: 'row',

@@ -3,7 +3,7 @@
  * `format.ts` or is a string the payload already carried (ASTRAL-19).
  */
 
-import { formatDegrees, formatIsoDate } from '../format';
+import { MASKED_VALUE, formatDegrees, formatIsoDate } from '../format';
 import type { DivisionalChart, NatalChartPayload, NatalPlanet } from '../payloads';
 
 /** Same abbreviations as the Kundli PDF (`export_pdf.py:_PLANET_ABBR`). */
@@ -176,17 +176,41 @@ export interface BirthLine {
  * The birth block. NOTE for ASTRAL-63: latitude/longitude are deliberately
  * NOT surfaced here even though the payload ships them — this view model is
  * reused by the share card work, and coordinates must never reach it.
+ *
+ * ── `mask`, and why it is an option rather than a default ─────────────────
+ *
+ * The Astral AI app hides the user's own exact birth date, time and place
+ * unless the phone's owner has just authenticated (owner ruling,
+ * 2026-09-19). That is a property of THAT HOST — a personal app, one
+ * account, a phone somebody else may pick up — and not of this renderer: the
+ * web app's admin surfaces and the AstroMatch extension panel draw charts
+ * the reader supplied moments ago, and hiding them there would be a
+ * different product. So the host asks, the default is today's behaviour, and
+ * the LINES STILL EXIST when masked — a row that vanished would take the
+ * "Time" row with it and make a time-less chart indistinguishable from a
+ * hidden one, which is the absence-kind confusion doctrine 6 forbids.
  */
-export function birthLines(chart: NatalChartPayload): BirthLine[] {
+export interface BirthLinesOptions {
+  /** draw `MASKED_VALUE` in place of the date, the time and the place */
+  mask?: boolean;
+}
+
+export function birthLines(
+  chart: NatalChartPayload,
+  options: BirthLinesOptions = {},
+): BirthLine[] {
   const bd = chart.birth_data;
   if (!bd) return [];
+  const hide = options.mask === true;
   const lines: BirthLine[] = [];
   const date = formatIsoDate(bd.date_of_birth);
-  if (date) lines.push({ label: 'Born', value: date });
+  if (date) lines.push({ label: 'Born', value: hide ? MASKED_VALUE : date });
   if (bd.time_of_birth && chart.time_known) {
-    lines.push({ label: 'Time', value: bd.time_of_birth });
+    lines.push({ label: 'Time', value: hide ? MASKED_VALUE : bd.time_of_birth });
   }
-  if (bd.place_of_birth) lines.push({ label: 'Place', value: bd.place_of_birth });
+  if (bd.place_of_birth) {
+    lines.push({ label: 'Place', value: hide ? MASKED_VALUE : bd.place_of_birth });
+  }
   return lines;
 }
 
@@ -238,13 +262,46 @@ export interface DashaRow {
  */
 export const DASHA_PERIODS_SHOWN = 4;
 
-export function dashaRows(chart: NatalChartPayload): DashaRow[] {
+/**
+ * THE FIRST PERIOD STARTS ON THE BIRTH DATE.
+ *
+ * A Vimshottari table is anchored at birth, so `dasha_periods[0].start_date`
+ * IS `birth_data.date_of_birth` — verified on every engine-captured fixture
+ * in this repo. A dasha table is therefore a second way to print the birth
+ * date, and it slips past a mask applied only to the birth block: the card
+ * showed `Born ••••••` two rows above `Venus <their birth date> – 28 Jan
+ * 2000`.
+ *
+ * Normally the table is sliced from the CURRENT period, so row 0 is not on
+ * screen — but `currentIndex === -1 ? 0` puts it there whenever the artifact
+ * carries no `is_current` (a legacy chart, or one cast in the future), and a
+ * native still inside their first mahadasha sees it by construction.
+ *
+ * The test is STRUCTURAL and stays inside one payload: a start equal to the
+ * chart's own `birth_data.date_of_birth`. When the payload carries no birth
+ * data to compare against, index 0 is masked on the rule above rather than
+ * on a guess.
+ */
+function birthAnchor(chart: NatalChartPayload): string | null {
+  const declared = chart.birth_data?.date_of_birth;
+  if (typeof declared === 'string' && declared) return declared;
+  const first = chart.dasha_periods[0]?.start_date;
+  return typeof first === 'string' && first ? first : null;
+}
+
+export function dashaRows(
+  chart: NatalChartPayload,
+  options: BirthLinesOptions = {},
+): DashaRow[] {
   const periods = chart.dasha_periods;
   const currentIndex = periods.findIndex((d) => d.is_current);
   const from = currentIndex === -1 ? 0 : currentIndex;
+  const anchor = options.mask === true ? birthAnchor(chart) : null;
   return periods.slice(from, from + DASHA_PERIODS_SHOWN).map((d) => ({
     planet: d.planet,
-    start: formatIsoDate(d.start_date),
+    start: anchor !== null && d.start_date === anchor
+      ? MASKED_VALUE
+      : formatIsoDate(d.start_date),
     end: formatIsoDate(d.end_date),
     isCurrent: d.is_current,
   }));
