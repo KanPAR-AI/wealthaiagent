@@ -361,3 +361,33 @@ describe('ASTRAL-231 — divisional charts, the node model and the engine', () =
     expect(parseNatalChart(payload)!.divisional_charts[0].cells).toBeNull();
   });
 });
+
+describe('the kundali card in CHAT carries all three charts (owner, 2026-09-19)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const block = require('./fixtures/natal_chart_block.json');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { extraModels } = require('../components/natal-chart');
+
+  it('the engine-captured block has D1, the Moon chart and D9', () => {
+    const chart = parseNatalChart(block)!;
+    expect(chart.divisional_charts.map((m) => m.key)).toEqual(['D1', 'MOON', 'D9']);
+  });
+
+  it('the Moon chart and D9 are drawn after the lagna chart, in that order, each from its own model', () => {
+    const chart = parseNatalChart(block)!;
+    const extra = extraModels(chart);
+    expect(extra.map((m: { key: string }) => m.key)).toEqual(['MOON', 'D9']);
+    // by VALUE against the wire — the model drawn is the engine's, untouched
+    const wire = chart.divisional_charts;
+    expect(extra[0]).toBe(wire.find((m) => m.key === 'MOON'));
+    expect(extra[1]).toBe(wire.find((m) => m.key === 'D9'));
+    expect(extra[0].title).toBeTruthy();
+  });
+
+  it('a payload without the models draws no extra chart, and a time-less chart has none', () => {
+    const chart = parseNatalChart(block)!;
+    expect(extraModels({ ...chart, divisional_charts: [] })).toEqual([]);
+    const timeless = parseNatalChart({ ...block, time_known: false });
+    expect(timeless ? extraModels(timeless) : []).toEqual([]);
+  });
+});

@@ -55,6 +55,14 @@ const WHEEL_PADDING = 32;
 /** vertical step between two grahas sharing a house, in viewBox units */
 const GRAHA_LINE_HEIGHT = 4.8;
 
+/** The calculated charts to draw AFTER the lagna chart, in the engine's
+ *  declared order: the Moon chart, then D9. D1 is the first wheel already. */
+export function extraModels(chart: NatalChartPayload): DivisionalChart[] {
+  const order = ['MOON', 'D9'];
+  const byKey = new Map((chart.divisional_charts ?? []).map((m) => [String(m.key), m]));
+  return order.map((k) => byKey.get(k)).filter((m): m is DivisionalChart => !!m);
+}
+
 export function NatalChartView(props: NatalChartViewProps): ReactNode {
   const { ui, theme, width, chart } = props;
   const { Box, Text } = ui;
@@ -102,7 +110,27 @@ export function NatalChartView(props: NatalChartViewProps): ReactNode {
       ) : null}
 
       {chart.time_known ? (
-        <Wheel {...props} />
+        <>
+          <Wheel {...props} />
+          {/* Owner, 2026-09-19: "why does the kundali not contain all three…
+              we already did that feature parity". The engine has sent D1, the
+              Moon chart and D9 on this block since ASTRAL-234 and the Chart
+              screen draws all three; the card in CHAT drew one. The first
+              wheel above IS the lagna chart, so the other two follow it —
+              each from ITS OWN model, by the same Wheel, under the engine's
+              own title. Nothing is derived here: a model the payload does not
+              carry is simply not drawn. */}
+          {!props.model
+            ? extraModels(chart).map((m) => (
+                <Box key={m.key} testID={`astral-natal-model-${m.key}`} style={{ gap: 6 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text }}>
+                    {m.title}
+                  </Text>
+                  <Wheel {...props} model={m} />
+                </Box>
+              ))
+            : null}
+        </>
       ) : (
         <Box
           testID="astral-natal-no-time"
