@@ -135,6 +135,23 @@ const ASK_FIRM_ONLY = 'Add their birth time to score the rest';
 const ASK_REFUSED = 'Add a birth time to score this match';
 
 /**
+ * Whether the SERVER says nothing the user can add would change a refusal.
+ *
+ * `ask: null` — the key PRESENT and null — is the engine's answer for a pair
+ * it will not match at all (a child, blood kin: docs/76a P0-B, bug
+ * `251d5cf6`). This screen offered "Add a birth time to score this match"
+ * under that refusal, and no birth time changes who somebody's son is. A
+ * record written before the field existed carries no key, and keeps the ask
+ * it always had; a string means the engine is asking. The client decides
+ * none of the three (doctrine 9) — it only stops overriding the first.
+ */
+export function refusalOffersNothing(
+  refusal: Record<string, unknown> | null | undefined,
+): boolean {
+  return !!refusal && 'ask' in refusal && refusal.ask === null;
+}
+
+/**
  * Freshness, said only when there is something to say — and it NAMES NO
  * CAUSE (docs/73 PH-41 FLAG-2, ASTRAL-238's rule applied to matches).
  *
@@ -212,7 +229,9 @@ function rowView(row: MatchRow, index: number, section: MatchGroup): MatchRowVie
     // The ask goes where a birth time is what would change the answer: on a
     // refusal, and on a partly-scored row. Never on a complete one, which
     // has nothing left to unlock.
-    ask: refusal ? ASK_REFUSED : isFirmOnly(row.score) ? ASK_FIRM_ONLY : null,
+    ask: refusal
+      ? (refusalOffersNothing(row.refusal) ? null : ASK_REFUSED)
+      : isFirmOnly(row.score) ? ASK_FIRM_ONLY : null,
     leading: leadingView(row),
   };
 }

@@ -27,6 +27,7 @@ import {
 } from '@wealthai/astral';
 import type { MatchReportPayload } from '@wealthai/astral';
 
+import { refusalOffersNothing } from './matches-view';
 import type { MatchDetail } from './people-shapes';
 
 export type MatchDetailState = 'ready' | 'refused' | 'empty';
@@ -49,6 +50,10 @@ const SCALES: Record<string, string> = {
   refused: 'Not scored — a birth time is missing on one side',
 };
 
+/** The server's own list header for the same case reads "Not scored — each
+ *  row says why"; on a screen of ONE match the row is the sentence below. */
+const SCALE_REFUSED_NO_CAUSE = 'Not scored';
+
 export function detailState(detail: MatchDetail | null): MatchDetailState {
   if (!detail) return 'empty';
   if (detail.report) return 'ready';
@@ -58,7 +63,13 @@ export function detailState(detail: MatchDetail | null): MatchDetailState {
 export function header(detail: MatchDetail): MatchHeader {
   return {
     name: detail.display_name || 'This match',
-    scale: SCALES[String(detail.group)] ?? '',
+    // The `refused` line NAMES A CAUSE — a missing birth time — and a pair
+    // the engine will not match at all has nothing to do with one. The
+    // kinds of absence are not interchangeable (doctrine 6): that refusal
+    // gets the causeless line, and its own sentence says why, just below.
+    scale: refusalOffersNothing(detail.refusal)
+      ? SCALE_REFUSED_NO_CAUSE
+      : (SCALES[String(detail.group)] ?? ''),
     computed: detail.computed_at
       ? formatIsoDate(String(detail.computed_at).slice(0, 10))
       : null,

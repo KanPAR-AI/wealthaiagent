@@ -1,0 +1,9 @@
+{
+  "_captured": "services/people/matches.milan_refusal at chatservice 3277c61, over the synthetic cast (the account holder and his minor son Kabir), 2026-09-20. Engine output, not hand-written.",
+  "refusal": {
+    "reason": "Kundli Milan is a marriage-matching count, so I don't compute it for family. I can read each of them, and what the sky holds for both.",
+    "ask": null,
+    "code": "milan_refused:blood_kin",
+    "sentence": "Kundli Milan is a marriage-matching count, so I don't compute it for family. I can read each of them, and what the sky holds for both."
+  }
+}

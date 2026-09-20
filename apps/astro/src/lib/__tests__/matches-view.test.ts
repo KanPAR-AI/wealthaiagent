@@ -7,10 +7,14 @@
  * Relative imports on purpose (see `settings-rows.test.ts`).
  */
 
+import fs from 'fs';
+import path from 'path';
+
 import type { MatchGroup, MatchRow, MatchesResponse } from '../people-shapes';
 import {
   askAboutTurn,
   isEmpty,
+  refusalOffersNothing,
   removeMatchConfirmation,
   removeTarget,
   sections,
@@ -249,6 +253,50 @@ describe('ASTRAL-144 — a refusal is a row, not an omission', () => {
 
   it('offers the ask that would resolve it', () => {
     expect(sections(response({ refused: [refusedRow()] }))[0].rows[0].ask).toContain('birth time');
+  });
+
+  // docs/76a P0-B, bug 251d5cf6. The engine refuses a Kundli Milan for a
+  // child or blood kin and sends `ask: null` — nothing the user can type
+  // changes who their son is. This screen printed "Add a birth time to score
+  // this match" under that sentence anyway: the client overriding the
+  // server's word (doctrine 9). MUTATION: drop `refusalOffersNothing` from
+  // `rowView` → the first assertion reds.
+  describe('a pair the engine will not match at all', () => {
+    const KIN = JSON.parse(fs.readFileSync(
+      path.join(__dirname, 'fixtures', 'kin_refusal.json'), 'utf8')).refusal;
+
+    it('offers NO birth-time ask, and keeps the engine sentence whole', () => {
+      const kin = sections(response({
+        refused: [refusedRow({ display_name: 'Kabir', refusal: KIN })],
+      }))[0].rows[0];
+      expect(kin.ask).toBeNull();
+      expect(kin.refusal).toContain("I don't compute it for family");
+      expect(JSON.stringify(kin)).not.toMatch(/birth time/i);
+    });
+
+    it('a record with NO ask key keeps the ask it always had', () => {
+      // written before the field existed: absence is not the server's "no"
+      const legacy = sections(response({
+        refused: [refusedRow({ refusal: { reason: 'Her Moon crosses a rashi boundary.' } })],
+      }))[0].rows[0];
+      expect(legacy.ask).toContain('birth time');
+    });
+
+    it('an ask the engine DOES make keeps the ask', () => {
+      const asked = sections(response({
+        refused: [refusedRow({ refusal: { reason: 'x', ask: "Add a birth time and I'll score this match." } })],
+      }))[0].rows[0];
+      expect(asked.ask).toContain('birth time');
+    });
+
+    it('reads null — and only null — as nothing on offer', () => {
+      expect(refusalOffersNothing(KIN)).toBe(true);
+      expect(refusalOffersNothing({ reason: 'x' })).toBe(false);
+      expect(refusalOffersNothing({ reason: 'x', ask: '' })).toBe(false);
+      expect(refusalOffersNothing({ reason: 'x', ask: undefined })).toBe(false);
+      expect(refusalOffersNothing(undefined)).toBe(false);
+      expect(refusalOffersNothing(null)).toBe(false);
+    });
   });
 
   it('does not invent a reason when the server stored none', () => {

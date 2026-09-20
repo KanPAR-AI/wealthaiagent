@@ -116,6 +116,31 @@ describe('ASTRAL-241 — what the surface may not do', () => {
     expect(refusal(refused)!.ask).toBeTruthy();
   });
 
+  it('a pair the engine will not match names NO birth time anywhere', () => {
+    // docs/76a P0-B, bug 251d5cf6 — the engine's own payload, captured. The
+    // header said "a birth time is missing on one side" above a sentence
+    // about family: a cause the payload never gave. MUTATION: return
+    // SCALES[group] unconditionally from `header` → the scale assertion reds.
+    const KIN = JSON.parse(fs.readFileSync(
+      path.join(__dirname, 'fixtures', 'kin_refusal.json'), 'utf8')).refusal;
+    const kin: MatchDetail = {
+      ...DETAIL, display_name: 'Kabir', group: 'refused',
+      report: undefined, refusal: KIN,
+    };
+    expect(detailState(kin)).toBe('refused');
+    expect(header(kin).scale).toBe('Not scored');
+    expect(refusal(kin)!.reason).toContain("I don't compute it for family");
+    expect(refusal(kin)!.ask).toBeNull();
+    expect(JSON.stringify([header(kin), refusal(kin)])).not.toMatch(/birth time/i);
+    // …and the refusal that IS about a birth time keeps its line, byte for byte
+    const timed: MatchDetail = {
+      ...DETAIL, group: 'refused', report: undefined,
+      refusal: { reason: 'her Moon could be in either of two rashis',
+                 ask: 'Do you know her birth time?' },
+    };
+    expect(header(timed).scale).toBe('Not scored — a birth time is missing on one side');
+  });
+
   it('a stale match keeps its numbers and says so — NAMING NO CAUSE', () => {
     // RE-POINTED, deliberately (docs/73 PH-41 FLAG-2). This asserted the
     // words "these numbers are the ones it was scored with" under a sentence
