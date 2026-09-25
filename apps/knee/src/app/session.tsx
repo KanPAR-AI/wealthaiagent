@@ -9,8 +9,9 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Speech from 'expo-speech';
+import { useKeepAwake } from 'expo-keep-awake';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useEventListener } from 'expo';
@@ -55,6 +56,17 @@ export default function Session() {
   const recipe = (params.recipe ?? 'full') as RecipeId;
   const customNames = (params.names ?? '').split('|').filter(Boolean);
   const lang = getLang();
+
+  // THE SCREEN MUST NOT SLEEP DURING A WORKOUT.
+  // Measured (owner's returning user, 2026-09-21 and 09-25): he stopped at
+  // exercise 5 of 15 TWICE, ~4 and ~8 minutes spent on an exercise dosed for
+  // 100 seconds, then discarded and immediately restarted. #5 is `bridges` —
+  // the first exercise in the plan you do LYING ON YOUR BACK, so the phone
+  // goes down, the screen locks, and JS timers stop: the voice counting dies
+  // and the session never advances. Nothing errored, so nothing was reported.
+  // expo-keep-awake ships inside expo core (ExpoKeepAwake 57.0.1 is in the
+  // TestFlight Podfile.lock), so this is JS-only and OTA-safe.
+  useKeepAwake();
 
   useEffect(() => { track('session_start', { phase, recipe }); }, [phase, recipe]);
 
@@ -223,6 +235,19 @@ export default function Session() {
   const pauseRef = useRef(pause);
   pauseRef.current = pause;
   useFocusEffect(useCallback(() => () => { pauseRef.current(); }, []));
+
+  // The belt to keep-awake's braces: a power-button press or an incoming call
+  // still backgrounds the app, and JS timers do not survive that. Pausing on
+  // the way out means the user returns to "Paused - tap to resume" (a state
+  // the screen already renders) instead of a session frozen mid-exercise with
+  // no way to tell it is dead.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st: string) => {
+      if (st !== 'active') pauseRef.current();
+    });
+    return () => sub.remove();
+  }, []);
+
 
   /** Announce exercise i, then start its first set after the beat. */
   const announce = useCallback((i: number) => {
