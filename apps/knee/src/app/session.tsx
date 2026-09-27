@@ -11,7 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Speech from 'expo-speech';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, BackHandler, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useEventListener } from 'expo';
@@ -23,10 +23,21 @@ import { setPendingCoachPrompt } from '@/lib/chat-session';
 import {
   completionAction,
   exercisesDone,
+  exitHeadlineKey,
+  exitPromptKind,
+  exitQuietKey,
   isAnonymous,
   promptNext,
   type PromptPhase,
 } from '@/lib/completion-view';
+import { askIfDue, recordRating, seedFirstSeen } from '@/lib/rating-store';
+import {
+  RATING_CHOICES,
+  ratingLabelKey,
+  ratingNext,
+  type RatingPhase,
+  type RatingScore,
+} from '@/lib/rating-view';
 import { getLang, speechLocale, t, type Lang } from '@/lib/i18n';
 import { useCachingFor } from '@/lib/player-view';
 import { track } from '@/lib/telemetry';
@@ -36,6 +47,7 @@ import {
   buildPlan,
   doseLabel,
   localDate,
+  remainingMinutes,
   setCues,
   spokenNumber,
   type RecipeId,
@@ -83,6 +95,14 @@ export default function Session() {
   const [streak, setStreak] = useState<number | null>(null);
   const [exitPhase, setExitPhase] = useState<PromptPhase | null>(null);
   const [exitError, setExitError] = useState(false);
+  // ── the periodic improvement question (owner ask 2026-09-27) ──
+  // Summary-only by construction: nothing here is reachable while the runner
+  // is on screen, and the cadence (rating-view) is asked once per completion.
+  // One phase, not two booleans: `ratingNext` owns the legal moves and the
+  // stamp rides the ONE transition into 'asking' (review finding B3).
+  const [ratingPhase, setRatingPhase] = useState<RatingPhase>('hidden');
+  const ratingFirstSeen = useRef<string | null>(null);
+  const ratingChecked = useRef(false);
   const [account, setAccount] = useState<Account | null>(null);
   useEffect(() => subscribeToAccount(setAccount), []);
   /** what a successful recordSession actually wrote — the pain check-in
@@ -299,6 +319,11 @@ export default function Session() {
     });
     recordedMeta.current = { names, done };
     setStreak(res.streak_days);
+    // Day 1 of the improvement cadence belongs to the SERVER's history, not to
+    // the day this build first ran (review finding B4). Awaited so the rating
+    // effect below — which runs once recordPhase flips to 'saved' — reads the
+    // corrected date and never a stale install date.
+    await seedFirstSeen(res.first_session_date);
     return res;
   };
 
@@ -360,6 +385,41 @@ export default function Session() {
     }
   };
 
+  // Ask at most once per completion, and only once the day is actually
+  // recorded — a question about a session that failed to save is noise.
+  useEffect(() => {
+    if (!finished || recordPhase !== 'saved' || ratingChecked.current) return;
+    ratingChecked.current = true;
+    void (async () => {
+      // ASKED MEANS ASKED (review finding B3): `askIfDue` stamps the date as
+      // part of saying yes, so this screen has no stamp to forget. It used to
+      // be written by the two answer handlers only — a user who read the
+      // question and tapped Done stamped nothing and was asked again by the
+      // next recorded session, an hour later on the same evening.
+      const { ask, firstSeen } = await askIfDue(localDate());
+      if (!ask) return;
+      const next = ratingNext('hidden', 'ask');
+      if (next === null) return;
+      ratingFirstSeen.current = firstSeen;
+      setRatingPhase(next);
+    })();
+  }, [finished, recordPhase]);
+
+  const answerRating = (score: RatingScore) => {
+    const next = ratingNext(ratingPhase, 'answer');
+    if (next === null) return;          // one answer per window — the machine refused
+    setRatingPhase(next);
+    void recordRating(score, localDate(), ratingFirstSeen.current);
+  };
+
+  /** "Not now" closes the window for this one — nothing more to stamp, the ask
+   *  itself already did that, which is what makes a decline a real deferral. */
+  const deferRating = () => {
+    const next = ratingNext(ratingPhase, 'defer');
+    if (next === null) return;
+    setRatingPhase(next);
+  };
+
   const closeAll = () => {
     clearTimers();
     Speech.stop();
@@ -376,9 +436,13 @@ export default function Session() {
     // machine-owns-it guard below and stays a no-op.
     if (finished || !plan) { closeAll(); return; }
     if (exitPhase !== null) return;   // card already up — the machine owns it
-    const action = completionAction(index, plan.exercises.length,
+    // Remind on ANY unfinished exit, not only a saveable one (review finding
+    // B2): quitting at exercise 1 or 2 used to close the screen in silence, and
+    // that is the earliest and largest drop-off. Whether a SAVE is offered is
+    // still MIN_PARTIAL_EXERCISES's call, inside exitPromptKind.
+    const kind = exitPromptKind(index, plan.exercises.length,
       recordedMeta.current !== null);
-    if (action !== 'prompt') { closeAll(); return; }
+    if (kind === 'none') { closeAll(); return; }
     pause();                 // halt cues, voice and video under the card
     setExitError(false);
     setExitPhase('open');
@@ -406,12 +470,35 @@ export default function Session() {
     }
   };
 
+  /** The card's PRIMARY action: stay in the session. Nothing is recorded and
+   *  nothing is lost — `resume()` picks the current set up where pause() left
+   *  it, which is why the card pauses rather than tearing the session down. */
+  const keepGoing = () => {
+    if (!plan || !exitPhase) return;
+    const next = promptNext(exitPhase, 'keep_going_tap');
+    if (next === null) return;          // a Keep going mid-save is refused
+    track('session_keep_going', {
+      done: index, total: plan.exercises.length, phase, recipe,
+      // which card they stayed on — the 1–2 exercise reminder is the one B2
+      // added, and it needs its own line in the funnel.
+      kind: exitPromptKind(index, plan.exercises.length, recordedMeta.current !== null),
+    });
+    setExitError(false);
+    setExitPhase(null);   // 'resumed' is terminal — the card is simply gone
+    resume();
+  };
+
   const discardAndExit = () => {
     if (!plan || !exitPhase) return;
     const next = promptNext(exitPhase, 'discard_tap');
     if (next === null) return;          // a Discard mid-save is refused
     setExitPhase(next);
-    track('session_discarded', { done: index, total: plan.exercises.length, phase, recipe });
+    track('session_discarded', {
+      done: index, total: plan.exercises.length, phase, recipe,
+      // same key as session_keep_going, so the two sides of the reminder can be
+      // read against each other — including B2's new 1–2 exercise card.
+      kind: exitPromptKind(index, plan.exercises.length, recordedMeta.current !== null),
+    });
     closeAll();
   };
 
@@ -420,7 +507,13 @@ export default function Session() {
       <View style={s.fillLight}>
         <StatusBar style="dark" />
         <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-          <View style={s.completeBody}>
+          {/* Scrollable since the improvement question joined the summary: on a
+              small phone the ring + streak + pain row + four rating buttons +
+              the guest nudge no longer fit, and the Done button being pushed
+              off-screen is the one thing this screen must never do.
+              flexGrow keeps a SHORT summary vertically centred as before. */}
+          <ScrollView contentContainerStyle={s.completeBody}
+                      showsVerticalScrollIndicator={false}>
             <View style={s.ring}>
               <Svg width={56} height={56} viewBox="0 0 56 56" fill="none">
                 <Path d="M14 30 24 40 43 18" stroke={tk.palette.success}
@@ -456,6 +549,29 @@ export default function Session() {
             ) : painSent ? (
               <Text style={s.savedText}>✓</Text>
             ) : null}
+            {/* The improvement question — every few days, HERE and nowhere
+                else: a workout is never interrupted to ask it. */}
+            {ratingPhase === 'asking' || ratingPhase === 'answered' ? (
+              <View style={s.ratingBlock}>
+                {ratingPhase === 'answered' ? (
+                  <Text style={s.ratingThanks}>{t('rating.thanks', lang)}</Text>
+                ) : (
+                  <>
+                    <Text style={s.painQ}>{t('rating.q', lang)}</Text>
+                    {RATING_CHOICES.map((score) => (
+                      <Pressable key={score} onPress={() => answerRating(score)}
+                        accessibilityRole="button" style={s.ratingBtn}>
+                        <Text style={s.ratingText}>{t(ratingLabelKey(score), lang)}</Text>
+                      </Pressable>
+                    ))}
+                    <Pressable onPress={deferRating} accessibilityRole="button"
+                      style={s.promptQuiet} hitSlop={8}>
+                      <Text style={s.promptQuietText}>{t('rating.later', lang)}</Text>
+                    </Pressable>
+                  </>
+                )}
+              </View>
+            ) : null}
             {streak !== null && isAnonymous(account) ? (
               <View style={s.nudgeCard}>
                 <Text style={s.nudgeText}>{t('session.nudgeBody', lang)}</Text>
@@ -472,7 +588,7 @@ export default function Session() {
             <Pressable onPress={closeAll} accessibilityRole="button" style={s.doneBtn}>
               <Text style={s.doneBtnText}>{t('session.doneBtn', lang)}</Text>
             </Pressable>
-          </View>
+          </ScrollView>
         </SafeAreaView>
       </View>
     );
@@ -617,31 +733,56 @@ export default function Session() {
         </View>
       </SafeAreaView>
 
-      {/* the early-exit confirm card — "You did N of M — save this session?" */}
-      {exitPhase !== null && plan ? (
+      {/* The early-exit card. It used to ask one thing — "save this session?" —
+          which quietly accepted that the user was leaving. The owner's ask
+          (2026-09-27) reverses the emphasis: REMIND THEM TO FINISH first, with
+          the honest cost of finishing (remainingMinutes over the plan's own
+          doses), then save, then discard. */}
+      {exitPhase !== null && plan ? (() => {
+        const minsLeft = remainingMinutes(plan, index);
+        // Recomputed rather than stored: the card only opens while PAUSED, so
+        // `index` cannot move under it. 'none' cannot reach here (a recorded
+        // save lands on the summary), and if it ever did, reminder-only is the
+        // safe read — it offers no save.
+        const kind = exitPromptKind(index, plan.exercises.length,
+          recordedMeta.current !== null);
+        const offerSave = kind === 'remind_and_save';
+        return (
         <View style={s.scrim} pointerEvents="auto">
           <View style={s.promptCard}>
             <Text style={s.promptTitle}>
-              {t('session.partialQ', lang)
+              {t(exitHeadlineKey(minsLeft), lang)
                 .replace('{done}', String(index))
-                .replace('{total}', String(plan.exercises.length))}
+                .replace('{total}', String(plan.exercises.length))
+                .replace('{mins}', String(minsLeft))}
             </Text>
+            <Text style={s.promptBody}>{t('session.keepGoingBody', lang)}</Text>
             {exitError ? (
               <Text style={s.promptErr}>{t('session.saveFailed', lang)}</Text>
             ) : null}
-            <Pressable onPress={() => void saveAndExit()} accessibilityRole="button"
+            <Pressable onPress={keepGoing} accessibilityRole="button"
               style={s.promptPrimary}>
-              {exitPhase === 'saving'
-                ? <ActivityIndicator color={tk.palette.accent.interactiveInk} />
-                : <Text style={s.promptPrimaryText}>{t('session.saveExit', lang)}</Text>}
+              <Text style={s.promptPrimaryText}>{t('session.keepGoing', lang)}</Text>
             </Pressable>
+            {/* No save below MIN_PARTIAL_EXERCISES: one exercise is not a
+                day's work, and offering to record it would undo the gate that
+                keeps the streak honest. The reminder is the whole card then. */}
+            {offerSave ? (
+              <Pressable onPress={() => void saveAndExit()} accessibilityRole="button"
+                style={s.promptSecondary}>
+                {exitPhase === 'saving'
+                  ? <ActivityIndicator color={tk.palette.ink.primary} />
+                  : <Text style={s.promptSecondaryText}>{t('session.saveExit', lang)}</Text>}
+              </Pressable>
+            ) : null}
             <Pressable onPress={discardAndExit} accessibilityRole="button"
               style={s.promptQuiet} hitSlop={8}>
-              <Text style={s.promptQuietText}>{t('session.discard', lang)}</Text>
+              <Text style={s.promptQuietText}>{t(exitQuietKey(kind), lang)}</Text>
             </Pressable>
           </View>
         </View>
-      ) : null}
+        );
+      })() : null}
     </View>
   );
 }
@@ -716,7 +857,7 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   watchText: { ...tk.type.scale.label, color: '#F7F5F0' },
-  completeBody: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: tk.space(8), gap: tk.space(4) },
+  completeBody: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: tk.space(8), gap: tk.space(4) },
   ring: {
     width: 120, height: 120, borderRadius: 60,
     borderWidth: 10, borderColor: tk.palette.success,
@@ -761,6 +902,25 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   promptPrimaryText: { ...tk.type.scale.label, color: tk.palette.accent.interactiveInk },
+  promptBody: { ...tk.type.scale.sub, color: tk.palette.ink.secondary },
+  // Save & exit demoted to an outlined secondary: still a full-width 52pt
+  // target (it is not a trap), just no longer the loudest thing on the card.
+  promptSecondary: {
+    minHeight: 52, borderRadius: 14, borderWidth: 1.5,
+    borderColor: tk.palette.paper.line,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  promptSecondaryText: { ...tk.type.scale.label, color: tk.palette.ink.primary },
+  // the improvement question, on the summary only
+  ratingBlock: { width: '100%', gap: tk.space(2), marginTop: tk.space(2) },
+  ratingBtn: {
+    minHeight: 48, borderRadius: 14, borderWidth: 1,
+    borderColor: tk.palette.paper.line,
+    backgroundColor: tk.palette.paper.card,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  ratingText: { ...tk.type.scale.body, color: tk.palette.ink.primary, fontWeight: '700' },
+  ratingThanks: { ...tk.type.scale.body, color: tk.palette.ink.secondary, textAlign: 'center' },
   promptQuiet: { alignItems: 'center', minHeight: 44, justifyContent: 'center' },
   promptQuietText: { ...tk.type.scale.sub, color: tk.palette.ink.muted, fontWeight: '700' },
   // streak — the number the whole mechanic exists for, shown big

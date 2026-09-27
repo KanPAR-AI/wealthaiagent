@@ -14,7 +14,8 @@ import { fetchPhase, fetchProgress } from '@/lib/api';
 import { CAPABILITIES } from '@/lib/capabilities';
 import { getLang, subscribeLang, t } from '@/lib/i18n';
 import type { WirePhaseDetail } from '@/lib/library-view';
-import { buildCustomPlan, buildPlan, localDate, nearDuplicateWarnings, type RecipeId } from '@/lib/session-view';
+import { seedFirstSeen } from '@/lib/rating-store';
+import { buildCustomPlan, buildPlan, localDate, nearDuplicateWarnings, recipeNote, type RecipeId } from '@/lib/session-view';
 import { phaseColor, tokens as tk } from '@/theme';
 
 // The user's current phase, chosen HERE and remembered on-device (owner:
@@ -54,6 +55,11 @@ export default function Today() {
       ]);
       setDetail(d);
       setTodayDone(p.today_done);
+      // Day 1 of the improvement cadence is the server's first recorded
+      // session, not the day this build first ran (review finding B4). Seeded
+      // here too so a returning user is on the right day before he records
+      // anything at all. Fire-and-forget: it only ever moves day 1 earlier.
+      void seedFirstSeen(p.first_session_date);
       setError(null);
     } catch (e: any) {
       setError(String(e?.message ?? e));
@@ -161,6 +167,15 @@ export default function Today() {
         {card('gentle', t('today.gentle', lang), t('today.gentleSub', lang))}
         {card('custom', t('today.custom', lang), t('today.customSub', lang))}
 
+        {/* One quiet line when the pick is not the full session (owner ask
+            2026-09-27: "if they are choosing the shorter version remind them
+            they wont be able to take full benefit"). Which note — and whether
+            there is one at all — is recipeNote's call, not this screen's. */}
+        {(() => {
+          const note = recipeNote(recipe);
+          return note ? <Text style={s.note}>{t(note, lang)}</Text> : null;
+        })()}
+
         {/* The design's "Build my own from the library": tapping the custom
             card opens the phase's playable exercises as toggle rows —
             selection never reorders; the program's order is kept. */}
@@ -234,6 +249,12 @@ const s = StyleSheet.create({
   },
   doneText: { ...tk.type.scale.body, color: tk.palette.ink.secondary, fontWeight: '700' },
   error: { ...tk.type.scale.sub, color: tk.palette.danger },
+  // quiet, not a warning: the ochre banner above is for a collision the user
+  // should act on; this is a note about a choice that is already legitimate.
+  note: {
+    ...tk.type.scale.sub, color: tk.palette.ink.muted,
+    paddingHorizontal: tk.space(1), marginTop: -tk.space(1),
+  },
   phaseLink: { alignSelf: 'flex-start', paddingVertical: tk.space(1) },
   phaseLinkTxt: { ...tk.type.scale.sub, color: tk.palette.accent.interactive, fontWeight: '700' },
   // caution, not alarm: a warm ochre banner (red is reserved for pain, green

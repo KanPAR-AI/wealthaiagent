@@ -8,6 +8,9 @@ import {
   MIN_PARTIAL_EXERCISES,
   completionAction,
   exercisesDone,
+  exitHeadlineKey,
+  exitPromptKind,
+  exitQuietKey,
   isAnonymous,
   promptNext,
 } from '../completion-view';
@@ -103,6 +106,48 @@ describe('promptNext — the exit prompt machine', () => {
   });
 });
 
+// ── SLICE 1: the card leads with finishing ─────────────────────────────────
+//
+// Owner ask 2026-09-27 ("if user are exiting before completing the full
+// exercise remind them again"). Continuing became a third outcome, and it must
+// be as un-doubleable as save and discard.
+
+describe('promptNext — Keep going is the third outcome', () => {
+  it('open → resumed on Keep going', () => {
+    expect(promptNext('open', 'keep_going_tap')).toBe('resumed');
+  });
+
+  it('DOUBLE-TAP GUARD: Keep going mid-save is refused — one outcome per prompt', () => {
+    expect(promptNext('saving', 'keep_going_tap')).toBeNull();
+  });
+
+  it('resumed is terminal — no event revives the card', () => {
+    for (const ev of ['save_tap', 'save_ok', 'save_fail', 'discard_tap',
+                      'keep_going_tap'] as const) {
+      expect(promptNext('resumed', ev)).toBeNull();
+    }
+  });
+
+  it('the older terminals still refuse Keep going', () => {
+    expect(promptNext('saved', 'keep_going_tap')).toBeNull();
+    expect(promptNext('discarded', 'keep_going_tap')).toBeNull();
+  });
+});
+
+describe('exitHeadlineKey — never promise a time we do not have', () => {
+  it('a real remainder leads with progress and minutes left', () => {
+    expect(exitHeadlineKey(7)).toBe('session.keepGoingQ');
+    expect(exitHeadlineKey(1)).toBe('session.keepGoingQ');
+  });
+
+  it('no honest remainder falls back to the old save question', () => {
+    // remainingMinutes returns 0 rather than inventing a number; 0 must never
+    // render as "about 0 minutes left".
+    expect(exitHeadlineKey(0)).toBe('session.partialQ');
+    expect(exitHeadlineKey(-1)).toBe('session.partialQ');
+  });
+});
+
 describe('isAnonymous — the nudge gate', () => {
   it('a guest (Firebase-anonymous, no providers) = nudge', () => {
     expect(isAnonymous({ anonymous: true, providers: [] })).toBe(true);
@@ -127,5 +172,58 @@ describe('isAnonymous — the nudge gate', () => {
   it('account not yet known = no nudge (never nag a maybe-linked user)', () => {
     expect(isAnonymous(null)).toBe(false);
     expect(isAnonymous(undefined)).toBe(false);
+  });
+});
+
+
+describe('exitPromptKind — REMIND on any unfinished exit, save only if it is worth saving', () => {
+  // Review finding B2 (2026-09-27): the card was gated on completionAction ===
+  // 'prompt', i.e. on MIN_PARTIAL_EXERCISES, so leaving at exercise 1 or 2 shut
+  // the screen in silence — the earliest and largest drop-off, and the exact
+  // thing the owner's ask names ("if user are exiting before completing the full
+  // exercise remind them again"). Two questions, two answers.
+
+  it('exercise 1 of 15 STILL GETS A REMINDER — the B2 bug', () => {
+    expect(exitPromptKind(1, 15, false)).toBe('remind_only');
+    expect(exitPromptKind(2, 15, false)).toBe('remind_only');
+  });
+
+  it('and that reminder offers NO save — one exercise is not a day\'s work', () => {
+    // MIN_PARTIAL_EXERCISES keeps its original job; it just no longer decides
+    // whether we speak at all.
+    expect(completionAction(1, 15, false)).toBe('none');
+    expect(exitQuietKey(exitPromptKind(1, 15, false))).toBe('session.exitAnyway');
+  });
+
+  it('a saveable partial reminds AND offers the save', () => {
+    expect(exitPromptKind(MIN_PARTIAL_EXERCISES, 15, false)).toBe('remind_and_save');
+    expect(exitPromptKind(5, 15, false)).toBe('remind_and_save');   // the live incident
+    expect(exitQuietKey(exitPromptKind(5, 15, false))).toBe('session.discard');
+  });
+
+  it('the threshold is exactly MIN_PARTIAL_EXERCISES, from ONE owner', () => {
+    expect(exitPromptKind(MIN_PARTIAL_EXERCISES - 1, 15, false)).toBe('remind_only');
+    expect(exitPromptKind(MIN_PARTIAL_EXERCISES, 15, false)).toBe('remind_and_save');
+  });
+
+  it('nothing done yet = silence: there is no set to go back to', () => {
+    expect(exitPromptKind(0, 15, false)).toBe('none');
+    expect(exitPromptKind(-1, 15, false)).toBe('none');
+  });
+
+  it('the finished plan is silence — auto_record owns that moment', () => {
+    expect(exitPromptKind(15, 15, false)).toBe('none');
+    expect(exitPromptKind(16, 15, false)).toBe('none');
+    expect(completionAction(15, 15, false)).toBe('auto_record');
+  });
+
+  it('already recorded, or no plan at all, is silence', () => {
+    expect(exitPromptKind(5, 15, true)).toBe('none');
+    expect(exitPromptKind(0, 0, false)).toBe('none');
+    expect(exitPromptKind(3, 0, false)).toBe('none');
+  });
+
+  it('a two-exercise plan: one done reminds, no save offered', () => {
+    expect(exitPromptKind(1, 2, false)).toBe('remind_only');
   });
 });

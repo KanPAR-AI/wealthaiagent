@@ -5,6 +5,7 @@
  */
 import type { WireExercise, WirePhaseDetail } from '../library-view';
 import {
+  NO_DOSE_SECONDS,
   announcement,
   buildCustomPlan,
   buildPlan,
@@ -12,6 +13,8 @@ import {
   holdCues,
   localDate,
   nearDuplicateWarnings,
+  recipeNote,
+  remainingMinutes,
   repCues,
   setCues,
   spokenNumber,
@@ -192,5 +195,82 @@ describe('nearDuplicateWarnings — warn, never remove', () => {
     // The warning is advisory; the plan the user confirms is untouched.
     const plan = buildCustomPlan(d, ['heel raise', 'standing calf raises']);
     expect(plan.exercises.map((x) => x.name)).toEqual(['heel raise', 'standing calf raises']);
+  });
+});
+
+// ── SLICE 1: the minutes the early-exit card promises ──────────────────────
+//
+// The card says "about 7 minutes left" to someone deciding whether to quit at
+// exercise 5 of 15. That number is COMPUTED from the remaining exercises' own
+// doses; a made-up one is a lie the user can time with a clock.
+
+describe('remainingMinutes — the honest cost of finishing', () => {
+  // 10 reps x 3s pace = 30s work + 15s rest, x2 sets = 90s
+  const dosed = ex({ name: 'a', dose: { reps: 10, sets: 2, pace_seconds_per_rep: 3 } });
+  // 30s hold + 15s rest, 1 set = 45s
+  const held = ex({ name: 'b', dose: { hold_seconds: 30, sets: 1 } });
+  const noDose = ex({ name: 'c', dose: null });
+
+  it('counts only what is STILL AHEAD, from the real doses', () => {
+    const plan = buildPlan(detail([dosed, held, noDose]), 'full');
+    // nothing done: 90 + 45 + 60 = 195s -> 3 min
+    expect(remainingMinutes(plan, 0)).toBe(3);
+    // one done: 45 + 60 = 105s -> 2 min
+    expect(remainingMinutes(plan, 1)).toBe(2);
+    // two done: 60s -> 1 min
+    expect(remainingMinutes(plan, 2)).toBe(1);
+  });
+
+  it('agrees with the plan estimate the recipe card already shows', () => {
+    const plan = buildPlan(detail([dosed, held, noDose]), 'full');
+    expect(remainingMinutes(plan, 0)).toBe(plan.estimatedMinutes);
+  });
+
+  it('a plan with NULL doses falls back to the stated per-exercise default', () => {
+    // No dose = follow-the-video: there is nothing to compute, so each such
+    // exercise is worth NO_DOSE_SECONDS and that constant is the only guess.
+    const plan = buildPlan(detail([noDose, noDose, noDose]), 'full');
+    expect(NO_DOSE_SECONDS).toBe(60);
+    expect(remainingMinutes(plan, 0)).toBe(3);   // 3 x 60s
+    expect(remainingMinutes(plan, 2)).toBe(1);
+  });
+
+  it('returns 0 when nothing is left — the screen drops the time clause', () => {
+    const plan = buildPlan(detail([dosed, held]), 'full');
+    expect(remainingMinutes(plan, 2)).toBe(0);
+    expect(remainingMinutes(plan, 9)).toBe(0);   // overshoot never goes negative
+  });
+
+  it('a nonsense count is CLAMPED, not handed to slice()', () => {
+    // A negative count reaching `slice()` unclamped quietly returns the LAST
+    // n exercises instead of all of them — a card that under-promises the work
+    // left. Four exercises so the two readings cannot coincide.
+    const plan = buildPlan(detail([dosed, dosed, dosed, held]), 'full');
+    expect(remainingMinutes(plan, 0)).toBe(5);        // 90*3 + 45 = 315s
+    expect(remainingMinutes(plan, -3)).toBe(remainingMinutes(plan, 0));
+    expect(remainingMinutes(plan, 1.7)).toBe(remainingMinutes(plan, 1));
+  });
+
+  it('never says "0 minutes" while an exercise remains', () => {
+    // A single 1-rep exercise estimates at 18s — under a minute, still not 0.
+    const plan = buildPlan(detail([ex({ dose: { reps: 1, sets: 1 } })]), 'full');
+    expect(remainingMinutes(plan, 0)).toBe(1);
+  });
+});
+
+// ── SLICE 2: the shorter-recipe note ───────────────────────────────────────
+
+describe('recipeNote — honest, and only when there is something to say', () => {
+  it('the full session gets no commentary', () => {
+    expect(recipeNote('full')).toBeNull();
+  });
+
+  it('every shorter recipe gets its OWN note', () => {
+    // Distinct keys on purpose: "short" exists for a busy day and "gentle"
+    // for a sore one, and telling a person in pain they picked wrong is how
+    // an app gets deleted.
+    const keys = ['short', 'gentle', 'custom'].map((r) => recipeNote(r as never));
+    expect(keys).toEqual(['today.noteShort', 'today.noteGentle', 'today.noteCustom']);
+    expect(new Set(keys).size).toBe(3);
   });
 });

@@ -34,6 +34,7 @@ export type { ChatHost, ChatUploadAsset } from './host';
 
 export { useSendMessage, type SendState } from './use-send-message';
 export { uploadFileNative } from './upload';
+export { transcribeAudioFile } from './voice';
 export { loadChatIntoStore } from './load-chat';
 
 // ── the surface (all React Native; the lifecycle above is not) ─────────────

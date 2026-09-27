@@ -10,10 +10,9 @@
 // the specifier would have RESOLVED there — to a different module — rather
 // than failing (docs/49 F22). It is injected now.
 
-import { installChatHost, uploadFileNative } from '@wealthai/chat-native';
+import { installChatHost, transcribeAudioFile, uploadFileNative } from '@wealthai/chat-native';
 
 import { getToken } from './auth';
-import { transcribeAudioFile } from './voice';
 
 export function ensureChatHostInstalled(): void {
   installChatHost({

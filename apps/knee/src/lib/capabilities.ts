@@ -69,6 +69,18 @@ export interface Capabilities {
   xrayUpload: boolean;
 
   /**
+   * Voice input in the coach composer — hold the mic, speak, send.
+   *
+   * TRUE since 2026-09-27 and, unlike xrayUpload, it needed NO native change:
+   * ExpoAudio 57.0.3 is already in the shipped binary, the iOS mic permission
+   * string is already in its Info.plist and Android already declares
+   * RECORD_AUDIO — so providing chat-host's `transcribe` (shared whisper-1
+   * path) is the entire feature and it ships by OTA. Speech is transcribed
+   * server-side, matching the web composer's quality in Hindi and English.
+   */
+  voiceInput: boolean;
+
+  /**
    * The phase experience — the four-phase journey, the "Find my phase"
    * self-assessment, and the phase detail (goal, criteria, success plan,
    * strategy video).
@@ -91,5 +103,6 @@ export const CAPABILITIES: Capabilities = {
   accountSettings: true,
   voiceCoach: true,
   xrayUpload: true,
+  voiceInput: true,
   phaseFinder: true,
 };

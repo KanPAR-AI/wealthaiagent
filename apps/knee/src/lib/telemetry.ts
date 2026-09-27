@@ -21,6 +21,11 @@ export type KneeEvent =
   | 'session_complete'
   | 'session_saved_partial'
   | 'session_discarded'
+  // owner ask 2026-09-27: the early-exit card now leads with finishing, so
+  // "they stayed" is a funnel step of its own — reminded vs actually resumed.
+  | 'session_keep_going'
+  // the periodic "compared to when you started" answer; meta {score, day_n}
+  | 'improvement_rating'
   | 'nudge_link_shown'
   | 'nudge_link_tapped'
   | 'video_error';

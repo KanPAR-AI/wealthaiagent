@@ -63,14 +63,66 @@ function toSessionExercise(e: WireExercise): SessionExercise {
   };
 }
 
+/** A dose-less exercise (follow-the-video mode) has no computable length, so
+ *  it is allowed this FLAT per-exercise default — stated here, never guessed
+ *  per call site. `buildPlan`'s own estimate and `remainingMinutes` share it,
+ *  so "~12 min" on Today and "about 7 minutes left" mid-session can never
+ *  disagree about the same exercise. */
+export const NO_DOSE_SECONDS = 60; // watch-and-do allowance
+
 function estimateSeconds(x: SessionExercise): number {
-  if (!x.dose) return 60; // watch-and-do allowance
+  if (!x.dose) return NO_DOSE_SECONDS;
   const sets = x.dose.sets;
   const work = x.dose.holdSeconds
     ? x.dose.holdSeconds
     : (x.dose.reps ?? 0) * (x.dose.paceSecondsPerRep ?? 3);
   const rest = 15; // between sets / to get in position
   return sets * (work + rest);
+}
+
+/**
+ * How much of THIS plan is still ahead, in minutes — the number the early-exit
+ * card puts in front of someone about to leave ("about 7 minutes left").
+ *
+ * Why it is computed and not invented (owner ask 2026-09-27, from the same
+ * telemetry as `useKeepAwake`): the only returning user quit at exercise 5 of
+ * 15 twice. A card that says "finish it" has to say what finishing costs, and
+ * a made-up number in a medical app is a lie the user can time with a clock.
+ * The doses are the server's (house rule 3); the arithmetic over them is the
+ * same `estimateSeconds` the recipe cards already show.
+ *
+ * Returns 0 when nothing is left — the screen then drops the time clause
+ * rather than printing "about 0 minutes left".
+ */
+export function remainingMinutes(plan: SessionPlan, doneCount: number): number {
+  const from = Math.max(0, Math.min(Math.floor(doneCount), plan.exercises.length));
+  const rest = plan.exercises.slice(from);
+  if (!rest.length) return 0;
+  const seconds = rest.reduce((n, x) => n + estimateSeconds(x), 0);
+  return Math.max(1, Math.round(seconds / 60));
+}
+
+/**
+ * The quiet line under Today's recipe picker when the pick is NOT the full
+ * session (owner ask 2026-09-27: "if they are choosing the shorter version
+ * remind them they wont be able to take full benefit").
+ *
+ * It is a NOTE, not a scolding: short and gentle exist for real reasons — a
+ * low-time day and a sore day are exactly when a programme is abandoned — so
+ * each says what the full session adds without calling the pick a mistake.
+ * `null` for 'full': a correct pick gets no commentary.
+ */
+export function recipeNote(recipe: RecipeId): string | null {
+  switch (recipe) {
+    case 'full':
+      return null;
+    case 'short':
+      return 'today.noteShort';
+    case 'gentle':
+      return 'today.noteGentle';
+    case 'custom':
+      return 'today.noteCustom';
+  }
 }
 
 /**

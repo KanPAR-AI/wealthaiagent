@@ -40,6 +40,10 @@ export interface WireProgress {
   gate: { pain_free_days: number; needed: number; ready: boolean };
   pain: { date: string; pain: number }[];
   sessions_recorded: number;
+  /** The user's OLDEST recorded day, or null if they have recorded nothing —
+   *  day 1 of the improvement cadence. The server owns it (house rule 3); the
+   *  client only ever adopts it (rating-store `seedFirstSeen`). */
+  first_session_date: string | null;
 }
 
 async function post<T>(endpoint: string, body: unknown): Promise<T> {

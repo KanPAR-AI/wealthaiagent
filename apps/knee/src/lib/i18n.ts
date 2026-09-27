@@ -102,6 +102,12 @@ const STRINGS: Record<string, { en: string; hi: string }> = {
   'today.dupTitle': { en: 'Very similar picks', hi: 'बहुत मिलते-जुलते विकल्प' },
   'today.dupBody': { en: 'are basically the same movement. Keep both or swap one — your call.', hi: 'लगभग एक ही व्यायाम हैं। दोनों रखें या एक बदलें — आपकी मर्ज़ी।' },
   'today.recommended': { en: 'RECOMMENDED', hi: 'सुझावित' },
+  // The honesty note under the picker when the pick is not the full session
+  // (owner ask 2026-09-27). Says what the full session adds; never scolds —
+  // a short day and a sore day are exactly when people quit a programme.
+  'today.noteShort': { en: 'Good for a busy day. The full session is what the programme’s results are built on — do it when you have the time.', hi: 'व्यस्त दिन के लिए ठीक है। प्रोग्राम का पूरा फ़ायदा पूरे सत्र से मिलता है — जिस दिन समय हो, वही कीजिए।' },
+  'today.noteGentle': { en: 'The right choice on a sore day. It keeps the habit; the full session is what builds the strength.', hi: 'दर्द वाले दिन यही सही है। इससे आदत बनी रहती है; ताक़त पूरे सत्र से बनती है।' },
+  'today.noteCustom': { en: 'Your pick, kept in the programme’s order. The full session covers the parts a hand-picked set can miss.', hi: 'आपकी पसंद, प्रोग्राम के क्रम में। पूरा सत्र उन हिस्सों को भी कवर करता है जो खुद चुनने में छूट सकते हैं।' },
   'today.done': { en: 'Today’s session is done', hi: 'आज का सत्र पूरा हो गया' },
   'today.minutes': { en: 'min', hi: 'मिनट' },
   // session
@@ -127,9 +133,27 @@ const STRINGS: Record<string, { en: string; hi: string }> = {
   'session.partialQ': { en: 'You did {done} of {total} — save this session?', hi: 'आपने {total} में से {done} किए — यह सत्र सहेजें?' },
   'session.saveExit': { en: 'Save & exit', hi: 'सहेजकर बाहर जाएँ' },
   'session.discard': { en: 'Discard', hi: 'छोड़ दें' },
+  // the quiet action when the card offers NO save (1–2 exercises done): there
+  // is nothing to discard, they are simply leaving (review finding B2).
+  'session.exitAnyway': { en: 'Exit anyway', hi: 'फिर भी बाहर जाएँ' },
+  // The card now leads with finishing (owner ask 2026-09-27). {mins} is the
+  // REAL remainder from the plan's doses (session-view.remainingMinutes) —
+  // never a round number typed in here.
+  'session.keepGoingQ': { en: 'You’ve done {done} of {total} — about {mins} min left.', hi: 'आपने {total} में से {done} कर लिए — लगभग {mins} मिनट बाकी हैं।' },
+  'session.keepGoingBody': { en: 'Finishing the set is what your knee is actually paid back for. Stay with it?', hi: 'पूरा सेट करने से ही घुटने को असली फ़ायदा मिलता है। जारी रखेंगे?' },
+  'session.keepGoing': { en: 'Keep going', hi: 'जारी रखें' },
   // the anonymous save-progress nudge on the completion screen
   'session.nudgeBody': { en: 'Streak saved on this phone only — connect your email so it’s never lost.', hi: 'स्ट्रीक सिर्फ़ इसी फ़ोन पर सहेजी गई है — ईमेल जोड़ें ताकि यह कभी न खोए।' },
   'session.nudgeBtn': { en: 'Connect account', hi: 'खाता जोड़ें' },
+  // the periodic improvement question — completion summary only, never
+  // mid-workout (owner ask 2026-09-27; cadence in rating-view.ts)
+  'rating.q': { en: 'Compared to when you started, how is your knee?', hi: 'जब आपने शुरू किया था, उससे तुलना में घुटना अब कैसा है?' },
+  'rating.much_better': { en: 'Much better', hi: 'बहुत बेहतर' },
+  'rating.better': { en: 'A bit better', hi: 'थोड़ा बेहतर' },
+  'rating.same': { en: 'About the same', hi: 'लगभग वैसा ही' },
+  'rating.worse': { en: 'Worse', hi: 'पहले से खराब' },
+  'rating.later': { en: 'Not now', hi: 'अभी नहीं' },
+  'rating.thanks': { en: 'Thank you — that tells us more than any number.', hi: 'धन्यवाद — यह किसी भी आँकड़े से ज़्यादा बताता है।' },
   // progress
   'progress.title': { en: 'Your recovery', hi: 'आपकी रिकवरी' },
   'progress.gate': { en: 'Towards the next phase', hi: 'अगले फ़ेज़ की ओर' },

@@ -7,6 +7,8 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { ensureChatHostInstalled } from '@/lib/chat-host';
 import { getLang, initLang, subscribeLang, t } from '@/lib/i18n';
+import { noteAppOpen } from '@/lib/rating-store';
+import { localDate } from '@/lib/session-view';
 import { track } from '@/lib/telemetry';
 import * as updateView from '@/lib/update-view';
 import { ensureCoreInitialized } from '@/lib/core-adapter';
@@ -115,6 +117,10 @@ const up = StyleSheet.create({
 export default function RootLayout() {
   const updatePrompt = useUpdatePrompt();
   useEffect(() => { track('app_open'); }, []);   // very basic engagement telemetry
+  // Day 1 of the improvement cadence is the first day the app was OPENED, so
+  // "compared to when you started" counts from when the user started — not
+  // from their third recorded session. Written once, ever (rating-store).
+  useEffect(() => { void noteAppOpen(localDate()); }, []);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       {/* statusBarTranslucent/navigationBarTranslucent: required for the
