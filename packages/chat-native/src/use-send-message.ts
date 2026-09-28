@@ -370,6 +370,15 @@ export function useSendMessage(
                 aiMessageIdLive = backendBotId;
               }
             },
+            // docs/78 §9.2: the turn this answer came from, so a thumb on it
+            // lands on the same trace as the automated scores for it.
+            onTurnId: (requestId, messageId) => {
+              if (messageId && messageId !== aiMessageIdLive) {
+                updateMessage(activeChatId!, aiMessageIdLive, { id: messageId });
+                aiMessageIdLive = messageId;
+              }
+              if (requestId) updateMessage(activeChatId!, aiMessageIdLive, { requestId });
+            },
           },
         );
         // The reader returned without message_complete OR an error. Two

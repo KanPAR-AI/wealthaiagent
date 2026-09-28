@@ -156,6 +156,13 @@ export interface MessageBubbleProps {
   assistantText?: (message: Message, previous: Message | undefined) => string | undefined;
   /** the message before this one in the transcript, for `assistantText` */
   previous?: Message;
+  /**
+   * (b) The thumbs (docs/78 §9). A host that passes nothing draws none — the
+   * bubble cannot rate an answer by itself, because rating needs the chat
+   * and a token, which live above it. Drawn only under a SETTLED assistant
+   * reply: not while streaming, not on an error row, not on an empty one.
+   */
+  onFeedback?: (message: Message, type: 'thumbs_up' | 'thumbs_down') => void;
 }
 
 export const MessageBubble = memo(function MessageBubble({
@@ -167,6 +174,7 @@ export const MessageBubble = memo(function MessageBubble({
   userText,
   assistantText,
   previous,
+  onFeedback,
 }: MessageBubbleProps) {
   const { metrics } = theme;
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
@@ -293,6 +301,38 @@ export const MessageBubble = memo(function MessageBubble({
       {message.isStreaming && blocks.length === 0 && (
         <ChatText theme={theme} step="body" tone="muted">▍</ChatText>
       )}
+      {onFeedback && !message.isStreaming && !message.error && blocks.length > 0 ? (
+        <View style={styles.feedbackRow}>
+          <Pressable
+            onPress={() => onFeedback(message, 'thumbs_up')}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Good answer"
+            accessibilityState={{ selected: message.feedback?.type === 'thumbs_up' }}
+            style={styles.thumb}>
+            <ChatText
+              theme={theme}
+              step="small"
+              tone={message.feedback?.type === 'thumbs_up' ? 'accent' : 'muted'}>
+              {message.feedback?.type === 'thumbs_up' ? '👍' : '👍🏻'}
+            </ChatText>
+          </Pressable>
+          <Pressable
+            onPress={() => onFeedback(message, 'thumbs_down')}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Not helpful"
+            accessibilityState={{ selected: message.feedback?.type === 'thumbs_down' }}
+            style={styles.thumb}>
+            <ChatText
+              theme={theme}
+              step="small"
+              tone={message.feedback?.type === 'thumbs_down' ? 'accent' : 'muted'}>
+              {message.feedback?.type === 'thumbs_down' ? '👎' : '👎🏻'}
+            </ChatText>
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 });
@@ -344,6 +384,13 @@ function stylesFor(theme: ChatTheme) {
       paddingHorizontal: metrics.bubblePaddingX,
       paddingVertical: metrics.bubblePaddingY,
     },
+    feedbackRow: {
+      flexDirection: 'row',
+      gap: 18,
+      marginTop: 6,
+      paddingHorizontal: 4,
+    },
+    thumb: { paddingVertical: 2 },
     assistantRow: {
       paddingHorizontal: metrics.rowPaddingX,
       marginVertical: metrics.rowGapY,

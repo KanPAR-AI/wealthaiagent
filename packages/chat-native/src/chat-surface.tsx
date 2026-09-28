@@ -13,14 +13,16 @@
 //
 // Anything else that differs between the two chat pages is a SPEC-DEVIATION.
 
-import { type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { useChatStore, type Message, type MessageFile, type Widget } from '@wealthai/core';
+import { submitFeedback, useChatStore, type Message, type MessageFile, type Widget } from '@wealthai/core';
 
 import { ChatInput } from './chat-input';
 import { ChatText } from './message-bubble';
 import { MessageList } from './message-list';
+import { FeedbackSheet } from './feedback-sheet';
+import { getChatHost } from './host';
 import type { ChatTheme } from './theme';
 
 export interface ChatSurfaceProps {
@@ -39,6 +41,13 @@ export interface ChatSurfaceProps {
   userText?: (message: Message) => string;
   /** (b) …and an ASSISTANT one, which also sees the turn before it. */
   assistantText?: (message: Message, previous: Message | undefined) => string | undefined;
+  /**
+   * (a) The thumbs under every settled reply (docs/78 §9). Pass it and the
+   * surface draws them, sends a thumb the moment it is tapped, and on a
+   * thumbs-down opens the reason sheet. Omit it and nothing is drawn — the
+   * rule that a shared component never restructures a live app's tree.
+   */
+  feedback?: { language?: 'en' | 'hi' };
 
   /** (a) what fills the screen before the first turn. */
   empty?: ReactNode;
@@ -104,8 +113,29 @@ export function ChatSurface({
   placeholder,
   renderSendIcon,
   fallbackSuggestions,
+  feedback,
 }: ChatSurfaceProps) {
   const replyWantsChips = useNeedsFallbackChips(chatId);
+  const updateMessage = useChatStore((s) => s.updateMessage);
+  // The answer whose thumbs-down sheet is open, if any.
+  const [rating, setRating] = useState<{ messageId: string } | null>(null);
+
+  // A thumb is sent the moment it is tapped. The sheet that follows a
+  // thumbs-down only ADDS a reason — dismissing it untouched still leaves
+  // the thumbs-down recorded, which is the whole "never required" rule.
+  const onFeedback = useCallback(
+    (message: Message, type: 'thumbs_up' | 'thumbs_down') => {
+      if (!feedback || !chatId) return;
+      updateMessage(chatId, message.id, { feedback: { type, reason: null } });
+      void (async () => {
+        const token = await getChatHost().getToken();
+        if (!token) return;
+        await submitFeedback(token, chatId, { feedback_type: type, message_id: message.id });
+      })();
+      if (type === 'thumbs_down') setRating({ messageId: message.id });
+    },
+    [feedback, chatId, updateMessage],
+  );
   const showChips = !busy && !!fallbackSuggestions?.length && replyWantsChips;
 
   const styles = stylesFor(theme);
@@ -121,6 +151,7 @@ export function ChatSurface({
           renderText={renderText}
           userText={userText}
           assistantText={assistantText}
+          onFeedback={feedback ? onFeedback : undefined}
         />
       ) : busy ? (
         // New-chat creation in flight — immediate feedback instead of the
@@ -158,6 +189,21 @@ export function ChatSurface({
         placeholder={placeholder}
         renderSendIcon={renderSendIcon}
       />
+      {feedback && chatId && rating ? (
+        <FeedbackSheet
+          visible
+          onClose={() => setRating(null)}
+          chatId={chatId}
+          messageId={rating.messageId}
+          theme={theme}
+          language={feedback.language}
+          onSent={(reason) =>
+            updateMessage(chatId, rating.messageId, {
+              feedback: { type: 'thumbs_down', reason },
+            })
+          }
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 }

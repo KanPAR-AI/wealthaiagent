@@ -106,6 +106,15 @@ export interface Message {
   structuredContent?: StructuredContent; // Structured data like graphs or tables
   widgets?: Widget[]; // Array of widgets to render (charts, tables, etc.) - DEPRECATED, use contentBlocks
   contentBlocks?: ContentBlock[]; // Ordered array of text and widgets as they were streamed
+  /**
+   * The backend turn this answer came from (docs/78 §9.2). Arrives on
+   * `message_complete` and on history reloads (`metadata.request_id`). A
+   * thumbs-down carrying it lands on the SAME trace as the automated scores
+   * for this answer; without it feedback is an anecdote about a chat.
+   */
+  requestId?: string;
+  /** What the user said about this answer, if anything — so a thumb stays lit. */
+  feedback?: { type: 'thumbs_up' | 'thumbs_down'; reason?: string | null };
 }
 
 /**

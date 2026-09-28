@@ -55,6 +55,7 @@ export {
 } from './bubble-text';
 export { ChatInput, type ChatInputProps } from './chat-input';
 export { BugReportSheet, type BugReportSheetProps } from './bug-report-sheet';
+export { FeedbackSheet, type FeedbackSheetProps } from './feedback-sheet';
 export {
   Chip,
   MultiSelect,

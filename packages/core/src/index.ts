@@ -48,6 +48,10 @@ export {
   type ChatMessage,
   type ChatResponse,
   type Attachment,
+  fetchFeedbackReasons,
+  submitFeedback,
+  type FeedbackReason,
+  type SubmitFeedbackBody,
 } from './services/chat-service';
 
 export {

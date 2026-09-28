@@ -27,12 +27,31 @@ export const useMessageActions = (chatId: string) => {
     }
   };
 
+  // docs/78 §9. These two were `console.log` for as long as the buttons
+  // existed — the thumbs never reached the backend from any surface. Now a
+  // thumb is recorded on the answer and mirrored to its turn's trace. The
+  // reason sheet ships on the Astral app first; the web records the thumb
+  // and gains the sheet next.
+  const sendFeedback = async (messageId: string, type: 'thumbs_up' | 'thumbs_down') => {
+    if (!chatId || !token) return;
+    try {
+      await fetch(getApiUrl(`/chats/${chatId}/feedback`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ feedback_type: type, message_id: messageId }),
+      });
+    } catch (e) {
+      // A thumb is a gift; a failed one must not become an error banner.
+      console.warn('[feedback] not recorded:', e);
+    }
+  };
+
   const handleLike = (messageId: string) => {
-    console.log('Liked message:', messageId);
+    void sendFeedback(messageId, 'thumbs_up');
   };
 
   const handleDislike = (messageId: string) => {
-    console.log('Disliked message:', messageId);
+    void sendFeedback(messageId, 'thumbs_down');
   };
 
   const handleRegenerate = async (messageId: string) => {

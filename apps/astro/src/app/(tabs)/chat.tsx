@@ -534,6 +534,10 @@ export default function Chat() {
           dataLanguages={ASTRO_DATA_LANGUAGES}
           userText={userBubbleText}
           assistantText={assistantBubbleText}
+          // docs/78 §9: the thumbs under every settled reply, and the reason
+          // sheet on a thumbs-down. English labels; the served chips carry
+          // their Hindi twins for the day this app grows a language setting.
+          feedback={{ language: 'en' }}
           belowTranscript={
             <>
             {/* Owner 2026-09-18: past thirty messages — and said plainly when

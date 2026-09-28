@@ -246,6 +246,12 @@ export interface ListenToChatStreamOptions {
    *  to swap their local nanoid placeholder so subsequent /regenerate
    *  and target_user_message_id calls match what's in the DB. */
   onAssistantId?: (assistantId: string) => void;
+  /**
+   * The turn's ids, from `message_complete` (docs/78 §9.2): the saved
+   * message's id and the backend `request_id` the automated scores were
+   * written under. A thumb sent with the request id lands on that trace.
+   */
+  onTurnId?: (requestId: string, messageId: string) => void;
 }
 
 /**
@@ -274,7 +280,7 @@ export const listenToChatStreamCore = async (
   options: ListenToChatStreamOptions = {},
 ) => {
   const { fetch, getApiUrl } = getPlatform();
-  const { forceAgent, modelTier, externalSignal, targetUserMessageId, onAssistantId, onCredits } = options;
+  const { forceAgent, modelTier, externalSignal, targetUserMessageId, onAssistantId, onCredits, onTurnId } = options;
 
   // One controller for the whole stream. Aborts if any watchdog fires, the
   // external signal aborts, or fetch errors out.
@@ -398,6 +404,9 @@ export const listenToChatStreamCore = async (
               await new Promise(resolve => setTimeout(resolve, 0));
             } else if (parsedEvent.type === 'message_complete') {
               clearTimers();
+              if (onTurnId && (parsedEvent.request_id || parsedEvent.message_id)) {
+                onTurnId(String(parsedEvent.request_id || ''), String(parsedEvent.message_id || ''));
+              }
               onComplete();
               return;
             } else if (parsedEvent.type) {
@@ -528,6 +537,8 @@ export function mapHistoryMessage(msg: ChatMessage): {
   isStreaming: boolean;
   streamingContent: string;
   contentBlocks?: any[];
+  requestId?: string;
+  feedback?: { type: 'thumbs_up' | 'thumbs_down'; reason?: string | null };
 } {
   const files = (msg.attachments || []).map((a: any) => {
     const url = typeof a === 'string' ? a : a?.url || '';
@@ -562,6 +573,12 @@ export function mapHistoryMessage(msg: ChatMessage): {
   }
 
   return {
+    // docs/78 §9.2 — the join to the turn's trace, and the thumb already given,
+    // so a reloaded transcript can still be rated and shows what was said.
+    requestId: typeof meta.request_id === 'string' && meta.request_id ? meta.request_id : undefined,
+    feedback: meta.feedback && (meta.feedback.type === 'thumbs_up' || meta.feedback.type === 'thumbs_down')
+      ? { type: meta.feedback.type, reason: meta.feedback.reason ?? null }
+      : undefined,
     id: msg.id,
     message: shown,
     sender: msg.sender === 'assistant' ? 'bot' : 'user',
@@ -636,3 +653,52 @@ export const uploadFileCore = async (
     size: (file as any).size || 0,
   };
 };
+
+
+// ── user feedback on one answer (docs/78 §9) ────────────────────────────────
+
+export interface FeedbackReason {
+  key: string;
+  label_en: string;
+  label_hi: string;
+}
+
+/** The reason chips a thumbs-down may carry, served by the backend in both
+ *  languages — the client renders them and derives nothing. */
+export async function fetchFeedbackReasons(jwt: string): Promise<FeedbackReason[]> {
+  const { fetch, getApiUrl } = getPlatform();
+  const response = await fetch(getApiUrl('/chats/feedback-reasons'), {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  if (!response.ok) throw new Error(`feedback reasons: ${response.status}`);
+  const data = await response.json();
+  return Array.isArray(data?.reasons) ? data.reasons : [];
+}
+
+export interface SubmitFeedbackBody {
+  feedback_type: 'thumbs_up' | 'thumbs_down';
+  message_id?: string;
+  reason?: string | null;
+  comment?: string | null;
+}
+
+/** A thumb on one answer. Never throws into a UI path: a thumb is a gift,
+ *  and a failed gift must not become an error banner. */
+export async function submitFeedback(
+  jwt: string,
+  chatId: string,
+  body: SubmitFeedbackBody,
+): Promise<{ success: boolean; scored?: number; judged?: boolean } | null> {
+  const { fetch, getApiUrl } = getPlatform();
+  try {
+    const response = await fetch(getApiUrl(`/chats/${chatId}/feedback`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}

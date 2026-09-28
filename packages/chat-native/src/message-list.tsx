@@ -38,6 +38,8 @@ export interface MessageListProps {
   userText?: (message: Message) => string;
   /** (b) …and an ASSISTANT one, which also sees the turn before it. */
   assistantText?: (message: Message, previous: Message | undefined) => string | undefined;
+  /** (b) the thumbs — see `MessageBubbleProps.onFeedback`. */
+  onFeedback?: (message: Message, type: 'thumbs_up' | 'thumbs_down') => void;
 }
 
 export function MessageList({
@@ -48,6 +50,7 @@ export function MessageList({
   renderText,
   userText,
   assistantText,
+  onFeedback,
 }: MessageListProps) {
   // Subscribe narrowly: only this chat's messages array. The store swaps
   // the array reference on every mutation, so FlashList sees new data.
@@ -107,9 +110,10 @@ export function MessageList({
         renderText={renderText}
         userText={userText}
         assistantText={assistantText}
+        onFeedback={onFeedback}
       />
     ),
-    [messages, theme, renderWidget, dataLanguages, renderText, userText, assistantText],
+    [messages, theme, renderWidget, dataLanguages, renderText, userText, assistantText, onFeedback],
   );
 
   return (
