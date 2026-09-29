@@ -1,0 +1,112 @@
+{
+  "corpus_id": "knee_timed",
+  "phase": "4",
+  "name": "Back to life",
+  "count": 4,
+  "catalog_count": 6,
+  "complete": true,
+  "about": [],
+  "exercises": [
+    {
+      "name": "squats",
+      "title": "squats",
+      "phase": "4",
+      "movement_group": "squat",
+      "start_seconds": 39.0,
+      "end_seconds": 447.0,
+      "video_file": "El_Paso_Manual_Physical_Therapy (46).mp4",
+      "dose": null,
+      "url": "http://localhost:8080/api/v1/files/corpus-media/abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd?t=tok-fixture-uid#t=39",
+      "clip_url": null,
+      "src": "https://storage.googleapis.com/test-media/abcdefab/source?sig=x#t=39",
+      "src_hi": null,
+      "clip_src": null,
+      "dub_langs": []
+    },
+    {
+      "name": "deadlift",
+      "title": "deadlift",
+      "phase": "4",
+      "movement_group": null,
+      "start_seconds": 447.0,
+      "end_seconds": 965.0,
+      "video_file": "El_Paso_Manual_Physical_Therapy (46).mp4",
+      "dose": null,
+      "url": "http://localhost:8080/api/v1/files/corpus-media/abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd?t=tok-fixture-uid#t=447",
+      "clip_url": null,
+      "src": "https://storage.googleapis.com/test-media/abcdefab/source?sig=x#t=447",
+      "src_hi": null,
+      "clip_src": null,
+      "dub_langs": []
+    },
+    {
+      "name": "overhead lifts",
+      "title": "overhead lifts",
+      "phase": "4",
+      "movement_group": null,
+      "start_seconds": 965.0,
+      "end_seconds": 1080.0,
+      "video_file": "El_Paso_Manual_Physical_Therapy (46).mp4",
+      "dose": null,
+      "url": "http://localhost:8080/api/v1/files/corpus-media/abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd?t=tok-fixture-uid#t=965",
+      "clip_url": null,
+      "src": "https://storage.googleapis.com/test-media/abcdefab/source?sig=x#t=965",
+      "src_hi": null,
+      "clip_src": null,
+      "dub_langs": []
+    },
+    {
+      "name": "thruster",
+      "title": "thruster",
+      "phase": "4",
+      "movement_group": null,
+      "start_seconds": 1080.0,
+      "end_seconds": 1313.0,
+      "video_file": "El_Paso_Manual_Physical_Therapy (46).mp4",
+      "dose": null,
+      "url": "http://localhost:8080/api/v1/files/corpus-media/abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd?t=tok-fixture-uid#t=1080",
+      "clip_url": null,
+      "src": "https://storage.googleapis.com/test-media/abcdefab/source?sig=x#t=1080",
+      "src_hi": null,
+      "clip_src": null,
+      "dub_langs": []
+    }
+  ],
+  "omitted": [
+    {
+      "name": "barbell front squats",
+      "title": "Unnamed (El_Paso_Manual_Physical_Therapy (44).mp4)",
+      "video_file": "El_Paso_Manual_Physical_Therapy (44).mp4",
+      "reason": "no_segment",
+      "detail": "start/end seconds are not stamped on the corpus document, so no clip exists and the whole source file is the only thing that could play"
+    },
+    {
+      "name": "barbell deadlifts",
+      "title": "Unnamed (ri.mp4)",
+      "video_file": "ri.mp4",
+      "reason": "no_segment",
+      "detail": "start/end seconds are not stamped on the corpus document, so no clip exists and the whole source file is the only thing that could play"
+    }
+  ],
+  "omitted_count": 2,
+  "sections": [
+    {
+      "category": "activity",
+      "items": [
+        {
+          "name": "walking",
+          "category": "activity",
+          "start_seconds": 129.0,
+          "end_seconds": 193.0,
+          "video_file": "El_Paso_Manual_Physical_Therapy (45).mp4",
+          "url": "http://localhost:8080/api/v1/files/corpus-media/9999999999999999999999999999999999999999999999999999999999999999?t=tok-fixture-uid#t=129",
+          "clip_url": null,
+          "src": "https://storage.googleapis.com/test-media/99999999/source?sig=x#t=129",
+          "src_hi": null,
+          "clip_src": null,
+          "dub_langs": []
+        }
+      ]
+    }
+  ]
+}

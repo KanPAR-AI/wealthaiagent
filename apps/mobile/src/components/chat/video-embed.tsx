@@ -8,13 +8,61 @@
 // only on tap — from the cited moment, when the citation carries one.
 
 import { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Image, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { auth } from '@/lib/firebase';
-import { dubUrl, type VideoSegment } from '@/lib/video-links';
+import { dubUrl, type VideoSegment, type YouTubeSegment } from '@/lib/video-links';
+
+/**
+ * A YouTube citation as a card (bug f4d0201a: "video thumbnails don't come").
+ * YouTube's own still, the title, and a tap that opens the link at its
+ * timestamp in the YouTube app or browser. Nothing is embedded — a WebView
+ * per citation would be the N-players problem again — and the still is a
+ * public image, so no auth header travels with it.
+ */
+export function YouTubeCard({ segment }: { segment: YouTubeSegment }) {
+  // An openURL failure (no handler, restricted profile) is SAID on the card
+  // — a tap that does nothing reads as a broken app (review round 2).
+  const [openError, setOpenError] = useState<string | null>(null);
+  const open = () => {
+    setOpenError(null);
+    void Linking.openURL(segment.url).catch(() => {
+      setOpenError('Could not open YouTube on this device.');
+    });
+  };
+  const at = segment.startSeconds > 0
+    ? ` · from ${Math.floor(segment.startSeconds / 60)}:${String(segment.startSeconds % 60).padStart(2, '0')}`
+    : '';
+  return (
+    <View style={styles.card}>
+      <Pressable
+        onPress={open}
+        accessibilityRole="link"
+        accessibilityLabel={`Open on YouTube: ${segment.title}`}>
+        <Image source={{ uri: segment.thumbnailUrl }} style={styles.video} />
+        <View style={styles.playOverlay}>
+          <View style={styles.playButton}>
+            <ThemedText style={styles.playIcon}>▶</ThemedText>
+          </View>
+        </View>
+      </Pressable>
+      <View style={styles.caption}>
+        <ThemedText type="small" numberOfLines={1} style={styles.captionTitle}>
+          {segment.title}{at}
+        </ThemedText>
+        <ThemedText type="small" style={styles.source}>YouTube</ThemedText>
+      </View>
+      {openError ? (
+        <View style={styles.caption} accessibilityLiveRegion="polite">
+          <ThemedText type="small" style={styles.source}>{openError}</ThemedText>
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 // The signed ticket baked into the URL is hand-copied by the answer model and
 // occasionally corrupt (bug d2caf678) — so the player ALSO authenticates as
@@ -160,6 +208,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   captionTitle: { flex: 1 },
+  source: { opacity: 0.7 },
   langRow: { flexDirection: 'row', gap: 4 },
   langPill: {
     paddingHorizontal: 8,

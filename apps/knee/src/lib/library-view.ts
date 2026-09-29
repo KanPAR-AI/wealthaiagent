@@ -14,6 +14,23 @@ export interface WirePhase {
   count: number;
   catalog_count: number | null;
   complete: boolean;
+  /** members the corpus names but cannot play as an exercise yet (no
+   *  segment stamped → no clip); counted separately so `count` stays "the
+   *  rows served" and `complete` stays a membership claim. Absent on an
+   *  older server. */
+  omitted_count?: number;
+}
+
+/** One exercise the engine left OUT of `exercises`, and why (bug bf83c4d7:
+ *  three phase-2 rows had no segment and the whole source file played —
+ *  the same six-second title card three times, "repeated videos"). */
+export interface WireOmitted {
+  name: string;
+  title?: string | null;
+  video_file: string | null;
+  /** machine reason — today only `no_segment` */
+  reason: string;
+  detail?: string;
 }
 
 export interface WireProgram {
@@ -97,6 +114,10 @@ export interface WirePhaseDetail extends WirePhase {
    *  empty on a server that has nothing stamped — the screen renders
    *  sections only when they arrive (capability honesty). */
   sections?: WireSection[];
+  /** exercises the engine could not serve, named with the reason; absent
+   *  on an older server, empty when every member has a segment */
+  omitted?: WireOmitted[];
+  omitted_count?: number;
 }
 
 /** 71 → "1:11"; 554.97 → "9:14". Presentation only. */
@@ -116,8 +137,45 @@ export function formatClock(seconds: number | null): string | null {
  */
 export function phaseSubtitle(p: WirePhase): string {
   const n = p.count === 1 ? '1 exercise' : `${p.count} exercises`;
-  if (p.complete) return `${n} — the complete set`;
-  return `${n} indexed of ${p.catalog_count} in the catalog`;
+  const k = p.omitted_count ?? 0;
+  if (p.complete) {
+    // the SET is complete; k of it cannot play yet — said, not hidden
+    return k > 0 ? `${n} — ${k} awaiting a segment` : `${n} — the complete set`;
+  }
+  const mismatch = `${n} indexed of ${p.catalog_count} in the catalog`;
+  return k > 0 ? `${mismatch}, ${k} awaiting a segment` : mismatch;
+}
+
+/**
+ * Does this wire row carry the segment the corpus stamped? The engine now
+ * omits span-less exercises server-side (bug bf83c4d7); this is the client's
+ * own belt for the deploy window and for any older server — a row without a
+ * start is the whole source file, and a whole source file is never an
+ * exercise.
+ */
+export function hasSegment(e: { start_seconds: number | null }): boolean {
+  return typeof e.start_seconds === 'number' && isFinite(e.start_seconds)
+    && e.start_seconds >= 0;
+}
+
+/** A pre-cut clip IS a segment (it was cut from one) — with a clip the row
+ *  plays even if the span fields were dropped in transit. */
+export function hasClip(e: { clip_url?: string | null; clip_src?: string | null }): boolean {
+  return Boolean(e.clip_src || e.clip_url);
+}
+
+/**
+ * Playable AS AN EXERCISE: footage stored (some URL) AND something shorter
+ * than the whole file to play (a clip, or a stamped start). Sections
+ * (walker, cane, biking) do not go through this — a whole walker video is
+ * the walker video.
+ */
+export function isExercisePlayable(e: {
+  url: string | null; src?: string | null; start_seconds: number | null;
+  clip_url?: string | null; clip_src?: string | null;
+}): boolean {
+  const stored = Boolean(e.url || e.src || e.clip_src || e.clip_url);
+  return stored && (hasClip(e) || hasSegment(e));
 }
 
 export interface ExerciseRow {
@@ -126,9 +184,13 @@ export interface ExerciseRow {
   /** "at 1:11" when the segment carries a start; absent otherwise. */
   clock: string | null;
   hasHindi: boolean;
-  /** Playable now? False = footage not stored server-side; the row renders
-   *  without a play affordance rather than with a dead one. */
+  /** Playable now? False = footage not stored server-side, OR stored but
+   *  with no segment to play (see `notReady`); the row renders without a
+   *  play affordance rather than with a dead — or wrong — one. */
   playable: boolean;
+  /** Footage exists but no segment is stamped and no clip is cut: the row
+   *  says "segment not ready" instead of playing the whole source file. */
+  notReady: boolean;
   url: string | null;
   /** what a tap plays FIRST: the instant clip when one exists (owner ruling
    *  2026-09-19 — clips load instantly on-device; full sources measured slow
@@ -169,22 +231,49 @@ export function playbackPlan(e: {
 }
 
 export function exerciseRows(detail: WirePhaseDetail): ExerciseRow[] {
-  return detail.exercises.map((e, i) => ({
-    key: `${detail.phase}:${i}:${e.name}`,
-    name: e.name,
-    clock: formatClock(e.start_seconds),
-    hasHindi: e.dub_langs.includes('hi'),
-    playable: Boolean(e.url || e.src || e.clip_src || e.clip_url),
-    url: e.url,
-    ...playbackPlan(e),
-    startSeconds: e.start_seconds,
-    endSeconds: e.end_seconds,
-  }));
+  return detail.exercises.map((e, i) => {
+    const stored = Boolean(e.url || e.src || e.clip_src || e.clip_url);
+    const playable = isExercisePlayable(e);
+    const plan = playbackPlan(e);
+    return {
+      key: `${detail.phase}:${i}:${e.name}`,
+      name: e.name,
+      clock: formatClock(e.start_seconds),
+      hasHindi: e.dub_langs.includes('hi'),
+      playable,
+      notReady: stored && !playable,
+      url: e.url,
+      ...plan,
+      // never hand the player a whole source file as "the exercise"
+      playUrl: playable ? plan.playUrl : null,
+      startSeconds: e.start_seconds,
+      endSeconds: e.end_seconds,
+    };
+  });
 }
 
 /** The count the screen states is the server's, verbatim. */
 export function statedCount(detail: WirePhaseDetail): number {
   return detail.count;
+}
+
+export interface OmittedRow {
+  key: string;
+  name: string;
+  videoFile: string | null;
+  reason: string;
+}
+
+/** The engine's omissions as render rows, in server order — the screen
+ *  lists them under the exercises with "segment not ready", so a member the
+ *  program names is never silently missing and never a wrong video. */
+export function omittedRows(detail: WirePhaseDetail): OmittedRow[] {
+  return (detail.omitted ?? []).map((o, i) => ({
+    key: `${detail.phase}:omitted:${i}:${o.name}`,
+    name: o.name,
+    videoFile: o.video_file,
+    reason: o.reason,
+  }));
 }
 
 export interface SectionRows {
@@ -207,6 +296,7 @@ export function sectionsRows(detail: WirePhaseDetail): SectionRows[] {
         clock: formatClock(it.start_seconds),
         hasHindi: it.dub_langs.includes('hi'),
         playable: Boolean(it.url || it.src || it.clip_src || it.clip_url),
+        notReady: false,
         url: it.url,
         ...playbackPlan(it),
         startSeconds: it.start_seconds,

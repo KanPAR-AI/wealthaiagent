@@ -22,6 +22,7 @@ import { fetchPhase, fetchProgram } from '@/lib/api';
 import {
   dubUrl,
   exerciseRows,
+  omittedRows,
   phaseSubtitle,
   sectionsRows,
   type ExerciseRow,
@@ -69,6 +70,7 @@ export default function Library() {
   // wire carries them, so a backend without sections shows no empty
   // headings (capability honesty, the astro D3 pattern).
   const sections = detail && detail.phase === phase ? sectionsRows(detail) : [];
+  const omitted = detail && detail.phase === phase ? omittedRows(detail) : [];
   const accent = phaseColor(phase);
 
   return (
@@ -162,6 +164,29 @@ export default function Library() {
           ))}
         </View>
 
+        {/* Members the engine could not serve as an exercise — no segment
+            stamped, so no clip (bug bf83c4d7). Named with "segment not
+            ready" instead of playing the whole source file. Server order. */}
+        {omitted.length ? (
+          <View style={s.card}>
+            {omitted.map((o, i) => (
+              <View
+                key={o.key}
+                accessibilityRole="text"
+                style={[s.row, i < omitted.length - 1 && s.rowLine]}
+              >
+                <View style={[s.thumb, s.thumbOff]} />
+                <View style={s.rowBody}>
+                  <Text style={s.rowName} numberOfLines={2}>{o.name}</Text>
+                  <View style={s.rowMeta}>
+                    <Text style={s.rowClock}>{tr('library.segmentNotReady', lang)}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
         {/* Stamped non-exercise categories, AFTER the exercise list — the
             walker/cane/biking rows SEG-5 moved out of the exercise set.
             Each opens the same player route as an exercise row. */}
@@ -233,7 +258,11 @@ function ExerciseLine({ row, last, accent }: { row: ExerciseRow; last: boolean; 
               <Text style={[s.langBadgeText, { color: accent }]}>EN + हिन्दी</Text>
             </View>
           ) : null}
-          {!row.playable ? <Text style={s.rowClock}>no footage yet</Text> : null}
+          {!row.playable ? (
+            <Text style={s.rowClock}>
+              {row.notReady ? tr('library.segmentNotReady', getLang()) : tr('library.noFootage', getLang())}
+            </Text>
+          ) : null}
         </View>
       </View>
       {row.playable ? (

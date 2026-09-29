@@ -6,7 +6,7 @@
 // presentation, and it lives here where the root jest project can hold it.
 
 import type { Lang } from './i18n';
-import { dubUrl } from './library-view';
+import { dubUrl, isExercisePlayable } from './library-view';
 import type { WireExercise, WirePhaseDetail } from './library-view';
 
 export type RecipeId = 'full' | 'short' | 'gentle' | 'custom';
@@ -126,15 +126,24 @@ export function recipeNote(recipe: RecipeId): string | null {
 }
 
 /**
+ * The exercises a session may contain: footage stored AND a segment or a
+ * clip to play. A stored-but-unsegmented row (bug bf83c4d7: the whole source
+ * file, the same title card three times) never enters a session and never
+ * appears in the "Build my own" picker — the engine omits such rows too;
+ * this is the client's belt for the deploy window and older servers.
+ */
+export function playableExercises(detail: WirePhaseDetail): WireExercise[] {
+  return detail.exercises.filter(isExercisePlayable);
+}
+
+/**
  * Recipe membership, in SERVER ORDER always:
  *   full   — every playable exercise
  *   short  — the dosed ones only, capped at 4 (a countable quick session)
  *   gentle — hold-based doses only (low load), else the first 3 dosed
  */
 export function buildPlan(detail: WirePhaseDetail, recipe: RecipeId): SessionPlan {
-  const playable = detail.exercises
-    .filter((e) => e.url || e.clip_url)
-    .map(toSessionExercise);
+  const playable = playableExercises(detail).map(toSessionExercise);
   let chosen = playable;
   if (recipe === 'short') {
     chosen = playable.filter((x) => x.dose).slice(0, 4);
@@ -157,8 +166,8 @@ export function buildPlan(detail: WirePhaseDetail, recipe: RecipeId): SessionPla
 export function buildCustomPlan(detail: WirePhaseDetail,
                                 names: string[]): SessionPlan {
   const wanted = new Set(names.map((n) => n.toLowerCase()));
-  const playable = detail.exercises
-    .filter((e) => (e.url || e.clip_url) && wanted.has(e.name.toLowerCase()))
+  const playable = playableExercises(detail)
+    .filter((e) => wanted.has(e.name.toLowerCase()))
     .map(toSessionExercise);
   const seconds = playable.reduce((n, x) => n + estimateSeconds(x), 0);
   return {

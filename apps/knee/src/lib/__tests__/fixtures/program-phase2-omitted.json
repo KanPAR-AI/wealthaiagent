@@ -1,0 +1,68 @@
+{
+  "corpus_id": "knee_timed",
+  "phase": "2",
+  "name": "Master control",
+  "count": 2,
+  "catalog_count": 5,
+  "complete": true,
+  "about": [],
+  "exercises": [
+    {
+      "name": "ARCH ACTIVATION",
+      "title": "ARCH ACTIVATION",
+      "phase": "2",
+      "movement_group": "foot arch",
+      "start_seconds": 6.0,
+      "end_seconds": 120.31,
+      "video_file": "El_Paso_Manual_Physical_Therapy (22).mp4",
+      "dose": null,
+      "url": "http://localhost:8080/api/v1/files/corpus-media/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff?t=tok-fixture-uid#t=6",
+      "clip_url": "http://localhost:8080/api/v1/files/corpus-media/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff?t=tok-fixture-uid&kind=clip_6_21",
+      "src": "https://storage.googleapis.com/test-media/ffffffff/source?sig=x#t=6",
+      "src_hi": null,
+      "clip_src": "https://storage.googleapis.com/test-media/ffffffff/clip_6_21?sig=x",
+      "dub_langs": []
+    },
+    {
+      "name": "mini squats",
+      "title": "MINI SQUATS",
+      "phase": "2",
+      "movement_group": "squat",
+      "start_seconds": 6.0,
+      "end_seconds": 149.12,
+      "video_file": "El_Paso_Manual_Physical_Therapy (25).mp4",
+      "dose": null,
+      "url": "http://localhost:8080/api/v1/files/corpus-media/abababababababababababababababababababababababababababababababab?t=tok-fixture-uid#t=6",
+      "clip_url": null,
+      "src": "https://storage.googleapis.com/test-media/abababab/source?sig=x#t=6",
+      "src_hi": null,
+      "clip_src": null,
+      "dub_langs": []
+    }
+  ],
+  "omitted": [
+    {
+      "name": "glute bridges",
+      "title": "Unnamed (El_Paso_Manual_Physical_Therapy (18).mp4)",
+      "video_file": "El_Paso_Manual_Physical_Therapy (18).mp4",
+      "reason": "no_segment",
+      "detail": "start/end seconds are not stamped on the corpus document, so no clip exists and the whole source file is the only thing that could play"
+    },
+    {
+      "name": "heel raise",
+      "title": "Unnamed (El_Paso_Manual_Physical_Therapy (23).mp4)",
+      "video_file": "El_Paso_Manual_Physical_Therapy (23).mp4",
+      "reason": "no_segment",
+      "detail": "start/end seconds are not stamped on the corpus document, so no clip exists and the whole source file is the only thing that could play"
+    },
+    {
+      "name": "standing calf raises",
+      "title": "Unnamed (El_Paso_Manual_Physical_Therapy (24).mp4)",
+      "video_file": "El_Paso_Manual_Physical_Therapy (24).mp4",
+      "reason": "no_segment",
+      "detail": "start/end seconds are not stamped on the corpus document, so no clip exists and the whole source file is the only thing that could play"
+    }
+  ],
+  "omitted_count": 3,
+  "sections": []
+}

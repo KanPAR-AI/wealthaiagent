@@ -59,6 +59,8 @@ const STRINGS: Record<string, { en: string; hi: string }> = {
   'phase.sub': { en: 'Dr. David’s program, one phase at a time. You move up when your body is ready.', hi: 'डॉ. डेविड का प्रोग्राम, एक बार में एक फ़ेज़। शरीर तैयार होने पर ही आगे बढ़ें।' },
   'phase.youreHere': { en: 'YOU’RE HERE', hi: 'आप यहाँ हैं' },
   'phase.exercises': { en: 'exercises', hi: 'व्यायाम' },
+  // bug bf83c4d7: "4 exercises · 2 awaiting a segment" on the phase card
+  'phase.awaitingSegment': { en: 'awaiting a segment', hi: 'क्लिप की प्रतीक्षा में' },
   'phase.find': { en: 'Not sure? Find my phase', hi: 'पक्का नहीं? मेरा फ़ेज़ खोजें' },
   'phase.findSub': { en: 'A 30-second check against Dr. David’s phase chart.', hi: 'डॉ. डेविड के चार्ट से 30 सेकंड की जाँच।' },
   'phase.flagsTitle': { en: 'Still flaring up — any one means Phase 1', hi: 'अब भी तकलीफ़ — कोई एक भी मतलब फ़ेज़ 1' },
@@ -78,6 +80,9 @@ const STRINGS: Record<string, { en: string; hi: string }> = {
   'phase.startOver': { en: 'Start over', hi: 'फिर से' },
   'phase.askCoach': { en: 'Ask the coach about this phase', hi: 'इस फ़ेज़ के बारे में कोच से पूछें' },
   'library.noFootage': { en: 'no footage yet', hi: 'वीडियो उपलब्ध नहीं' },
+  // bug bf83c4d7: a member whose segment is not stamped yet — named, never
+  // played as the whole source file
+  'library.segmentNotReady': { en: 'segment not ready', hi: 'क्लिप अभी तैयार नहीं' },
   'library.at': { en: 'at', hi: 'समय' },
   // section headings — the stamped non-exercise categories (SEG-5, docs/59).
   // One key per category the promoted vocabulary can send; an unknown future

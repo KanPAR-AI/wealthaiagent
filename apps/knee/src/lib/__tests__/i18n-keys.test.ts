@@ -26,6 +26,8 @@ const KEYS = [
   // slice 3 — the improvement question
   'rating.q', 'rating.later', 'rating.thanks',
   ...RATING_CHOICES.map(ratingLabelKey),
+  // bug bf83c4d7 — the honest label for a member whose segment is not stamped
+  'library.segmentNotReady', 'phase.awaitingSegment',
 ];
 
 describe('the new copy exists in EN and हिन्दी', () => {

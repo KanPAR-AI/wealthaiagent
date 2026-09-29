@@ -15,7 +15,7 @@ import { CAPABILITIES } from '@/lib/capabilities';
 import { getLang, subscribeLang, t } from '@/lib/i18n';
 import type { WirePhaseDetail } from '@/lib/library-view';
 import { seedFirstSeen } from '@/lib/rating-store';
-import { buildCustomPlan, buildPlan, localDate, nearDuplicateWarnings, recipeNote, type RecipeId } from '@/lib/session-view';
+import { buildCustomPlan, buildPlan, localDate, nearDuplicateWarnings, playableExercises, recipeNote, type RecipeId } from '@/lib/session-view';
 import { phaseColor, tokens as tk } from '@/theme';
 
 // The user's current phase, chosen HERE and remembered on-device (owner:
@@ -182,7 +182,7 @@ export default function Today() {
         {recipe === 'custom' && detail ? (
           <View style={s.pickerCard}>
             <Text style={s.pickerHint}>{t('today.customPick', lang)}</Text>
-            {detail.exercises.filter((e) => e.url || e.clip_url).map((e) => {
+            {playableExercises(detail).map((e) => {
               const on = picked.has(e.name);
               return (
                 <Pressable

@@ -26,7 +26,20 @@ export interface WirePhaseContent {
   count: number;
   catalog_count: number | null;
   complete: boolean;
+  /** members named by the corpus but not yet playable (no segment) —
+   *  absent on an older server (bug bf83c4d7) */
+  omitted_count?: number;
   strategy_video: WirePhaseVideo | null;
+}
+
+/** The count line on a phase card: "4 exercises", or "4 exercises · 2
+ *  awaiting a segment" when the engine reports omissions. Pure, so the
+ *  card can never say "6 exercises" for a phase that can play four. */
+export function phaseCountLine(p: { count: number; omitted_count?: number },
+                               exercisesWord: string, awaitingWord: string): string {
+  const k = p.omitted_count ?? 0;
+  const base = `${p.count} ${exercisesWord}`;
+  return k > 0 ? `${base} · ${k} ${awaitingWord}` : base;
 }
 
 export interface WireFinderOption {

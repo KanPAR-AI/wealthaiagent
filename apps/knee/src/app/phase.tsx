@@ -23,6 +23,7 @@ import {
   type WireFinder,
   type WireFinderQuestion,
   type WirePhaseContent,
+  phaseCountLine,
 } from '@/lib/phase-view';
 import { phaseColor, tokens as tk } from '@/theme';
 
@@ -133,7 +134,9 @@ export default function Phase() {
                   </View>
                   {p.tag ? <Text style={[s.phaseTag, { color: c }]}>{p.tag}</Text> : null}
                   <Text style={s.goal}>{p.goal}</Text>
-                  <Text style={[s.count, { color: c }]}>{p.count} {t('phase.exercises', lang)}</Text>
+                  <Text style={[s.count, { color: c }]}>
+                    {phaseCountLine(p, t('phase.exercises', lang), t('phase.awaitingSegment', lang))}
+                  </Text>
                 </Pressable>
               </View>
             );

@@ -24,7 +24,7 @@ import {
 import { DEFAULT_TILES, getHomeSuggestions, type HomeTile } from '@/services/home-service';
 import { track } from '@/lib/analytics';
 import { ChatDrawer } from '@/components/drawer/chat-drawer';
-import { VideoEmbed } from '@/components/chat/video-embed';
+import { VideoEmbed, YouTubeCard } from '@/components/chat/video-embed';
 import { WidgetView } from '@/components/chat/widget-view';
 import { QUICK_REPLY_EVENT, RETRY_EVENT } from '@/lib/events';
 import { splitVideoSegments } from '@/lib/video-links';
@@ -62,6 +62,10 @@ export default function ChatScreen() {
       splitVideoSegments(text).map((seg, j) =>
         seg.kind === 'video' ? (
           <VideoEmbed key={`${key}v${j}`} segment={seg} />
+        ) : seg.kind === 'youtube' ? (
+          // bug f4d0201a: the knee agent's curated YouTube references were
+          // bare links with no thumbnail — now a card with YouTube's still.
+          <YouTubeCard key={`${key}y${j}`} segment={seg} />
         ) : (
           <Markdown key={`${key}s${j}`} style={chatMarkdownStyles(theme)}>
             {seg.text}
