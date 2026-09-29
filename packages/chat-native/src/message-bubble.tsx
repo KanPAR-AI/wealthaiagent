@@ -262,7 +262,7 @@ export const MessageBubble = memo(function MessageBubble({
     <View style={styles.assistantRow}>
       {message.error ? (
         <Pressable
-          onPress={() => getPlatform().events.emit(CHAT_RETRY_EVENT, {})}
+          onPress={() => getPlatform().events.emit(CHAT_RETRY_EVENT, { messageId: message.id })}
           style={styles.errorRow}
           accessibilityLabel="Retry">
           <ChatText theme={theme} step="small" tone="danger">{message.error}</ChatText>

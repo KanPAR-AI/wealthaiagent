@@ -38,6 +38,7 @@ export {
   mapHistoryMessage,
   stripRoutingTag,
   deleteChatSession,
+  deleteForRegenerate,
   listenToChatStreamCore,
   fetchAvailableAgents,
   uploadFileCore,

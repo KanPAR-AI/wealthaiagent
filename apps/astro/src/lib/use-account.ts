@@ -27,7 +27,11 @@ export function useAccount(): { account: Account | null; resolved: boolean } {
 // Convenience for surfaces: blocked-or-unresolved. Action-time callers
 // (a send) refuse on this; tab surfaces additionally check `resolved`
 // before swapping their spinner for the gate card.
-export function useReadingBlocked(): { blocked: boolean; resolved: boolean } {
+//
+// `uid` rides along for the one caller that needs to know WHICH account a
+// parked turn was typed under (`lib/gated-draft.ts`, bug 29c19678): a
+// sign-in that swaps the uid must not send into the old account's chat.
+export function useReadingBlocked(): { blocked: boolean; resolved: boolean; uid: string | null } {
   const { account, resolved } = useAccount();
-  return { blocked: readingBlocked(account), resolved };
+  return { blocked: readingBlocked(account), resolved, uid: account?.uid ?? null };
 }

@@ -33,7 +33,7 @@
 // funnel counters moved with it into the lifecycle rather than being left
 // behind in a screen.
 
-import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { router, useIsFocused, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { StatusBar, setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { ActionSheetIOS, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
@@ -45,7 +45,9 @@ import {
   CHAT_SEND_EVENT,
   ChatSurface,
   loadChatIntoStore,
+  retryTarget,
   useSendMessage,
+  type ComposerRestore,
 } from '@wealthai/chat-native';
 import { getPlatform, useChatStore, type Message } from '@wealthai/core';
 import { stripInputResponse } from '@wealthai/astral';
@@ -57,8 +59,11 @@ import { ArrowUp, ChevronLeft, DotGrid, StopSquare } from '@/components/glyphs';
 import { CornerWash } from '@/components/sky';
 import { useReportProblem } from '@/lib/bug-report';
 import { handoffAction } from '@/lib/chat-handoff';
+import { applyEviction, chatDraft, chatReleaser, HELD_LINE } from '@/lib/gated-draft';
 import { useReadingBlocked } from '@/lib/use-account';
-import { disownChat, forgetChat, isOwnChat, lastChatId, rememberChat, rememberOwnChat } from '@/lib/chat-session';
+import {
+  disownChat, forgetChat, isDifferentAccount, isOwnChat, lastChatId, rememberChat, rememberOwnChat,
+} from '@/lib/chat-session';
 import { astroChatTheme } from '@/lib/chat-theme';
 import { ASTRO_DATA_LANGUAGES, AstroWidget } from '@/lib/chat-widgets';
 import { track } from '@/lib/analytics';
@@ -202,7 +207,7 @@ export default function Chat() {
   // Owner ruling 2026-09-12: a turn IS a reading — a guest's send routes
   // to the gate instead. `readingBlocked(null)` blocks the auth race too:
   // an unresolved send is refused, never risked.
-  const { blocked: readingGated } = useReadingBlocked();
+  const { blocked: readingGated, resolved: authResolved, uid } = useReadingBlocked();
 
   // docs/60 SL-4: the subject chip. The chip shows what the ENGINE last
   // said the subject is (the reading_subject block feeds the store); a
@@ -244,13 +249,71 @@ export default function Chat() {
     if (readingGated) return;
     fetchPeople().then((r) => setPeople(r.people)).catch(() => setPeople([]));
   }, [readingGated]);
+  // Bug 29c19678 (build 13): the gated send used to RETURN here and drop the
+  // turn — but the composer had already cleared its text and the in-bubble
+  // birth form had already flipped to its receipt, so after signing in the
+  // user's details were gone and nothing could re-send them. The turn is now
+  // PARKED (a small FIFO, in memory, never on disk — `lib/gated-draft.ts`
+  // says why) and the effect below releases it, unchanged, once the account
+  // can read. Nothing reaches the engine before sign-in.
+  const focused = useIsFocused();
+  // `draftTick` re-runs the release after every park and every release step;
+  // the queue itself is module state, invisible to React.
+  const [draftTick, setDraftTick] = useState(0);
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  // Plain text a dropped turn gives back to the composer (memory only).
+  const [restore, setRestore] = useState<ComposerRestore | null>(null);
+  const restoreToComposer = useCallback(
+    (text: string) => setRestore({ text, key: Date.now() }), []);
   const send = useCallback((text: string, atts: unknown[]) => {
     if (readingGated) {
+      const parked = chatDraft.park({ message: text, files: atts ?? [], uid, parkedAt: Date.now() });
+      if (parked.kept) setDraftNotice(null);
+      // A full queue made room — and says so; plain text goes back in the box.
+      applyEviction(parked.evicted, 'overflow', { notify: setDraftNotice, restore: restoreToComposer });
+      setDraftTick((n) => n + 1);
       router.push('/sign-in');
       return Promise.resolve();
     }
     return rawSend(text, atts as never);
-  }, [readingGated, rawSend]) as typeof rawSend;
+  }, [readingGated, rawSend, uid, restoreToComposer]) as typeof rawSend;
+  // The release, oldest first and one at a time: the releaser holds the next
+  // turn until the previous send SETTLES, so it goes through the `rawSend`
+  // bound to the chat the first one created. Stale turns and account-bound
+  // answers after an account swap are discarded WITH a visible line; nothing
+  // fires while this tab is hidden. `chatReleaser` decides, tested at the
+  // root; this effect only supplies the operations.
+  useEffect(() => {
+    const action = chatReleaser.step({
+      resolved: authResolved, blocked: readingGated, uid, chatId,
+      focused, busy: isSending || isCreatingChat, at: Date.now(),
+    }, {
+      send: (message, files) => rawSend(message, files as never),
+      leaveChat: () => {
+        forgetChat();
+        setChatId(null);
+      },
+      notify: setDraftNotice,
+      restore: restoreToComposer,
+      settled: () => setDraftTick((n) => n + 1),
+    });
+    if (action.kind !== 'none' && action.kind !== 'hold') setDraftTick((n) => n + 1);
+  }, [draftTick, authResolved, readingGated, uid, chatId, focused, isSending,
+      isCreatingChat, rawSend, restoreToComposer]);
+
+  // A DIFFERENT account (sign-out → a new anonymous uid, or a sign-in that
+  // swapped the uid) drops the chat this screen holds in memory. The root
+  // layout forgets the remembered id (`watchAccountForChat`); this is the
+  // mounted half, so the tab does not keep showing the last account's
+  // transcript. Linking keeps the uid and changes nothing.
+  const lastUid = useRef<string | null>(null);
+  useEffect(() => {
+    if (isDifferentAccount(lastUid.current, uid)) {
+      forgetChat();
+      setChatId(null);
+    }
+    if (uid !== null) lastUid.current = uid;
+  }, [uid]);
 
   // docs/71 PH-34: the multi-select the "Pick people…" row opens. The
   // selection is LOCAL to the sheet and dies with it — the member set that
@@ -460,17 +523,25 @@ export default function Chat() {
     });
   }, [send]);
 
-  // ↻ Retry on an errored reply: resend the last user message. Same
-  // behaviour, same channel, same component as mobile — a dropped stream
-  // must not mean two different things in two apps (ASTRAL-105).
+  // ↻ Retry on an errored reply: REGENERATE that turn — the same user
+  // message, the failed bubble reset in place, the stream targeted at the
+  // user message (report 3a74d645: the old `send(lastUser.message)` posted a
+  // second identical user row). Same behaviour, same channel, same component
+  // as mobile (ASTRAL-105). A guest's retry goes to the gate WITHOUT parking:
+  // a parked retry would come back later as a new message — the duplicate.
   useEffect(() => {
-    return getPlatform().events.on(CHAT_RETRY_EVENT, () => {
+    return getPlatform().events.on(CHAT_RETRY_EVENT, (payload) => {
       if (!chatId) return;
+      if (readingGated) {
+        router.push('/sign-in');
+        return;
+      }
       const msgs = useChatStore.getState().chats[chatId]?.messages || [];
-      const lastUser = [...msgs].reverse().find((m) => m.sender === 'user');
-      if (lastUser) void send(lastUser.message, lastUser.files || []);
+      const tapped = (payload as { messageId?: string } | undefined)?.messageId ?? null;
+      const target = retryTarget(msgs, tapped);
+      if (target) void rawSend(target.text, target.files, { retryOf: target.retryOf });
     });
-  }, [chatId, send]);
+  }, [chatId, rawSend, readingGated]);
 
   return (
     <View style={s.fill}>
@@ -528,6 +599,7 @@ export default function Chat() {
           busy={busy}
           onSend={send}
           onStop={cancel}
+          restore={restore}
           renderWidget={(widget, key) => (
             <AstroWidget key={key} widget={widget} theme={astroChatTheme} />
           )}
@@ -540,6 +612,18 @@ export default function Chat() {
           feedback={{ language: 'en' }}
           belowTranscript={
             <>
+            {/* A parked turn must not read as sent, and a discarded one is
+                never silent (lib/gated-draft.ts). */}
+            {chatDraft.size() > 0 && readingGated ? (
+              <View style={s.nudge}>
+                <Text style={s.nudgeBody}>{HELD_LINE}</Text>
+              </View>
+            ) : null}
+            {draftNotice ? (
+              <View style={s.nudge} accessibilityRole="alert">
+                <Text style={s.nudgeBody}>{draftNotice}</Text>
+              </View>
+            ) : null}
             {/* Owner 2026-09-18: past thirty messages — and said plainly when
                 the chat has mixed several topics — suggest a fresh reading.
                 One card, two honest buttons; "Keep going" buys twenty quiet

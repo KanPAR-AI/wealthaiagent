@@ -78,3 +78,39 @@ export async function adoptOwnChat(
   }
 }
 
+
+// ── a different account forgets the chat (E2 round 3) ──────────────────────
+//
+// `signOut` (lib/auth.ts) signs straight back in anonymously as a NEW uid,
+// and the `credential-already-in-use` fallback swaps the uid too. Neither
+// forgot the remembered chat, so the next account resumed the previous
+// account's chat id: the server refuses a cross-account post (an error
+// bubble, not a leak), but the chat tab showed a transcript that was not
+// this account's and every send into it failed. Linking an anonymous account
+// keeps the uid, so it is NOT a change and forgets nothing.
+
+/** Pure: did the account change to a DIFFERENT one? `null` (signed out, or
+ *  not yet reported) is a gap, not an account — it never counts. */
+export function isDifferentAccount(lastUid: string | null, uid: string | null): boolean {
+  return lastUid !== null && uid !== null && lastUid !== uid;
+}
+
+/**
+ * Watch the account and forget the remembered chat the moment it becomes a
+ * different account. `onChange` lets a mounted screen drop the id it holds
+ * in memory as well. Returns the unsubscribe.
+ */
+export function watchAccountForChat(
+  subscribe: (fn: (account: { uid: string } | null) => void) => () => void,
+  onChange: () => void = () => undefined,
+): () => void {
+  let last: string | null = null;
+  return subscribe((account) => {
+    const uid = account?.uid ?? null;
+    if (isDifferentAccount(last, uid)) {
+      forgetChat();
+      onChange();
+    }
+    if (uid !== null) last = uid;
+  });
+}

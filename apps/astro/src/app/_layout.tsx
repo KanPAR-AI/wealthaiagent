@@ -14,6 +14,8 @@ import { ensureCoreInitialized } from '@/lib/core-adapter';
 import { installPushHandlers, refreshPushRegistration } from '@/lib/push';
 import { routeForPush } from '@/lib/push-view';
 import { installBirthPrivacyRelock } from '@/lib/birth-privacy';
+import { subscribeToAccount } from '@/lib/auth';
+import { watchAccountForChat } from '@/lib/chat-session';
 
 // Install this app's PlatformAdapter into @wealthai/core before any screen
 // imports the shared chat client.
@@ -100,6 +102,10 @@ export default function RootLayout() {
   // way OUT (`change` to anything but `active`) is what puts the mask in
   // the snapshot; a re-lock on the way back would be one frame too late.
   useEffect(() => installBirthPrivacyRelock(AppState), []);
+  // E2 round 3: a DIFFERENT account (sign-out signs straight back in as a new
+  // anonymous uid; a sign-in can swap the uid) forgets the remembered chat,
+  // app-wide — the chat tab may not be mounted when it happens.
+  useEffect(() => watchAccountForChat(subscribeToAccount), []);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>

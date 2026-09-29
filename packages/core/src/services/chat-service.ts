@@ -126,6 +126,39 @@ export const createChatSession = async (
 };
 
 /**
+ * The first half of a RETRY (report 3a74d645): delete the failed/partial bot
+ * message so the stream can be re-opened against the SAME user message with
+ * `target_user_message_id` — instead of posting that user message again,
+ * which is what the native apps' Retry did and why one report persisted two
+ * identical user rows.
+ *
+ * Idempotent server-side (`POST /chats/{id}/messages/{mid}/regenerate`):
+ * 204 whether or not the MESSAGE exists. A 404 therefore means the CHAT is
+ * not found (chats.py `regenerate_message`: `NotFound` → 404 chat_not_found)
+ * — not "already deleted" — so it is reported as a failure, never as ok
+ * (Role-3, E2 round 4). The caller proceeds either way and counts it; the
+ * worst case is a duplicate BOT row, the trade the web's handleRegenerate
+ * makes.
+ */
+export const deleteForRegenerate = async (
+  jwt: string,
+  chatId: string,
+  botMessageId: string,
+): Promise<{ ok: boolean; status: number | null }> => {
+  const { fetch, getApiUrl } = getPlatform();
+  try {
+    const r = await fetch(getApiUrl(`/chats/${chatId}/messages/${botMessageId}/regenerate`), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+    return { ok: r.ok, status: r.status };
+  } catch (e) {
+    console.warn('[deleteForRegenerate] network error; the retry proceeds:', e);
+    return { ok: false, status: null };
+  }
+};
+
+/**
  * Sends a follow-up message to an existing chat.
  *
  * Returns the backend-assigned message id. Caller swaps this in for the
@@ -408,6 +441,19 @@ export const listenToChatStreamCore = async (
                 onTurnId(String(parsedEvent.request_id || ''), String(parsedEvent.message_id || ''));
               }
               onComplete();
+              return;
+            } else if (parsedEvent.type === 'error') {
+              // The server's own failure event (chatservice chats.py emits
+              // {type:'error', error:'An error occurred while generating the
+              // response'} when the turn raises). It used to fall through to
+              // the catch-all below, which handed the sentence on as an empty
+              // chunk of type 'error' and let the stream end as a SUCCESS —
+              // no Retry row, and the turn counted as answered. It is a
+              // failure: stop the watchdogs and report it, so the caller's
+              // failure path (reconcile, then the retry row) runs. Text that
+              // already streamed stays where it is; nothing here clears it.
+              clearTimers();
+              onError(new Error(String(parsedEvent.error || parsedEvent.message || 'The reply did not finish')));
               return;
             } else if (parsedEvent.type) {
               noteChunk();

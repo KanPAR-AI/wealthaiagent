@@ -77,7 +77,8 @@ import {
   type MuhurtaPhase,
 } from '@/lib/muhurta-view';
 import { routeIsLive } from '@/lib/tabs';
-import { useReadingBlocked } from '@/lib/use-account';
+import { useReadingGate } from '@/lib/use-reading-gate';
+import { SignInGateCard } from '@/components/sign-in-gate';
 import { tokens } from '@/theme';
 import { astroFormThemeNight } from '@/lib/chart-theme';
 
@@ -101,12 +102,13 @@ export default function Muhurta() {
   const [chatId, setChatId] = useState<string | null>(null);
   const chatIdRef = useRef<string | null>(null);
   // Owner ruling 2026-09-12: this screen runs a reading — a guest is
-  // routed through the gate before any turn fires. `replace`, so Back
-  // from the gate does not land on a screen that immediately re-gates.
-  const { blocked: readingGated, resolved: authResolved } = useReadingBlocked();
-  useEffect(() => {
-    if (authResolved && readingGated) router.replace('/sign-in');
-  }, [authResolved, readingGated]);
+  // routed through the gate before any turn fires. It used to `replace`
+  // itself with the gate, which unmounted it (sign-in's `back()` could never
+  // return here), and no send below checked the gate, so in the unresolved
+  // window a turn could reach the engine as the anonymous user (bug 29c19678,
+  // E2 round 2). `useReadingGate` pushes once, leaves this screen mounted,
+  // and every send returns early unless `mayRead`.
+  const { gate, mayRead } = useReadingGate();
 
   const { send } = useSendMessage(chatId, (id) => {
     chatIdRef.current = id;
@@ -127,7 +129,11 @@ export default function Muhurta() {
   // conversation of its own cannot see the chart the user already cast, and
   // the node reads the natal Moon's nakshatra when it has one.
   const [adopted, setAdopted] = useState(false);
+  const adopting = useRef(false);
   useEffect(() => {
+    // Loading the account's own chat is a read of its readings: after the gate.
+    if (adopting.current || !mayRead) return;
+    adopting.current = true;
     void (async () => {
       const id = await adoptOwnChat(loadChatIntoStore);
       if (id) {
@@ -144,7 +150,7 @@ export default function Muhurta() {
       }
       setAdopted(true);
     })();
-  }, []);
+  }, [mayRead]);
 
   // No opening turn. The user's own sentence IS turn one — see
   // `muhurta-view.ts` for the measurement that decided it. What still runs
@@ -227,7 +233,7 @@ export default function Muhurta() {
       // chat and the muhurta would be computed in a conversation that cannot
       // see the chart the user already cast — the node reads the natal
       // Moon's nakshatra when it has one.
-      if (!replyReady(message) || !adopted) return;
+      if (!replyReady(message) || !adopted || !mayRead) return;
       setDraft('');
       setPhase('computing');
       track('muhurta_answered');
@@ -236,7 +242,7 @@ export default function Muhurta() {
         setPhase('error');
       });
     },
-    [send, adopted],
+    [send, adopted, mayRead],
   );
 
   const toChat = () =>
@@ -280,6 +286,10 @@ export default function Muhurta() {
               </View>
             </SafeAreaView>
           </View>
+
+          {/* A guest back from the gate without signing in: the gate's card
+              above the box, whose typed text stays where it is. */}
+          {gate === 'card' ? <SignInGateCard dark /> : null}
 
           {phase === 'computing' ? (
             <View style={st.card}>

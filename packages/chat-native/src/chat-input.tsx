@@ -23,7 +23,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as Haptics from 'expo-haptics';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -37,6 +37,7 @@ import {
 } from 'react-native';
 import { type MessageFile } from '@wealthai/core';
 
+import { mergeRestoredText, type ComposerRestore } from './composer-restore';
 import { getChatHost, type ChatUploadAsset } from './host';
 import { ChatText } from './message-bubble';
 import type { ChatTheme } from './theme';
@@ -51,6 +52,9 @@ export interface ChatInputProps {
   /** (a) brand artwork for the send disc — a drawn glyph where the brand has
    *  one, the shipped text characters where it does not. */
   renderSendIcon?: (busy: boolean, color: string, size: number) => ReactNode;
+  /** Words the host is giving back (a turn it held and had to drop). Merged
+   *  in front of whatever is typed, never over it — `composer-restore.ts`. */
+  restore?: ComposerRestore | null;
 }
 
 export function ChatInput({
@@ -60,11 +64,15 @@ export function ChatInput({
   theme,
   placeholder = 'Ask me anything…',
   renderSendIcon,
+  restore,
 }: ChatInputProps) {
   const host = getChatHost();
   const { colors, metrics } = theme;
   const styles = stylesFor(theme);
   const [text, setText] = useState('');
+  useEffect(() => {
+    if (restore) setText((cur) => mergeRestoredText(cur, restore.text));
+  }, [restore]);
   const [files, setFiles] = useState<MessageFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);

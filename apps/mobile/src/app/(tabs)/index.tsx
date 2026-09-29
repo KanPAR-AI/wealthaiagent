@@ -16,6 +16,7 @@ import {
   BugReportSheet,
   ChatSurface,
   chatMarkdownStyles,
+  retryTarget,
   useSendMessage,
   type ChatTheme,
 } from '@wealthai/chat-native';
@@ -143,14 +144,17 @@ export default function ChatScreen() {
     });
   }, [send]);
 
-  // ↻ Retry on an errored reply: resend the last user message (with its
-  // attachments) — ChatGPT semantics.
+  // ↻ Retry on an errored reply: REGENERATE that turn — the same user
+  // message (with its attachments), the failed bubble reset in place, the
+  // stream targeted at the user message. The old `send(lastUser.message)`
+  // posted a second identical user row (report 3a74d645).
   useEffect(() => {
-    return getPlatform().events.on(RETRY_EVENT, () => {
+    return getPlatform().events.on(RETRY_EVENT, (payload) => {
       if (!chatId) return;
       const msgs = useChatStore.getState().chats[chatId]?.messages || [];
-      const lastUser = [...msgs].reverse().find((m) => m.sender === 'user');
-      if (lastUser) send(lastUser.message, lastUser.files || []);
+      const tapped = (payload as { messageId?: string } | undefined)?.messageId ?? null;
+      const target = retryTarget(msgs, tapped);
+      if (target) send(target.text, target.files, { retryOf: target.retryOf });
     });
   }, [chatId, send]);
 

@@ -44,6 +44,7 @@ import {
 } from '@wealthai/core';
 
 import { installChatHost, resetChatHost, type ChatHost } from '../host';
+import { retryTarget } from '../retry';
 import { useSendMessage } from '../use-send-message';
 
 // ── a scripted SSE stream ──────────────────────────────────────────────────
@@ -102,6 +103,11 @@ interface Backend {
   /** what GET /chats/{id} answers with — the reconciliation source */
   history: any;
   streamOpened: Promise<void>;
+  /** E2 round 3 (item D): when set, POST /chats waits on it — so a test can
+   *  look at the store BEFORE the session exists. Null = resolve at once. */
+  createGate: Promise<void> | null;
+  /** a fresh scripted stream for the NEXT GET /stream (a retry opens one) */
+  reopen: () => void;
 }
 
 let backend: Backend;
@@ -110,7 +116,13 @@ function installBackend() {
   const stream = scriptStream();
   let opened!: () => void;
   const streamOpened = new Promise<void>((r) => { opened = r; });
-  backend = { calls: [], stream, history: { messages: [] }, streamOpened };
+  backend = {
+    calls: [], stream, history: { messages: [] }, streamOpened, createGate: null,
+    reopen: () => {
+      backend.stream = scriptStream();
+      backend.streamOpened = new Promise<void>((r) => { opened = r; });
+    },
+  };
 
   const adapter: PlatformAdapter = {
     fetch: (async (url: any, init?: any) => {
@@ -123,6 +135,7 @@ function installBackend() {
         return { ok: true, body: backend.stream.body } as any;
       }
       if (u.endsWith('/chats') && init?.method === 'POST') {
+        if (backend.createGate) await backend.createGate;
         return json({ chat: { id: 'chat_1' }, messages: [{ id: 'server_user_1' }] });
       }
       if (u.includes('/messages')) return json({ id: 'server_user_2' });
@@ -458,5 +471,228 @@ describe('§12 funnel — counted in the lifecycle, not in a screen', () => {
     act(() => { backend.stream.push(JSON.stringify({ type: 'message_complete' })); });
     await sent;
     expect(tracked).toEqual([]);
+  });
+});
+
+// ── E2 rounds 3–4 ──────────────────────────────────────────────────────────
+
+describe.each(HOSTS)('E2 round 3, from %s', (_name, host) => {
+  // Cascade hygiene (Role-3, E2 round 4): every hook mounted here is
+  // unmounted, and every case gets a fresh backend and real timers, so one
+  // failing case cannot leak a live stream or fake clock into the next.
+  const views: Array<{ unmount: () => void }> = [];
+  const mountHere = () => {
+    let created: string | null = null;
+    const view = renderHook(() => useSendMessage(created, (id) => { created = id; }));
+    views.push(view);
+    return view;
+  };
+  // Every send a case starts, so a FAILING case's turn is still driven to
+  // its end here: an abandoned `act(...)` leaves React's act scope open, and
+  // the next case's `renderHook` then renders nothing (measured: one failing
+  // case turned the other nine red with "Cannot read properties of null").
+  const pending: Array<Promise<unknown>> = [];
+  const hold = <T,>(p: T): T => { pending.push(Promise.resolve(p as unknown)); return p; };
+  beforeEach(() => installChatHost(host));
+  afterEach(async () => {
+    jest.useFakeTimers();
+    backend.createGate = null;
+    backend.stream.close();
+    // NOT inside a new act(): the abandoned case's act scope is still open,
+    // and an act that starts inside it and ends after it corrupts React's
+    // scope depth — every later renderHook then renders nothing.
+    await jest.advanceTimersByTimeAsync(20000);
+    await Promise.allSettled(pending.splice(0));
+    jest.useRealTimers();
+    while (views.length) views.pop()!.unmount();
+    installBackend();
+  });
+
+  /** fail the current turn with the server's error event and let it settle */
+  async function failTurn(botId: string) {
+    act(() => {
+      backend.stream.push(JSON.stringify({ type: 'message_start', message: { id: botId } }));
+      backend.stream.push(JSON.stringify({ type: 'error', error: 'boom' }));
+    });
+    await act(async () => { await jest.advanceTimersByTimeAsync(14000); });
+  }
+  /** answer the current turn and let it settle */
+  async function answerTurn(text: string) {
+    act(() => {
+      backend.stream.push(JSON.stringify({ type: 'message_delta', delta: text }));
+      backend.stream.push(JSON.stringify({ type: 'message_complete' }));
+    });
+    await act(async () => { await jest.advanceTimersByTimeAsync(500); });
+  }
+
+  // Item D (report 95290c92). The fix renders BOTH bubbles under a temp id
+  // BEFORE `createChatSession`, then migrates them. The first test in this
+  // file only looked after the stream opened, with a POST that resolved at
+  // once — so moving the bootstrap back ahead of the optimistic bubbles left
+  // it green. This one holds POST /chats open and looks while it is open.
+  it('95290c92: both bubbles exist BEFORE POST /chats resolves, then migrate to the real id', async () => {
+    let releaseCreate!: () => void;
+    backend.createGate = new Promise<void>((r) => { releaseCreate = r; });
+    try {
+      const { result } = mountHere();
+      const sent = hold(act(() => result.current.send('what does my chart say')));
+
+      // POST /chats is in flight and has NOT answered
+      await waitFor(() => expect(
+        backend.calls.some((c) => c.url.endsWith('/chats') && c.init?.method === 'POST'),
+      ).toBe(true));
+      const chats = useChatStore.getState().chats;
+      const temp = Object.keys(chats).find((id) => id.startsWith('local_'));
+      expect(temp).toBeDefined();
+      expect(chats[temp!].messages.map((m) => m.sender)).toEqual(['user', 'bot']);
+      expect(chats[temp!].messages[0].message).toBe('what does my chart say');
+      expect(chats[temp!].messages[1].isStreaming).toBe(true);
+      expect(chats.chat_1).toBeUndefined();
+
+      releaseCreate();
+      await backend.streamOpened;
+      await waitFor(() => expect(messagesOf('chat_1').length).toBe(2));
+      expect(useChatStore.getState().chats[temp!]).toBeUndefined();
+      // …and turn 1's user row carries its SERVER id after the migration
+      expect(messagesOf('chat_1')[0].id).toBe('server_user_1');
+      act(() => { backend.stream.push(JSON.stringify({ type: 'message_complete' })); });
+      await sent;
+      expect(messagesOf('chat_1').map((m) => m.sender)).toEqual(['user', 'bot']);
+    } finally {
+      releaseCreate?.();
+    }
+  });
+
+  // Item A: the server's `error` event ends the turn as a FAILURE — the
+  // retry row renders from `error` — and the text that streamed stays.
+  it('a server `error` event after a partial reply: kept text, an error to retry, counted failed', async () => {
+    jest.useFakeTimers();
+    const { result } = mountHere();
+    const sent = hold(act(() => result.current.send('cast my kundli')));
+    await act(async () => { await backend.streamOpened; });
+    act(() => {
+      backend.stream.push(JSON.stringify({ type: 'message_delta', delta: 'Your chart ' }));
+      backend.stream.push(JSON.stringify({ type: 'error', error: 'An error occurred while generating the response' }));
+    });
+    await act(async () => { await jest.advanceTimersByTimeAsync(14000); });
+    await sent;
+    const bot = botOf('chat_1')!;
+    expect(bot.message).toBe('Your chart ');
+    expect(bot.error).toMatch(/Tap to retry/);
+    expect(bot.isStreaming).toBe(false);
+    if (host.track) {
+      expect(tracked.map((t) => t.event)).toContain('reading_failed');
+      expect(tracked.map((t) => t.event)).not.toContain('reading_answered');
+    }
+  });
+
+  // Item B (report 3a74d645): Retry REGENERATES — no second user row.
+  it('retry regenerates in place: no new user message, the failed row is deleted, the stream targets turn 1’s SERVER id', async () => {
+    jest.useFakeTimers();
+    const view = mountHere();
+    const first = hold(act(() => view.result.current.send('cast my kundli')));
+    await act(async () => { await backend.streamOpened; });
+    await failTurn('bot_failed');
+    await first;
+    view.rerender();
+    expect(botOf('chat_1')?.error).toMatch(/Tap to retry/);
+
+    const before = messagesOf('chat_1');
+    // Role-3, E2 round 4: this used to pin `before[0].id` — the LOCAL id,
+    // i.e. the bug. Turn 1 must carry the id POST /chats returned.
+    expect(before[0].id).toBe('server_user_1');
+    const target = retryTarget(before, 'bot_failed')!;
+    expect(target.retryOf).toEqual({ userMessageId: 'server_user_1', botMessageId: 'bot_failed' });
+
+    backend.reopen();
+    const callsBefore = backend.calls.length;
+    const again = hold(act(() => view.result.current.send(target.text, target.files, { retryOf: target.retryOf })));
+    await act(async () => { await backend.streamOpened; });
+    await answerTurn('Mesha lagna.');
+    await again;
+
+    const after = messagesOf('chat_1');
+    expect(after.map((m) => m.sender)).toEqual(['user', 'bot']);   // still ONE user row
+    expect(after[1].message).toBe('Mesha lagna.');
+    expect(after[1].error).toBeUndefined();
+    const newCalls = backend.calls.slice(callsBefore);
+    expect(newCalls.some((c) => c.url.endsWith('/chats/chat_1/messages/bot_failed/regenerate')
+      && c.init?.method === 'POST')).toBe(true);
+    expect(newCalls.some((c) => /\/chats\/chat_1\/messages$/.test(c.url))).toBe(false);
+    const stream = newCalls.find((c) => c.url.includes('/stream'))!;
+    expect(stream.url).toContain('target_user_message_id=server_user_1');
+  });
+
+  // The blocker, end to end: turn 1 fails, turn 2 is answered, the user taps
+  // Retry on TURN 1. With a local id the server would fall back to the latest
+  // user message and regenerate turn 2's question into turn 1's bubble.
+  it('turn 1 fails, turn 2 answers, Retry on turn 1 targets turn 1’s server id — never the latest', async () => {
+    jest.useFakeTimers();
+    const view = mountHere();
+    const t1 = hold(act(() => view.result.current.send('cast my kundli')));
+    await act(async () => { await backend.streamOpened; });
+    await failTurn('bot_1');
+    await t1;
+    view.rerender();
+
+    backend.reopen();
+    const t2 = hold(act(() => view.result.current.send('and my dasha?')));
+    await act(async () => { await backend.streamOpened; });
+    await answerTurn('Guru mahadasha.');
+    await t2;
+    view.rerender();
+
+    const msgs = messagesOf('chat_1');
+    expect(msgs.map((m) => [m.sender, m.id])).toEqual([
+      ['user', 'server_user_1'], ['bot', 'bot_1'], ['user', 'server_user_2'], ['bot', expect.any(String)],
+    ]);
+    const target = retryTarget(msgs, 'bot_1')!;
+    expect(target.retryOf.userMessageId).toBe('server_user_1');
+
+    backend.reopen();
+    const callsBefore = backend.calls.length;
+    const r = hold(act(() => view.result.current.send(target.text, target.files, { retryOf: target.retryOf })));
+    await act(async () => { await backend.streamOpened; });
+    await answerTurn('Mesha lagna.');
+    await r;
+
+    const streams = backend.calls.slice(callsBefore).filter((c) => c.url.includes('/stream'));
+    expect(streams).toHaveLength(1);
+    expect(streams[0].url).toContain('target_user_message_id=server_user_1');
+    expect(streams[0].url).not.toContain('server_user_2');
+    const after = messagesOf('chat_1');
+    expect(after[1].message).toBe('Mesha lagna.');     // turn 1's bubble
+    expect(after[3].message).toBe('Guru mahadasha.');  // turn 2 untouched
+    expect(after.filter((m) => m.sender === 'user')).toHaveLength(2);
+  });
+
+  // Non-blocking (1): two taps in the gap before `isSending` is set (the
+  // lifecycle awaits the token first) must start ONE regenerate, not two.
+  it('a double-tapped Retry starts exactly one regenerate', async () => {
+    jest.useFakeTimers();
+    const view = mountHere();
+    const first = hold(act(() => view.result.current.send('cast my kundli')));
+    await act(async () => { await backend.streamOpened; });
+    await failTurn('bot_failed');
+    await first;
+    view.rerender();
+
+    const target = retryTarget(messagesOf('chat_1'), 'bot_failed')!;
+    backend.reopen();
+    const callsBefore = backend.calls.length;
+    let a!: Promise<void>;
+    let b!: Promise<void>;
+    act(() => {
+      // same render, same closure: `isSending` is still false for both taps
+      a = hold(view.result.current.send(target.text, target.files, { retryOf: target.retryOf }));
+      b = hold(view.result.current.send(target.text, target.files, { retryOf: target.retryOf }));
+    });
+    await act(async () => { await backend.streamOpened; });
+    await answerTurn('Mesha lagna.');
+    await act(async () => { await a; await b; });
+
+    const newCalls = backend.calls.slice(callsBefore);
+    expect(newCalls.filter((c) => c.url.endsWith('/regenerate'))).toHaveLength(1);
+    expect(newCalls.filter((c) => c.url.includes('/stream'))).toHaveLength(1);
   });
 });

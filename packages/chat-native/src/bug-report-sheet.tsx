@@ -38,12 +38,22 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { uploadAsync, FileSystemUploadType } from 'expo-file-system/legacy';
+import { createUploadTask, FileSystemUploadType } from 'expo-file-system/legacy';
 import { getPlatform, submitBugReportCore } from '@wealthai/core';
 
+import { reportFailureLine, withDeadline } from './deadline';
 import { getChatHost } from './host';
 import { ChatText } from './message-bubble';
 import type { ChatTheme } from './theme';
+
+/** Every await in submit is bounded (report 457096f8 — see `deadline.ts`).
+ *  The upload's bound is the generous one: a 1200px JPEG on a poor link. */
+export const REPORT_DEADLINES = {
+  token: 15_000,
+  shrink: 15_000,
+  upload: 60_000,
+  post: 30_000,
+} as const;
 
 export interface BugReportSheetProps {
   visible: boolean;
@@ -131,7 +141,7 @@ export function BugReportSheet({
       ...appContext,
     } as Record<string, unknown>;
     try {
-      const token = await getChatHost().getToken();
+      const token = await withDeadline(getChatHost().getToken(), REPORT_DEADLINES.token, 'Signing the report');
       if (attachmentUri) {
         // Downscale + compress before upload. A full-resolution screen capture
         // (or library photo) is several MB, so "send report" took forever (the
@@ -141,17 +151,21 @@ export function BugReportSheet({
         let uploadUri = attachmentUri;
         let uploadMime = attachmentUri.endsWith('.png') ? 'image/png' : 'image/jpeg';
         try {
-          const shrunk = await manipulateAsync(
+          const shrunk = await withDeadline(manipulateAsync(
             attachmentUri,
             [{ resize: { width: 1200 } }],
             { compress: 0.6, format: SaveFormat.JPEG },
-          );
+          ), REPORT_DEADLINES.shrink, 'Shrinking the image');
           uploadUri = shrunk.uri;
           uploadMime = 'image/jpeg';
-        } catch {
-          /* keep the original on any manipulation failure */
+        } catch (e) {
+          // Keep the original on any manipulation failure (including its
+          // deadline) — the report matters more than the picture's size.
+          console.warn('[bug-report] image shrink failed; uploading the original:', e);
         }
-        const result = await uploadAsync(
+        // An upload TASK, not `uploadAsync`, so a missed deadline can CANCEL
+        // it rather than leave it running behind a closed sheet.
+        const task = createUploadTask(
           getPlatform().getApiUrl('/bug-reports'),
           uploadUri,
           {
@@ -167,21 +181,26 @@ export function BugReportSheet({
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           },
         );
+        const result = await withDeadline(
+          task.uploadAsync(), REPORT_DEADLINES.upload, 'Uploading the report',
+          () => { void task.cancelAsync(); },
+        );
+        if (!result) throw new Error('The upload was cancelled');
         if (result.status < 200 || result.status >= 300) {
           throw new Error(`Upload failed (${result.status})`);
         }
       } else {
-        await submitBugReportCore(
+        await withDeadline(submitBugReportCore(
           token ?? undefined,
           { description: desc, chatId },
           context as any,
-        );
+        ), REPORT_DEADLINES.post, 'Sending the report');
       }
       reset();
       onClose();
       Alert.alert('Thanks!', 'Your report was sent to the team.');
     } catch (e: any) {
-      Alert.alert('Could not send report', e?.message || 'Try again later.');
+      Alert.alert('Could not send report', reportFailureLine(e));
     } finally {
       setSending(false);
     }

@@ -27,6 +27,7 @@
 import { useCallback, useRef, useState } from 'react';
 import {
   createChatSession,
+  deleteForRegenerate,
   fetchChatHistory,
   listenToChatStreamCore,
   mapHistoryMessage,
@@ -38,6 +39,7 @@ import {
 } from '@wealthai/core';
 
 import { getChatHost } from './host';
+import type { RetryOf } from './retry';
 
 const FLUSH_INTERVAL_MS = 90;
 
@@ -60,6 +62,11 @@ export function useSendMessage(
 ) {
   const [state, setState] = useState<SendState>({ isSending: false, isCreatingChat: false });
   const controllerRef = useRef<AbortController | null>(null);
+  // Held from the first line of `send` until it returns. `state.isSending`
+  // is only set AFTER `await host.getToken()`, so two taps in that gap (a
+  // double-tapped Retry) both passed the state guard and started two
+  // generations. A ref is read synchronously; state is not.
+  const inFlightRef = useRef(false);
   const addMessage = useChatStore((s) => s.addMessage);
   const updateMessage = useChatStore((s) => s.updateMessage);
   const migrateChat = useChatStore((s) => s.migrateChat);
@@ -73,9 +80,15 @@ export function useSendMessage(
   }, []);
 
   const send = useCallback(
-    async (text: string, files: MessageFile[] = []) => {
+    async (text: string, files: MessageFile[] = [], opts: { retryOf?: RetryOf } = {}) => {
       const trimmed = text.trim();
       if ((!trimmed && files.length === 0) || state.isSending || state.isCreatingChat) return;
+      if (inFlightRef.current) return;
+      inFlightRef.current = true;
+      try {
+      // A retry regenerates a turn in THIS chat; with no chat there is no
+      // turn to regenerate.
+      const retryOf = opts.retryOf && chatId ? opts.retryOf : null;
 
       const host = getChatHost();
       const track = (event: string, params?: Record<string, unknown>) =>
@@ -103,6 +116,7 @@ export function useSendMessage(
       let activeChatId = chatId ?? nanoid();
       if (isFirstMessage) onChatCreated(activeChatId);   // switch to chat view now
       setState({ isSending: true, isCreatingChat: isFirstMessage });
+      if (retryOf) track('reading_retried', {});
 
       // §12's funnel, counted where the turn actually happens.
       track('reading_asked', { first_turn: isFirstMessage ? 1 : 0, chars: trimmed.length });
@@ -118,37 +132,59 @@ export function useSendMessage(
         });
       };
 
-      let userMessageIdLive = nanoid();
-      addMessage(activeChatId, {
-        id: userMessageIdLive,
-        message: trimmed,
-        sender: 'user',
-        timestamp: new Date().toISOString(),
-        files: files.length > 0 ? files : undefined,
-      });
-
-      let aiMessageIdLive = nanoid();
-      addMessage(activeChatId, {
-        id: aiMessageIdLive,
-        message: '',
-        sender: 'bot',
-        timestamp: new Date().toISOString(),
-        isStreaming: true,
-        streamingContent: '',
-      });
+      let userMessageIdLive = retryOf ? retryOf.userMessageId : nanoid();
+      let aiMessageIdLive = retryOf ? retryOf.botMessageId : nanoid();
+      if (retryOf) {
+        // Regenerate IN PLACE: the user's question is already in the
+        // transcript (and on the server); the failed bubble resets and
+        // streams again. No new user row, locally or server-side.
+        updateMessage(activeChatId, aiMessageIdLive, {
+          message: '',
+          streamingContent: '',
+          contentBlocks: undefined,
+          isStreaming: true,
+          error: undefined,
+        });
+      } else {
+        addMessage(activeChatId, {
+          id: userMessageIdLive,
+          message: trimmed,
+          sender: 'user',
+          timestamp: new Date().toISOString(),
+          files: files.length > 0 ? files : undefined,
+        });
+        addMessage(activeChatId, {
+          id: aiMessageIdLive,
+          message: '',
+          sender: 'bot',
+          timestamp: new Date().toISOString(),
+          isStreaming: true,
+          streamingContent: '',
+        });
+      }
 
       // ── Session bootstrap (first message) ─────────────────────────
       // Create the backend session in the background, then migrate the
       // already-visible optimistic bubbles onto the real chat id.
       if (isFirstMessage) {
         try {
-          const { chatId: newChatId } = await createChatSession(
+          const { chatId: newChatId, firstMessageId } = await createChatSession(
             token, 'New Chat', trimmed, files,
             useChatStore.getState().standaloneMode);
           if (newChatId && newChatId !== activeChatId) {
             migrateChat(activeChatId, newChatId);
             activeChatId = newChatId;
             onChatCreated(newChatId);
+          }
+          // Turn 1's user row takes its SERVER id too, as every later turn's
+          // does (below). Without it, a Retry on turn 1 sent the local nanoid
+          // as `target_user_message_id`; the server does not know it, falls
+          // back to the LATEST user message (chats.py:942-950) and
+          // regenerates turn 2's question into turn 1's bubble — a second
+          // charged generation, silently wrong (Role-3, E2 round 4).
+          if (firstMessageId && firstMessageId !== userMessageIdLive) {
+            updateMessage(activeChatId, userMessageIdLive, { id: firstMessageId });
+            userMessageIdLive = firstMessageId;
           }
           setState({ isSending: true, isCreatingChat: false });
         } catch (e) {
@@ -281,7 +317,13 @@ export function useSendMessage(
       try {
         // Message #1 was persisted by createChatSession; later messages
         // POST here and get their backend uuid back.
-        if (!isFirstMessage) {
+        if (retryOf) {
+          // Delete the failed bot row so the regenerated one replaces it.
+          // Proceeds either way (a duplicate BOT row is the worst case);
+          // the result is counted, never swallowed.
+          const del = await deleteForRegenerate(token, activeChatId, retryOf.botMessageId);
+          if (!del.ok) track('reading_retry_delete_failed', { status: del.status ?? 0 });
+        } else if (!isFirstMessage) {
           const backendUserId = await sendChatMessage(
             token, activeChatId, trimmed, files, controller.signal,
           );
@@ -360,6 +402,8 @@ export function useSendMessage(
             forceAgent,
             modelTier,
             externalSignal: controller.signal,
+            // A retry answers the SAME user message, not "the latest".
+            targetUserMessageId: retryOf ? retryOf.userMessageId : null,
             onCredits: (charged, balance) => {
               track('reading_charged', { charged, balance });
               if (charged) addCreditsConsumed(activeChatId!, charged);
@@ -407,6 +451,9 @@ export function useSendMessage(
           countOutcome('stopped', { chars: receivedText.length });
           setState({ isSending: false, isCreatingChat: false });
         }
+      }
+      } finally {
+        inFlightRef.current = false;
       }
     },
     [chatId, state.isSending, state.isCreatingChat, addMessage, updateMessage, migrateChat, selectedAgent, selectedModelTier, addCreditsConsumed, onChatCreated],

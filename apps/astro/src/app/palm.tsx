@@ -78,7 +78,9 @@ import {
   palmReplyKind,
 } from '@/lib/palm-view';
 import { routeIsLive } from '@/lib/tabs';
-import { useReadingBlocked } from '@/lib/use-account';
+import { useReadingGate } from '@/lib/use-reading-gate';
+import { SignInGateCard } from '@/components/sign-in-gate';
+import { GATED_SUBMIT_LINE } from '@/lib/gated-draft';
 import { tokens } from '@/theme';
 import { astroFormThemeNight } from '@/lib/chart-theme';
 
@@ -118,12 +120,15 @@ export default function Palm() {
   const [chatId, setChatId] = useState<string | null>(null);
   const chatIdRef = useRef<string | null>(null);
   // Owner ruling 2026-09-12: this screen runs a reading — a guest is
-  // routed through the gate before any turn fires. `replace`, so Back
-  // from the gate does not land on a screen that immediately re-gates.
-  const { blocked: readingGated, resolved: authResolved } = useReadingBlocked();
-  useEffect(() => {
-    if (authResolved && readingGated) router.replace('/sign-in');
-  }, [authResolved, readingGated]);
+  // routed through the gate before any turn fires. It used to `replace`
+  // itself with the gate, which unmounted it (sign-in's `back()` could never
+  // return here), and no send below checked the gate, so in the unresolved
+  // window a turn could reach the engine as the anonymous user (bug 29c19678,
+  // E2 round 2). `useReadingGate` pushes once, leaves this screen mounted,
+  // and every send returns early unless `mayRead`.
+  const { gate, mayRead } = useReadingGate();
+  const [gatedLine, setGatedLine] = useState<string | null>(null);
+  const [formKey, setFormKey] = useState(0);
 
   const { send } = useSendMessage(chatId, (id) => {
     chatIdRef.current = id;
@@ -155,7 +160,11 @@ export default function Palm() {
    * that made a stored palm invisible to later turns in the first place.
    */
   const [adopted, setAdopted] = useState(false);
+  const adopting = useRef(false);
   useEffect(() => {
+    // Loading the account's own chat is a read of its readings: after the gate.
+    if (adopting.current || !mayRead) return;
+    adopting.current = true;
     void (async () => {
       const id = await adoptOwnChat(loadChatIntoStore);
       if (id) {
@@ -172,7 +181,7 @@ export default function Palm() {
       }
       setAdopted(true);
     })();
-  }, []);
+  }, [mayRead]);
 
   // The photo comes back as an AUTHORISED file, so it needs a bearer token to
   // render. Fetched once here rather than inside the image element: a token
@@ -183,7 +192,7 @@ export default function Palm() {
 
   const started = useRef(false);
   const begin = useCallback(() => {
-    if (started.current || !adopted) return;
+    if (started.current || !adopted || !mayRead) return;
     started.current = true;
     setPhase('asking');
     track('palm_started');
@@ -205,7 +214,7 @@ export default function Palm() {
         setPhase('error');
       }
     })();
-  }, [adopted, send]);
+  }, [adopted, mayRead, send]);
 
   // The reply, read out of the SHARED store — same message, same place the
   // chat screen reads it from if the user goes there next.
@@ -274,6 +283,15 @@ export default function Palm() {
   /** The typed carrier the widget built, sent as-is. */
   const submit = useCallback(
     (message: string) => {
+      if (!mayRead) {
+        // The widget has already flipped to its "✓" — say it did NOT send,
+        // and hand back a fresh form (a new key) so it can be sent again
+        // once signed in. No parking on this screen (Role-3 scope, round 2).
+        setGatedLine(GATED_SUBMIT_LINE);
+        setFormKey((k) => k + 1);
+        return;
+      }
+      setGatedLine(null);
       setPhase('analysing');
       setRequest(null);
       track('palm_submitted');
@@ -282,7 +300,7 @@ export default function Palm() {
         setPhase('error');
       });
     },
-    [send],
+    [send, mayRead],
   );
 
   const toChat = () =>
@@ -350,6 +368,10 @@ export default function Palm() {
           </SafeAreaView>
         </View>
 
+        {/* A guest back from the gate without signing in: the gate's card,
+            never a second automatic push. */}
+        {gate === 'card' ? <SignInGateCard dark /> : null}
+
         {phase === 'disclosure' ? (
           <View style={st.card}>
             <Text style={st.cardTitle}>{disclosure.title}</Text>
@@ -386,7 +408,11 @@ export default function Palm() {
 
         {phase === 'capture' && request && askKind !== 'other' ? (
           <View style={st.card}>
+            {gatedLine ? (
+              <Text style={st.cardBody} accessibilityRole="alert">{gatedLine}</Text>
+            ) : null}
             <InputRequestView
+              key={formKey}
               ui={rnPrimitives}
               theme={astroFormThemeNight}
               width={width - tokens.space(18)}

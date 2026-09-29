@@ -49,7 +49,7 @@
 // is also why the conversation it starts is already in the transcript by the
 // time the chat screen opens, rather than being re-fetched or re-sent.
 
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useIsFocused, useLocalSearchParams } from 'expo-router';
 import {
   addMemberFailure,
   addMemberTitle,
@@ -101,7 +101,9 @@ import { editFailure, isReturningEdit, outcomeLine } from '@/lib/edit-fact';
 import { CORRECTING_WHILE_HIDDEN, maskedInputRequest } from '@/lib/birth-privacy-view';
 import { useBirthPrivacy } from '@/lib/birth-privacy';
 import { useEditOutcome } from '@/lib/edit-outcome';
-import { useReadingBlocked } from '@/lib/use-account';
+import { useReadingGate } from '@/lib/use-reading-gate';
+import { applyEviction, createDraftSlot, createReleaser, HELD_LINE } from '@/lib/gated-draft';
+import { SignInGateCard } from '@/components/sign-in-gate';
 import { suggestPlaces } from '@/lib/people';
 import { tokens } from '@/theme';
 
@@ -211,12 +213,37 @@ export default function BirthDetails() {
   /** the last bot message the adopted chat already had, if any */
   const priorBotId = useRef<string | null>(null);
   // Owner ruling 2026-09-12: this screen runs a reading — a guest is
-  // routed through the gate before any turn fires. `replace`, so Back
-  // from the gate does not land on a screen that immediately re-gates.
-  const { blocked: readingGated, resolved: authResolved } = useReadingBlocked();
-  useEffect(() => {
-    if (authResolved && readingGated) router.replace('/sign-in');
-  }, [authResolved, readingGated]);
+  // routed through the gate before any turn fires.
+  //
+  // Bug 29c19678 (build 13): "entered birth details, then it asked to sign
+  // in, and after signing in the birth details were gone". The gate used to
+  // be `router.replace('/sign-in')`, which UNMOUNTS this screen — the form,
+  // what was typed into it and the engine's pending ask with it — and the
+  // sign-in screen returns with `router.back()`, which cannot come back to a
+  // replaced screen, so the user landed somewhere else with nothing. And the
+  // opening turn below did not wait for the gate at all, so a guest's
+  // reading turn could reach the engine before the redirect.
+  //
+  // Now (`lib/use-reading-gate.ts` + `lib/gated-draft.ts` decide, tested at
+  // the root):
+  //   * nothing is sent — no adoption, no opening turn — until the account
+  //     can read, so the form is never drawn for a guest to type into;
+  //   * the gate is PUSHED, once per visit, so signing in comes straight back
+  //     HERE and the form opens; Back from the gate without signing in shows
+  //     the gate card rather than re-pushing (the loop `replace` avoided);
+  //   * if the account stops being able to read while the form is up, the
+  //     push leaves the form mounted, and a Continue in that window is
+  //     PARKED and released on return — or discarded with a visible line
+  //     when it is stale or bound to an account the user is no longer in.
+  const { gate, mayRead, blocked: readingGated, resolved: authResolved, uid, openGate } =
+    useReadingGate();
+  const focused = useIsFocused();
+  // A Continue the gate stopped: the widget's exact carrier, in memory, for
+  // this visit only. `draftTick` re-runs the release after every change.
+  const parked = useRef(createDraftSlot()).current;
+  const releaser = useRef(createReleaser(parked)).current;
+  const [draftTick, setDraftTick] = useState(0);
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
 
   const { send } = useSendMessage(chatId, (id) => {
     chatIdRef.current = id;
@@ -261,7 +288,8 @@ export default function BirthDetails() {
   // Nothing else about the turn changes.
   const [adopted, setAdopted] = useState(!editing);
   useEffect(() => {
-    if (adopted) return;
+    // An edit adopts the account's OWN chat, so it waits for the gate too.
+    if (adopted || !mayRead) return;
     void (async () => {
       const id = await adoptOwnChat(loadChatIntoStore);
       if (id) {
@@ -270,11 +298,11 @@ export default function BirthDetails() {
       }
       setAdopted(true);
     })();
-  }, [adopted]);
+  }, [adopted, mayRead]);
 
   const started = useRef(false);
   useEffect(() => {
-    if (started.current || !adopted) return;
+    if (started.current || !adopted || !mayRead) return;
     started.current = true;
     // The bot message the adopted chat ALREADY ends with. Without this the
     // parser below would consume the previous reading as if it were the
@@ -289,7 +317,7 @@ export default function BirthDetails() {
       }
       await send(opening?.trim() || OPENING_TURN, []);
     })();
-  }, [adopted, editing, send, opening]);
+  }, [adopted, mayRead, editing, send, opening]);
 
   // The reply, read out of the SHARED store rather than out of a promise
   // this screen owns — same message, same place the chat screen will read it
@@ -511,6 +539,18 @@ export default function BirthDetails() {
   );
 
   const handOff = useCallback((message: string) => {
+    if (readingGated) {
+      // Only reachable if the account stopped being able to read while the
+      // form was up (the form is never drawn for a guest). Park the carrier
+      // and go to the gate; the release below sends it on return.
+      const kept = parked.park({ message, files: [], uid, parkedAt: Date.now() });
+      if (kept.kept) setDraftNotice(null);
+      // No composer here: an evicted answer is voiced, never dropped quietly.
+      applyEviction(kept.evicted, 'overflow', { notify: setDraftNotice });
+      setDraftTick((n) => n + 1);
+      openGate();
+      return;
+    }
     if (editing) {
       void submitEdit(message);
       return;
@@ -528,7 +568,29 @@ export default function BirthDetails() {
       });
     }, HANDOFF_MS);
     handoffTimer.current = to;
-  }, [editing, submitEdit, adding, submitMember]);
+  }, [readingGated, parked, uid, openGate, editing, submitEdit, adding, submitMember]);
+
+  // The release of a parked Continue — through the SAME handOff, so the
+  // establish / edit / add paths are exactly the ones a direct tap takes.
+  // The decision (hold / discard with a line / re-home after an account
+  // swap / send) is `releaseAction` + `applyRelease`'s, tested at the root.
+  // Leaving the chat on a swap drops the id this screen holds, so the
+  // establish handoff opens a FRESH conversation for the new account.
+  useEffect(() => {
+    const action = releaser.step({
+      resolved: authResolved, blocked: readingGated, uid, chatId: chatIdRef.current,
+      focused, busy: casting, at: Date.now(),
+    }, {
+      send: (message) => handOff(message),
+      leaveChat: () => {
+        chatIdRef.current = null;
+        setChatId(null);
+      },
+      notify: setDraftNotice,
+      settled: () => setDraftTick((n) => n + 1),
+    });
+    if (action.kind !== 'none' && action.kind !== 'hold') setDraftTick((n) => n + 1);
+  }, [releaser, draftTick, authResolved, readingGated, uid, focused, casting, handOff]);
 
   // Cleared on unmount: a `router.replace` fired out of a screen that is
   // already gone is a warning in dev and a wasted navigation in production.
@@ -603,6 +665,20 @@ export default function BirthDetails() {
                 Details" on the simulator before this. */}
             {editing ? tokens.copy.correctionTitle : (addMemberTitle(kinship) ?? tokens.copy.birthDetailsTitle)}
           </Text>
+
+          {/* A guest who came back from the gate without signing in: the gate's
+              own card, ABOVE whatever is on screen — never in place of a form
+              somebody has typed into, and never a second automatic push. */}
+          {gate === 'card' ? <SignInGateCard /> : null}
+
+          {/* A parked Continue must not read as sent (the widget's "✓"). */}
+          {parked.size() > 0 ? <Text style={s.subtitle}>{HELD_LINE}</Text> : null}
+
+          {draftNotice ? (
+            <View style={s.notice} accessibilityRole="alert">
+              <Text style={s.noticeText}>{draftNotice}</Text>
+            </View>
+          ) : null}
 
           {addError ? (
             <View style={s.notice} accessibilityRole="alert">
@@ -683,7 +759,7 @@ export default function BirthDetails() {
                 <Text style={s.ctaText}>Continue in chat</Text>
               </Pressable>
             </View>
-          ) : (
+          ) : gate === 'card' ? null : (
             // Owner, on device 2026-09-19: "why does this page load". A bare
             // spinner under a title reads as a page that is stuck. The ask
             // is a few seconds away (the engine decides the fields, so none

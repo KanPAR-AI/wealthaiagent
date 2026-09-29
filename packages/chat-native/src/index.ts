@@ -33,9 +33,12 @@ export {
 export type { ChatHost, ChatUploadAsset } from './host';
 
 export { useSendMessage, type SendState } from './use-send-message';
+export { retryTarget, type RetryOf, type RetryTarget } from './retry';
 export { uploadFileNative } from './upload';
 export { transcribeAudioFile } from './voice';
 export { loadChatIntoStore } from './load-chat';
+export { mergeRestoredText, type ComposerRestore } from './composer-restore';
+export { withDeadline, DeadlineError, reportFailureLine } from './deadline';
 
 // ── the surface (all React Native; the lifecycle above is not) ─────────────
 export { ChatSurface, type ChatSurfaceProps } from './chat-surface';

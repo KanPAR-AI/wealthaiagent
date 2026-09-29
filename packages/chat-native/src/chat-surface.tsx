@@ -19,6 +19,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { submitFeedback, useChatStore, type Message, type MessageFile, type Widget } from '@wealthai/core';
 
 import { ChatInput } from './chat-input';
+import type { ComposerRestore } from './composer-restore';
 import { ChatText } from './message-bubble';
 import { MessageList } from './message-list';
 import { FeedbackSheet } from './feedback-sheet';
@@ -58,6 +59,8 @@ export interface ChatSurfaceProps {
   /** (a) composer copy and the send glyph. */
   placeholder?: string;
   renderSendIcon?: (busy: boolean, color: string, size: number) => ReactNode;
+  /** (a) words the app gives back to the composer — see `composer-restore.ts`. */
+  restore?: ComposerRestore | null;
 
   /**
    * (a) The brand's stand-in follow-ups.
@@ -114,6 +117,7 @@ export function ChatSurface({
   renderSendIcon,
   fallbackSuggestions,
   feedback,
+  restore,
 }: ChatSurfaceProps) {
   const replyWantsChips = useNeedsFallbackChips(chatId);
   const updateMessage = useChatStore((s) => s.updateMessage);
@@ -188,6 +192,7 @@ export function ChatSurface({
         theme={theme}
         placeholder={placeholder}
         renderSendIcon={renderSendIcon}
+        restore={restore}
       />
       {feedback && chatId && rating ? (
         <FeedbackSheet
