@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AppProviders } from "./components/providers/app-providers";
+import { AppErrorBoundary } from "@/components/app-error-boundary";
 import AppLayout from "@/components/layout/app-layout";
 import Chat from "./pages/Chat";
 import New from "./pages/New";
@@ -60,10 +61,24 @@ function MysticRouteGuard() {
   return null;
 }
 
+// Bug a0d78f0f: a render error anywhere below the router used to unmount
+// the whole tree — a blank white page with nothing to read or click. The
+// boundary sits INSIDE the router so it can name the route and reset when
+// the user navigates away; a second one in main.tsx covers the providers.
+function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  return (
+    <AppErrorBoundary route={pathname} resetKey={pathname} homeHref={basename === "/" ? "/" : `${basename}/`}>
+      {children}
+    </AppErrorBoundary>
+  );
+}
+
 const App = () => (
   <AppProviders>
     <BrowserRouter basename={basename}>
       <MysticRouteGuard />
+      <RouteErrorBoundary>
       <Routes>
         {/* Login page as the first screen */}
         <Route path="/" element={<LoginPage />} />
@@ -125,6 +140,7 @@ const App = () => (
         {/* Routes outside the layout, like a 404 page, won't have the sidebar */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </RouteErrorBoundary>
       {!isNativePlatform && <PWAInstall />}
     </BrowserRouter>
   </AppProviders>

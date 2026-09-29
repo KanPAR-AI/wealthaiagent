@@ -21,6 +21,18 @@ server {
         index index.html index.htm; # Explicitly define index files
         try_files $uri $uri/ /chataiagent/index.html; # Serve SPA
 
+        # index.html is the pointer to the CURRENT hashed bundles. A cached
+        # copy after a deploy points at files that no longer exist and the
+        # user gets a blank page (bug a0d78f0f). Hashed assets stay cacheable;
+        # the pointer must always be revalidated. SPA fallbacks (try_files)
+        # land here too, so deep links get the same header.
+        location ~ /index\.html$ {
+            alias /usr/share/nginx/html/chataiagent/index.html;
+            add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+            add_header Pragma "no-cache" always;
+            add_header Cross-Origin-Opener-Policy "same-origin-allow-popups" always;
+        }
+
         # Firebase signInWithPopup needs the parent to keep its window.opener
         # handle when the popup (aiagentapi.firebaseapp.com) returns. Chrome
         # 119+ severs the opener relationship unless the parent explicitly
@@ -28,6 +40,16 @@ server {
         # sign-in popup completes but the credential never posts back —
         # symptom: popup hangs / can't close, parent stays anonymous.
         add_header Cross-Origin-Opener-Policy "same-origin-allow-popups" always;
+    }
+
+    # Hashed assets: a file that is gone (purged by a deploy) must be a clean
+    # 404. Without this the SPA fallback answered 200 text/html for a missing
+    # .js, which the browser reported as the stale-chunk "failed to fetch
+    # dynamically imported module" (bug a0d78f0f). Longest prefix wins, so
+    # this takes precedence over the /chataiagent block above.
+    location /chataiagent/assets/ {
+        alias /usr/share/nginx/html/chataiagent/assets/;
+        try_files $uri =404;
     }
 
     # Root → redirect to /chataiagent/ (React app lives there).

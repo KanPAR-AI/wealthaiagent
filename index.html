@@ -38,6 +38,42 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Bug a0d78f0f: if the main bundle never runs (a cached index.html
+         pointing at a purged hash, a blocked script, a hard JS error before
+         React mounts), #root stays empty and the user sees a white page with
+         no explanation. This runs without the bundle: once the script has
+         failed to load, or after a generous wait with nothing drawn, it says
+         so and offers a reload. React's own error boundary takes over the
+         moment the bundle is alive. -->
+    <script>
+      (function () {
+        var shown = false;
+        function show(title, reason) {
+          if (shown) return;
+          var root = document.getElementById('root');
+          if (!root || root.childNodes.length) return;
+          shown = true;
+          root.innerHTML =
+            '<div role="alert" style="font-family:system-ui,sans-serif;max-width:28rem;margin:15vh auto;padding:1.25rem;border:1px solid #e5e7eb;border-radius:.5rem;color:#111">' +
+            '<h1 style="font-size:1rem;margin:0 0 .5rem">' + title + '</h1>' +
+            '<p style="font-size:.875rem;color:#555;margin:0 0 .75rem">' + reason + '</p>' +
+            '<button type="button" onclick="location.reload()" style="font-size:.875rem;padding:.4rem .8rem;border-radius:.375rem;border:1px solid #d1d5db;background:#2563eb;color:#fff">Reload</button>' +
+            '</div>';
+        }
+        window.addEventListener('error', function (e) {
+          var t = e && e.target;
+          if (t && t.tagName === 'SCRIPT' && t.type === 'module') {
+            show('The app could not start', 'A script this page needs failed to load. This usually means the app was updated while this tab was open.');
+          }
+        }, true);
+        // The main bundle is ~3 MB; on a slow link 12 s was not enough and
+        // "could not start" would have been a lie. Say "still loading" and
+        // wait longer - React replaces this the moment it mounts.
+        setTimeout(function () {
+          show('Still loading\u2026', 'The app has not drawn anything after 25 seconds. A slow connection can take this long; if nothing appears soon, reload.');
+        }, 25000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

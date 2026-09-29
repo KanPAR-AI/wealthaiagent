@@ -87,10 +87,16 @@ export default defineConfig({
               if (url.pathname.includes('/__/auth/') || url.pathname.includes('/__/firebase/')) return false;
               return true;
             },
+            // NetworkFirst WITHOUT a timeout: the cached HTML is used only
+            // when the network request itself FAILS (offline). The old
+            // 5-second timeout served a stale index.html on a slow link,
+            // whose hashed bundles the just-activated SW had already
+            // purged - a blank page with nothing to read (bug a0d78f0f).
+            // nginx.template pairs this with Cache-Control: no-cache on
+            // index.html so the HTTP cache cannot do the same thing.
             handler: 'NetworkFirst',
             options: {
               cacheName: 'html-cache',
-              networkTimeoutSeconds: 5,
               expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 },
             },
           },
