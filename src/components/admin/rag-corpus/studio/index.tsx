@@ -13,6 +13,7 @@ import { useState } from "react";
 
 import { VideoLibraryPanel } from "../video-library-panel";
 import { AssetDetailView } from "./asset-detail";
+import { CorpusGraphView } from "./graph";
 import { StudioHome } from "./dashboard";
 import { NotBuilt, StudioRail, type RailSection } from "./rail";
 import { TemplatesPanel } from "./templates";
@@ -22,6 +23,7 @@ type View =
   | { screen: "home" }
   | { screen: "create" }
   | { screen: "corpus"; corpusId: string }
+  | { screen: "graph"; corpusId: string }
   | { screen: "asset"; corpusId: string; source: string };
 
 export function CorpusStudio() {
@@ -87,16 +89,38 @@ function CorporaSection({
     );
   }
 
+  if (view.screen === "graph") {
+    return (
+      <CorpusGraphView
+        corpusId={view.corpusId}
+        onBack={() => setView({ screen: "corpus", corpusId: view.corpusId })}
+        onOpenAsset={(source) => setView({ screen: "asset", corpusId: view.corpusId, source })}
+      />
+    );
+  }
+
   // The corpus workspace still uses the existing panel stack. It is the one
   // screen the mockup does not specify, and rewriting a working surface to
   // match a screen nobody drew would be redesigning by guess.
   return (
-    <VideoLibraryPanel
-      agentId={view.corpusId}
-      onBackToStudio={() => setView({ screen: "home" })}
-      onOpenAsset={(source) =>
-        setView({ screen: "asset", corpusId: view.corpusId || "knee", source })
-      }
-    />
+    <div className="space-y-2">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          data-testid="open-graph"
+          onClick={() => setView({ screen: "graph", corpusId: view.corpusId })}
+          className="rounded-md border border-border/60 px-2 py-1 text-xs hover:border-emerald-500/50"
+        >
+          Graph: chapters → verses → talks, with notes
+        </button>
+      </div>
+      <VideoLibraryPanel
+        agentId={view.corpusId}
+        onBackToStudio={() => setView({ screen: "home" })}
+        onOpenAsset={(source) =>
+          setView({ screen: "asset", corpusId: view.corpusId || "knee", source })
+        }
+      />
+    </div>
   );
 }

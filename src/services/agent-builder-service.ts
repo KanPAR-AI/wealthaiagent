@@ -55,6 +55,19 @@ export interface OntologyEntity {
   aliases: string[];
 }
 
+export interface RagConfig {
+  model?: string;
+  temperature?: number | null;
+  top_k?: number | null;
+  stage1_k?: number | null;
+  /** corpus_only | corpus_first | blended */
+  grounding?: string;
+  /** "" or "on" = links + a Sources footer; "off" = no links, no footer. */
+  citations?: string;
+  chunk_max_chars?: number | null;
+  chunk_overlap_chars?: number | null;
+}
+
 export interface DynamicAgentConfig {
   agent_id: string;
   name: string;
@@ -67,6 +80,9 @@ export interface DynamicAgentConfig {
   prompts: PromptsConfig;
   memory_config: MemoryConfig;
   ontology: { entities: Record<string, OntologyEntity> };
+  /** Per-agent retrieval/answer knobs (chatservice RagConfig). Every field
+   *  optional: unset means the platform default. */
+  rag?: RagConfig;
   model_config: Record<string, { label: string; default: string; allowed: string[] }>;
   capabilities: string[];
 }
@@ -90,7 +106,7 @@ export interface CreateAgentRequest {
   /** Retrieval + grounding, settable at creation. Without this the grounding
    *  mode chosen in the wizard was collected, shown, and dropped on the way to
    *  the server — every agent created blended whatever the person picked. */
-  rag?: { grounding?: string; top_k?: number; temperature?: number; model?: string };
+  rag?: RagConfig;
   capabilities?: string[];
 }
 

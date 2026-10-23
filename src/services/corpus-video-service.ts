@@ -1096,3 +1096,33 @@ export async function acceptExtractedValue(
     { method: "POST", body: JSON.stringify(body) },
   );
 }
+
+// ── the corpus as a graph (debugging page) ──────────────────────────────────
+
+export interface GraphNote { text: string; chars: number; model?: string; updated_at?: string }
+export interface GraphVerse { verse: number; ref: string; talks: string[]; note: GraphNote | null }
+export interface GraphTalk {
+  source: string; title: string; chapter: number | null; talk: number | null;
+  verses: number[]; spans: { verse: number; start_s: number; end_s: number | null }[];
+  placed_by: "title" | "transcript" | "chapter_only" | "none";
+  passages: number; duration_s: number; language: string; url: string; video_id: string;
+  content_sha: string; note: GraphNote | null;
+}
+export interface GraphChapter {
+  chapter: number; present: boolean; title?: string; series?: string;
+  talks: string[]; verses: GraphVerse[]; verse_max: number; note: GraphNote | null;
+  coverage?: { verses_with_talk: number; verses_with_note: number; talks: number; talks_with_note: number; minutes: number };
+}
+export interface CorpusGraph {
+  corpus_id: string;
+  counts: { talks: number; passages: number; chapters: number; verses: number; talk_notes: number; verse_notes: number; chapter_notes: number; minutes: number };
+  chapters: GraphChapter[];
+  talks: Record<string, GraphTalk>;
+  gaps: Record<string, (string | number)[]>;
+}
+
+/** chapter → verse → talk → passage with each node's note and every gap named. */
+export async function fetchCorpusGraph(corpusId: string, expectedChapters = 0): Promise<CorpusGraph> {
+  const q = expectedChapters ? `?expected_chapters=${expectedChapters}` : "";
+  return call(`/${encodeURIComponent(corpusId)}/graph${q}`);
+}
