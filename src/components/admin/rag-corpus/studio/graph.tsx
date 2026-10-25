@@ -349,6 +349,19 @@ function NodePanel({ data, current, selected, onOpenAsset, onSelect }: {
         {t.url && <a href={t.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-sky-400"><ExternalLink size={12} /> watch</a>}
         {onOpenAsset && <button type="button" onClick={() => onOpenAsset(t.source)} className="text-xs text-sky-400">open asset</button>}
       </div>
+      {(t.continues_from || t.continues_in) && (
+        <p className="text-xs text-muted-foreground" data-testid="continuation">
+          {t.continues_from && data.talks[t.continues_from] && (
+            <button type="button" className="text-sky-400" data-testid="continues-from"
+              onClick={() => onSelect({ kind: "talk", source: t.continues_from! })}>← continues talk {data.talks[t.continues_from].talk ?? "?"}</button>
+          )}
+          {t.continues_from && t.continues_in && " · "}
+          {t.continues_in && data.talks[t.continues_in] && (
+            <button type="button" className="text-sky-400" data-testid="continues-in"
+              onClick={() => onSelect({ kind: "talk", source: t.continues_in! })}>continues in talk {data.talks[t.continues_in].talk ?? "?"} →</button>
+          )}
+        </p>
+      )}
       {t.spans.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {t.spans.map((p) => (

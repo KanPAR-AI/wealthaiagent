@@ -70,7 +70,8 @@ const U = {
   counts: { ...G.counts, units: 3, talks_with_units: 1, stories: 1, references: 0, concepts: 1, concept_notes: 1 },
   talks: {
     ...G.talks,
-    s35: { ...G.talks.s35, units_model: "pro#u1", unit_kinds: { recitation: 1, story: 1, explanation: 1 },
+    s36: { ...G.talks.s36, continues_from: "s35" },
+    s35: { ...G.talks.s35, units_model: "pro#u1", unit_kinds: { recitation: 1, story: 1, explanation: 1 }, continues_in: "s36",
       units: [
         { index: 0, unit_id: "a:u000", start_s: 0, end_s: 60, kind: "recitation", title: "श्लोक 47", gist: "पाठ", verses: [47], chars: 400, facets: {} },
         { index: 1, unit_id: "a:u001", start_s: 60, end_s: 600, kind: "explanation", title: "अधिकार", gist: "कर्म का अधिकार", verses: [47], chars: 1500, facets: { concepts: ["कर्म योग"] } },
@@ -121,4 +122,16 @@ test("the entity layer lists stories and concepts; a mention opens the unit; a c
   expect(screen.getByTestId("note-text")).toHaveTextContent("WHAT IS TAUGHT — कर्म योग");
   fireEvent.change(screen.getByTestId("entity-filter"), { target: { value: "zzz" } });
   expect(screen.queryByTestId("entity-co_ky")).toBeNull();
+});
+
+test("a talk that resumes another links both ways (D-14)", async () => {
+  fetchCorpusGraph.mockResolvedValue(U);
+  render(<CorpusGraphView corpusId="gita" onBack={() => {}} />);
+  await waitFor(() => screen.getByTestId("talk-s35"));
+  fireEvent.click(screen.getByTestId("talk-s35"));
+  expect(screen.getByTestId("continuation")).toHaveTextContent("continues in talk 36 →");
+  fireEvent.click(screen.getByTestId("continues-in"));
+  expect(screen.getByTestId("continuation")).toHaveTextContent("← continues talk 35");
+  fireEvent.click(screen.getByTestId("continues-from"));
+  expect(screen.getByTestId("units")).toHaveTextContent("3 units");
 });

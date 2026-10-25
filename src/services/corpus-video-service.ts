@@ -1124,6 +1124,8 @@ export interface GraphTalk {
   passages: number; duration_s: number; language: string; url: string; video_id: string;
   content_sha: string; note: GraphNote | null;
   units?: GraphUnit[]; unit_kinds?: Record<string, number>; units_model?: string;
+  /** D-14: the talk this one resumes / is resumed by (source keys), "" when none. */
+  continues_from?: string; continues_in?: string;
 }
 export interface GraphChapter {
   chapter: number; present: boolean; title?: string; series?: string;
@@ -1137,6 +1139,7 @@ export interface CorpusGraph {
     chapter_notes: number; minutes: number;
     units?: number; talks_with_units?: number; unit_kinds?: Record<string, number>;
     stories?: number; references?: number; concepts?: number; concept_notes?: number;
+    continuations?: number;
   };
   chapters: GraphChapter[];
   talks: Record<string, GraphTalk>;
