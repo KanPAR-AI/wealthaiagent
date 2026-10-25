@@ -47,7 +47,16 @@ export interface MemoryConfig {
   categories: string[];
   decay_rates: Record<string, number>;
   extraction_prompt: string;
+  /** Profile namespaces this agent may READ (identity, health, family, …); empty = all. */
+  namespaces?: string[];
+  /** Whether facts other agents INFERRED (not what the user said) reach this agent. */
+  inferences?: boolean;
 }
+
+/** The platform's closed namespace vocabulary (chatservice services/memory/namespaces.py). */
+export const MEMORY_NAMESPACES = [
+  "identity", "health", "nutrition", "finance", "work", "family", "travel", "preferences", "other",
+] as const;
 
 export interface OntologyEntity {
   display_name: string;

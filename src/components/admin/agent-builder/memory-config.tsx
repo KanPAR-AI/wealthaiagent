@@ -12,6 +12,7 @@ import { useAdminStore } from "@/store/admin";
 import {
   fetchAgentConfig,
   updateAgentConfig,
+  MEMORY_NAMESPACES,
 } from "@/services/agent-builder-service";
 import { toast } from "sonner";
 
@@ -26,6 +27,8 @@ export function MemoryConfigPanel({ agentId }: Props) {
   const [categories, setCategories] = useState<string[]>([]);
   const [decayRates, setDecayRates] = useState<Record<string, number>>({});
   const [extractionPrompt, setExtractionPrompt] = useState("");
+  const [namespaces, setNamespaces] = useState<string[]>([]);
+  const [inferences, setInferences] = useState(false);
   const [newCategory, setNewCategory] = useState("");
   const [dirty, setDirty] = useState(false);
 
@@ -38,6 +41,8 @@ export function MemoryConfigPanel({ agentId }: Props) {
       setCategories(config.memory_config.categories);
       setDecayRates(config.memory_config.decay_rates);
       setExtractionPrompt(config.memory_config.extraction_prompt);
+      setNamespaces(config.memory_config.namespaces ?? []);
+      setInferences(Boolean(config.memory_config.inferences));
       setDirty(false);
     } catch (err) {
       toast.error("Failed to load memory config", {
@@ -70,6 +75,13 @@ export function MemoryConfigPanel({ agentId }: Props) {
     setDirty(true);
   };
 
+  const toggleNamespace = (ns: string) => {
+    setNamespaces(
+      namespaces.includes(ns) ? namespaces.filter((n) => n !== ns) : [...namespaces, ns],
+    );
+    setDirty(true);
+  };
+
   const updateDecayRate = (cat: string, rate: number) => {
     setDecayRates({ ...decayRates, [cat]: rate });
     setDirty(true);
@@ -84,6 +96,8 @@ export function MemoryConfigPanel({ agentId }: Props) {
           categories,
           decay_rates: decayRates,
           extraction_prompt: extractionPrompt.trim(),
+          namespaces,
+          inferences,
         },
       } as any);
       toast.success("Memory config saved");
@@ -228,6 +242,60 @@ export function MemoryConfigPanel({ agentId }: Props) {
                   <Plus size={14} />
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* What this agent may READ of the user's profile */}
+          <Card
+            className="border-border/50 shadow-sm hover:shadow-md transition-shadow duration-200 animate-in slide-in-from-top-2 duration-300"
+            data-testid="memory-read-scope"
+          >
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">What this agent may read</CardTitle>
+              <CardDescription className="text-xs">
+                The user&apos;s profile is shared by every agent. Limit this one to the
+                categories it is about; with none ticked it reads all of them. Facts other
+                agents inferred (rather than what the user said) stay out unless allowed.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {MEMORY_NAMESPACES.map((ns) => {
+                  const on = namespaces.includes(ns);
+                  return (
+                    <button
+                      key={ns}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => toggleNamespace(ns)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-mono border transition-colors ${
+                        on
+                          ? "bg-violet-100 text-violet-700 border-violet-300 dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-700"
+                          : "bg-muted/20 text-muted-foreground border-border/50 hover:bg-muted/40"
+                      }`}
+                    >
+                      {ns}
+                    </button>
+                  );
+                })}
+              </div>
+              <label className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-muted/20 p-3">
+                <span>
+                  <span className="block text-sm font-medium">Read inferred facts</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Conclusions other agents drew about the user, not things the user said
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={inferences}
+                  onChange={(e) => {
+                    setInferences(e.target.checked);
+                    setDirty(true);
+                  }}
+                  className="h-4 w-4 accent-primary"
+                />
+              </label>
             </CardContent>
           </Card>
 
