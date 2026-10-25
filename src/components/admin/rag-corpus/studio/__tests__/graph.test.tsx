@@ -61,3 +61,64 @@ test("gaps are listed by name and jump to the node", async () => {
   fireEvent.click(screen.getByTestId("jump"));
   expect(screen.getByTestId("note-text")).toHaveTextContent("note on 2.2");
 });
+
+
+// ── D-13: units on the talk, the entity layer with its mentions ───────────
+
+const U = {
+  ...G,
+  counts: { ...G.counts, units: 3, talks_with_units: 1, stories: 1, references: 0, concepts: 1, concept_notes: 1 },
+  talks: {
+    ...G.talks,
+    s35: { ...G.talks.s35, units_model: "pro#u1", unit_kinds: { recitation: 1, story: 1, explanation: 1 },
+      units: [
+        { index: 0, unit_id: "a:u000", start_s: 0, end_s: 60, kind: "recitation", title: "श्लोक 47", gist: "पाठ", verses: [47], chars: 400, facets: {} },
+        { index: 1, unit_id: "a:u001", start_s: 60, end_s: 600, kind: "explanation", title: "अधिकार", gist: "कर्म का अधिकार", verses: [47], chars: 1500, facets: { concepts: ["कर्म योग"] } },
+        { index: 2, unit_id: "a:u002", start_s: 600, end_s: 1200, kind: "story", title: "ट्रैफिक पुलिस", gist: "वर्दी में अधिकार", verses: [47], chars: 900, facets: { story: "ट्रैफिक पुलिसवाला" } },
+      ] },
+  },
+  gaps: { ...G.gaps, talks_without_units: ["s36"] },
+  entities: {
+    story: [{ id: "st_tp", name: "ट्रैफिक पुलिसवाला", aliases: ["पुलिसवाले की कहानी"], count: 1, talk_count: 1, chapters: [2], verses: ["2.47"],
+      mentions: [{ source: "s35", unit_id: "a:u002", start_s: 600, chapter: 2, verses: [47], unit_title: "ट्रैफिक पुलिस" }], note: null }],
+    reference: [],
+    concept: [{ id: "co_ky", name: "कर्म योग", aliases: [], count: 1, talk_count: 1, chapters: [2], verses: ["2.47"],
+      mentions: [{ source: "s35", unit_id: "a:u001", start_s: 60, chapter: 2, verses: [47], unit_title: "अधिकार" }], note: { text: "WHAT IS TAUGHT — कर्म योग", chars: 25 } }],
+  },
+};
+
+test("a talk with units shows them as a timeline; one without says so", async () => {
+  fetchCorpusGraph.mockResolvedValue(U);
+  render(<CorpusGraphView corpusId="gita" onBack={() => {}} />);
+  await waitFor(() => screen.getByTestId("talk-s35"));
+  expect(screen.getByTestId("unit-counts")).toHaveTextContent("3 units in 1/2 talks · 1 stories · 0 references · 1 concepts (1 notes)");
+  expect(screen.getByTestId("talk-s35")).toHaveTextContent("3 units");
+  fireEvent.click(screen.getByTestId("talk-s35"));
+  expect(screen.getByTestId("units")).toHaveTextContent("3 units · 1 recitation · 1 story · 1 explanation · pro#u1");
+  fireEvent.click(screen.getByTestId("unit-2"));
+  expect(screen.getByTestId("unit-detail")).toHaveTextContent("story · 10:00–20:00 · 900 chars · verse 47");
+  expect(screen.getByTestId("unit-detail")).toHaveTextContent("story: ट्रैफिक पुलिसवाला");
+  expect(screen.getByText("open here").closest("a")).toHaveAttribute("href", "https://youtu.be/s35?t=600");
+  fireEvent.click(screen.getByTestId("talk-s36"));
+  expect(screen.getByTestId("units-empty")).toBeInTheDocument();
+  expect(screen.getByText("talks without units · 1")).toBeInTheDocument();
+});
+
+test("the entity layer lists stories and concepts; a mention opens the unit; a concept shows its note", async () => {
+  fetchCorpusGraph.mockResolvedValue(U);
+  render(<CorpusGraphView corpusId="gita" onBack={() => {}} />);
+  await waitFor(() => screen.getByTestId("entity-strip"));
+  expect(screen.getByTestId("entity-tab-story")).toHaveTextContent("stories · 1");
+  fireEvent.click(screen.getByTestId("entity-st_tp"));
+  expect(screen.getByTestId("entity-panel")).toHaveTextContent("Story: ट्रैफिक पुलिसवाला");
+  expect(screen.getByTestId("entity-panel")).toHaveTextContent("also: पुलिसवाले की कहानी");
+  expect(screen.getByTestId("mentions")).toHaveTextContent("Ch 2 · Talk 35");
+  expect(screen.getByText("@ 10:00").closest("a")).toHaveAttribute("href", "https://youtu.be/s35?t=600");
+  fireEvent.click(screen.getByText("Ch 2 · Talk 35"));
+  expect(screen.getByTestId("unit-detail")).toHaveTextContent("story · 10:00–20:00");
+  fireEvent.click(screen.getByTestId("entity-tab-concept"));
+  fireEvent.click(screen.getByTestId("entity-co_ky"));
+  expect(screen.getByTestId("note-text")).toHaveTextContent("WHAT IS TAUGHT — कर्म योग");
+  fireEvent.change(screen.getByTestId("entity-filter"), { target: { value: "zzz" } });
+  expect(screen.queryByTestId("entity-co_ky")).toBeNull();
+});

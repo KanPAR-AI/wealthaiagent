@@ -11,8 +11,11 @@ import { Button } from "@/components/ui/button";
 import {
   fetchCorpusGraph,
   type CorpusGraph,
+  type EntityKind,
   type GraphChapter,
+  type GraphEntity,
   type GraphTalk,
+  type GraphUnit,
   type GraphVerse,
 } from "@/services/corpus-video-service";
 
@@ -25,8 +28,20 @@ interface Props {
 type Selected =
   | { kind: "chapter"; chapter: number }
   | { kind: "verse"; chapter: number; verse: number }
-  | { kind: "talk"; source: string }
+  | { kind: "talk"; source: string; unit?: number }
+  | { kind: "entity"; ekind: EntityKind; id: string }
   | null;
+
+const ENTITY_KINDS: EntityKind[] = ["story", "reference", "concept"];
+const UNIT_COLOR: Record<string, string> = {
+  recitation: "bg-amber-400", explanation: "bg-sky-400", story: "bg-emerald-400",
+  reference: "bg-violet-400", aside: "bg-zinc-500",
+};
+
+function watchAt(url: string, s: number): string | undefined {
+  if (!url) return undefined;
+  return `${url}${url.includes("?") ? "&" : "?"}t=${Math.floor(s)}`;
+}
 
 const ROW = 16;        // px per verse row
 const TALK_H = 40;     // px per talk card
@@ -63,6 +78,8 @@ export function CorpusGraphView({ corpusId, onBack, onOpenAsset }: Props) {
   const [selected, setSelected] = useState<Selected>(null);
   const [query, setQuery] = useState("");
   const [gapOpen, setGapOpen] = useState<string | null>(null);
+  const [ekind, setEkind] = useState<EntityKind>("story");
+  const [efilter, setEfilter] = useState("");
 
   const load = async () => {
     setLoading(true); setError("");
@@ -114,6 +131,7 @@ export function CorpusGraphView({ corpusId, onBack, onOpenAsset }: Props) {
         <span className="text-xs text-muted-foreground">
           {data.counts.chapters} chapters · {data.counts.verses} verses · {data.counts.talks} talks · {data.counts.passages} passages · {Math.round(data.counts.minutes / 60)} h
           {" · notes "}{data.counts.talk_notes}/{data.counts.talks} talk, {data.counts.verse_notes} verse, {data.counts.chapter_notes} chapter
+          {data.counts.units ? <span data-testid="unit-counts">{" · "}{data.counts.units} units in {data.counts.talks_with_units}/{data.counts.talks} talks · {data.counts.stories ?? 0} stories · {data.counts.references ?? 0} references · {data.counts.concepts ?? 0} concepts ({data.counts.concept_notes ?? 0} notes)</span> : null}
         </span>
         <div className="ml-auto flex items-center gap-2">
           <label className="text-xs text-muted-foreground">chapters expected
@@ -170,6 +188,37 @@ export function CorpusGraphView({ corpusId, onBack, onOpenAsset }: Props) {
         </div>
       )}
 
+      {/* The entity layer: stories, references, concepts, each with every telling. */}
+      {data.entities && ENTITY_KINDS.some((k) => (data.entities?.[k] ?? []).length > 0) && (
+        <div className="rounded-md border border-border/60 p-2" data-testid="entity-strip">
+          <div className="flex flex-wrap items-center gap-1">
+            {ENTITY_KINDS.map((k) => (
+              <button key={k} type="button" onClick={() => setEkind(k)} aria-pressed={ekind === k} data-testid={`entity-tab-${k}`}
+                className={`rounded-full border px-2 py-0.5 text-[11px] ${ekind === k ? "border-emerald-500/60 bg-emerald-500/10" : "border-border/60"}`}>
+                {k === "story" ? "stories" : k === "reference" ? "references" : "concepts"} · {(data.entities?.[k] ?? []).length}
+              </button>
+            ))}
+            <input value={efilter} onChange={(e) => setEfilter(e.target.value)} placeholder="filter…"
+              className="ml-auto w-32 rounded border border-border/60 bg-transparent px-2 py-0.5 text-xs" data-testid="entity-filter" />
+          </div>
+          <div className="mt-2 flex max-h-32 flex-wrap gap-1 overflow-auto" data-testid="entity-list">
+            {(data.entities?.[ekind] ?? [])
+              .filter((e) => !efilter || `${e.name} ${e.aliases.join(" ")}`.toLowerCase().includes(efilter.toLowerCase()))
+              .slice(0, 150)
+              .map((e) => {
+                const on = selected?.kind === "entity" && selected.id === e.id;
+                return (
+                  <button key={e.id} type="button" onClick={() => setSelected({ kind: "entity", ekind, id: e.id })} data-testid={`entity-${e.id}`}
+                    title={`${e.talk_count} talks · ${e.count} mentions · chapters ${e.chapters.join(", ")}`}
+                    className={`rounded border px-1.5 py-0.5 text-[11px] ${on ? "border-emerald-500/60 bg-emerald-500/10" : "border-border/60 hover:border-emerald-500/50"}`}>
+                    {e.name.slice(0, 40)} <span className="text-muted-foreground">{e.talk_count}t/{e.count}</span>{e.note && <span className="ml-1 text-emerald-400">●</span>}
+                  </button>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* The ladder: verses left, talks right, an edge per verse-in-talk. */}
         <div className="min-w-0 flex-1 overflow-auto rounded-md border border-border/60">
@@ -197,7 +246,7 @@ export function CorpusGraphView({ corpusId, onBack, onOpenAsset }: Props) {
                     <rect x={TX} y={talkY(i)} width={TW} height={TALK_H} rx={6}
                       className={`${on ? "fill-emerald-500/20" : "fill-background"} ${talkStroke(t)}`} strokeWidth={on ? 2 : 1.2} strokeDasharray={t.note ? undefined : "4 3"} />
                     <text x={TX + 8} y={talkY(i) + 16} className="fill-foreground font-medium">
-                      {t.talk != null ? `Talk ${t.talk}` : "Talk ?"} · {t.verses.length ? `v${t.verses[0]}${t.verses.length > 1 ? `–${t.verses[t.verses.length - 1]}` : ""}` : "no verses"} · {Math.round(t.duration_s / 60)} min · {t.passages} passages{t.language && t.language !== "hi" ? ` · ${t.language}` : ""}
+                      {t.talk != null ? `Talk ${t.talk}` : "Talk ?"} · {t.verses.length ? `v${t.verses[0]}${t.verses.length > 1 ? `–${t.verses[t.verses.length - 1]}` : ""}` : "no verses"} · {Math.round(t.duration_s / 60)} min · {t.units?.length ? `${t.units.length} units` : `${t.passages} passages`}{t.language && t.language !== "hi" ? ` · ${t.language}` : ""}
                     </text>
                     <text x={TX + 8} y={talkY(i) + 31} className="fill-muted-foreground">{t.title.slice(0, 70)}</text>
                   </g>
@@ -258,8 +307,38 @@ function NodePanel({ data, current, selected, onOpenAsset, onSelect }: {
       </div>
     );
   }
+  if (selected.kind === "entity") {
+    const e: GraphEntity | undefined = (data.entities?.[selected.ekind] ?? []).find((x) => x.id === selected.id);
+    if (!e) return <p className="text-red-400">Unknown {selected.ekind}.</p>;
+    return (
+      <div className="space-y-2" data-testid="entity-panel">
+        <h3 className="font-semibold">{selected.ekind === "story" ? "Story" : selected.ekind === "reference" ? "Reference" : "Concept"}: {e.name}</h3>
+        {e.aliases.length > 0 && <p className="text-xs text-muted-foreground">also: {e.aliases.join(" · ")}</p>}
+        <p className="text-xs text-muted-foreground">{e.count} mentions in {e.talk_count} talks · chapters {e.chapters.join(", ") || "?"}{e.verses.length ? ` · verses ${e.verses.slice(0, 12).join(", ")}${e.verses.length > 12 ? "…" : ""}` : ""}</p>
+        <ul className="max-h-48 space-y-1 overflow-auto text-xs" data-testid="mentions">
+          {e.mentions.map((m, i) => {
+            const t = data.talks[m.source];
+            return (
+              <li key={`${m.source}-${i}`} className="flex flex-wrap items-center gap-1">
+                <button type="button" className="rounded border border-border/60 px-1 py-0.5 hover:border-emerald-500/50"
+                  onClick={() => onSelect({ kind: "talk", source: m.source, unit: t?.units?.find((u) => u.unit_id === m.unit_id)?.index })}>
+                  {t?.talk != null ? `Ch ${m.chapter ?? t.chapter} · Talk ${t.talk}` : m.source.slice(0, 30)}
+                </button>
+                <a href={t?.url ? watchAt(t.url, m.start_s) : undefined} target="_blank" rel="noreferrer" className="text-sky-400">@ {mmss(m.start_s)}</a>
+                {m.verses.length > 0 && <span className="text-muted-foreground">v{m.verses.join(",")}</span>}
+                <span className="text-muted-foreground">{m.unit_title}</span>
+              </li>
+            );
+          })}
+        </ul>
+        <Note note={e.note} empty={selected.ekind === "concept" ? "No concept note (below the threshold, or not yet written)." : "A card is built from the mentions above at publish."} />
+      </div>
+    );
+  }
   const t = data.talks[selected.source];
   if (!t) return <p className="text-red-400">Unknown talk.</p>;
+  const units: GraphUnit[] = t.units ?? [];
+  const unit = selected.unit != null ? units.find((u) => u.index === selected.unit) : undefined;
   return (
     <div className="space-y-2">
       <h3 className="font-semibold">{t.title}</h3>
@@ -277,6 +356,48 @@ function NodePanel({ data, current, selected, onOpenAsset, onSelect }: {
               className="rounded border border-border/60 px-1.5 py-0.5 text-xs">v{p.verse} @ {mmss(p.start_s)}</a>
           ))}
         </div>
+      )}
+      {units.length > 0 ? (
+        <div data-testid="units">
+          <p className="text-[11px] text-muted-foreground">{units.length} units · {Object.entries(t.unit_kinds ?? {}).map(([k, n]) => `${n} ${k}`).join(" · ")}{t.units_model ? ` · ${t.units_model}` : ""}</p>
+          {/* The talk as a timeline of units, each as wide as it is long. */}
+          <div className="mt-1 flex h-3 w-full overflow-hidden rounded" title="units by time">
+            {units.map((u) => (
+              <button key={u.index} type="button" onClick={() => onSelect({ kind: "talk", source: t.source, unit: u.index })}
+                title={`[${mmss(u.start_s)}] ${u.kind}: ${u.title}`} data-testid={`unit-bar-${u.index}`}
+                className={`${UNIT_COLOR[u.kind] ?? "bg-zinc-400"} ${unit?.index === u.index ? "opacity-100 ring-1 ring-white" : "opacity-70 hover:opacity-100"}`}
+                style={{ width: `${Math.max(0.5, (100 * (u.end_s - u.start_s)) / Math.max(1, t.duration_s))}%` }} />
+            ))}
+          </div>
+          <ul className="mt-1 max-h-48 space-y-0.5 overflow-auto text-xs">
+            {units.map((u) => (
+              <li key={u.index}>
+                <button type="button" onClick={() => onSelect({ kind: "talk", source: t.source, unit: u.index })} data-testid={`unit-${u.index}`}
+                  className={`w-full rounded px-1 py-0.5 text-left hover:bg-emerald-500/10 ${unit?.index === u.index ? "bg-emerald-500/10" : ""}`}>
+                  <span className="text-muted-foreground">[{mmss(u.start_s)}]</span> <span className={`inline-block h-2 w-2 rounded-sm ${UNIT_COLOR[u.kind] ?? "bg-zinc-400"}`} /> {u.title}{u.verses.length ? <span className="text-muted-foreground"> · v{u.verses.join(",")}</span> : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {unit && (
+            <div className="mt-2 rounded border border-border/60 p-2 text-xs" data-testid="unit-detail">
+              <p className="font-medium">{unit.kind} · {mmss(unit.start_s)}–{mmss(unit.end_s)} · {unit.chars ?? "?"} chars{unit.verses.length ? ` · verse ${unit.verses.join(", ")}` : ""}
+                {t.url && <a href={watchAt(t.url, unit.start_s)} target="_blank" rel="noreferrer" className="ml-2 inline-flex items-center gap-1 text-sky-400"><ExternalLink size={11} /> open here</a>}
+              </p>
+              <p className="mt-1">{unit.gist}</p>
+              {unit.facets && (
+                <p className="mt-1 text-muted-foreground">
+                  {unit.facets.story ? `story: ${unit.facets.story} · ` : ""}
+                  {unit.facets.concepts?.length ? `concepts: ${unit.facets.concepts.join(", ")} · ` : ""}
+                  {unit.facets.references?.length ? `references: ${unit.facets.references.join(", ")} · ` : ""}
+                  {unit.facets.people?.length ? `people: ${unit.facets.people.join(", ")}` : ""}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-xs text-amber-300" data-testid="units-empty">No discourse units yet — this talk is indexed as fixed windows.</p>
       )}
       <Note note={t.note} empty="No talk note yet." />
     </div>

@@ -1101,12 +1101,29 @@ export async function acceptExtractedValue(
 
 export interface GraphNote { text: string; chars: number; model?: string; updated_at?: string }
 export interface GraphVerse { verse: number; ref: string; talks: string[]; note: GraphNote | null }
+/** One discourse unit of a talk (docs/79 D-13): what the speaker is doing,
+ *  from when to when, with its facets. The text stays on the server. */
+export interface GraphUnit {
+  index: number; unit_id: string; start_s: number; end_s: number; kind: string;
+  title: string; gist: string; verses: number[]; chars?: number;
+  facets?: { story?: string; references?: string[]; people?: string[]; concepts?: string[] };
+}
+export interface GraphMention {
+  source: string; unit_id?: string; start_s: number; chapter: number | null; verses: number[]; unit_title: string;
+}
+/** A merged story / reference / concept with every unit that mentions it. */
+export interface GraphEntity {
+  id: string; name: string; aliases: string[]; count: number; talk_count: number;
+  chapters: number[]; verses: string[]; mentions: GraphMention[]; note: GraphNote | null;
+}
+export type EntityKind = "story" | "reference" | "concept";
 export interface GraphTalk {
   source: string; title: string; chapter: number | null; talk: number | null;
   verses: number[]; spans: { verse: number; start_s: number; end_s: number | null }[];
   placed_by: "title" | "transcript" | "chapter_only" | "none";
   passages: number; duration_s: number; language: string; url: string; video_id: string;
   content_sha: string; note: GraphNote | null;
+  units?: GraphUnit[]; unit_kinds?: Record<string, number>; units_model?: string;
 }
 export interface GraphChapter {
   chapter: number; present: boolean; title?: string; series?: string;
@@ -1115,10 +1132,16 @@ export interface GraphChapter {
 }
 export interface CorpusGraph {
   corpus_id: string;
-  counts: { talks: number; passages: number; chapters: number; verses: number; talk_notes: number; verse_notes: number; chapter_notes: number; minutes: number };
+  counts: {
+    talks: number; passages: number; chapters: number; verses: number; talk_notes: number; verse_notes: number;
+    chapter_notes: number; minutes: number;
+    units?: number; talks_with_units?: number; unit_kinds?: Record<string, number>;
+    stories?: number; references?: number; concepts?: number; concept_notes?: number;
+  };
   chapters: GraphChapter[];
   talks: Record<string, GraphTalk>;
   gaps: Record<string, (string | number)[]>;
+  entities?: Partial<Record<EntityKind, GraphEntity[]>>;
 }
 
 /** chapter → verse → talk → passage with each node's note and every gap named. */
