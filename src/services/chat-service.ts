@@ -68,6 +68,9 @@ export const listenToChatStream = async (
     externalSignal,
     targetUserMessageId,
     onAssistantId,
+    // Completion before the tiles (chatservice 2026-10-26): the bubble
+    // settles 4–6 s sooner; the tiles arrive as a widget chunk afterwards.
+    completeFirst: true,
   });
 };
 

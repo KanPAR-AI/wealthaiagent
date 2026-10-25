@@ -272,6 +272,14 @@ export interface ListenToChatStreamOptions {
   modelTier?: string | null;
   externalSignal?: AbortSignal;
   targetUserMessageId?: string | null;
+  /**
+   * Ask the server for `message_complete` BEFORE the suggestion tiles
+   * (`?complete_first=1`, chatservice 2026-10-26) and keep reading until its
+   * `stream_end`. The tiles used to hold completion for 4–6 s on every turn.
+   * Off by default: a client that does not opt in stops at `message_complete`
+   * and gets the old order, tiles first.
+   */
+  completeFirst?: boolean;
   /** Fired when the backend reports credits charged for this turn. */
   onCredits?: (charged: number, balance: number) => void;
   /** Called once when the backend's `message_start` event arrives, carrying
@@ -313,7 +321,7 @@ export const listenToChatStreamCore = async (
   options: ListenToChatStreamOptions = {},
 ) => {
   const { fetch, getApiUrl } = getPlatform();
-  const { forceAgent, modelTier, externalSignal, targetUserMessageId, onAssistantId, onCredits, onTurnId } = options;
+  const { forceAgent, modelTier, externalSignal, targetUserMessageId, onAssistantId, onCredits, onTurnId, completeFirst } = options;
 
   // One controller for the whole stream. Aborts if any watchdog fires, the
   // external signal aborts, or fetch errors out.
@@ -345,6 +353,7 @@ export const listenToChatStreamCore = async (
   // Tracks whether any data was received — distinguishes "stream produced nothing"
   // (we should treat as error) from "stream cancelled mid-chunk" (partial save case).
   let receivedAnyChunk = false;
+  let completed = false;
   const noteChunk = () => {
     receivedAnyChunk = true;
     if (ttfbTimer) { clearTimeout(ttfbTimer); ttfbTimer = null; }
@@ -358,6 +367,7 @@ export const listenToChatStreamCore = async (
     if (forceAgent) params.set('force_agent', forceAgent);
     if (modelTier && modelTier !== 'auto') params.set('model_tier', modelTier);
     if (targetUserMessageId) params.set('target_user_message_id', targetUserMessageId);
+    if (completeFirst) params.set('complete_first', '1');
     const qs = params.toString();
     const streamUrl = qs
       ? getApiUrl(`/chats/${chatId}/stream?${qs}`)
@@ -387,7 +397,11 @@ export const listenToChatStreamCore = async (
         // Connection closed cleanly without a `message_complete` event.
         // If we received chunks, treat as success; if we got nothing at all,
         // treat as error so the UI shows Retry instead of an empty bubble.
-        if (receivedAnyChunk) {
+        if (completed) {
+          // `message_complete` already fired and the caller opted to keep
+          // reading; the server closed without `stream_end` (an older server,
+          // or a tile call that died). Nothing more to report.
+        } else if (receivedAnyChunk) {
           onComplete();
         } else {
           onError(new Error('SSE stream closed without producing any content'));
@@ -441,6 +455,14 @@ export const listenToChatStreamCore = async (
                 onTurnId(String(parsedEvent.request_id || ''), String(parsedEvent.message_id || ''));
               }
               onComplete();
+              if (!completeFirst) return;
+              // Opted in: the tiles are still to come, then `stream_end`.
+              // A chunk after completion appends to the finished message; the
+              // completion callback is never called a second time.
+              completed = true;
+              resetIdleTimer();
+            } else if (parsedEvent.type === 'stream_end') {
+              clearTimers();
               return;
             } else if (parsedEvent.type === 'error') {
               // The server's own failure event (chatservice chats.py emits
