@@ -13,6 +13,7 @@ import {
   formatMoment,
   sourceCardsOf,
   verseLabel,
+  whereLabel,
   youtubeThumbnail,
   type SourceCard,
   type Widget,
@@ -78,7 +79,12 @@ export function SourcesGallery({ widget }: { widget: Widget }) {
                   </View>
                 ) : null}
               </View>
-              <ThemedText type="small" numberOfLines={2} style={styles.title}>{item.title}</ThemedText>
+              <View style={styles.captionBox}>
+                <ThemedText type="small" numberOfLines={2} style={styles.title}>{item.title}</ThemedText>
+                {whereLabel(item) ? (
+                  <ThemedText type="small" numberOfLines={1} style={styles.where}>{whereLabel(item)}</ThemedText>
+                ) : null}
+              </View>
             </Pressable>
           );
         }}
@@ -112,6 +118,8 @@ const styles = StyleSheet.create({
   playOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   playButton: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
   playIcon: { color: '#fff', fontSize: 12, lineHeight: 14 },
-  title: { paddingHorizontal: 8, paddingVertical: 6, minHeight: 40, lineHeight: 16 },
+  captionBox: { paddingHorizontal: 8, paddingVertical: 6, minHeight: 40 },
+  title: { lineHeight: 16 },
+  where: { opacity: 0.6, fontSize: 11, lineHeight: 14, marginTop: 2 },
   error: { opacity: 0.7, marginTop: 4 },
 });

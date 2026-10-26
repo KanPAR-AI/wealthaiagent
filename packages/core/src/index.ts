@@ -63,6 +63,8 @@ export {
   hideFooterWhenGallery,
   youtubeThumbnail,
   youtubeIdOf,
+  whereLabel,
+  captionFor,
   formatMoment,
   verseLabel,
   type SourceCard,

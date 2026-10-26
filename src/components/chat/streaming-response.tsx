@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Response } from '@/components/chat/response';
+import type { SourceCard } from '@wealthai/core';
 import { cn } from '@/lib/utils';
 
 interface StreamingResponseProps {
@@ -9,6 +10,7 @@ interface StreamingResponseProps {
   isStreaming: boolean;
   className?: string;
   onNavigate?: (path: string) => void;
+  sources?: SourceCard[];
 }
 
 // Blinking cursor during streaming
@@ -169,13 +171,13 @@ const StreamingTextRenderer = ({ content }: { content: string }) => (
   />
 );
 
-export const StreamingResponse = ({ content, isStreaming, className, onNavigate }: StreamingResponseProps) => {
+export const StreamingResponse = ({ content, isStreaming, className, onNavigate, sources }: StreamingResponseProps) => {
   return (
     <div className={cn("break-words overflow-wrap-anywhere min-w-0 overflow-x-auto", className)}>
       {isStreaming ? (
         <StreamingTextRenderer content={content} />
       ) : (
-        <Response onNavigate={onNavigate} isStreaming={false}>
+        <Response onNavigate={onNavigate} isStreaming={false} sources={sources}>
           {content}
         </Response>
       )}

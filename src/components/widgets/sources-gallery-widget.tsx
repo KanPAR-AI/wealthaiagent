@@ -5,6 +5,7 @@ import {
   formatMoment,
   sourceCardsOf,
   verseLabel,
+  whereLabel,
   youtubeThumbnail,
   type SourceCard,
   type Widget,
@@ -87,8 +88,13 @@ export function SourcesGalleryWidget({ widget }: { widget: Widget }) {
                   </span>
                 ) : null}
               </div>
-              <div className="px-2 py-1.5 text-xs leading-snug line-clamp-2 min-h-[2.5rem]">
-                {card.title}
+              <div className="px-2 py-1.5 min-h-[2.5rem]">
+                <div className="text-xs leading-snug line-clamp-2">{card.title}</div>
+                {whereLabel(card) ? (
+                  <div className="text-[10px] leading-snug text-muted-foreground mt-0.5 truncate">
+                    {whereLabel(card)}
+                  </div>
+                ) : null}
               </div>
             </button>
           );

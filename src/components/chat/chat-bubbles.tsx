@@ -1,7 +1,7 @@
 // components/chat/chat-bubble.tsx
 
 import { stripInputResponse } from '@wealthai/astral';
-import { hasSourcesWidget, hideFooterWhenGallery, stripSourcesFooter } from '@wealthai/core';
+import { hasSourcesWidget, hideFooterWhenGallery, stripSourcesFooter, sourceCardsOf } from '@wealthai/core';
 
 import { ActionIconDefinition, Message, MessageFile, UserInfo } from '@/types';
 import { motion } from 'framer-motion';
@@ -126,6 +126,7 @@ export function ChatBubble({
                       {message.sender === 'bot' ? (
                         <StreamingResponse
                           content={trimmed}
+                          sources={message.contentBlocks!.flatMap((b) => (b.type === 'widget' ? sourceCardsOf(b.widget) : []))}
                           isStreaming={Boolean(message.isStreaming && index === message.contentBlocks!.length - 1)}
                           className="chat-bubble-content"
                           onNavigate={handleNavigate}
@@ -179,6 +180,7 @@ export function ChatBubble({
                   <div className="px-0.5 whitespace-pre-wrap break-words overflow-wrap-anywhere min-w-0 overflow-x-auto chat-bubble-content">
                     {message.sender === 'bot' ? (
                       <StreamingResponse
+                        sources={(message.widgets || []).flatMap((w) => sourceCardsOf(w))}
                         content={hasSourcesWidget(undefined, message.widgets)
                           ? stripSourcesFooter(message.streamingContent || message.message)
                           : (message.streamingContent || message.message)}

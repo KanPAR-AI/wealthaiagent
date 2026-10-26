@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 
 import { embedCorpusMediaLinks, embedYouTubeLinks } from './embed-links';
+import type { SourceCard } from '@wealthai/core';
 
 import { renderCodeBlock } from './block-registry';
 
@@ -19,6 +20,8 @@ interface ResponseProps {
   // like palm_scanning that would otherwise loop their "Compiling reading…"
   // animation forever on a saved message.
   isStreaming?: boolean;
+  /** The message's source cards, for embed captions (shloka · talk). */
+  sources?: SourceCard[];
 }
 
 /** Collapse excessive blank lines to max one blank line */
@@ -150,10 +153,10 @@ function handleDubToggle(e: React.MouseEvent) {
 }
 
 export const Response = memo(
-  ({ className, children, onNavigate, isStreaming = true }: ResponseProps) => {
+  ({ className, children, onNavigate, isStreaming = true, sources }: ResponseProps) => {
     const raw = typeof children === 'string' ? children : (children ?? '');
     const cleaned = cleanContent(raw);
-    const withEmbeds = embedCorpusMediaLinks(embedYouTubeLinks(cleaned));
+    const withEmbeds = embedCorpusMediaLinks(embedYouTubeLinks(cleaned, sources));
     const mdComponents = buildMdComponents(onNavigate, isStreaming);
     return (
       <div
@@ -173,7 +176,8 @@ export const Response = memo(
   (prevProps, nextProps) =>
     prevProps.children === nextProps.children &&
     prevProps.onNavigate === nextProps.onNavigate &&
-    prevProps.isStreaming === nextProps.isStreaming,
+    prevProps.isStreaming === nextProps.isStreaming &&
+    prevProps.sources === nextProps.sources,
 );
 
 Response.displayName = 'Response';

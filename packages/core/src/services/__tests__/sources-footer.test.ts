@@ -6,6 +6,8 @@ import {
   stripSourcesFooter,
   verseLabel,
   youtubeIdOf,
+  whereLabel,
+  captionFor,
 } from '../sources-footer';
 
 const ANSWER = `[Using gita_ch2_discourse agent]
@@ -90,5 +92,24 @@ describe('youtubeIdOf', () => {
       { title: 't', url: 'https://www.youtube.com/watch?v=OhwW_MqgTPk&t=5', video_id: 'file [OhwW_MqgTPk].youtube' },
     ] } } as any);
     expect(cards[0].video_id).toBe('OhwW_MqgTPk');
+  });
+});
+
+describe('where a moment lives', () => {
+  const cards = [
+    { title: 'वर्णन में विस्तार का भेद', url: 'https://www.youtube.com/watch?v=Wy-uKMLzcPo&t=1366', video_id: 'Wy-uKMLzcPo', t: 1366, chapter: '1', verse: '28', kind: 'explanation', talk: 'Ch 1 · Talk 17' },
+    { title: 'another moment', url: 'https://www.youtube.com/watch?v=Wy-uKMLzcPo&t=2345', video_id: 'Wy-uKMLzcPo', t: 2345, chapter: '1', verse: '33,34,35', kind: 'unit', talk: 'Ch 1 · Talk 19' },
+  ];
+  it('labels the card with the shloka and the talk', () => {
+    expect(whereLabel(cards[0])).toBe('1.28 · Ch 1 · Talk 17');
+    expect(whereLabel({ title: 't', url: 'u', talk: 'Ch 13 · Talk 4' })).toBe('Ch 13 · Talk 4');
+    expect(whereLabel({ title: 't', url: 'u' })).toBe('');
+  });
+  it('captions a body embed from the nearest matching card', () => {
+    expect(captionFor('वर्णन में विस्तार का भेद', 'https://www.youtube.com/watch?v=Wy-uKMLzcPo&t=1366', cards))
+      .toBe('वर्णन में विस्तार का भेद · 1.28 · Ch 1 · Talk 17');
+    expect(captionFor('x', 'https://www.youtube.com/watch?v=Wy-uKMLzcPo&t=2300', cards)).toBe('x · 1.33,34,35 · Ch 1 · Talk 19');
+    expect(captionFor('x', 'https://www.youtube.com/watch?v=OTHERvid001', cards)).toBe('x');
+    expect(captionFor('x', 'https://www.youtube.com/watch?v=Wy-uKMLzcPo', undefined)).toBe('x');
   });
 });

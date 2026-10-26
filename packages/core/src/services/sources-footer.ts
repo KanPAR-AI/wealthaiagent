@@ -20,8 +20,12 @@ export interface SourceCard {
   t?: number | null;
   chapter?: string | null;
   verse?: string | null;
-  /** unit / story / verse / chapter / source — what kind of thing this is. */
+  /** explanation / story / verse / chapter / source — what kind of thing this is. */
   kind?: string | null;
+  /** The parent talk, short: "Ch 14 · Talk 3". */
+  talk?: string | null;
+  /** The parent talk's full title. */
+  document_title?: string | null;
 }
 
 export interface SourcesWidgetData {
@@ -117,4 +121,30 @@ export function verseLabel(card: SourceCard): string {
   if (ch && v) return `${ch}.${v}`;
   if (ch) return `Ch. ${ch}`;
   return '';
+}
+
+/** The line under a card's title that says WHERE the moment lives: the
+ *  shloka and the talk ("2.47 · Ch 2 · Talk 29"), the talk alone, or "". */
+export function whereLabel(card: SourceCard): string {
+  const verse = verseLabel(card);
+  const talk = (card.talk || '').trim();
+  return [verse, talk].filter(Boolean).join(' · ');
+}
+
+/** The caption for a video embedded in the answer's body: the link text the
+ *  writer chose, then the shloka and the talk when a source card matches the
+ *  video (and, when several moments of one talk are cited, the nearest). */
+export function captionFor(title: string, url: string, cards: SourceCard[] | undefined): string {
+  if (!cards || cards.length === 0) return title;
+  const id = youtubeIdOf(url, null);
+  if (!id) return title;
+  const t = Number((/[?&#]t=(\d+)/.exec(url) || [])[1] ?? NaN);
+  const same = cards.filter((c) => c.video_id === id);
+  if (same.length === 0) return title;
+  const best = Number.isFinite(t)
+    ? same.reduce((a, b) => (Math.abs((b.t ?? 0) - t) < Math.abs((a.t ?? 0) - t) ? b : a))
+    : same[0];
+  const where = whereLabel(best);
+  if (!where) return title;
+  return title.includes(where) ? title : `${title} · ${where}`;
 }

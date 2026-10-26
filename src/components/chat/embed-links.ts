@@ -6,6 +6,8 @@
  * from a test).
  */
 
+import { captionFor, type SourceCard } from '@wealthai/core';
+
 /**
  * Convert YouTube links to embedded iframe HTML.
  *
@@ -13,7 +15,7 @@
  * embedded player so the response doesn't show 3 identical iframes
  * when 3 corpus chunks from the same video are cited.
  */
-export function embedYouTubeLinks(text: string): string {
+export function embedYouTubeLinks(text: string, cards?: SourceCard[]): string {
   // First pass: collect all YouTube links and group by video ID
   const ytPattern =
     /^(.*?)\[([^\]]+)\]\((https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s)]*v=([a-zA-Z0-9_-]+)[^\s)]*|youtu\.be\/([a-zA-Z0-9_-]+)[^\s)]*?))\)(.*)$/gm;
@@ -37,10 +39,14 @@ export function embedYouTubeLinks(text: string): string {
     const embedUrl = `https://www.youtube.com/embed/${videoId}?start=${start}&rel=0`;
     const prefix = before.trim() ? before.trim() + '\n\n' : '';
     const suffix = after.trim() ? '\n\n' + after.trim() : '';
+    // The caption says where the moment lives — the shloka and the talk —
+    // when the message's source cards know this video (owner, 2026-10-26:
+    // "in addition to title also mention the shloka or the super entity").
+    const caption = captionFor(title, fullUrl, cards);
     return (
       `${prefix}<div class="youtube-embed my-3">` +
       `<iframe src="${embedUrl}" title="${title}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` +
-      `<div class="youtube-embed-caption"><a href="${fullUrl}" target="_blank" rel="noopener noreferrer">${title}</a></div>` +
+      `<div class="youtube-embed-caption"><a href="${fullUrl}" target="_blank" rel="noopener noreferrer">${caption}</a></div>` +
       `</div>${suffix}`
     );
   });

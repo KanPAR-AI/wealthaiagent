@@ -17,9 +17,9 @@ describe('SourcesGalleryWidget', () => {
   it('renders one card per source with the verse and the moment', () => {
     render(<SourcesGalleryWidget widget={widget} />);
     expect(screen.getAllByRole('button')).toHaveLength(3);
-    expect(screen.getByText('6.5')).toBeInTheDocument();
+    expect(screen.getAllByText(/6\.5/).length).toBeGreaterThan(0);
     expect(screen.getByText('2:04')).toBeInTheDocument();
-    expect(screen.getByText('Ch. 18')).toBeInTheDocument();
+    expect(screen.getAllByText(/Ch\. 18/).length).toBeGreaterThan(0);
     expect(screen.getByText('1:05:44')).toBeInTheDocument();
     expect(document.querySelector('iframe')).toBeNull();
   });
