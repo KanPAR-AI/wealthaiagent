@@ -401,10 +401,6 @@ export function useSendMessage(
           {
             forceAgent,
             modelTier,
-            // The bubble completes at `message_complete`; the suggestion
-            // tiles follow it and `stream_end` closes the read (latency
-            // work 2026-10-26, web parity) — 3–4 s off the wait per turn.
-            completeFirst: true,
             externalSignal: controller.signal,
             // A retry answers the SAME user message, not "the latest".
             targetUserMessageId: retryOf ? retryOf.userMessageId : null,
