@@ -108,6 +108,7 @@ export default function ChatWindow({
   const clearPendingMessage = useChatStore(state => state.clearPendingMessage);
   const selectedAgent = useChatStore(state => state.selectedAgent);
   const setSelectedAgent = useChatStore(state => state.setSelectedAgent);
+  const agentLocked = useChatStore(state => state.pinnedAgent?.mode === 'locked');
 
   // WhatsApp-originated chats are read-only on web (the conversation lives on
   // WhatsApp; editing here would confuse where a message came from).
@@ -356,6 +357,7 @@ export default function ChatWindow({
                       value={selectedAgent}
                       onChange={setSelectedAgent}
                       disabled={isSending || isNewChatInitiating}
+                      locked={agentLocked}
                     />
                   </div>
                   <PromptInputWithActions
@@ -434,6 +436,7 @@ export default function ChatWindow({
                         value={selectedAgent}
                         onChange={setSelectedAgent}
                         disabled={isSending}
+                        locked={agentLocked}
                       />
                       <PromptInputWithActions
                         onSubmit={handleSend}

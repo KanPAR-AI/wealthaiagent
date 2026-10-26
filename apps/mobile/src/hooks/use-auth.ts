@@ -5,6 +5,7 @@
 // design that the web store's sync localStorage reads couldn't share.)
 
 import { onAuthStateChanged, type User } from 'firebase/auth';
+import { getPlatform, useChatStore } from '@wealthai/core';
 import { useEffect, useState } from 'react';
 
 import { auth } from '@/lib/firebase';
@@ -25,6 +26,22 @@ export function useAuth(): AuthState {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setIsAuthLoading(false);
+      // The agent pinned for this user on the server (owner, 2026-10-26):
+      // read once per sign-in from /auth/me, into the shared chat store.
+      // A failure leaves whatever the store had — never a blocked start.
+      if (u) {
+        u.getIdToken()
+          .then((token) =>
+            getPlatform().fetch(getPlatform().getApiUrl('/auth/me'), { headers: { Authorization: `Bearer ${token}` } }),
+          )
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => {
+            if (data && 'pinnedAgent' in data) useChatStore.getState().setPinnedAgent(data.pinnedAgent ?? null);
+          })
+          .catch(() => {});
+      } else {
+        useChatStore.getState().setPinnedAgent(null);
+      }
     });
     return unsubscribe;
   }, []);

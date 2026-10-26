@@ -1,4 +1,5 @@
 // components/providers/auth-provider.tsx
+import { useChatStore } from '@/store/chat';
 import { useEffect } from "react";
 import {
   onAuthStateChanged,
@@ -82,6 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
           if (res.ok) {
             const data = await res.json();
+            // The agent pinned for this user on the server, if any.
+            useChatStore.getState().setPinnedAgent(data.pinnedAgent ?? null);
             setUser({
               uid: firebaseUser.uid,
               email: firebaseUser.email || data.email,

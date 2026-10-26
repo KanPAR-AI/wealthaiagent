@@ -96,6 +96,6 @@ export {
   type FixTaskStatus,
 } from './services/bug-report-service';
 
-export { useChatStore } from './store/chat';
+export { useChatStore, type PinnedAgent } from './store/chat';
 
 export const CORE_VERSION = '0.1.0';

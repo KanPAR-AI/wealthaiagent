@@ -75,6 +75,8 @@ export default function ChatScreen() {
     [],
   );
   const selectedAgent = useChatStore((st) => st.selectedAgent);
+  // A locked pin hides the picker: the server set this agent for this user.
+  const agentLocked = useChatStore((st) => st.pinnedAgent?.mode === 'locked');
   const setSelectedAgent = useChatStore((st) => st.setSelectedAgent);
   const modelTier = useChatStore((st) => st.selectedModelTier) || 'auto';
   const standaloneMode = useChatStore((st) => st.standaloneMode);
@@ -180,12 +182,12 @@ export default function ChatScreen() {
           </Pressable>
           <Pressable
             style={styles.headerCenter}
-            onPress={() => router.push('/agents')}
+            onPress={() => { if (!agentLocked) router.push('/agents'); }}
             hitSlop={8}
-            accessibilityLabel="Choose agent">
+            accessibilityLabel={agentLocked ? 'Your agent' : 'Choose agent'}>
             <ThemedText type="smallBold">YourFinAdvisor</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              {selectedAgent ? selectedAgent.replace(/_/g, ' ') : 'Smart routing'} ▾
+              {selectedAgent ? selectedAgent.replace(/_/g, ' ') : 'Smart routing'}{agentLocked ? '' : ' ▾'}
             </ThemedText>
           </Pressable>
           <View style={styles.headerRight}>

@@ -4,6 +4,11 @@ import { create } from 'zustand';
 import type { Message, MessageFile } from '../types/chat';
 
 // --- Chat State Management ---
+export interface PinnedAgent {
+  agent_id: string;
+  mode: 'default' | 'locked';
+}
+
 interface ChatState {
   chats: Record<string, { messages: Message[] }>;
   // pendingMessage now correctly includes MessageFile[] and useMockService flag
@@ -12,6 +17,13 @@ interface ChatState {
   // Agent selection (null = auto/smart routing)
   selectedAgent: string | null;
   setSelectedAgent: (agentId: string | null) => void;
+
+  // The agent pinned for this user on the server (users/{uid}.pinned_agent,
+  // read from GET /auth/me). "default" preselects it and keeps the picker;
+  // "locked" hides the picker and every selection resolves to it — the
+  // Astral / KneeFit shape, per user (owner, 2026-10-26).
+  pinnedAgent: PinnedAgent | null;
+  setPinnedAgent: (pin: PinnedAgent | null) => void;
 
   // Standalone mode for the NEXT chat created. Sealed off from user memory:
   // the chat is still saved and still appears in history, it just neither
@@ -57,7 +69,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
   standaloneMode: false,
   setStandaloneMode: (on: boolean) => set({ standaloneMode: on }),
   selectedAgent: null,
-  setSelectedAgent: (agentId) => set({ selectedAgent: agentId }),
+  setSelectedAgent: (agentId) =>
+    set((s) =>
+      s.pinnedAgent?.mode === 'locked'
+        ? { selectedAgent: s.pinnedAgent.agent_id }
+        : { selectedAgent: agentId },
+    ),
+  pinnedAgent: null,
+  setPinnedAgent: (pin) =>
+    set((s) => {
+      if (!pin || !pin.agent_id) return { pinnedAgent: null };
+      const mode = pin.mode === 'locked' ? 'locked' : 'default';
+      const next: PinnedAgent = { agent_id: pin.agent_id, mode };
+      // Locked always wins; default fills an empty choice only.
+      const selectedAgent = mode === 'locked' || !s.selectedAgent ? pin.agent_id : s.selectedAgent;
+      return { pinnedAgent: next, selectedAgent };
+    }),
   selectedModelTier: 'auto',
   setSelectedModelTier: (tier) => set({ selectedModelTier: tier }),
   creditsConsumed: {},
@@ -233,6 +260,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   reset: () => {
-    set({ chats: {}, pendingMessage: null, selectedAgent: null, selectedModelTier: 'auto', creditsConsumed: {} });
+    set({ chats: {}, pendingMessage: null, selectedAgent: null, pinnedAgent: null, selectedModelTier: 'auto', creditsConsumed: {} });
   },
 }));

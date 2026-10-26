@@ -21,7 +21,10 @@
 // way shareable links survive small typos / renamed dynamic agents.
 
 import { useEffect } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams, useSearchParams } from "react-router-dom";
+import { useRef } from "react";
+import { useAuthStore } from "@/store/auth";
+import { getApiUrl } from "@/config/environment";
 import { useChatStore } from "@/store/chat";
 import {
   applyMysticTheme,
@@ -65,9 +68,31 @@ function resolveSlug(rawSlug: string | undefined): string | null {
 
 export default function AgentLanding() {
   const { slug } = useParams<{ slug: string }>();
+  const [params] = useSearchParams();
   const setSelectedAgent = useChatStore((s) => s.setSelectedAgent);
+  const setPinnedAgent = useChatStore((s) => s.setPinnedAgent);
+  const idToken = useAuthStore((s) => s.idToken);
+  const pinned = useRef(false);
 
   const agentId = resolveSlug(slug);
+  // /a/<slug>?pin=1 (default) or ?pin=locked: the invite-link door. The
+  // server records the pin on this user — anonymous included — so it comes
+  // back on every /auth/me after, on every device they sign into.
+  const pinParam = (params.get("pin") || "").toLowerCase();
+  const pinMode = pinParam === "locked" ? "locked" : pinParam && pinParam !== "0" ? "default" : null;
+
+  useEffect(() => {
+    if (!agentId || !pinMode || !idToken || pinned.current) return;
+    pinned.current = true;
+    fetch(getApiUrl("/users/me/pinned-agent"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ agent_id: agentId, mode: pinMode }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data?.pinnedAgent) setPinnedAgent(data.pinnedAgent); })
+      .catch(() => {});
+  }, [agentId, pinMode, idToken, setPinnedAgent]);
 
   useEffect(() => {
     if (!agentId) return;

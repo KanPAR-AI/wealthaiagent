@@ -16,9 +16,11 @@ interface AgentSelectorProps {
   value: string | null;
   onChange: (agentId: string | null) => void;
   disabled?: boolean;
+  /** The agent is pinned for this user (locked): show it, offer no choice. */
+  locked?: boolean;
 }
 
-export function AgentSelector({ value, onChange, disabled }: AgentSelectorProps) {
+export function AgentSelector({ value, onChange, disabled, locked }: AgentSelectorProps) {
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -46,6 +48,21 @@ export function AgentSelector({ value, onChange, disabled }: AgentSelectorProps)
   const selected = agents.find((a) => a.id === value);
 
   if (agents.length === 0) return null;
+
+  if (locked) {
+    return (
+      <div ref={ref} className="relative inline-flex" data-testid="agent-selector-locked">
+        <span
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border
+            bg-gradient-to-r from-violet-500/10 to-indigo-500/10 border-violet-300/50 dark:border-violet-700/50 text-violet-700 dark:text-violet-300"
+          title="This agent is set for your account"
+        >
+          <Sparkles size={12} className="text-violet-500" />
+          {selected?.name || value}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div ref={ref} className="relative inline-flex">

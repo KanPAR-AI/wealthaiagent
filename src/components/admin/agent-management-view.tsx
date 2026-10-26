@@ -6,6 +6,7 @@
 //     actions over selected rows.
 //   - Clicking a row's name opens that agent's detail tabs (handled by parent
 //     via onSelectAgent).
+import { PinnedAgentPanel } from "@/components/admin/pinned-agent-panel";
 import { useMemo, useState } from "react";
 import {
   ArrowDown,
@@ -221,6 +222,7 @@ export function AgentManagementView({
   // -------------------------------------------------------------------
   return (
     <div className="space-y-4">
+      <PinnedAgentPanel />
       {/* Top bar: search + filters + create */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]">

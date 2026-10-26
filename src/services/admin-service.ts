@@ -657,3 +657,33 @@ export async function clearUserMemory(
     method: "DELETE",
   });
 }
+
+
+// ── Pinned agents (2026-10-26) ──────────────────────────────────────────────
+export interface UserLookup {
+  uid: string;
+  email: string | null;
+  phoneNumber: string | null;
+  displayName: string | null;
+  providers: string[];
+  pinnedAgent: { agent_id: string; mode: 'default' | 'locked' } | null;
+}
+
+export async function lookupUser(q: { email?: string; phone?: string; uid?: string }): Promise<UserLookup> {
+  const params = new URLSearchParams();
+  if (q.email) params.set('email', q.email);
+  if (q.phone) params.set('phone', q.phone);
+  if (q.uid) params.set('uid', q.uid);
+  return adminFetch(`/users/lookup?${params.toString()}`);
+}
+
+export async function pinAgentForUser(uid: string, agentId: string, mode: 'default' | 'locked') {
+  return adminFetch(`/users/${encodeURIComponent(uid)}/pinned-agent`, {
+    method: 'PUT',
+    body: JSON.stringify({ agent_id: agentId, mode }),
+  });
+}
+
+export async function unpinAgentForUser(uid: string) {
+  return adminFetch(`/users/${encodeURIComponent(uid)}/pinned-agent`, { method: 'DELETE' });
+}
