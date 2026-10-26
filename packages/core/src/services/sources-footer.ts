@@ -36,7 +36,24 @@ export function sourceCardsOf(widget: Widget | undefined | null): SourceCard[] {
   if (!widget || widget.type !== SOURCES_WIDGET_TYPE) return [];
   const data: any = (widget as any).items ? widget : widget.data;
   const items = Array.isArray(data?.items) ? data.items : [];
-  return items.filter((it: any) => it && typeof it.url === 'string' && it.url);
+  return items
+    .filter((it: any) => it && typeof it.url === 'string' && it.url)
+    .map((it: any) => ({ ...it, video_id: youtubeIdOf(it.url, it.video_id) }));
+}
+
+const YT_ID = /^[A-Za-z0-9_-]{11}$/;
+const YT_URL = /(?:[?&]v=|youtu\.be\/|\/embed\/)([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/;
+
+/** The 11-character YouTube id, from the URL first. A payload's own
+ *  `video_id` counts only when it IS such an id: the backend's first gallery
+ *  carried the corpus filename there ("… [OhwW_MqgTPk].youtube"), which drew
+ *  grey stills and a dead player. */
+export function youtubeIdOf(url: string, videoId?: string | null): string | null {
+  const m = YT_URL.exec(url || '');
+  if (m) return m[1];
+  if (videoId && YT_ID.test(videoId)) return videoId;
+  const f = /\[([A-Za-z0-9_-]{11})\]\.youtube$/.exec(videoId || '');
+  return f ? f[1] : null;
 }
 
 /** Whether a message carries a sources gallery, in its ordered blocks or in

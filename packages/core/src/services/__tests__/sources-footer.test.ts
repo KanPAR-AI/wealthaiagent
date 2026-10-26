@@ -5,6 +5,7 @@ import {
   sourceCardsOf,
   stripSourcesFooter,
   verseLabel,
+  youtubeIdOf,
 } from '../sources-footer';
 
 const ANSWER = `[Using gita_ch2_discourse agent]
@@ -73,5 +74,21 @@ describe('the gallery widget', () => {
     expect(formatMoment(124)).toBe('2:04');
     expect(formatMoment(3944)).toBe('1:05:44');
     expect(formatMoment(null)).toBe('');
+  });
+});
+
+describe('youtubeIdOf', () => {
+  it('takes the id from the URL and ignores a filename in video_id', () => {
+    expect(youtubeIdOf('https://www.youtube.com/watch?v=OhwW_MqgTPk&t=1828', 'Bhagavad Gita [OhwW_MqgTPk].youtube')).toBe('OhwW_MqgTPk');
+    expect(youtubeIdOf('https://youtu.be/cG-REXo6oS4', null)).toBe('cG-REXo6oS4');
+    expect(youtubeIdOf('https://example.com/doc.pdf', 'Some file [abc].pdf')).toBeNull();
+    expect(youtubeIdOf('https://example.com/x', 'VCBVQB07_yM')).toBe('VCBVQB07_yM');
+    expect(youtubeIdOf('https://example.com/x', 'Talk 4 [xcS6tmXflxM].youtube')).toBe('xcS6tmXflxM');
+  });
+  it('normalises the cards a gallery renders', () => {
+    const cards = sourceCardsOf({ id: 'g', type: 'widget_sources', data: { items: [
+      { title: 't', url: 'https://www.youtube.com/watch?v=OhwW_MqgTPk&t=5', video_id: 'file [OhwW_MqgTPk].youtube' },
+    ] } } as any);
+    expect(cards[0].video_id).toBe('OhwW_MqgTPk');
   });
 });

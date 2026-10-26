@@ -62,6 +62,7 @@ export {
   stripSourcesFooter,
   hideFooterWhenGallery,
   youtubeThumbnail,
+  youtubeIdOf,
   formatMoment,
   verseLabel,
   type SourceCard,
