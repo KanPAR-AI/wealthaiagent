@@ -1,7 +1,7 @@
 // pages/Login.tsx
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth";
+import { RecaptchaVerifier, signInWithPhoneNumber, linkWithPhoneNumber, signInWithCredential, PhoneAuthProvider, type ConfirmationResult } from "firebase/auth";
 import { auth } from "@/config/firebase";
 import { useAuth, signInViaServerExchange } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -188,7 +188,15 @@ export default function LoginPage() {
         size: "invisible",
       });
 
-      const result = await signInWithPhoneNumber(auth, formatted, recaptchaVerifier.current);
+      // The KneeFit account-linking rule: an anonymous visitor who adds a
+      // phone keeps their uid — the chats and the memory survive the
+      // sign-in — so the phone is LINKED onto the anonymous account rather
+      // than signing into a new one. A phone already on another account
+      // fails the link at confirm time and signs into that account instead.
+      const anon = auth.currentUser?.isAnonymous ? auth.currentUser : null;
+      const result = anon
+        ? await linkWithPhoneNumber(anon, formatted, recaptchaVerifier.current)
+        : await signInWithPhoneNumber(auth, formatted, recaptchaVerifier.current);
       setConfirmationResult(result);
       setMode("otp");
       // Focus first OTP input
@@ -219,8 +227,21 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await confirmationResult!.confirm(code);
-    } catch {
-      setError("Invalid verification code. Please try again.");
+    } catch (err: unknown) {
+      const codeName = (err as { code?: string })?.code || "";
+      if (codeName === "auth/credential-already-in-use" || codeName === "auth/account-exists-with-different-credential") {
+        // The phone belongs to an existing account: sign into THAT one. The
+        // anonymous trial chats stay behind, which is the honest outcome —
+        // nothing is merged silently into a stranger's account.
+        try {
+          await signInWithCredential(auth, PhoneAuthProvider.credential(confirmationResult!.verificationId, code));
+          return;
+        } catch {
+          setError("That phone number is already on another account and sign-in failed. Try again.");
+        }
+      } else {
+        setError("Invalid verification code. Please try again.");
+      }
       setOtp(["", "", "", "", "", ""]);
       otpRefs.current[0]?.focus();
     } finally {

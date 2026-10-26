@@ -29,13 +29,13 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import {
   isGoogleSignInAvailable,
-  requestEmailOtp,
+  requestOtp,
   signInAnonymously,
   signInWithApple,
   signInWithEmail,
   signInWithGoogle,
   signUpWithEmail,
-  verifyEmailOtp,
+  verifyOtp,
 } from '@/lib/auth';
 
 export default function LoginScreen() {
@@ -51,6 +51,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [otpMode, setOtpMode] = useState(false);   // email-code sign-in
+  const [otpChannel, setOtpChannel] = useState<'email' | 'phone'>('email');
+  const [phone, setPhone] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -159,17 +161,37 @@ export default function LoginScreen() {
             </ThemedView>
           ) : (
             <ThemedView style={styles.buttons}>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Email"
-                placeholderTextColor={colors.textSecondary}
-                autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
-                editable={!busy}
-                style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundElement }]}
-              />
+              {otpMode && otpChannel === 'phone' ? (
+                <TextInput
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="Phone (+91…)"
+                  placeholderTextColor={colors.textSecondary}
+                  autoComplete="tel"
+                  keyboardType="phone-pad"
+                  editable={!busy && !otpSent}
+                  style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundElement }]}
+                />
+              ) : (
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Email"
+                  placeholderTextColor={colors.textSecondary}
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  keyboardType="email-address"
+                  editable={!busy}
+                  style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundElement }]}
+                />
+              )}
+              {otpMode && !otpSent && (
+                <Pressable disabled={busy} onPress={() => setOtpChannel((c) => (c === 'email' ? 'phone' : 'email'))} hitSlop={8}>
+                  <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
+                    {otpChannel === 'email' ? 'Use my phone number instead' : 'Use my email instead'}
+                  </ThemedText>
+                </Pressable>
+              )}
               {!otpMode && (
                 <>
                   <TextInput
@@ -228,16 +250,21 @@ export default function LoginScreen() {
               )}
               {otpMode && !otpSent && (
                 <Pressable
-                  disabled={busy || !email}
-                  onPress={() => run(async () => { await requestEmailOtp(email); setOtpSent(true); })}
+                  disabled={busy || (otpChannel === 'email' ? !email : phone.replace(/\D/g, '').length < 10)}
+                  onPress={() => run(async () => {
+                    await requestOtp(otpChannel, otpChannel === 'email' ? email : phone);
+                    setOtpSent(true);
+                  })}
                   style={({ pressed }) => [
                     styles.providerButton,
-                    { backgroundColor: colors.text, opacity: pressed || busy || !email ? 0.6 : 1 },
+                    { backgroundColor: colors.text, opacity: pressed || busy || (otpChannel === 'email' ? !email : phone.replace(/\D/g, '').length < 10) ? 0.6 : 1 },
                   ]}>
                   {busy ? (
                     <ActivityIndicator color={colors.background} />
                   ) : (
-                    <ThemedText type="smallBold" style={{ color: colors.background }}>Email me a code</ThemedText>
+                    <ThemedText type="smallBold" style={{ color: colors.background }}>
+                      {otpChannel === 'email' ? 'Email me a code' : 'Text me a code'}
+                    </ThemedText>
                   )}
                 </Pressable>
               )}
@@ -255,7 +282,7 @@ export default function LoginScreen() {
                   />
                   <Pressable
                     disabled={busy || otpCode.length < 4}
-                    onPress={() => run(() => verifyEmailOtp(email, otpCode))}
+                    onPress={() => run(() => verifyOtp(otpChannel, otpChannel === 'email' ? email : phone, otpCode))}
                     style={({ pressed }) => [
                       styles.providerButton,
                       { backgroundColor: colors.text, opacity: pressed || busy || otpCode.length < 4 ? 0.6 : 1 },
@@ -266,7 +293,7 @@ export default function LoginScreen() {
                       <ThemedText type="smallBold" style={{ color: colors.background }}>Verify &amp; sign in</ThemedText>
                     )}
                   </Pressable>
-                  <Pressable disabled={busy} onPress={() => run(() => requestEmailOtp(email))} hitSlop={8}>
+                  <Pressable disabled={busy} onPress={() => run(() => requestOtp(otpChannel, otpChannel === 'email' ? email : phone))} hitSlop={8}>
                     <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>Resend code</ThemedText>
                   </Pressable>
                 </>

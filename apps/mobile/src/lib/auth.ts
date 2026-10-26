@@ -150,12 +150,26 @@ export async function setAccountPassword(password: string): Promise<void> {
   }
 }
 
-/** Passwordless email OTP: request a code sent to `email`. */
-export async function requestEmailOtp(email: string): Promise<void> {
+export type OtpChannel = 'email' | 'phone';
+
+/** A phone the backend accepts: E.164; a bare Indian number gets +91. */
+export function normalisePhone(phone: string): string {
+  const digits = phone.replace(/[\s-]/g, '');
+  return digits.startsWith('+') ? digits : `+91${digits}`;
+}
+
+/** Passwordless OTP over the platform's own endpoints (email via SendGrid,
+ *  phone via the SMS provider whose key is set). The KneeFit learning
+ *  (docs/54): iOS Firebase phone auth needs APNs or a native reCAPTCHA that
+ *  crashed the app, so phone codes go through the backend here too — no
+ *  native module, no reCAPTCHA, OTA-shippable. Without an SMS key the backend
+ *  answers an honest 501 that this throws as a readable message. */
+export async function requestOtp(channel: OtpChannel, identifier: string): Promise<void> {
+  const ident = channel === 'phone' ? normalisePhone(identifier) : identifier.trim();
   const res = await fetch(apiUrl('/auth/otp/send'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ channel: 'email', identifier: email.trim() }),
+    body: JSON.stringify({ channel, identifier: ident }),
   });
   if (!res.ok) {
     const b = await res.json().catch(() => ({}));
@@ -163,11 +177,13 @@ export async function requestEmailOtp(email: string): Promise<void> {
   }
 }
 
-/** Verify the email OTP → exchange for a Firebase custom token → sign in.
- *  If a user is already signed in (phone / anonymous), we pass their token so
- *  the backend LINKS the email onto that account instead of creating a new one
- *  (seamless phone↔email linking + anonymous upgrade with no data loss). */
-export async function verifyEmailOtp(email: string, code: string): Promise<void> {
+/** Verify the OTP → exchange for a Firebase custom token → sign in.
+ *  If a user is already signed in (anonymous included), their token rides
+ *  along so the backend LINKS the identifier onto that account instead of
+ *  creating a new one: the anonymous upgrade keeps the uid, the chats and the
+ *  memory (the KneeFit account-linking rule). */
+export async function verifyOtp(channel: OtpChannel, identifier: string, code: string): Promise<void> {
+  const ident = channel === 'phone' ? normalisePhone(identifier) : identifier.trim();
   const currentToken = await auth.currentUser?.getIdToken().catch(() => null);
   const res = await fetch(apiUrl('/auth/otp/verify'), {
     method: 'POST',
@@ -175,12 +191,22 @@ export async function verifyEmailOtp(email: string, code: string): Promise<void>
       'Content-Type': 'application/json',
       ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
     },
-    body: JSON.stringify({ channel: 'email', identifier: email.trim(), code: code.trim() }),
+    body: JSON.stringify({ channel, identifier: ident, code: code.trim() }),
   });
   const b = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(b.detail || `Invalid code (${res.status})`);
   if (!b.token) throw new Error('Sign-in failed: no token returned');
   await signInWithCustomToken(auth, b.token);
+}
+
+/** Passwordless email OTP: request a code sent to `email`. */
+export async function requestEmailOtp(email: string): Promise<void> {
+  return requestOtp('email', email);
+}
+
+/** Verify the email OTP (see verifyOtp for the linking rule). */
+export async function verifyEmailOtp(email: string, code: string): Promise<void> {
+  return verifyOtp('email', email, code);
 }
 
 export function isGoogleSignInAvailable(): boolean {
