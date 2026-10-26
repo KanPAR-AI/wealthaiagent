@@ -34,6 +34,7 @@ import { type Widget } from '@wealthai/core';
 import { ChartWidget, TableWidget } from '@/components/chat/chart-widgets';
 import { OnboardingForm } from '@/components/chat/onboarding-form';
 import { PalmPredictionsView, PalmView } from '@/components/chat/palm-view';
+import { SourcesGallery } from '@/components/chat/sources-gallery';
 
 export { QUICK_REPLY_EVENT } from '@/lib/events';
 
@@ -59,6 +60,10 @@ const handlers: Record<string, ChatWidgetHandler> = {
   line_chart: (_data, widget) => <ChartWidget widget={widget} kind="line" />,
   bar_chart: (_data, widget) => <ChartWidget widget={widget} kind="bar" />,
   composed_chart: (_data, widget) => <ChartWidget widget={widget} kind="composed" />,
+
+  // bug 6c329647: the Sources footer as a horizontal gallery; the shared
+  // bubble hides the markdown list when this widget is in the message.
+  sources: (_data, widget) => <SourcesGallery widget={widget} />,
 
   // docs/49 ASTRAL-83: the engine asks, the client collects.
   input_request: (data) => <AstralBlock type="input_request" data={data} />,

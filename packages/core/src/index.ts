@@ -56,6 +56,19 @@ export {
 } from './services/chat-service';
 
 export {
+  SOURCES_WIDGET_TYPE,
+  sourceCardsOf,
+  hasSourcesWidget,
+  stripSourcesFooter,
+  hideFooterWhenGallery,
+  youtubeThumbnail,
+  formatMoment,
+  verseLabel,
+  type SourceCard,
+  type SourcesWidgetData,
+} from './services/sources-footer';
+
+export {
   submitBugReportCore,
   listBugReportsCore,
   getBugReportCore,

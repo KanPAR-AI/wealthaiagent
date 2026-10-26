@@ -1,6 +1,7 @@
 // components/chat/chat-bubble.tsx
 
 import { stripInputResponse } from '@wealthai/astral';
+import { hasSourcesWidget, hideFooterWhenGallery, stripSourcesFooter } from '@wealthai/core';
 
 import { ActionIconDefinition, Message, MessageFile, UserInfo } from '@/types';
 import { motion } from 'framer-motion';
@@ -103,7 +104,7 @@ export function ChatBubble({
         {/* NEW: Render content blocks in order (text and widgets interleaved) */}
         {message.contentBlocks && message.contentBlocks.length > 0 ? (
           <>
-            {message.contentBlocks.map((block, index) => {
+            {hideFooterWhenGallery(message.contentBlocks).map((block, index) => {
               if (block.type === 'text') {
                 // Skip empty/whitespace-only text blocks
                 const trimmed = block.content?.trimEnd() || '';
@@ -178,7 +179,9 @@ export function ChatBubble({
                   <div className="px-0.5 whitespace-pre-wrap break-words overflow-wrap-anywhere min-w-0 overflow-x-auto chat-bubble-content">
                     {message.sender === 'bot' ? (
                       <StreamingResponse
-                        content={message.streamingContent || message.message}
+                        content={hasSourcesWidget(undefined, message.widgets)
+                          ? stripSourcesFooter(message.streamingContent || message.message)
+                          : (message.streamingContent || message.message)}
                         isStreaming={message.isStreaming || false}
                         className="chat-bubble-content"
                         onNavigate={handleNavigate}

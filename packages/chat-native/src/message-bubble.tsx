@@ -22,7 +22,7 @@ import {
   resolveAssistantOverride,
   resolveUserText,
 } from './bubble-text';
-import { getPlatform, type ContentBlock, type Message, type Widget } from '@wealthai/core';
+import { getPlatform, type ContentBlock, type Message, type Widget, hideFooterWhenGallery } from '@wealthai/core';
 
 import { CHAT_RETRY_EVENT, getChatHost } from './host';
 import type { ChatTheme } from './theme';
@@ -251,10 +251,14 @@ export const MessageBubble = memo(function MessageBubble({
   // events — the web parses these fences out of markdown; do the same
   // here so a computed chart renders as a chart rather than as a
   // screenful of raw JSON.
+  // bug 6c329647: when the reply carries its sources as a gallery widget,
+  // the markdown Sources list is hidden — one row of cards, not a stack of
+  // players. A message without the widget renders exactly as before.
   const blocks = applyAssistantOverride(
     rawBlocks.flatMap((b) => splitFencedWidgets(b, dataLanguages)),
     override,
   );
+  const shown = hideFooterWhenGallery(blocks);
 
   const markdownStyles = chatMarkdownStyles(theme);
 
@@ -269,7 +273,7 @@ export const MessageBubble = memo(function MessageBubble({
           <ChatText theme={theme} step="smallBold" tone="danger" style={styles.retry}>↻ Retry</ChatText>
         </Pressable>
       ) : null}
-      {blocks.map((block, i) => {
+      {shown.map((block, i) => {
         if (block.type !== 'text') {
           // A surface with no renderer for this block draws nothing — and
           // says so, because dropping a block is indistinguishable from
@@ -279,7 +283,7 @@ export const MessageBubble = memo(function MessageBubble({
         }
         // Streaming cursor on the last text block while live
         const text =
-          message.isStreaming && i === blocks.length - 1
+          message.isStreaming && i === shown.length - 1
             ? `${block.content}▍`
             : block.content;
         const body = renderText ? (

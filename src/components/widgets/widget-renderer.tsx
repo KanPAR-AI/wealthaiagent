@@ -8,6 +8,7 @@ import { MortgageCalculator } from "./mortgage-calculator"
 import { RetirementCalculator } from "./retirement-calculator"
 import { FinancialSummaryChart } from "./financial-summary-chart"
 import { ActionTilesWidget } from "./action-tiles-widget"
+import { SourcesGalleryWidget } from "./sources-gallery-widget"
 import { MultiSelectWidget } from "./multi-select-widget"
 import { OnboardingFormWidget } from "./onboarding-form-widget"
 import { CuisineProportionWidget } from "./cuisine-proportion-widget"
@@ -108,6 +109,8 @@ function renderWidget(widget: WidgetRendererProps['widget'], isHistory?: boolean
     case 'widget_composed_chart':
       return <FinancialSummaryChart {...widget} />
 
+    case 'widget_sources':
+      return <SourcesGalleryWidget widget={widget} />
     case 'widget_action_tiles':
       return <ActionTilesWidget {...widget} isHistory={isHistory} />
 
