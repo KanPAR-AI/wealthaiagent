@@ -50,8 +50,8 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [otpMode, setOtpMode] = useState(false);   // email-code sign-in
-  const [otpChannel, setOtpChannel] = useState<'email' | 'phone'>('email');
+  const [otpMode, setOtpMode] = useState(false);   // phone-code sign-in (email codes dropped 2026-11-02: no mail provider)
+  const otpChannel = 'phone' as const;
   const [phone, setPhone] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
@@ -161,7 +161,7 @@ export default function LoginScreen() {
             </ThemedView>
           ) : (
             <ThemedView style={styles.buttons}>
-              {otpMode && otpChannel === 'phone' ? (
+              {otpMode ? (
                 <TextInput
                   value={phone}
                   onChangeText={setPhone}
@@ -184,13 +184,6 @@ export default function LoginScreen() {
                   editable={!busy}
                   style={[styles.input, { color: colors.text, backgroundColor: colors.backgroundElement }]}
                 />
-              )}
-              {otpMode && !otpSent && (
-                <Pressable disabled={busy} onPress={() => setOtpChannel((c) => (c === 'email' ? 'phone' : 'email'))} hitSlop={8}>
-                  <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
-                    {otpChannel === 'email' ? 'Use my phone number instead' : 'Use my email instead'}
-                  </ThemedText>
-                </Pressable>
               )}
               {!otpMode && (
                 <>
@@ -250,20 +243,20 @@ export default function LoginScreen() {
               )}
               {otpMode && !otpSent && (
                 <Pressable
-                  disabled={busy || (otpChannel === 'email' ? !email : phone.replace(/\D/g, '').length < 10)}
+                  disabled={busy || phone.replace(/\D/g, '').length < 10}
                   onPress={() => run(async () => {
-                    await requestOtp(otpChannel, otpChannel === 'email' ? email : phone);
+                    await requestOtp(otpChannel, phone);
                     setOtpSent(true);
                   })}
                   style={({ pressed }) => [
                     styles.providerButton,
-                    { backgroundColor: colors.text, opacity: pressed || busy || (otpChannel === 'email' ? !email : phone.replace(/\D/g, '').length < 10) ? 0.6 : 1 },
+                    { backgroundColor: colors.text, opacity: pressed || busy || phone.replace(/\D/g, '').length < 10 ? 0.6 : 1 },
                   ]}>
                   {busy ? (
                     <ActivityIndicator color={colors.background} />
                   ) : (
                     <ThemedText type="smallBold" style={{ color: colors.background }}>
-                      {otpChannel === 'email' ? 'Email me a code' : 'Text me a code'}
+                      Text me a code
                     </ThemedText>
                   )}
                 </Pressable>
@@ -282,7 +275,7 @@ export default function LoginScreen() {
                   />
                   <Pressable
                     disabled={busy || otpCode.length < 4}
-                    onPress={() => run(() => verifyOtp(otpChannel, otpChannel === 'email' ? email : phone, otpCode))}
+                    onPress={() => run(() => verifyOtp(otpChannel, phone, otpCode))}
                     style={({ pressed }) => [
                       styles.providerButton,
                       { backgroundColor: colors.text, opacity: pressed || busy || otpCode.length < 4 ? 0.6 : 1 },
@@ -293,7 +286,7 @@ export default function LoginScreen() {
                       <ThemedText type="smallBold" style={{ color: colors.background }}>Verify &amp; sign in</ThemedText>
                     )}
                   </Pressable>
-                  <Pressable disabled={busy} onPress={() => run(() => requestOtp(otpChannel, otpChannel === 'email' ? email : phone))} hitSlop={8}>
+                  <Pressable disabled={busy} onPress={() => run(() => requestOtp(otpChannel, phone))} hitSlop={8}>
                     <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>Resend code</ThemedText>
                   </Pressable>
                 </>
@@ -303,7 +296,7 @@ export default function LoginScreen() {
                 onPress={() => { setOtpMode((v) => !v); setOtpSent(false); setOtpCode(''); }}
                 hitSlop={8}>
                 <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
-                  {otpMode ? 'Use your password instead' : 'Email me a code instead'}
+                  {otpMode ? 'Use your email and password instead' : 'Text me a code instead'}
                 </ThemedText>
               </Pressable>
               <Pressable disabled={busy} onPress={() => setEmailMode(false)} hitSlop={8}>
