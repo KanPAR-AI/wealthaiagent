@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, ThemeProvider, Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Updates from 'expo-updates';
 import { useEffect } from 'react';
@@ -10,6 +10,8 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { ensureAstralHostInstalled } from '@/lib/astral-host';
 import { ensureChatHostInstalled } from '@/lib/chat-host';
 import { ensureCoreInitialized } from '@/lib/core-adapter';
+import { installPushHandlers, refreshPushRegistration } from '@/lib/push';
+import { routeForPush } from '@/lib/push-view';
 
 // Install the mobile PlatformAdapter into @wealthai/core before any screen
 // imports the shared services (chat client, stores).
@@ -62,9 +64,22 @@ function useApplyUpdatesPromptly() {
   }, []);
 }
 
+/**
+ * Push notifications: re-register a device that opted in (tokens rotate), and
+ * route a tapped notification. Both are no-ops on a binary without the native
+ * module (`lib/push.ts`), which is every Arthur build before this one.
+ */
+function usePush() {
+  useEffect(() => {
+    void refreshPushRegistration();
+    return installPushHandlers((url) => router.push(routeForPush(url) as never));
+  }, []);
+}
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   useApplyUpdatesPromptly();
+  usePush();
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <KeyboardProvider>

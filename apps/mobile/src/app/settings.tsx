@@ -6,8 +6,8 @@ import * as Updates from 'expo-updates';
 import Constants from 'expo-constants';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, TextInput,
-  useColorScheme, View,
+  ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Switch,
+  TextInput, useColorScheme, View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -17,6 +17,10 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/hooks/use-auth';
 import { hasPasswordProvider, setAccountPassword, signOut } from '@/lib/auth';
+import {
+  disablePush, enablePush, isPushRegistered, pushPermission, pushSupported, sendTestPush,
+} from '@/lib/push';
+import { pushRow, type PushPermission } from '@/lib/push-view';
 import {
   getCreditBalance, getCreditLedger, requestCredits,
   type CreditBalance, type LedgerEntry,
@@ -89,6 +93,47 @@ export default function SettingsScreen() {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const colors = Colors[scheme];
   const { user } = useAuth();
+
+  // Notifications. The row is ABSENT on a binary without the native module
+  // (capability rule: absent removes) — every Arthur build before push. The
+  // switch means "this device is registered"; off tells the backend to forget
+  // the address, not just to mute.
+  const [pushOk] = useState(() => pushSupported());
+  const [pushPerm, setPushPerm] = useState<PushPermission>('undetermined');
+  const [pushOn, setPushOn] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  useEffect(() => {
+    if (!pushOk || !user?.uid) return;
+    void pushPermission().then(setPushPerm);
+    void isPushRegistered().then(setPushOn);
+  }, [pushOk, user?.uid]);
+  const togglePush = useCallback(async (on: boolean) => {
+    setPushBusy(true);
+    try {
+      if (on) {
+        const p = await enablePush();
+        setPushPerm(p);
+        setPushOn(p === 'granted');
+      } else {
+        await disablePush();
+        setPushOn(false);
+      }
+    } catch (e: any) {
+      Alert.alert('Could not change notifications', String(e?.message ?? e));
+    } finally {
+      setPushBusy(false);
+    }
+  }, []);
+  const onTestPush = useCallback(async () => {
+    try {
+      const ok = await sendTestPush();
+      Alert.alert(ok > 0 ? 'Sent' : 'Nothing sent',
+        ok > 0 ? 'A test notification is on its way to this phone.'
+          : 'No registered device answered. Turn alerts off and on again.');
+    } catch (e: any) {
+      Alert.alert('Could not send', String(e?.message ?? e));
+    }
+  }, []);
 
   const [credits, setCredits] = useState<CreditBalance | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
@@ -288,6 +333,45 @@ export default function SettingsScreen() {
 
           {loading && <ActivityIndicator color={colors.textSecondary} style={{ marginTop: 12 }} />}
 
+          {/* Notifications — absent on a binary without the native module. */}
+          {pushRow(pushOk, pushPerm) !== 'absent' && user && !user.isAnonymous ? (
+            <>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.sectionLabel}>NOTIFICATIONS</ThemedText>
+              <View style={[styles.card, { backgroundColor: colors.backgroundElement }]}>
+                <View style={styles.pushRow}>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <ThemedText type="small">Alerts from Arthur</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      {pushRow(pushOk, pushPerm) === 'os_denied'
+                        ? 'Notifications are off for YourFinAdvisor in your phone\u2019s Settings. Turn them on there first.'
+                        : 'When something you asked for is ready \u2014 a story video, for now.'}
+                    </ThemedText>
+                  </View>
+                  {pushRow(pushOk, pushPerm) === 'switch' ? (
+                    <Switch
+                      value={pushPerm === 'granted' && pushOn}
+                      disabled={pushBusy}
+                      onValueChange={(on) => void togglePush(on)}
+                      accessibilityLabel="Alerts from Arthur"
+                    />
+                  ) : (
+                    <Pressable
+                      onPress={() => void Linking.openSettings()}
+                      style={[styles.requestBtn, { borderColor: colors.backgroundSelected }]}>
+                      <ThemedText type="smallBold" style={{ color: colors.text }}>Open Settings</ThemedText>
+                    </Pressable>
+                  )}
+                </View>
+                {pushPerm === 'granted' && pushOn ? (
+                  <Pressable onPress={onTestPush} style={[styles.row, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.backgroundSelected }]}>
+                    <ThemedText type="small" themeColor="textSecondary">Send a test notification</ThemedText>
+                    <ThemedText type="small" style={{ color: colors.text }}>\u203a</ThemedText>
+                  </Pressable>
+                ) : null}
+              </View>
+            </>
+          ) : null}
+
           {/* Developer — backend server */}
           <ThemedText type="small" themeColor="textSecondary" style={styles.sectionLabel}>DEVELOPER</ThemedText>
           <View style={[styles.card, { backgroundColor: colors.backgroundElement }]}>
@@ -344,6 +428,7 @@ const styles = StyleSheet.create({
   sectionLabel: { marginTop: 16, marginBottom: 6, letterSpacing: 0.5 },
   card: { borderRadius: 12, paddingHorizontal: 14 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
+  pushRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   balanceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14 },
   requestBtn: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8 },
   usageRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 9 },

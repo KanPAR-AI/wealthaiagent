@@ -85,6 +85,12 @@
           "cameraPermission": "YourFinAdvisor uses the camera so you can take a photo to attach to a chat."
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "mode": "production"
+        }
+      ],
       "@react-native-firebase/app",
       "@react-native-firebase/analytics",
       "./plugins/withAndroidLintFix",
